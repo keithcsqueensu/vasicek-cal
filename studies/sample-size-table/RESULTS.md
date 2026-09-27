@@ -17,6 +17,7 @@ under a second.
   they were not observed.
 - **§** marks a cell where the law is unchecked: only T = 100 was usable, since at T = 20 and 40 more
   than half the estimates are on the grid edge.
+- **¶** would mark a cell that fails the scaling check; none does.
 - **The relative ρ target (±25%) is a post-hoc view,** added at the owner's request after the run
   (D-305). With the slope fixed at −½, T\* scales as 1/target², so it follows from the same fitted C
   by arithmetic: T\*(relative) = T\*(absolute) × (0.05/(0.25·ρ))². It was therefore not
@@ -41,6 +42,8 @@ under a second.
 - ‡ Below 20 years: shorter than any history studied, also an extrapolation.
 - § Unchecked: only T = 100 was usable (at T = 20 and 40 most estimates are on the grid edge), so
   the law could not be checked in this cell.
+- ¶ Fails the scaling check (slope outside [-0.75, -0.30] or a residual above 0.15): T* rests on a
+  law this cell does not follow. No cell is so marked in the current summary.
 
 ### Years for ρ within ±25% relative (95%; post hoc, D-305)
 
@@ -60,6 +63,8 @@ under a second.
 - ‡ Below 20 years: shorter than any history studied, also an extrapolation.
 - § Unchecked: only T = 100 was usable (at T = 20 and 40 most estimates are on the grid edge), so
   the law could not be checked in this cell.
+- ¶ Fails the scaling check (slope outside [-0.75, -0.30] or a residual above 0.15): T* rests on a
+  law this cell does not follow. No cell is so marked in the current summary.
 
 ### Years for PD within ±25% relative (95%)
 
@@ -79,6 +84,8 @@ under a second.
 - ‡ Below 20 years: shorter than any history studied, also an extrapolation.
 - § Unchecked: only T = 100 was usable (at T = 20 and 40 most estimates are on the grid edge), so
   the law could not be checked in this cell.
+- ¶ Fails the scaling check (slope outside [-0.75, -0.30] or a residual above 0.15): T* rests on a
+  law this cell does not follow. No cell is so marked in the current summary.
 
 ## What the table says
 
