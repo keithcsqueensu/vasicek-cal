@@ -176,8 +176,8 @@ refined in each study's `PREDICTION.md`.
     picks ρ̂: 0.262 under parity, 0.001 mirrored, and 767 of its 999 bootstrap argmaxes differ. The
     flags and the profile interval (the whole box, truncated at both ends) agree. This is not a
     sign asymmetry: any rounding perturbation would move ρ̂ the same way.
-  - **The recovery-matrix version is not run:** every recovery scenario has n ≥ 100, where ρ is
-    identified, and subset panels 1–9 pass every check.
+  - **The recovery-matrix version is not run (owner, D-301):** the mechanism is structural (every
+    n_t = 1), every recovery scenario has n ≥ 100, and subset panels 1–9 pass every check.
 - **Mitigation:** proposed, not implemented (parity unchanged; the owner's decision, D-301). Either
   flag or refuse ρ when no period has n_t ≥ 2, or flag a surface that is flat to rounding along an
   axis at its argmax, and report no point estimate for that parameter. `study_z_sign_invariance`

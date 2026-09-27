@@ -713,8 +713,11 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Downstream, on 33 of 34 panels,** estimates, SEs, profile and bootstrap intervals agree within the registered bounds. Three expected sizes were missed, each inside its bound: C3 by 2.3×, C8 by 27× (the Hessian's second differences, the size seen across platforms), C10 by 2.4×.
   - **The finding: panel 26, n = 1 in every period.** A single obligor's likelihood is PD or 1 − PD, free of ρ, so the surface is flat along ρ to rounding (2.8e-14) and rounding picks ρ̂ (0.262 against 0.001). The flags and the profile interval (the whole box) agree. It is non-identification, not asymmetry, and any rounding perturbation (platform, compiler, summation order) moves ρ̂ the same way.
   - **Pinned:** `study_z_sign_invariance` (CTest, label slow) exits non-zero on any failure other than C5, C7 and C10 in panel 26.
-  - **Departure from the registered rule, for the owner:** the prediction says a finding that moves estimates is characterised on the study subset. That is not done, because the mechanism is exact and cannot occur in the recovery panels (n ≥ 100; subset panels 1–9 pass every check). The owner may still ask for the run.
-  - **Proposed, for the owner (parity unchanged):** flag or refuse ρ when no period has n_t ≥ 2, or flag a surface flat to rounding along an axis at its argmax (`kFlagFlatSurface`, with no point estimate for that parameter).
+  - **The registered statistical follow-up is not run (owner, confirmed).** The prediction's verdict rule says a finding that moves estimates is characterised on the study subset. That step is skipped, for these reasons:
+    - The mechanism is exact: ρ is absent from the likelihood only when every period has n_t = 1. It is a structural property of the data, not a rate that sampling could estimate.
+    - It cannot arise in any recovery scenario, since every one has n ≥ 100. A recovery run would therefore measure a rate that is zero by construction.
+    - The nine subset panels checked here (panels 1–9, replicate 0 of scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51) pass every check.
+  - **Mitigation, decided by the owner:** a structural flag when no period has n_t ≥ 2, with the numbers still reported. It is its own parity decision, D-302. A "flat to rounding" test is not added: that condition depends on the platform and stays with the existing flat-surface flag.
   - **Monitoring implication:** no metric for the sign convention, since calibration outputs do not depend on it; factor-scale outputs state it in adverse and benign terms. A data check reports ρ as not identified when no period has n_t ≥ 2, or when ρ's profile interval spans the whole box.
 
 ## Open
