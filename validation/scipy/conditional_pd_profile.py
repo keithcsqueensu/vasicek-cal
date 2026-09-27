@@ -213,7 +213,10 @@ def main():
                     bad.append(f"{key} {side}: truncated by the engine, but outside the interval here")
                 continue
             prof.last = None
-            g = lambda s: prof(s)[0] - level  # noqa: E731
+
+            def g(s, prof=prof, level=level):
+                return prof(s)[0] - level
+
             delta = 1e-3
             while delta < 1.0 and g(s_e - delta) * g(s_e + delta) > 0.0:
                 delta *= 4.0
