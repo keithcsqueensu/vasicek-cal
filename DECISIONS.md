@@ -658,6 +658,21 @@ the plan.
     2. **Then M3,** with S-8, S-9, S-15, S-27 and S-28 folded into it. S-15 moves from after M4 to M3.
     3. **The rest** keep their placement and are ordered at the end of M3.
 
+- **D-152 (owner) — Monitoring implications, M5 features, an extension of S-14, and study S-34.**
+  - **Every `questions.md` entry gets a monitoring implication**, filled in when the study finishes: the monitoring metric, threshold or data check the result supports, if any. M5's monitoring design draws its metrics from finished entries and is not frozen until the relevant studies are done.
+  - **M5 features (artifacts, not studies):**
+    - what-if recalibration with hypothetical future periods, reusing the per-period surfaces (a hypothetical period is one more row);
+    - a threshold table mapping next period's default count to tiered statuses (within tolerance / warning / threshold exceeded), each tier tied to a stated rule;
+    - parameter-shock propagation to the 99.9% conditional PD, sharing S-23's machinery;
+    - conditional PD across factor levels, and reverse factor stress, expressed in adverse and benign terms rather than raw signs of Z;
+    - an estimator comparison, a view of S-8 and S-11.
+
+    Names are neutral and describe what each feature computes.
+  - **S-14 is extended** to the threshold table's operating characteristics: the false-alarm rate for a correctly calibrated model, and the detection delay for a miscalibrated one.
+  - **S-34, sensitivity to severe new periods:** how far PD̂, ρ̂ and the 99.9% conditional PD move after one or two severe periods, as a function of T.
+    - **Placement:** the first batch, after S-1 and S-2. It needs S-23's interval for the conditional PD and none of M3's estimators.
+    - **Cost:** it is cheap: each added period is one more surface row. About 12–20 minutes on the subset.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

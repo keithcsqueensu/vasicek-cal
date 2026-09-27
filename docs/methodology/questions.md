@@ -36,8 +36,13 @@ running them are in D-148:
     observed counts have a computable distribution, and by a long simulation otherwise. For a
     stationary design it equals the very-long-panel value.
 
-Each entry records the question, the experiment, the prediction, the result, and the status of
-any mitigation. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
+- **Every entry has a monitoring implication** (D-152), filled in when the study finishes: the
+  monitoring metric, threshold or data check the result supports, if any, or "none". M5's
+  monitoring design draws its metrics from finished entries and is not frozen until the studies it
+  relies on are done.
+
+Each entry records the question, the experiment, the prediction, the result, the status of any
+mitigation and the monitoring implication. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
 nothing is run before then.
 
 ## The study subset (approved, D-150)
@@ -83,7 +88,9 @@ not delay M3.
    2. S-13, targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T
       profile findings are real;
    3. the shared jackknife run: S-3, S-5 and S-21;
-   4. S-1 and S-2: fast, and they give this index its first finished entries.
+   4. S-1 and S-2: fast, and they give this index its first finished entries;
+   5. S-34: sensitivity to severe new periods. It reuses S-23's interval for the 99.9% conditional
+      PD and costs little (D-152).
 2. **Then M3 itself,** with S-8, S-9, S-15, S-27 and S-28 folded into it (S-15 moves from after M4).
 3. **Everything else** keeps its placement and is ordered when M3 ends.
 
@@ -104,7 +111,7 @@ not delay M3.
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
 | S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | not registered |
-| S-14 | `backtest-power` | How many years detect a misstated PD? | after M4 | not registered |
+| S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
 | S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
 | S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
@@ -113,7 +120,7 @@ not delay M3.
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
 | S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | not registered |
 | S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
-| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | now | not registered |
+| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | registered |
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
 | S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
@@ -124,6 +131,7 @@ not delay M3.
 | S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
+| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | not registered |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -147,6 +155,7 @@ refined in each study's `PREDICTION.md`.
   mapping macro effects to signs, is S-18 and S-19.
 - **Cost:** under a minute.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** none needed unless it fails.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-2 Sample-size planning table (`sample-size-table`)
 
@@ -160,6 +169,7 @@ refined in each study's `PREDICTION.md`.
   any T studied".
 - **Cost:** seconds. An optional check refits the subset at one implied T (minutes).
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a (a planning aid).
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-3 Jackknife bias correction for ρ̂ (`jackknife-bias-rho`)
 
@@ -173,6 +183,7 @@ refined in each study's `PREDICTION.md`.
   could break.
 - **Cost:** about the subset baseline (≈ 7–12 min); pinning ≈ 1.3–2 h.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** backlog item since D-131.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-4 Bartlett-corrected profile threshold (`bartlett-profile`)
 
@@ -188,6 +199,7 @@ refined in each study's `PREDICTION.md`.
     per replicate, so it shares S-10's cost and belongs with it.
 - **Cost:** S-4a ≈ subset baseline; S-4b as S-10.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** backlog item since D-131.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-5 BCa intervals (`bca-intervals`)
 
@@ -198,6 +210,7 @@ refined in each study's `PREDICTION.md`.
   acceleration from the jackknife (as S-3). Report BCa next to percentile, pairwise.
 - **Cost:** about the subset baseline; pinning ≈ 1.3–2 h.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** backlog item since D-137.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-6 Pluto–Tasche most-prudent upper bounds (`pluto-tasche`)
 
@@ -211,6 +224,7 @@ refined in each study's `PREDICTION.md`.
   lists Pluto–Tasche as a benchmark.
 - **Cost:** minutes for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-7 Grid resolution against accuracy and runtime (`grid-resolution`)
 
@@ -221,6 +235,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** the surface cost grows with the number of points, so about 1 h at R = 1,000 or 15 min
   at R = 200 (enough, since this compares per-replicate differences, not coverage).
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## With M3
 
@@ -233,6 +248,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** minutes for MoM itself; ≈ 1 h if the MLE is refitted for pairing rather than read from
   the goldens.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-9 Frequentist coverage of grid-Bayesian credible intervals (`bayes-coverage`)
 
@@ -243,6 +259,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** about the fit cost (≈ 5 min subset, ≈ 1 h full matrix), plus the Jeffreys prior once
   per n.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Subset now, full matrix after M4 (new data per replicate)
 
@@ -256,6 +273,7 @@ refined in each study's `PREDICTION.md`.
   R = 200 and B = 199 is ≈ 5 h. If surfaces are cached by (n, d) (see the note in D-148), this
   becomes a W × L job at about the cost of the iid bootstrap.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-11 Misspecification (`misspecification`)
 
@@ -269,6 +287,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** one recovery run per DGP: ≈ 7–12 min on the subset, ≈ 1.3–2 h for the full matrix. The
   blocker is the DGP extensions, not compute.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## After M4 (GPU scale)
 
@@ -281,6 +300,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** B × C = 999 × 199 grid reductions per replicate: ≈ 3 h on the subset on CPU, ≈ 1 day
   for the full matrix on CPU, which is the GPU's fused-reduce kernel's job.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-13 R = 10,000 recovery re-run (`recovery-r10000`)
 
@@ -292,6 +312,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** the whole matrix ≈ 12–21 h on 24 threads on CPU; the borderline scenarios alone
   ≈ 3 h.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-14 Backtest power (`backtest-power`)
 
@@ -299,8 +320,21 @@ refined in each study's `PREDICTION.md`.
   or 50%, at a given ρ and n?
 - **Experiment:** power under the one-factor model. For tests on per-period or summed defaults it
   is exact by quadrature and convolution; simulation is the cross-check.
-- **Cost:** minutes. Needs the M5 backtests.
+- **Extension (D-152): the operating characteristics of M5's threshold table.** For each tier
+  boundary of the table that maps next-period default counts to statuses:
+  - **false-alarm rate:** the probability, per period and over a horizon, that a correctly
+    calibrated model reaches "warning" or "threshold exceeded". Under the one-factor model with
+    independent periods it is exact by quadrature over the factor;
+  - **detection delay:** the distribution of the number of periods until a miscalibrated model (PD
+    misstated by 20% or 50%) first reaches each tier. With independent periods it is geometric in
+    the per-period exceedance probability; with an AR(1) factor (M6) it needs simulation;
+  - both with the table built from the true parameters and from estimated ones, so that the effect
+    of estimation error on the false-alarm rate is visible.
+- **Placement:** M5, where the backtests and the threshold table it needs are built (moved from
+  after M4).
+- **Cost:** minutes.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-15 Simulation-based calibration of the Bayesian estimator (`bayes-sbc`)
 
@@ -311,6 +345,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** thousands of calibrate-only fits: minutes on CPU.
 - **Placement (D-151):** folded into M3 with the grid-Bayesian estimator and S-9; it needs no GPU.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-16 FP32 search, FP64 finalisation (`fp32-search`)
 
@@ -320,6 +355,7 @@ refined in each study's `PREDICTION.md`.
   host and device code), then on the GPU, so that precision and device-math effects are separated.
 - **Cost:** about the subset baseline per policy per backend.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-17 Performance across GPU generations (`gpu-scaling`)
 
@@ -329,6 +365,7 @@ refined in each study's `PREDICTION.md`.
   methodology question: its results live in `perf/`, with this entry as the pointer.
 - **Cost:** hours per GPU; needs access to hardware beyond the development machine's sm_120.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Addendum: now (reuse existing machinery; D-149)
 
@@ -350,6 +387,7 @@ refined in each study's `PREDICTION.md`.
   (leave-two-out at T = 100 costs about five iid bootstraps). Full matrix ≈ 1.5–2.5 h. The exact
   refits add ≈ 10 min.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-22 Box sensitivity (`box-sensitivity`)
 
@@ -377,6 +415,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** each arm ≈ 1.1–1.4 × the baseline: ≈ 20–30 min on the subset for both arms,
   ≈ 3–5 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-23 Intervals for derived quantities (`derived-quantity-intervals`)
 
@@ -392,7 +431,8 @@ refined in each study's `PREDICTION.md`.
   quantile) under the same band and policy.
 - **Cost:** ≈ 1.15 × the baseline (one more profile per replicate): ≈ 8–14 min on the subset,
   ≈ 1.5–2.3 h for the full matrix.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`studies/derived-quantity-intervals/PREDICTION.md`](../../studies/derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Addendum: synthetic data variants (D-149)
 
@@ -418,6 +458,7 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-25 PD trend (`pd-trend`)
 
@@ -437,6 +478,7 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** ≈ the baseline per slope and fit arm: ≈ 45–70 min on the subset, ≈ 8–12 h for the full
   matrix (CPU, overnight). Plus the DGP extension and the offset objective.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-26 Varying portfolio size (`varying-n`)
 
@@ -457,6 +499,7 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** without deduplication, fits cost ≈ 1.5–3 × the baseline: ≈ 15–35 min on the subset,
   ≈ 3–6 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Addendum: with M3 (D-149)
 
@@ -474,6 +517,7 @@ kind as S-11 and report both targets (D-150).
   bootstrap, ≈ 1.5–2 h for the full matrix and ≈ 10–20 min for the subset's 18 new scenarios; for
   n ≤ 10⁴ the goldens are reused.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-28 Zero-default treatments for rate-based estimators (`zero-default-rates`)
 
@@ -489,6 +533,7 @@ kind as S-11 and report both targets (D-150).
   verdicts for each treatment.
 - **Cost:** closed-form likelihoods: minutes for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Theme: data and population instability (S-29 to S-33; D-150)
 
@@ -585,6 +630,7 @@ scales in the order L, M, H.
   30–50 min at R = 200 on 9 grade scenarios, 2.5–4 h at R = 1,000. Full grade matrix about 8–12 h on
   CPU. The M6 part is estimated once the multi-grade optimiser exists.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-30 Grade granularity (`grade-granularity`)
 
@@ -604,6 +650,7 @@ scales in the order L, M, H.
   about 35–60 min at R = 200, 3–5 h at R = 1,000. The cross with S-29 multiplies by the number of
   error levels.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-31 Composition shock (`composition-shock`)
 
@@ -622,6 +669,7 @@ scales in the order L, M, H.
 - **Cost (now):** 2 inflow sizes × 3 arms, with fit and profile: about 40–70 min on the subset,
   8–12 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-32 Default measurement error (`default-misrecording`)
 
@@ -649,6 +697,7 @@ scales in the order L, M, H.
   full matrix about 20–30 h on CPU, so pin on the subset scenarios plus the settings that exploration
   shows matter.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-33 Survivorship and backfilled history (`survivorship-backfill`)
 
@@ -671,6 +720,38 @@ scales in the order L, M, H.
 - **Cost (now):** about 9 fits per replicate, the truncated ones on shorter panels: about 45–90 min
   on the subset, 10–15 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
+
+## Addendum: sensitivity to severe new periods (D-152)
+
+### S-34 Sensitivity to severe new periods (`severe-period-sensitivity`)
+
+- **Question:** how much do PD̂, ρ̂ and the 99.9% conditional PD (S-23) move after one or two severe
+  periods are added, as a function of T?
+- **Experiment:** each recovery replicate is extended by one or two periods drawn at a fixed
+  adverse factor level, a 1-in-100 and a 1-in-1,000 adverse year, with the period's default count
+  set to the median of its binomial at that factor level, so the added periods are the same for
+  every replicate of a scenario. The extended panel is refitted, and the shift in each estimate
+  and in each interval (both end points) is reported in SE units and relative terms. Adverse
+  means the direction of worse credit conditions, stated through the engine's convention in one
+  place (S-1, S-18).
+- **What it is not:** a bias study. The added periods are possible draws from the same model, so
+  the truth does not change; the question is how strongly the estimates respond, which is what a
+  monitoring process sees after a bad year.
+- **Relations:**
+  - S-21, which removes periods, is the mirror image. A severe added period should show up there
+    as the most influential period.
+  - S-23 provides the interval for the conditional PD.
+  - M5's what-if recalibration is the same computation offered as a feature.
+- **Cost:** a hypothetical period is one more surface row. Each variant costs a refinement and three
+  profiles, not a new surface. Four variants per replicate (1 or 2 periods × 2 severities): about
+  12–20 min on the subset and about 2–3.5 h for the full matrix.
+- **Verdicts it could change:** none; descriptive, with the coverage of the refitted intervals for
+  the unchanged truth reported beside the originals.
+- **Placement:** the first batch, after S-1 and S-2. It needs S-23's interval for the conditional PD
+  and none of M3's estimators.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Deferred to M7 (recorded together, not started)
 
@@ -682,6 +763,7 @@ scales in the order L, M, H.
 - **Experiment:** a synthetic DGP with known macro effects of both signs; the sign filter must keep
   exactly the specifications with the right economic direction.
 - **Status:** deferred to M7; not started.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-19 Z_t extraction (`z-extraction`)
 
@@ -690,6 +772,7 @@ scales in the order L, M, H.
 - **Experiment:** posterior mean of each period's factor on DGP panels whose factors are known
   (`simulate_panel` returns them).
 - **Status:** deferred to M7; not started.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-20 Belkin–Suchower–Forest apply function (`bsf-apply`)
 
@@ -698,3 +781,5 @@ scales in the order L, M, H.
   rating rows, the default column).
 - **Status:** deferred to M7; not started. Migration matrices are outside the methodology scope
   listed in CLAUDE.md, so this needs a scope decision first.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
+
