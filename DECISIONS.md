@@ -561,7 +561,7 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
 
 ## Research studies and variants: ground rules and addenda, 2026-09-27
 
-Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20), indexed in
+Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20 here; the addenda D-149 to D-151 extend it to S-33), indexed in
 `docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
 the plan.
 
@@ -602,7 +602,7 @@ the plan.
 - **D-149 (owner; extends D-148) — Addendum: studies S-21 to S-28, and two further ground rules.**
   - **Placement:**
     - **Now** (existing machinery): S-21 period influence, S-22 box sensitivity, S-23 intervals for derived quantities.
-    - **Now, as small DGP variants:** S-24 PD heterogeneity, S-25 PD trend, S-26 varying portfolio size.
+    - **Now, on synthetic data variants:** S-24 PD heterogeneity and S-25 PD trend (DGP variants), and S-26 varying portfolio size (a scenario definition only: the DGP already takes n per period, so no new mirror or hash).
     - **With M3:** S-27 the large-portfolio approximation and S-28 zero-default treatments for rate-based estimators.
   - **A variant is judged on every verdict it could change**, not only the findings it targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it is reported as both.
   - **A new DGP variant is specified like the base DGP:** a prose description, a line-for-line Python mirror and a reference-panel hash (D-110–D-112), in its own key domain.

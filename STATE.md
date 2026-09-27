@@ -253,7 +253,7 @@ methodology note and a scipy script.
 | S-22 | Box sensitivity: estimates and profile intervals with the ρ cap at 0.9 against 0.5, plus a lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), grid spacing held fixed | every verdict (full matrix), chiefly the 20 CONSERVATIVE |
 | S-23 | Profile-likelihood intervals for the 99.9% conditional PD (other quantiles optional), coverage in the recovery harness | a new verdict family, same band and policy |
 
-**Small DGP variants, now** (each a prose description, a Python mirror and a hash; D-149):
+**Synthetic data variants, now** (D-149): S-24 and S-25 are DGP variants, each with a prose description, a Python mirror and a hash; S-26 is a scenario definition on the existing DGP and needs none:
 
 | # | Study | Judged against / output |
 |---|---|---|

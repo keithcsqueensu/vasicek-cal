@@ -394,10 +394,12 @@ refined in each study's `PREDICTION.md`.
   ≈ 1.5–2.3 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 
-## Addendum: small DGP variants (D-149)
+## Addendum: synthetic data variants (D-149)
 
-Each variant is built from the existing binomial DGP and gets its own key domain, a prose
-description, a Python mirror and a hash. S-24 and S-25 are misspecification studies of the same
+S-24 and S-25 are DGP variants: each is built from the existing binomial DGP and gets its own key
+domain, a prose description, a Python mirror and a hash. S-26 is a scenario definition on the
+existing DGP, which already takes an n per period, so it needs no new generator code, mirror or
+hash. S-24 and S-25 are misspecification studies of the same
 kind as S-11 and report both targets (D-150).
 
 ### S-24 PD heterogeneity (`pd-heterogeneity`)
@@ -506,7 +508,7 @@ All five report the two targets of the misspecification rule (D-150).
 
 ### What runs on today's engine, and what needs multi-grade calibration
 
-| Part | Single-segment engine and small DGP variants: now | Needs multi-grade calibration (M6) |
+| Part | Single-segment engine and synthetic data variants: now | Needs multi-grade calibration (M6) |
 |---|---|---|
 | S-29 | Two-grade version with a crosswalk; per-grade separate fits on the remapped history; portfolio-level fit with allocation to grades; the structural break as a two-stage fit with S-25's offset objective | Probabilistic mapping in the likelihood; the structural break fitted jointly with a shared ρ; the full multi-grade scale |
 | S-30 | Per-bucket separate fits (each bucket its own ρ); per-obligor PD error; the 99.9% loss quantile via S-23's conditional PD | Calibration with a shared ρ across buckets; the cross with S-29's crosswalk error |
