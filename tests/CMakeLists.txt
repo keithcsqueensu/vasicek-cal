@@ -143,6 +143,15 @@ add_test(NAME recovery_exit_criteria COMMAND unit_recovery recovery_goldens_meet
 add_test(NAME recovery_replay COMMAND unit_recovery recovery_replay)
 set_tests_properties(recovery_replay PROPERTIES LABELS slow)
 
+# --- studies (D-148) ---------------------------------------------------------------------------------
+# S-1 (D-300): the calibration is invariant under z -> -z within rounding. A test-only mirrored
+# objective against parity on 34 fixed panels; a few minutes, so labelled slow.
+add_executable(study_z_sign_invariance studies/z_sign_invariance.cpp)
+target_link_libraries(study_z_sign_invariance PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_z_sign_invariance)
+add_test(NAME study_z_sign_invariance COMMAND study_z_sign_invariance)
+set_tests_properties(study_z_sign_invariance PROPERTIES LABELS slow)
+
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
 # pedantic errors (C11 on MSVC, which has no C99 mode), so anything C++-only in the header breaks

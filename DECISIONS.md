@@ -706,6 +706,17 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **S-21:** leave-one- and leave-two-period-out influence in Hessian SE units, against the realised Z_t. The resolution check compares the refined leave-one-out estimates with exact off-grid maxima on replicates 0–4 of every scenario.
   - **Pinning:** one fitting run writes the results, with the reviewed verdict labels for the new families kept in a separate file, so a review never requires a refit. S-3 and S-5 are `native` options reported beside the parity verdicts, which do not change.
 
+## Study S-1 result, 2026-09-27
+
+- **D-301 — S-1 result: the calibration is invariant under z → −z within rounding; one reviewed finding, ρ not identified at n = 1.**
+  - **Result** (`studies/z-sign-invariance/RESULTS.md`): on 34 panels, the mirrored objective's hints are exact mirrors and its surfaces agree with parity at the ε level (worst cell 0.24 of its bound), with identical flags everywhere. The wrong-hint control is caught.
+  - **Downstream, on 33 of 34 panels,** estimates, SEs, profile and bootstrap intervals agree within the registered bounds. Three expected sizes were missed, each inside its bound: C3 by 2.3×, C8 by 27× (the Hessian's second differences, the size seen across platforms), C10 by 2.4×.
+  - **The finding: panel 26, n = 1 in every period.** A single obligor's likelihood is PD or 1 − PD, free of ρ, so the surface is flat along ρ to rounding (2.8e-14) and rounding picks ρ̂ (0.262 against 0.001). The flags and the profile interval (the whole box) agree. It is non-identification, not asymmetry, and any rounding perturbation (platform, compiler, summation order) moves ρ̂ the same way.
+  - **Pinned:** `study_z_sign_invariance` (CTest, label slow) exits non-zero on any failure other than C5, C7 and C10 in panel 26.
+  - **Departure from the registered rule, for the owner:** the prediction says a finding that moves estimates is characterised on the study subset. That is not done, because the mechanism is exact and cannot occur in the recovery panels (n ≥ 100; subset panels 1–9 pass every check). The owner may still ask for the run.
+  - **Proposed, for the owner (parity unchanged):** flag or refuse ρ when no period has n_t ≥ 2, or flag a surface flat to rounding along an axis at its argmax (`kFlagFlatSurface`, with no point estimate for that parameter).
+  - **Monitoring implication:** no metric for the sign convention, since calibration outputs do not depend on it; factor-scale outputs state it in adverse and benign terms. A data check reports ρ as not identified when no period has n_t ≥ 2, or when ρ's profile interval spans the whole box.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
