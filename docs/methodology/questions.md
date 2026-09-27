@@ -18,10 +18,23 @@ running them are in D-148:
   is reported as both.
 - **New DGP variants are specified like the base DGP** (D-149): a prose description, a line-for-line
   Python mirror and a reference-panel hash (D-110–D-112).
-- **Misspecification studies state their estimand.** Where the fitted model is not the generating
-  one, the prediction names the value the estimate is judged against: the generating parameter,
-  or the pseudo-true value the fit converges to on a very long panel. Bias against one is not bias
-  against the other.
+- **Misspecification studies report two targets** (D-150). Where the fitted model is not the
+  generating one:
+  - **the primary target is the pseudo-true value**, the value the fit converges to on a very
+    long panel, since that is what the estimator estimates under misspecification. Coverage is
+    judged against it;
+  - **the distance from the generating parameter is reported beside it**, because that gap is the
+    misspecification bias a practitioner cares about.
+
+  This applies to S-11, S-24, S-25 and S-29 to S-33.
+  - **Proposed, not yet decided: non-stationary designs.** A "very long panel" is well defined when
+    every period has the same distribution (S-11, S-24). It is not when the design changes over
+    the sample (a trend, a break, an inflow, a recording change: S-25, S-29, S-31, S-32, S-33),
+    where a longer panel changes the design itself. The proposed definition, which covers both:
+    the pseudo-true value is the maximiser of the expected log-likelihood of the study's exact
+    design (the same T, n_t and PD path), computed by summing over d with the quadrature where the
+    observed counts have a computable distribution, and by a long simulation otherwise. For a
+    stationary design it equals the very-long-panel value.
 
 Each entry records the question, the experiment, the prediction, the result, and the status of
 any mitigation. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
@@ -91,6 +104,11 @@ groups (D-136).
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
 | S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | not registered |
 | S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | not registered |
+| S-29 | `scale-version-change` | How much crosswalk error before ρ̂ inflation is material? | now (two-grade part); M6 (full) | not registered |
+| S-30 | `grade-granularity` | Which number of grades K minimises error, given T and scale stability? | now (per-bucket part); M6 (shared ρ) | not registered |
+| S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
+| S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
+| S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -231,6 +249,8 @@ refined in each study's `PREDICTION.md`.
 - **Experiment:** one parity fit per replicate from each alternative DGP; the same summaries as the
   recovery harness. Each DGP needs a prose description, a Python mirror and a hash, as `dgp/` does
   (D-110–D-112).
+- **Targets:** the pseudo-true value (primary) and the distance from the generating parameters
+  (D-150).
 - **Cost:** one recovery run per DGP: ≈ 7–12 min on the subset, ≈ 1.3–2 h for the full matrix. The
   blocker is the DGP extensions, not compute.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
@@ -305,8 +325,8 @@ refined in each study's `PREDICTION.md`.
 - **Resolution:** jackknife replicates use the 3 × 3 quadratic refinement on the grid surface, not
   the polished off-grid maximum. For a few replicates per scenario the leave-one-out estimates are
   also refitted exactly, so the refinement error is measured rather than assumed small.
-- **Overlap:** the same jackknife pass serves S-3 and S-5, so the three should share one run. It is
-  also the first slice of M6's window and influence analysis, which then extends it to windows.
+- **Shared run (approved, D-150):** the same jackknife pass serves S-3 and S-5, and the three share
+  one run, with the exact refits. It is also the first slice of M6's window and influence analysis, which then extends it to windows.
 - **Verdicts it could change:** none; it is descriptive.
 - **Cost:** ≈ 10–15 min on the subset including the fits; ≈ 3–5 min on top of an S-3/S-5 run
   (leave-two-out at T = 100 costs about five iid bootstraps). Full matrix ≈ 1.5–2.5 h. The exact
@@ -324,7 +344,7 @@ refined in each study's `PREDICTION.md`.
   truncation was at most 6 of 40 in any verdict. Raising the ρ cap alone therefore tests the
   smaller part of the question. This is recorded here so that the prediction is written knowing
   it.
-- **Experiment, two arms, each against parity on the same panels:**
+- **Experiment, two arms, each against parity on the same panels (both approved, D-150):**
   - **Upper cap:** ρ ≤ 0.9 instead of 0.5 (as asked).
   - **Lower bounds:** ρ ≥ 1e-5 and PD ≥ 1e-6 instead of 1e-3 and 1e-4. As ρ → 0 the model reaches
     the binomial, a true boundary of the parameter space, so this arm separates conservativeness
@@ -360,7 +380,7 @@ refined in each study's `PREDICTION.md`.
 
 Each variant is built from the existing binomial DGP and gets its own key domain, a prose
 description, a Python mirror and a hash. S-24 and S-25 are misspecification studies of the same
-kind as S-11 and share its estimand rule.
+kind as S-11 and report both targets (D-150).
 
 ### S-24 PD heterogeneity (`pd-heterogeneity`)
 
@@ -369,11 +389,12 @@ kind as S-11 and share its estimand rule.
   inflate ρ̂?
 - **DGP change:** the second segment's Bernoulli draws need their own stream but the same Z_t.
   Two calls of the existing `simulate_panel` with the same key would share the uniforms as well
-  (common random numbers, an artificial dependence), so a segment index joins the key.
+  (common random numbers, an artificial dependence), so a segment index joins the key (approved,
+  D-150). S-29, S-30 and S-31 reuse it for K segments.
 - **Design:** the scenario's n split between the segments and their PDs set so that the pooled
   PD equals the scenario's; PD ratios of about 2, 5 and 10.
-- **Verdicts it could change:** none pinned; it reports bias and coverage against the stated
-  estimand.
+- **Verdicts it could change:** none pinned; it reports bias and coverage against the pseudo-true
+  value, and the distance from the generating ρ.
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
@@ -388,9 +409,11 @@ kind as S-11 and share its estimand rule.
   upper bound on what detrending can do); and **estimated-detrended** (the trend estimated first,
   then ρ fitted with the offsets fixed, which ignores the trend's own estimation error).
 - **Needs:** the detrended fits need an objective with per-period probit offsets, a `native`
-  objective. A trend is a covariate, so this is the structure M7's specification fits need; a joint
-  fit of trend, PD and ρ is a three-parameter problem and belongs there.
-- **Verdicts it could change:** none pinned; bias and coverage against the stated estimand.
+  objective. S-29 and S-31 reuse it for a break and for a joining indicator.
+- **Placement (approved, D-150):** the oracle and two-stage arms now; the joint fit of trend, PD
+  and ρ, a three-parameter problem with the structure of M7's specification fits, in M7.
+- **Verdicts it could change:** none pinned; bias and coverage against the pseudo-true value, and
+  the distance from the generating ρ.
 - **Cost:** ≈ the baseline per slope and fit arm: ≈ 45–70 min on the subset, ≈ 8–12 h for the full
   matrix (CPU, overnight). Plus the DGP extension and the offset objective.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
@@ -402,8 +425,9 @@ kind as S-11 and share its estimand rule.
 - **No DGP change needed:** the DGP already takes an n per period, and its stream addressing
   already guarantees that changing one period's n leaves the others unchanged (M1.6). The variant
   is a scenario definition, not new generator code, so no new mirror or hash is required.
-- **Design:** for each scenario, n_t declining linearly from 1.5·n to 0.5·n, so the mean n is the
-  scenario's and results pair with the constant-n scenario.
+- **Design (approved, D-150):** for each scenario, n_t declining linearly from 1.5·n to 0.5·n, so the
+  mean n is the scenario's and results pair with the constant-n scenario. Repeated in M3 for
+  method of moments and the Vasicek-rate MLE.
 - **Where a stable n is assumed:** D-122's deduplication only saves time when n repeats, so fits
   cost more but must be bitwise unaffected; the iid bootstrap resamples periods of different sizes;
   walk-forward windows differ in information. Among M3's estimators, method of moments needs a
@@ -425,7 +449,7 @@ kind as S-11 and share its estimand rule.
   difference below 0.1 SE and coverage that differs by less than the Monte Carlo band allows.
 - **Depends on S-28:** at low PD and moderate n many periods have no defaults, where the rate model
   is undefined, so S-27's answer depends on the zero-default treatment. Run S-28 first, or together.
-- **Overlap:** the same estimator-comparison pass as S-8.
+- **Shared run (approved, D-150):** S-8, S-27 and S-28 run as one estimator-comparison pass.
 - **Cost:** the Vasicek-rate MLE is closed form (seconds). The binomial fits at the new n, without
   bootstrap, ≈ 1.5–2 h for the full matrix and ≈ 10–20 min for the subset's 18 new scenarios; for
   n ≤ 10⁴ the goldens are reused.
@@ -436,13 +460,163 @@ kind as S-11 and share its estimand rule.
 - **Question:** for the Vasicek-rate MLE and method of moments on rates, compare refusing (parity,
   D-044), dropping zero-default periods, and the censored likelihood (native, D-044) by bias, RMSE
   and coverage.
-- **Design notes:** refusal produces no estimate, so its row is the refusal rate, not a bias.
+- **Design notes:** refusal produces no estimate, so its row is the refusal share (approved,
+  D-150), not a bias. Runs in the S-8 estimator-comparison pass with S-27.
   Dropping is a data edit, so it can only be an explicit `native` option, never silent (D-044).
   The censored likelihood uses the Vasicek rate CDF, which is closed form, at a censoring point stated
   in the prediction. The binomial MLE, which handles zero defaults exactly, is the benchmark row.
 - **Verdicts it could change:** none of the binomial verdicts; it adds the rate-based estimators'
   verdicts for each treatment.
 - **Cost:** closed-form likelihoods: minutes for the full matrix.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+## Theme: data and population instability (S-29 to S-33; D-150)
+
+These studies ask what happens to the calibration when the data describe a population, or a
+scale, that changed over the sample. They extend three earlier studies:
+
+- **S-24** (PD heterogeneity): pooling obligors with different PDs on the same factor. S-29's
+  crosswalk error, S-30's bucketing and S-31's inflow all create this heterogeneity; S-24 is the
+  stationary special case of each.
+- **S-26** (varying n): S-31's inflow and S-33's survivor-only history both change n_t over the
+  sample.
+- **S-21** (period influence): S-31's joining year and S-32's misrecorded periods are single
+  periods with outsized influence. Whether S-21's influence measure flags them is a check reported
+  in both studies.
+
+All five report the two targets of the misspecification rule (D-150).
+
+### What runs on today's engine, and what needs multi-grade calibration
+
+| Part | Single-segment engine and small DGP variants: now | Needs multi-grade calibration (M6) |
+|---|---|---|
+| S-29 | Two-grade version with a crosswalk; per-grade separate fits on the remapped history; portfolio-level fit with allocation to grades; the structural break as a two-stage fit with S-25's offset objective | Probabilistic mapping in the likelihood; the structural break fitted jointly with a shared ρ; the full multi-grade scale |
+| S-30 | Per-bucket separate fits (each bucket its own ρ); per-obligor PD error; the 99.9% loss quantile via S-23's conditional PD | Calibration with a shared ρ across buckets; the cross with S-29's crosswalk error |
+| S-31 | Bias of the pooled fit; exclusion of the inflow; a joining-period indicator as a two-stage fit with S-25's offset objective | The inflow as a separate segment |
+| S-32 | All of it: exclusion, the sensitivity band and the misclassification-aware likelihood (a `native` objective) | nothing |
+| S-33 | Portfolio-level survivorship and backfill; truncation at the recording change, at the true and at a misjudged date | Late rating assignment, which acts per grade |
+
+**Three prerequisites, raised for the owner:**
+
+- **Multi-grade calibration is not yet in M6 as written.** M6 lists multi-segment *correlated
+  factors* (a factor per segment). S-29 and S-30 need K grades with their own PDs on *one* factor
+  with a shared ρ: K + 1 parameters, beyond today's two-parameter grid. It is the model under the
+  ASRF, and it needs its own optimiser (for example a grid in ρ with the per-grade PDs solved
+  inside). The proposal is to add it to M6 explicitly.
+- **A shared observation layer for the DGP.** Every study here takes the true panel from the
+  base DGP (with S-24's segments) and alters what is *recorded*: grades relabelled through a
+  crosswalk (S-29), defaults missed or added (S-32), defaulters dropped from a backfilled history
+  (S-33), a segment added from a date on (S-31). These are binomial and multinomial thinnings of
+  counts. Building them once as a single observation layer, with one prose description, one
+  Python mirror and one hash, costs less than five separate variants and keeps them consistent.
+- **A grade scenario matrix.** The study subset and the 81-scenario matrix are single-PD. S-29 and
+  S-30 need grade scales (a set of PDs and their obligor shares), so they need their own small
+  matrix, defined in their `PREDICTION.md` files. Their costs below assume 9 grade scenarios (3
+  scales × T ∈ {20, 40, 100}) at R = 1,000.
+
+### S-29 Rating-scale version changes (`scale-version-change`)
+
+- **Question:** the master scale changes version partway through the history, and the crosswalk
+  between versions is imperfect, including many-to-many mappings. How much crosswalk error can
+  there be before ρ̂ inflation becomes material? "Material" is defined in the prediction.
+- **DGP:** K grades on one factor (S-24's segment key); before the change date, each true grade's
+  obligors and defaults are recorded under the old scale's grades through a crosswalk matrix with
+  controlled error. Obligors and defaults are split separately by multinomial draws, in the
+  observation layer.
+- **Treatments compared:**
+  1. remapping the history to the new scale, then fitting per grade;
+  2. a probabilistic mapping in the likelihood (M6);
+  3. a structural break: separate PDs per version, shared ρ (two-stage now, joint in M6);
+  4. portfolio-level calibration with allocation to grades.
+- **Now:** a simplified two-grade version with treatments 1, 3 (two-stage) and 4, at crosswalk
+  error levels from 0 to about 20% plus a many-to-many case. **M6:** the full study.
+- **Cost (now):** about 5 fits per replicate per error level, on smaller per-grade panels: about
+  30–50 min at R = 200 on 9 grade scenarios, 2.5–4 h at R = 1,000. Full grade matrix about 8–12 h on
+  CPU. The M6 part is estimated once the multi-grade optimiser exists.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-30 Grade granularity (`grade-granularity`)
+
+- **Question:** given a fine true scale (15–20 grades with known PDs and a shared factor),
+  calibrated at K = 4, 7, 10 and 20 buckets, which K minimises error, as a function of history
+  length T and of scale stability?
+- **Measures:** per-obligor PD error against the true grade PD; ρ̂ bias and coverage per bucket;
+  the error in the 99.9% loss quantile (under one factor, the portfolio's conditional loss at unit LGD is
+  the exposure-weighted sum of the buckets' conditional PDs, S-23); all as a function of T.
+- **Design:** obligors bucketed by true PD (perfect ranking), so any error is due to granularity
+  and data, not to the rank ordering. With K = 20 the buckets are finer than the truth in places;
+  that arm measures over-splitting.
+- **Now:** per-bucket separate fits, each with its own ρ. Many low-default buckets will sit near a
+  bound, which is part of the answer. **M6:** a shared ρ across buckets, and the cross of K with
+  S-29's crosswalk error.
+- **Cost (now):** 41 bucket fits per replicate (4 + 7 + 10 + 20), mostly cheap low-default fits:
+  about 35–60 min at R = 200, 3–5 h at R = 1,000. The cross with S-29 multiplies by the number of
+  error levels.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-31 Composition shock (`composition-shock`)
+
+- **Question:** a riskier sub-portfolio joins in a stress year, so the inflow coincides with an
+  adverse factor. How biased are PD̂ and ρ̂?
+- **DGP:** a second segment (S-24's key) with a higher PD on the same factor, present from the
+  first period whose realised Z_t falls below a threshold. The joining date is selected on the
+  factor, which is the point.
+- **Treatments:**
+  1. the pooled fit, which measures the bias (now);
+  2. excluding the inflow's obligors (now; a single-segment fit on the original segment);
+  3. an indicator for the joining periods as a probit offset, two-stage (now, with S-25's offset
+     objective);
+  4. the inflow as a separate segment (M6).
+- **Cross-checks:** S-26's varying n (n jumps at joining) and S-21's influence of the joining year.
+- **Cost (now):** 2 inflow sizes × 3 arms, with fit and profile: about 40–70 min on the subset,
+  8–12 h for the full matrix.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-32 Default measurement error (`default-misrecording`)
+
+- **Question:** in some periods defaults are misrecorded, missed (a detection rate below 1) or
+  spurious (a false-default rate above 0), at controlled rates. How much does this bias PD̂ and ρ̂,
+  and which treatment helps?
+- **DGP:** in the observation layer, affected periods chosen at a set rate; recorded defaults are
+  the true defaults thinned by the detection rate, plus false defaults drawn from the survivors.
+- **Treatments:**
+  1. exclusion of the affected periods, assuming they are known;
+  2. a sensitivity band: the misclassification-aware fit repeated over a range of plausible rates;
+  3. a misclassification-aware likelihood with an assumed detection rate δ and false-default rate
+     ε: the conditional PD inside the binomial term becomes δ·p(z) + ε·(1 − p(z)).
+- **Identification:** δ and ε are not identified from the counts, so they are assumed, not
+  estimated. The question is how wrong the assumption can be before the fit is worse than the
+  naive one.
+- **Numerics:** the aware likelihood changes the integrand, so the adaptive rule's mode hint (built
+  for the binomial-mixture integrand) may no longer fit it. The per-run check catches a poor rule;
+  the objective also needs a scipy cross-check before any study result is trusted.
+- **All of it runs now** on the single-segment engine.
+- **Cost:** 3 error settings × about 5 fits (naive, exclusion, the aware fit at 3 assumed rates,
+  which also form the band): about 20–35 min at R = 200 on the subset, 1.5–3 h at R = 1,000; the
+  full matrix about 20–30 h on CPU, so pin on the subset scenarios plus the settings that exploration
+  shows matter.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-33 Survivorship and backfilled history (`survivorship-backfill`)
+
+- **Question:** part of the early history is recorded only for obligors that survived to a later
+  date, or ratings were assigned late rather than at origination. How large is the bias, and does
+  truncating the history at the recording change remove it?
+- **A design point:** in its pure form the mechanism is trivial. An obligor recorded only if it
+  survived to date s cannot have defaulted before s, so every backfilled period shows zero
+  defaults, and truncating at s removes the problem by construction. The study is informative only
+  where that is not true:
+  - **partial survivorship:** a fraction of the defaulters in the backfilled periods is still
+    recorded;
+  - **a recording-change date that is misjudged**, so the truncation cuts too early or too late.
+- **Overlap with S-32:** at portfolio level, partial survivorship is S-32's missed-default thinning
+  concentrated in the early block of periods. They share the observation layer, and S-33's distinct
+  questions are the truncation date and the late rating assignment.
+- **Now:** portfolio-level partial survivorship at 3 retention levels, fitted naive, truncated at
+  the true date and truncated at a misjudged date. **M6:** late rating assignment, which selects
+  per grade.
+- **Cost (now):** about 9 fits per replicate, the truncated ones on shorter panels: about 45–90 min
+  on the subset, 10–15 h for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 
 ## Deferred to M7 (recorded together, not started)

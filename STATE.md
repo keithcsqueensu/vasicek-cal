@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research studies and variants roadmap, D-148 and D-149; planning only)
+Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-150; planning only)
 
 ## Current status
 
@@ -169,16 +169,16 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148 and D-149
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
-- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Twenty-eight studies, S-1 to S-28 (the addendum S-21 to S-28 is D-149), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
-  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash.
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-three studies, S-1 to S-33 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
+  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
   - **Study subset (proposed, awaiting approval):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
-  - **Awaiting the owner:** approval of the plan and the subset, and the placement questions raised with it.
+  - **Awaiting the owner:** approval of the subset; the D-150 open points (pseudo-true value for non-stationary designs, multi-grade calibration in M6, one DGP observation layer, a grade scenario matrix).
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
 ## Next steps
 
 1. Owner review of the research roadmap (D-148) and the proposed study subset. Nothing is implemented until it is approved.
-2. M3: the remaining single-factor estimators, with studies S-1 to S-9 and S-21 to S-28 alongside. Awaiting the owner's go.
+2. M3: the remaining single-factor estimators, with studies S-1 to S-9 and S-21 to S-33 (their single-segment parts) alongside. Awaiting the owner's go.
 3. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
@@ -247,6 +247,16 @@ methodology note and a scipy script.
 | S-25 | PD trend: PD drifting over the sample; inflation of ρ̂, and oracle and estimated detrending (needs a `native` per-period offset objective) | bias and coverage against the stated estimand |
 | S-26 | Varying portfolio size: n_t declining over time (a scenario definition; the DGP already takes n per period) | every verdict of the paired constant-n scenario |
 
+**Data and population instability, now** (single-segment parts; D-150; the M6 parts are listed under M6):
+
+| # | Study (part that runs now) | Judged against / output |
+|---|---|---|
+| S-29 | Rating-scale version change, two-grade version: per-grade fits on the remapped history, a two-stage structural break, portfolio-level fit with allocation; crosswalk error from 0 to about 20% plus many-to-many | crosswalk error at which ρ̂ inflation is material |
+| S-30 | Grade granularity: K = 4, 7, 10, 20 buckets of a 15–20-grade true scale, per-bucket separate fits; PD error, ρ̂ per bucket, 99.9% loss quantile, by T | the K that minimises error |
+| S-31 | Composition shock: a riskier segment joining in a stress year; pooled bias, exclusion, a two-stage joining indicator | pseudo-true value and the distance from the generating parameters |
+| S-32 | Default misrecording: exclusion, a sensitivity band, a misclassification-aware likelihood (`native` objective) | pseudo-true value and the distance from the generating parameters |
+| S-33 | Survivorship and backfill at portfolio level: partial survivorship, truncation at the true and at a misjudged date | pseudo-true value and the distance from the generating parameters |
+
 **Studies with M3:**
 
 | # | Study | Judged against / output |
@@ -293,6 +303,17 @@ report data plus rendering outside the core (D-045).
 Multi-segment correlated factors (two-stage + pairwise composite likelihood, PSD repair
 documented), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
 distributions, Pluto–Tasche and window/influence analysis.
+
+**Studies in M6** (the parts that need multi-grade calibration; D-150):
+
+| # | Study (M6 part) |
+|---|---|
+| S-29 | Probabilistic crosswalk mapping in the likelihood; the structural break fitted jointly with a shared ρ; the full multi-grade scale |
+| S-30 | Buckets calibrated with a shared ρ; K crossed with S-29's crosswalk error |
+| S-31 | The inflow calibrated as a separate segment |
+| S-33 | Late rating assignment (selection per grade) |
+
+Open point (D-150): multi-grade calibration (K PDs on one factor with a shared ρ) is not yet an M6 item; S-29 and S-30 need it.
 
 ### M7 — Macro pipeline
 

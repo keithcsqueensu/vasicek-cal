@@ -559,7 +559,7 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
   - **Checks.** `ci_path_filter_sync` now compares the derived list with `plan`'s `code_md` list and also fails on any workflow-level `paths` or `paths-ignore` filter. `ci_path_filter_sync_fires` (a wrong list) and `ci_path_filter_sync_fires_paths` (a path filter) prove that both checks fire. The `plan` logic was simulated on prose-only, code-reading-Markdown, code and new-branch diffs, and the `ci-ok` decision on every combination of job results, before the first run.
   - **Rules that follow:** work goes to a branch and reaches `main` through a pull request, which runs the full matrix. The nightly and `workflow_dispatch` rules of D-145 are unchanged.
 
-## Research studies and variants: ground rules and addendum, 2026-09-27
+## Research studies and variants: ground rules and addenda, 2026-09-27
 
 Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20), indexed in
 `docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
@@ -607,6 +607,31 @@ the plan.
   - **A variant is judged on every verdict it could change**, not only the findings it targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it is reported as both.
   - **A new DGP variant is specified like the base DGP:** a prose description, a line-for-line Python mirror and a reference-panel hash (D-110–D-112), in its own key domain.
   - **Recorded while planning:** a diagnostic refit of replicates 0–39 of the 20 CONSERVATIVE profile verdicts (the pinned run's own panels, no variant) found that truncation is almost only at the lower bounds (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-only truncation was at most 6 of 40 in any verdict. S-22 therefore gains a lower-bound arm beside the ρ ≤ 0.9 arm. This finding is recorded in its `questions.md` entry so that S-22's prediction is written knowing it.
+
+- **D-150 (owner; extends D-148 and D-149) — Decisions on the D-149 points, and studies S-29 to S-33 under the theme "data and population instability".**
+  - **Approved:**
+    - S-22's lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), with the grid's spacing held fixed so it is not confounded with S-7;
+    - S-21 shares the jackknife run with S-3 and S-5, with exact refits to measure the quadratic refinement's error;
+    - S-24's separate stream key for the second segment;
+    - S-25's oracle and two-stage detrending arms now, the joint fit in M7;
+    - S-26 paired with the constant-n scenarios and repeated for the M3 estimators;
+    - S-27 and S-28 in the S-8 estimator-comparison run, with S-28's "refuse" row reported as the refusal share.
+  - **Misspecification studies report two targets** (S-11, S-24, S-25, S-29 to S-33):
+    - **primary:** the pseudo-true value, the value the fit converges to on a very long panel. That is what the estimator estimates under misspecification, and coverage is judged against it;
+    - **also reported:** the distance from the generating parameter, because that gap is the misspecification bias a practitioner cares about.
+  - **Placement of S-29 to S-33:**
+    - **Now** (single-segment engine and small DGP variants):
+      - S-29: a two-grade version, with per-grade fits on the remapped history, a two-stage structural break and a portfolio-level fit with allocation;
+      - S-30: per-bucket separate fits;
+      - S-31: the bias, exclusion and a two-stage joining indicator;
+      - S-32: in full;
+      - S-33: at portfolio level.
+    - **M6** (multi-grade calibration): S-29's probabilistic mapping, joint break and full scale; S-30's shared ρ and its cross with S-29; S-31's separate segment; S-33's late rating assignment.
+  - **Raised for the owner, not decided:**
+    - **Pseudo-true value for non-stationary designs.** A "very long panel" changes the design when the design itself changes over the sample (S-25, S-29, S-31, S-32, S-33). Proposed definition: the maximiser of the expected log-likelihood of the study's exact design, exact by quadrature where the recorded counts have a computable distribution, simulated otherwise. For a stationary design it equals the very-long-panel value.
+    - **Multi-grade calibration is not in M6 as written.** M6 lists multi-segment correlated factors. K grades with their own PDs on one factor with a shared ρ (the ASRF model) is a different, (K + 1)-parameter model that needs its own optimiser. Proposed: add it to M6 explicitly.
+    - **One DGP observation layer.** S-29, S-31, S-32 and S-33 all alter what is recorded from a true panel: grade relabelling, missed or spurious defaults, dropped defaulters, a segment added from a date. Proposed: build these once as a single layer with one prose description, one Python mirror and one hash.
+    - **A grade scenario matrix** for S-29 and S-30, whose scales the single-PD subset and matrix cannot express.
 
 ## Open
 
