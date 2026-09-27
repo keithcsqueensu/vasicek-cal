@@ -8,7 +8,9 @@ running studies are in D-148:
 - **A variant never changes parity.** It is a `native` option or a standalone study.
 - **Every study is pre-registered.** Before any run, `studies/<slug>/PREDICTION.md` is committed,
   stating the expected results, their direction and their rough size. Results are compared with
-  it, and misses are reported, not explained away.
+  it, and misses are reported, not explained away. Studies that share one run share one
+  registration (D-155): it lives in the first study's directory, and each other study's
+  `PREDICTION.md` points to it.
 - **Explore on the study subset; pin on the full matrix.** Exploration runs use the fixed study
   subset below. The full recovery matrix (81 scenarios × 1,000 replicates) is run only to pin a
   study's verdicts.
