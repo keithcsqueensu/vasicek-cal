@@ -562,7 +562,7 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
 ## Research studies and variants: ground rules and addenda, 2026-09-27
 
 Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20 here; the addenda D-149 to D-151 extend it to S-33), indexed in
-`docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
+`studies/README.md`. Planning only; nothing is implemented until the owner approves
 the plan.
 
 - **D-148 (owner) — Ground rules for research studies and variants.**
@@ -576,7 +576,7 @@ the plan.
     minutes on the CPU. The full 81 × 1,000 matrix is run only to pin a study's verdicts.
   - **Pinned verdicts follow the M1.8/M2a policy:** PASS, CONSERVATIVE, KNOWN FINDING or DEFERRED,
     each with a diagnosis (D-124, D-131).
-  - **Every study has an entry in `docs/methodology/questions.md`:** the question, the experiment,
+  - **Every study has an entry in `studies/README.md`:** the question, the experiment,
     the prediction, the result and the status of any mitigation.
   - **The study subset (approved by the owner; recorded in D-150):** scenarios 29, 37, 72 (T = 20),
     4, 68, 49 (T = 40) and 7, 43, 51 (T = 100), one per (T, ρ) cell, at R = 1,000 with the recovery
@@ -606,7 +606,7 @@ the plan.
     - **With M3:** S-27 the large-portfolio approximation and S-28 zero-default treatments for rate-based estimators.
   - **A variant is judged on every verdict it could change**, not only the findings it targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it is reported as both.
   - **A new DGP variant is specified like the base DGP:** a prose description, a line-for-line Python mirror and a reference-panel hash (D-110–D-112), in its own key domain.
-  - **Recorded while planning:** a diagnostic refit of replicates 0–39 of the 20 CONSERVATIVE profile verdicts (the pinned run's own panels, no variant) found that truncation is almost only at the lower bounds (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-only truncation was at most 6 of 40 in any verdict. S-22 therefore gains a lower-bound arm beside the ρ ≤ 0.9 arm. This finding is recorded in its `questions.md` entry so that S-22's prediction is written knowing it.
+  - **Recorded while planning:** a diagnostic refit of replicates 0–39 of the 20 CONSERVATIVE profile verdicts (the pinned run's own panels, no variant) found that truncation is almost only at the lower bounds (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-only truncation was at most 6 of 40 in any verdict. S-22 therefore gains a lower-bound arm beside the ρ ≤ 0.9 arm. This finding is recorded in its `studies/README.md` entry so that S-22's prediction is written knowing it.
 
 - **D-150 (owner; extends D-148 and D-149) — Decisions on the D-149 points, and studies S-29 to S-33 under the theme "data and population instability".**
   - **Approved:**
@@ -641,7 +641,7 @@ the plan.
     - The adaptive rule's mode hint is revisited for the product integrand.
   - **The pseudo-true value** (for misspecification studies, D-150) is the maximiser of the expected log-likelihood under the study's exact design: by quadrature where the recorded counts have a computable distribution, by simulation otherwise. For a stationary design it equals the very-long-panel value.
   - **One DGP observation layer**, with one prose description, one Python mirror and one hash, shared by S-29 and S-31 to S-33.
-  - **The grade scenario matrix** is defined explicitly in `questions.md`, with its own seed (`0x475241444553434E`, "GRADESCN") and description:
+  - **The grade scenario matrix** is defined explicitly in `studies/README.md`, with its own seed (`0x475241444553434E`, "GRADESCN") and description:
     - 3 scales (L, M, H) × T ∈ {20, 40, 100};
     - a 17-grade master scale, PD_k = 0.03% × 1.5^(k−1);
     - 10,000 obligors per period, spread over the grades by a discretised normal of standard deviation 4 grades;
@@ -659,7 +659,7 @@ the plan.
     3. **The rest** keep their placement and are ordered at the end of M3.
 
 - **D-152 (owner) — Monitoring implications, M5 features, an extension of S-14, and study S-34.**
-  - **Every `questions.md` entry gets a monitoring implication**, filled in when the study finishes: the monitoring metric, threshold or data check the result supports, if any. M5's monitoring design draws its metrics from finished entries and is not frozen until the relevant studies are done.
+  - **Every `studies/README.md` entry gets a monitoring implication**, filled in when the study finishes: the monitoring metric, threshold or data check the result supports, if any. M5's monitoring design draws its metrics from finished entries and is not frozen until the relevant studies are done.
   - **M5 features (artifacts, not studies):**
     - what-if recalibration with hypothetical future periods, reusing the per-period surfaces (a hypothetical period is one more row);
     - a threshold table mapping next period's default count to tiered statuses (within tolerance / warning / threshold exceeded), each tier tied to a stated rule;
@@ -672,6 +672,14 @@ the plan.
   - **S-34, sensitivity to severe new periods:** how far PD̂, ρ̂ and the 99.9% conditional PD move after one or two severe periods, as a function of T.
     - **Placement:** the first batch, after S-1 and S-2. It needs S-23's interval for the conditional PD and none of M3's estimators.
     - **Cost:** it is cheap: each added period is one more surface row. About 12–20 minutes on the subset.
+
+## Study index moved, 2026-09-27
+
+- **D-153 (owner) — The study index moves from `docs/methodology/questions.md` to `studies/README.md`, retitled "Studies".**
+  - **Why:** the index and the studies' own files (`studies/<slug>/PREDICTION.md`, later results) belong together, and a study's directory now sits beside the entry that indexes it. The index lists studies, so it is named for them.
+  - **Wording:** where the old text called the index or its entries "questions", it now says "study" or "studies". Each study's own research question stays in its entry (the **Question:** line and the index table's short-question column).
+  - **What changed elsewhere:** path references only, in README.md, STATE.md, S-23's `PREDICTION.md` and earlier D-entries (D-148 to D-152). No earlier entry was reworded beyond its paths, and S-23's pre-registered predictions are unchanged: its two edited lines name the index's new path and nothing else.
+  - **No code reads the index,** so the CI prose filter's `code_md` list is unchanged (`ci_path_filter_sync` confirms it).
 
 ## Open
 

@@ -1,6 +1,6 @@
 # S-23 Intervals for the 99.9% conditional PD: predictions made before the run
 
-Pre-registration for study S-23 (`docs/methodology/questions.md`, D-148). This file is committed
+Pre-registration for study S-23 (`studies/README.md`, D-148). This file is committed
 **before** any S-23 quantity has been computed: no interval, estimate or coverage of the
 conditional PD has been run, on the subset or anywhere else. The results will be compared with it
 prediction by prediction, and misses will be reported, not explained away.
@@ -135,5 +135,5 @@ likelihood surface makes the profile for a derived quantity worse than for eithe
 
 Each prediction P1–P11 and S1 gets a row: prediction, result, held or not. A prediction that holds
 in direction but misses in size is recorded as not held, with the size of the miss. Results and the
-comparison go in `questions.md` (S-23's entry) and in a D-entry. The pinned verdicts get
+comparison go in `studies/README.md` (S-23's entry) and in a D-entry. The pinned verdicts get
 diagnoses under D-131's policy.
