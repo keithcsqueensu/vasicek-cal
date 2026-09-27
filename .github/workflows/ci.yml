@@ -7,29 +7,20 @@
 #                                and the generated-files check
 #   nightly, workflow_dispatch   the full matrix including the slow tests (cross-reference fits,
 #                                recovery replay); nightly only if main moved in the last day
-# Commits touching only prose (*.md other than the test inputs re-included below, LICENSE, NOTICE)
-# start no run. ci_path_filter_sync derives that re-include list from the code and checks it. A newer push to a branch or PR cancels its older run; runs on main are never cancelled.
+# Changes touching only prose (*.md other than the Markdown files the code reads, LICENSE, NOTICE)
+# run no build: the plan job sees that from the diff and skips every other job (D-147).
+# ci_path_filter_sync derives the list of Markdown files the code reads and checks plan's copy.
+# There is deliberately no workflow-level `paths` filter: a run that never starts reports no
+# check, and main's required check (ci-ok) would then wait forever.
+#
+# ci-ok always runs and is the one check that main's ruleset requires (D-147): it passes only if
+# every job the plan called for succeeded. A newer push to a branch or PR cancels its older run;
+# runs on main are never cancelled.
 name: ci
 
 on:
   push:
-    paths:
-      - '**'
-      - '!**.md'
-      - '!LICENSE'
-      - '!NOTICE'
-      - 'docs/methodology/tolerances.md'        # read by tolerance_register_sync
-      - 'docs/methodology/recovery_results.md'  # checked by the recovery tests
-      - 'README.md'                             # its C example is compiled and run (readme_c_example)
   pull_request:
-    paths:
-      - '**'
-      - '!**.md'
-      - '!LICENSE'
-      - '!NOTICE'
-      - 'docs/methodology/tolerances.md'        # read by tolerance_register_sync
-      - 'docs/methodology/recovery_results.md'  # checked by the recovery tests
-      - 'README.md'                             # its C example is compiled and run (readme_c_example)
   workflow_dispatch:
   schedule:
     - cron: '23 4 * * *'
@@ -47,11 +38,14 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       run: ${{ steps.plan.outputs.run }}
+      code: ${{ steps.plan.outputs.code }}
       full: ${{ steps.plan.outputs.full }}
       slow: ${{ steps.plan.outputs.slow }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the diff below needs the base commit
       - id: plan
         shell: bash
         run: |
@@ -65,6 +59,33 @@ jobs:
               # Nothing new on main since the last nightly: skip.
               [ "$(git log -1 --format=%ct)" -lt "$(( $(date +%s) - 25 * 3600 ))" ] && run=false ;;
           esac
+
+          # Prose-only changes build nothing. Prose is *.md, LICENSE and NOTICE, except these
+          # Markdown files, which the code reads (ci_path_filter_sync keeps this list exact):
+          code_md=(
+            'docs/methodology/tolerances.md'        # read by tolerance_register_sync
+            'docs/methodology/recovery_results.md'  # checked by the recovery tests
+            'README.md'                             # its C example is compiled and run (readme_c_example)
+          )
+          code=true
+          case "${{ github.event_name }}" in
+            pull_request) range="${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" ;;
+            push) range="${{ github.event.before }}..${{ github.sha }}" ;;
+            *) range="" ;;
+          esac
+          # Unknown or unreachable base (new branch, force push, schedule): treat as code.
+          if [ -n "$range" ] && git rev-parse --quiet --verify "${range%%.*}^{commit}" > /dev/null; then
+            code=false
+            while IFS= read -r f; do
+              case "$f" in
+                *.md|LICENSE|NOTICE)
+                  for k in "${code_md[@]}"; do [ "$f" = "$k" ] && code=true; done ;;
+                *) code=true ;;
+              esac
+              if [ "$code" = true ]; then echo "code change: $f"; break; fi
+            done < <(git diff --name-only "$range")
+          fi
+          [ "$code" = true ] || { echo "prose-only change: nothing to build"; run=false; }
           configs='[
             {"name": "linux-gcc11",   "os": "ubuntu-22.04", "cc": "gcc-11",   "cxx": "g++-11"},
             {"name": "linux-gcc14",   "os": "ubuntu-24.04", "cc": "gcc-14",   "cxx": "g++-14"},
@@ -74,9 +95,9 @@ jobs:
           matrix=$(jq -c --argjson full "$full" '[.[] as $c | ("cpu-debug", "cpu-release") as $p | $c + {preset: $p}
             | select($full or (.name == "linux-gcc11" and .preset == "cpu-release")
                            or (.name == "windows-msvc" and .preset == "cpu-debug"))]' <<< "$configs")
-          echo "run=$run full=$full slow=$slow"
+          echo "run=$run code=$code full=$full slow=$slow"
           echo "$matrix" | jq -r '.[] | "  \(.name) / \(.preset)"'
-          { echo "run=$run"; echo "full=$full"; echo "slow=$slow"; echo "matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+          { echo "run=$run"; echo "code=$code"; echo "full=$full"; echo "slow=$slow"; echo "matrix=$matrix"; } >> "$GITHUB_OUTPUT"
 
   build-test:
     name: ${{ matrix.name }} / ${{ matrix.preset }}
@@ -207,3 +228,35 @@ jobs:
           obj=$(find build/cuda-release -name 'device_compile_check.cu.o')
           cuobjdump --list-elf "$obj"
           cuobjdump --list-ptx "$obj"
+
+  # D-147: the single required check on main. Always runs, so a skipped or prose-only run still
+  # reports. Passes only if the plan succeeded and every job it called for succeeded; a job the
+  # plan skipped counts as passing, a failed or cancelled one never does.
+  ci-ok:
+    name: ci-ok
+    needs: [plan, build-test, generated-files, validation-scipy, cuda-compile]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Every required job passed
+        shell: bash
+        run: |
+          plan="${{ needs.plan.result }}"; run="${{ needs.plan.outputs.run }}"; full="${{ needs.plan.outputs.full }}"
+          declare -A result=(
+            [build-test]="${{ needs.build-test.result }}"
+            [generated-files]="${{ needs.generated-files.result }}"
+            [validation-scipy]="${{ needs.validation-scipy.result }}"
+            [cuda-compile]="${{ needs.cuda-compile.result }}")
+          echo "plan: $plan (run=$run, full=$full)"
+          ok=true
+          [ "$plan" = success ] || ok=false
+          for job in build-test generated-files validation-scipy cuda-compile; do
+            required=false
+            [ "$run" = true ] && case "$job" in build-test|generated-files) required=true ;; esac
+            [ "$run" = true ] && [ "$full" = true ] && required=true
+            r="${result[$job]}"
+            echo "$job: $r (required: $required)"
+            if [ "$required" = true ]; then [ "$r" = success ] || ok=false
+            else case "$r" in success|skipped) ;; *) ok=false ;; esac; fi
+          done
+          [ "$ok" = true ] && echo "ci-ok: pass" || { echo "ci-ok: FAIL"; exit 1; }

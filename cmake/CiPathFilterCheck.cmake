@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# CI starts no run for prose-only commits (D-145): the workflow's push and pull_request `paths`
-# filters exclude Markdown, then re-include the Markdown files that tests or build scripts read.
-# This check derives that re-include list from the code and fails if the workflow's list differs,
-# in either direction: a file read but not listed (edits to it would skip CI), or a file listed but
-# no longer read.
+# Prose-only changes build nothing in CI (D-145, D-147): the workflow's plan job treats *.md,
+# LICENSE and NOTICE as prose, except the Markdown files that tests or build scripts read, which
+# it lists in a bash array `code_md=( ... )`. This check derives that list from the code and fails
+# if plan's list differs, in either direction: a file read but not listed (edits to it would skip
+# CI), or a file listed but no longer read. It also fails if the workflow has a workflow-level
+# `paths` or `paths-ignore` filter: a run that never starts reports no check, and main's required
+# check (ci-ok) would wait forever (D-147).
 #
 # "Read" means referenced outside comments in what CI executes: tests/ (C, C++, CUDA, CMake, TOML
 # and JSON), cmake/, tools/, validation/, the top-level CMakeLists.txt and CMakePresets.json.
@@ -80,43 +82,52 @@ endforeach()
 list(REMOVE_DUPLICATES _read)
 list(SORT _read)
 
-# --- what the workflow re-includes ------------------------------------------------------------
+# --- what the workflow's plan job lists as code ------------------------------------------------
 file(STRINGS "${WORKFLOW}" _lines)
-set(_section "")
-set(_push "")
-set(_pr "")
+set(_in_on FALSE)
+set(_in_list FALSE)
+set(_found FALSE)
+set(_filters "")
+set(_listed "")
 foreach(_line IN LISTS _lines)
-    if(_line MATCHES "^  (push|pull_request):")
-        set(_section "${CMAKE_MATCH_1}")
-    elseif(_line MATCHES "^ ? ?[^ ]")
-        set(_section "")
-    elseif(_section AND _line MATCHES "^ +- '([^'!*][^']*)'")
-        if(_section STREQUAL "push")
-            list(APPEND _push "${CMAKE_MATCH_1}")
-        else()
-            list(APPEND _pr "${CMAKE_MATCH_1}")
-        endif()
+    if(_line MATCHES "^on:")
+        set(_in_on TRUE)
+    elseif(_line MATCHES "^[^ #]")
+        set(_in_on FALSE)
+    endif()
+    if(_in_on AND _line MATCHES "^ +paths(-ignore)?:")
+        list(APPEND _filters "${_line}")
+    endif()
+    if(_line MATCHES "code_md=\\(")
+        set(_in_list TRUE)
+        set(_found TRUE)
+    elseif(_in_list AND _line MATCHES "^ *\\)")
+        set(_in_list FALSE)
+    elseif(_in_list AND _line MATCHES "^ *'([^']+)'")
+        list(APPEND _listed "${CMAKE_MATCH_1}")
     endif()
 endforeach()
-list(SORT _push)
-list(SORT _pr)
-if(NOT _push STREQUAL _pr)
-    message(FATAL_ERROR "the push and pull_request path filters re-include different files\n"
-                        "  push: ${_push}\n  pull_request: ${_pr}")
+if(_filters)
+    message(FATAL_ERROR "the workflow has a workflow-level path filter (${_filters}); "
+                        "skipped runs would never report the required ci-ok check (D-147)")
 endif()
+if(NOT _found)
+    message(FATAL_ERROR "no code_md=( ... ) list found in ${WORKFLOW}")
+endif()
+list(SORT _listed)
 
 set(_missing ${_read})
-if(_push)
-    list(REMOVE_ITEM _missing ${_push})
+if(_listed)
+    list(REMOVE_ITEM _missing ${_listed})
 endif()
-set(_stale ${_push})
+set(_stale ${_listed})
 if(_read)
     list(REMOVE_ITEM _stale ${_read})
 endif()
 if(_missing OR _stale)
-    message(FATAL_ERROR "the CI path filter does not match the Markdown files the code reads\n"
+    message(FATAL_ERROR "the plan job's code_md list does not match the Markdown files the code reads\n"
                         "  read but not re-included: ${_missing}\n"
                         "  re-included but not read by any test: ${_stale}")
 endif()
 list(LENGTH _read _n)
-message(STATUS "CI path filter re-includes exactly the ${_n} Markdown files the code reads: ${_read}")
+message(STATUS "the plan job counts exactly the ${_n} Markdown files the code reads as code: ${_read}")

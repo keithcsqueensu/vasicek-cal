@@ -1,0 +1,16 @@
+# Fixture for ci_path_filter_sync_fires_paths: never run. Its plan list is correct, but the push
+# trigger has a workflow-level path filter, which would leave the required ci-ok check unreported.
+on:
+  push:
+    paths:
+      - '**'
+  pull_request:
+jobs:
+  plan:
+    steps:
+      - run: |
+          code_md=(
+            'docs/methodology/tolerances.md'
+            'docs/methodology/recovery_results.md'
+            'README.md'
+          )
