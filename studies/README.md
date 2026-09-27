@@ -102,7 +102,7 @@ not delay M3.
 | # | Slug | Question (short) | Milestone | Status |
 |---|---|---|---|---|
 | S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
-| S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | not registered |
+| S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | registered |
 | S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | registered (shared jackknife run) |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
 | S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | registered (shared jackknife run) |
@@ -202,8 +202,9 @@ refined in each study's `PREDICTION.md`.
   (proposed: ±25% relative) in the prediction. Mark every entry outside T ∈ [20, 100] as an
   extrapolation, and every scenario whose estimates are mostly at a bound as "not estimable at
   any T studied".
-- **Cost:** seconds. An optional check refits the subset at one implied T (minutes).
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a (a planning aid).
+- **Cost:** seconds. An optional check refits the subset at one implied T (minutes); not planned
+  (D-303).
+- **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them. **Result:** not run. **Mitigation:** n/a (a planning aid).
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-3 Jackknife bias correction for ρ̂ (`jackknife-bias-rho`)

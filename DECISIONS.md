@@ -731,6 +731,19 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **No golden changes:** no recovery, replay or cross-reference panel lacks a period with n ≥ 2. The recovery replay, which compares flags exactly, passes unchanged. S-1's panel 26 now carries the flag in both conventions, and the pinned S-1 finding is otherwise unchanged.
   - **Tests:** `unit_engine` (an n = 1 panel is flagged with finite numbers; one period with n = 2 lifts the flag; the reference panel is not flagged) and `abi_c` (the same through the C ABI, with ρ's profile interval the whole box).
 
+## Study S-2: pre-registration, 2026-09-27
+
+- **D-303 — S-2's method is fixed in its pre-registration, before the table is computed.**
+  - **Where:** `studies/sample-size-table/PREDICTION.md` (Q1–Q10) and the stdlib-only script `studies/sample-size-table/sample_size_table.py`, both merged before the run. It needs no new fits: only the committed recovery summary is read.
+  - **Targets:** ρ within ±0.05 absolute, and PD within ±25% relative, at 95% (1.96 × RMSE).
+  - **Method:**
+    - RMSE ≈ C/√T, with C fitted in logs over T ∈ {20, 40, 100}, gives T*;
+    - a free-slope OLS fit is the scaling check: slope in [−0.75, −0.30] and every residual ≤ 0.15;
+    - a scenario with more than half its replicates on the grid edge is left out of the fit, and a cell with all three left out is "not estimable at any T studied";
+    - T* outside [20, 100] is marked an extrapolation.
+  - **Evidence for the predictions:** large-n theory only, SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T and relative SD(PD̂) ≈ λ(Φ⁻¹PD)·√ρ/√T. No RMSE value from the summary was read in writing them.
+  - **The optional refit at an implied T is not planned.** It would be added under an appended prediction if asked.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
