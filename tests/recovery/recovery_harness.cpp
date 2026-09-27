@@ -8,9 +8,16 @@
 //       tests/golden/recovery/summary.csv    per-scenario summary (exact hex + decimal for readers)
 //       tests/golden/recovery/replay.csv     replicates 0..kReplayReplicates-1 of every scenario,
 //                                            re-fitted in CI (unit_recovery: recovery_replay)
+//       tests/golden/recovery/replay_panels.csv  those replicates' default counts, for the scipy
+//                                            cross-check of q's profile interval (S-23)
 //       tests/golden/recovery/MANIFEST.json  provenance
 //       docs/methodology/recovery_results.md the tables, generated; do not edit by hand
 //     then checks that every file exists and is non-empty.
+//   --replay-dir DIR                    also write replay.csv and replay_panels.csv to DIR (every
+//                                        scenario; any R >= kReplayReplicates), e.g. for the scipy
+//                                        cross-check before a full run.
+//   --scenarios ID,ID,...               fit and summarise only these scenarios (exploration, e.g. the
+//                                        study subset of D-150); not with --write or --check.
 //   --save-fits FILE / --load-fits FILE  developer convenience: write every fit to a binary file,
 //                                        or read them back instead of refitting, to re-summarise
 //                                        after a review. Goldens are only committed from a run that
@@ -23,6 +30,7 @@
 //
 // Replicates run in parallel (CpuBackend over (replicate, scenario) jobs); each fit is serial,
 // and results do not depend on the thread count, so the goldens do not either.
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -101,6 +109,9 @@ void write_summary_csv(const std::string& path, const std::vector<rc::Summary>& 
            "# rms_se_u are in the logit coordinate. t_*: the t(T-1) Wald interval on the same unflagged\n"
            "# replicates (native comparison). profile_*: the profile-likelihood interval over ALL replicates.\n"
            "# boot_*: the iid bootstrap percentile interval (B = 999) over ALL replicates.\n"
+           "# q_*: the 99.9% conditional PD (S-23): profile interval and bootstrap over ALL replicates, the\n"
+           "# delta-method Wald interval in logit(q) on the unflagged replicates; miss_below / miss_above count\n"
+           "# intervals entirely below / above the true q; log_width is log(hi / lo) of the profile interval.\n"
            "# Doubles in *_hex columns are exact; the decimal columns are for readers.\n"
            "scenario,pd,rho,periods,obligors,replicates,edge,near_bound,flat,rejected,quad_unconverged,numeric,"
            "flagged,unflagged,band_lo_hex,band_hi_hex,profile_band_lo_hex,profile_band_hi_hex,"
@@ -113,6 +124,12 @@ void write_summary_csv(const std::string& path, const std::vector<rc::Summary>& 
             << "_t_coverage," << p << "_profile_coverage," << p << "_boot_covered," << p << "_boot_degenerate," << p
             << "_boot_verdict," << p << "_boot_coverage";
     }
+    out << ",q_true_hex,q_median_rel_err_hex,q_rmse_hex,q_profile_covered,q_profile_truncated,q_profile_box_limited,"
+           "q_profile_box_limited_lo,q_profile_not_computed,q_profile_miss_below,q_profile_miss_above,"
+           "q_profile_excludes_estimate,q_profile_log_width_median_hex,q_profile_residual_max_hex,q_profile_verdict,"
+           "q_wald_covered,q_wald_miss_below,q_wald_miss_above,q_wald_verdict,q_boot_covered,q_boot_miss_below,"
+           "q_boot_miss_above,q_boot_verdict,q_true,q_median_rel_err,q_profile_coverage,q_profile_width_ratio_median,"
+           "q_wald_coverage,q_boot_coverage";
     out << '\n';
     for (const auto& s : all) {
         out << s.s.id << ',' << fmt("%.17g", s.s.pd) << ',' << fmt("%.17g", s.s.rho) << ',' << s.s.periods << ','
@@ -130,6 +147,18 @@ void write_summary_csv(const std::string& path, const std::vector<rc::Summary>& 
                 << fmt("%.4f", p.profile_coverage) << ',' << p.boot_covered << ',' << p.boot_degenerate << ','
                 << rc::verdict_text(p.boot_verdict) << ',' << fmt("%.4f", p.boot_coverage);
         }
+        const auto& q = s.q;
+        out << ',' << to_hex(q.truth) << ',' << to_hex(q.median_rel_err) << ',' << to_hex(q.rmse) << ','
+            << q.profile_covered << ',' << q.profile_truncated << ',' << q.profile_box_limited << ','
+            << q.profile_box_limited_lo << ',' << q.profile_not_computed << ',' << q.profile_miss_below << ','
+            << q.profile_miss_above << ',' << q.profile_excludes_estimate << ',' << to_hex(q.profile_log_width_median)
+            << ',' << to_hex(q.profile_residual_max) << ',' << rc::verdict_text(q.profile_verdict) << ','
+            << q.wald_covered << ',' << q.wald_miss_below << ',' << q.wald_miss_above << ','
+            << rc::verdict_text(q.wald_verdict) << ',' << q.boot_covered << ',' << q.boot_miss_below << ','
+            << q.boot_miss_above << ',' << rc::verdict_text(q.boot_verdict) << ',' << fmt("%.6g", q.truth) << ','
+            << fmt("%.4f", q.median_rel_err) << ',' << fmt("%.4f", q.profile_coverage) << ','
+            << fmt("%.4f", std::exp(q.profile_log_width_median)) << ',' << fmt("%.4f", q.wald_coverage) << ','
+            << fmt("%.4f", q.boot_coverage);
         out << '\n';
     }
     close_out(out, path);
@@ -142,9 +171,11 @@ void write_replay_csv(const std::string& path, const std::vector<rc::Fit>& fits)
            "# Re-fitted in CI by unit_recovery (recovery_replay) and compared at TOL_RECOVERY_REPLAY_REL\n"
            "# (estimates, loglik) and TOL_RECOVERY_REPLAY_SE_REL (SEs); flags exactly.\n"
            "# Profile endpoints at TOL_PROFILE_CROSS_PLATFORM_REL; profile flags exactly. Bootstrap interval\n"
-           "# ends at TOL_BOOTSTRAP_CROSS_PLATFORM_REL.\n"
+           "# ends at TOL_BOOTSTRAP_CROSS_PLATFORM_REL. S-23's q: q_hat at TOL_RECOVERY_REPLAY_REL, its delta-method\n"
+           "# SE at TOL_RECOVERY_REPLAY_SE_REL, profile ends and flags as above, bootstrap ends as above.\n"
            "scenario,replicate,pd_hex,rho_hex,se_pd_hex,se_rho_hex,loglik_hex,flags,pd_lo_hex,pd_hi_hex,rho_lo_hex,"
-           "rho_hi_hex,profile_flags,boot_pd_lo_hex,boot_pd_hi_hex,boot_rho_lo_hex,boot_rho_hi_hex,boot_edge\n";
+           "rho_hi_hex,profile_flags,boot_pd_lo_hex,boot_pd_hi_hex,boot_rho_lo_hex,boot_rho_hi_hex,boot_edge,"
+           "q_hat_hex,q_se_s_hex,q_lo_hex,q_hi_hex,q_profile_flags,q_boot_lo_hex,q_boot_hi_hex\n";
     for (std::uint32_t id = 0; id < rc::kScenarios; ++id) {
         for (std::uint32_t r = 0; r < rc::kReplayReplicates; ++r) {
             const rc::Fit& f = fits[static_cast<std::size_t>(r) * rc::kScenarios + id];
@@ -153,7 +184,28 @@ void write_replay_csv(const std::string& path, const std::vector<rc::Fit>& fits)
                 << ',' << to_hex(f.prof_hi[0]) << ',' << to_hex(f.prof_lo[1]) << ',' << to_hex(f.prof_hi[1]) << ','
                 << (f.prof_flags[0] | (f.prof_flags[1] << 4)) << ',' << to_hex(f.boot_lo[0]) << ','
                 << to_hex(f.boot_hi[0]) << ',' << to_hex(f.boot_lo[1]) << ',' << to_hex(f.boot_hi[1]) << ','
-                << f.boot_edge << '\n';
+                << f.boot_edge << ',' << to_hex(f.q_hat) << ',' << to_hex(f.q_se_s) << ',' << to_hex(f.q_prof_lo) << ','
+                << to_hex(f.q_prof_hi) << ',' << f.q_prof_flags << ',' << to_hex(f.q_boot_lo) << ','
+                << to_hex(f.q_boot_hi) << '\n';
+        }
+    }
+    close_out(out, path);
+}
+
+void write_replay_panels_csv(const std::string& path) {
+    std::ofstream out = open_out(path);
+    out << "# The recovery replay panels (S-23): replicates 0.." << rc::kReplayReplicates - 1
+        << " of every scenario, from dgp/ (seed, scenario, replicate).\n"
+           "# n obligors in every period; d is the default count per period, in period order, space-separated.\n"
+           "# Read by validation/scipy/conditional_pd_profile.py; unit_recovery (recovery_replay) checks it against dgp/.\n"
+           "scenario,replicate,n,d\n";
+    for (std::uint32_t id = 0; id < rc::kScenarios; ++id) {
+        for (std::uint32_t r = 0; r < rc::kReplayReplicates; ++r) {
+            const rc::Scenario s = rc::scenario(id);
+            out << id << ',' << r << ',' << s.obligors << ',';
+            const auto d = rc::panel(s, r);
+            for (std::size_t k = 0; k < d.size(); ++k) out << (k ? " " : "") << d[k];
+            out << '\n';
         }
     }
     close_out(out, path);
@@ -192,9 +244,65 @@ void write_manifest(const std::string& path, double seconds, std::uint32_t R) {
         << "  \"profile_findings\": \"" << rc::known_profile_finding_count(rc::ProfileDiagnosis::TruncationConservative)
         << " conservative, " << rc::known_profile_finding_count(rc::ProfileDiagnosis::SmallTUndercoverage)
         << " undercoverage (reviewed)\",\n"
+        << "  \"conditional_pd\": \"S-23: q = Phi((Phi^-1(PD) + sqrt(rho) z) / sqrt(1 - rho)), z = Phi^-1(0.999) = "
+        << fmt("%.17g", vcal::engine::kAdverseZ999)
+        << "; profile interval along q = c (engine/conditional_pd.hpp), delta-method Wald in logit(q), bootstrap "
+           "percentile of q at the same replicates; reviewed findings: "
+        << rc::kKnownQProfileFindings.size() << " profile, " << rc::kKnownQWaldFindings.size() << " Wald, "
+        << rc::kKnownQBootstrapFindings.size() << " bootstrap\",\n"
         << "  \"wall_seconds\": " << fmt("%.0f", seconds) << "\n"
         << "}\n";
     close_out(out, path);
+}
+
+// S-23: the 99.9% conditional PD. Verdict counts per interval, then one row per scenario.
+void write_conditional_pd_md(std::ofstream& out, const std::vector<rc::Summary>& all, std::uint32_t R) {
+    int pc[rc::kVerdicts] = {}, wc[rc::kVerdicts] = {}, bc[rc::kVerdicts] = {};
+    std::int64_t excludes = 0;
+    double residual = 0.0;
+    for (const auto& s : all) {
+        ++pc[static_cast<int>(s.q.profile_verdict)];
+        ++wc[static_cast<int>(s.q.wald_verdict)];
+        ++bc[static_cast<int>(s.q.boot_verdict)];
+        excludes += s.q.profile_excludes_estimate;
+        residual = std::fmax(residual, s.q.profile_residual_max);
+    }
+    const auto counts = [&](const int* c) {
+        return std::to_string(c[0]) + " PASS, " + std::to_string(c[static_cast<int>(rc::Verdict::Conservative)]) +
+               " CONSERVATIVE, " + std::to_string(c[2]) + " KNOWN FINDING, " + std::to_string(c[1]) + " DEFERRED, " +
+               std::to_string(c[3]) + " UNREVIEWED";
+    };
+    const auto frac = [&](std::int64_t n) { return pct(static_cast<double>(n) / static_cast<double>(R)); };
+    out << "## The 99.9% conditional PD (S-23)\n\n"
+        << "q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% adverse factor level. Study, predictions "
+           "and the comparison with them: S-23 in the [study index](../../studies/) and its "
+           "[pre-registration](../../studies/derived-quantity-intervals/). Same band and policy as PD "
+           "and ρ.\n\n"
+        << "- **Profile likelihood, over all replicates:** " << counts(pc) << ".\n"
+        << "- **Delta-method Wald in logit(q), among the unflagged replicates:** " << counts(wc) << ".\n"
+        << "- **Bootstrap percentile of q, over all replicates:** " << counts(bc) << ".\n"
+        << "- **Acceptance checks:** profile intervals not containing q̂: " << excludes
+        << "; worst end-point residual " << fmt("%.2g", residual) << " (tolerance "
+        << fmt("%.0e", tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL) << ", asserted on every fit).\n\n"
+        << "\"Box-limited\": an end whose inner maximiser lies on a bound of the box, or the limit of q in the box "
+           "(\"truncated\"). \"Below\": intervals entirely below the true q. Width: median of the profile interval's "
+           "hi / lo.\n\n"
+        << "| scenario | PD | ρ | T | n | q | median q̂/q − 1 | profile cov. | box-limited (lower) | truncated | "
+           "below / above | width | profile verdict | Wald cov. | Wald verdict | bootstrap cov. | bootstrap "
+           "verdict |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n";
+    for (const auto& s : all) {
+        const auto& q = s.q;
+        out << "| " << s.s.id << " | " << fmt("%g", s.s.pd) << " | " << fmt("%g", s.s.rho) << " | " << s.s.periods
+            << " | " << s.s.obligors << " | " << fmt("%.4g", q.truth) << " | " << fmt("%+.3f", q.median_rel_err)
+            << " | " << fmt("%.3f", q.profile_coverage) << " | " << frac(q.profile_box_limited) << " ("
+            << frac(q.profile_box_limited_lo) << ") | " << frac(q.profile_truncated) << " | " << q.profile_miss_below
+            << " / " << q.profile_miss_above << " | " << fmt("%.2f", std::exp(q.profile_log_width_median)) << " | "
+            << rc::verdict_text(q.profile_verdict) << " | "
+            << (s.unflagged > 0 ? fmt("%.3f", q.wald_coverage) : std::string("—")) << " | "
+            << rc::verdict_text(q.wald_verdict) << " | " << fmt("%.3f", q.boot_coverage) << " | "
+            << rc::verdict_text(q.boot_verdict) << " |\n";
+    }
+    out << "\n";
 }
 
 void write_results_md(const std::string& path, const std::vector<rc::Summary>& all,
@@ -352,6 +460,7 @@ void write_results_md(const std::string& path, const std::vector<rc::Summary>& a
     out << "\nWorst profile endpoint residual over all " << static_cast<std::int64_t>(R) * rc::kScenarios
         << " fits: " << fmt("%.2g", residual) << " in log-likelihood (tolerance "
         << fmt("%.0e", tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL) << ", asserted on every fit).\n\n";
+    write_conditional_pd_md(out, all, R);
     for (std::uint32_t i_pd = 0; i_pd < 3; ++i_pd) {
         out << "## PD = " << fmt("%g", rc::kPds[i_pd] * 100) << "%\n\n"
             << "| ρ | T | n | PD bias | PD RMSE | ρ bias | ρ RMSE | flagged (edge) | Wald cov. PD / ρ | "
@@ -471,6 +580,25 @@ int check_against_goldens(const std::vector<rc::Summary>& all) {
                 report(id, p + "_verdict " + rc::verdict_text(q.verdict) + " vs " + r[t.column(p + "_verdict")]);
             }
         }
+        // S-23: q.
+        const auto& q = s.q;
+        const bool qp_equal = count("q_profile_covered", q.profile_covered);
+        count("q_profile_truncated", q.profile_truncated);
+        count("q_profile_box_limited", q.profile_box_limited);
+        count("q_profile_not_computed", q.profile_not_computed);
+        count("q_profile_excludes_estimate", q.profile_excludes_estimate);
+        const bool qw_equal = count("q_wald_covered", q.wald_covered);
+        const bool qb_equal = count("q_boot_covered", q.boot_covered);
+        value("q_median_rel_err_hex", q.median_rel_err, tol::TOL_RECOVERY_REPLAY_REL);
+        value("q_rmse_hex", q.rmse, tol::TOL_RECOVERY_REPLAY_REL);
+        const auto q_verdict = [&](const std::string& c, rc::Verdict v, bool equal) {
+            if ((same_platform || equal) && r[t.column(c)] != rc::verdict_text(v)) {
+                report(id, c + " " + rc::verdict_text(v) + " vs " + r[t.column(c)]);
+            }
+        };
+        q_verdict("q_profile_verdict", q.profile_verdict, qp_equal);
+        q_verdict("q_wald_verdict", q.wald_verdict, counts_equal && qw_equal);
+        q_verdict("q_boot_verdict", q.boot_verdict, qb_equal);
     }
     std::printf("%d mismatch(es)\n", bad);
     return bad;
@@ -482,6 +610,8 @@ int main(int argc, char** argv) {
     std::uint32_t R = rc::kReplicates;
     bool write = false, check = false;
     std::string save_fits, load_fits;
+    std::vector<std::uint32_t> ids;
+    std::string replay_dir;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--write") == 0) {
             write = true;
@@ -493,8 +623,21 @@ int main(int argc, char** argv) {
             save_fits = argv[++i];
         } else if (std::strcmp(argv[i], "--load-fits") == 0 && i + 1 < argc) {
             load_fits = argv[++i];
+        } else if (std::strcmp(argv[i], "--replay-dir") == 0 && i + 1 < argc) {
+            replay_dir = argv[++i];
+        } else if (std::strcmp(argv[i], "--scenarios") == 0 && i + 1 < argc) {
+            for (const char* c = argv[++i]; *c != '\0';) {
+                char* end = nullptr;
+                const unsigned long id = std::strtoul(c, &end, 10);
+                if (end == c || id >= rc::kScenarios) {
+                    std::fprintf(stderr, "--scenarios: ids 0..%u, comma-separated\n", rc::kScenarios - 1);
+                    return 2;
+                }
+                ids.push_back(static_cast<std::uint32_t>(id));
+                c = *end == ',' ? end + 1 : end;
+            }
         } else {
-            std::fprintf(stderr, "usage: recovery_harness [--replicates R] [--write | --check] "
+            std::fprintf(stderr, "usage: recovery_harness [--replicates R] [--write | --check] [--scenarios ID,...] "
                                  "[--save-fits FILE | --load-fits FILE]\n");
             return 2;
         }
@@ -506,6 +649,14 @@ int main(int argc, char** argv) {
     if (!load_fits.empty() && (write || check)) {
         std::fprintf(stderr, "--load-fits cannot be combined with --write or --check: goldens come from fitting\n");
         return 2;
+    }
+    const bool subset = !ids.empty();
+    if (subset && (write || check || !replay_dir.empty())) {
+        std::fprintf(stderr, "--scenarios cannot be combined with --write or --check: goldens cover every scenario\n");
+        return 2;
+    }
+    if (!subset) {
+        for (std::uint32_t id = 0; id < rc::kScenarios; ++id) ids.push_back(id);
     }
     if (R < rc::kReplayReplicates) {
         std::fprintf(stderr, "need R >= %u\n", rc::kReplayReplicates);
@@ -528,18 +679,23 @@ int main(int argc, char** argv) {
     }
     for (std::uint32_t r0 = 0; r0 < R; r0 += batch) {
         const std::uint32_t r1 = r0 + batch < R ? r0 + batch : R;
-        const std::int64_t jobs = static_cast<std::int64_t>(r1 - r0) * rc::kScenarios;
+        const auto per = static_cast<std::int64_t>(ids.size());
+        const std::int64_t jobs = static_cast<std::int64_t>(r1 - r0) * per;
         vcal::backends::CpuBackend{}.parallel_for(jobs, [&](std::int64_t j) {
-            const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / rc::kScenarios);
-            const std::uint32_t id = static_cast<std::uint32_t>(j % rc::kScenarios);
+            const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / per);
+            const std::uint32_t id = ids[static_cast<std::size_t>(j % per)];
             fits[static_cast<std::size_t>(r) * rc::kScenarios + id] = rc::fit(rc::scenario(id), r);
         });
         const double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R, s);
     }
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    const auto selected = [&](std::size_t i) {
+        return std::find(ids.begin(), ids.end(), static_cast<std::uint32_t>(i % rc::kScenarios)) != ids.end();
+    };
     // Engine correctness (D-131): every fit's profile endpoints solve the threshold to tolerance.
     for (std::size_t i = 0; i < fits.size(); ++i) {
+        if (!selected(i)) continue;
         if (!(fits[i].prof_residual <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL)) {
             std::fprintf(stderr, "profile endpoint residual %.3g exceeds %.3g (scenario %zu, replicate %zu)\n",
                          fits[i].prof_residual, tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL, i % rc::kScenarios,
@@ -557,15 +713,33 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::vector<rc::Summary> all;
-    std::vector<rc::Fit> scenario_fits(R);
-    for (std::uint32_t id = 0; id < rc::kScenarios; ++id) {
-        for (std::uint32_t r = 0; r < R; ++r) scenario_fits[r] = fits[static_cast<std::size_t>(r) * rc::kScenarios + id];
-        all.push_back(rc::summarise(rc::scenario(id), scenario_fits.data(), R));
+    // S-23 acceptance conditions, checked after saving so the fits survive for diagnosis: every
+    // solved end point of q's interval meets the residual tolerance, and every interval contains q_hat.
+    int q_bad = 0;
+    for (std::size_t i = 0; i < fits.size(); ++i) {
+        if (!selected(i)) continue;
+        const rc::Fit& f = fits[i];
+        const bool computed = !(f.q_prof_flags & vcal::engine::kIntervalNotComputed);
+        if (!(f.q_prof_residual <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL) ||
+            (computed && !(f.q_prof_lo <= f.q_hat && f.q_hat <= f.q_prof_hi))) {
+            if (++q_bad <= 20) {
+                std::fprintf(stderr, "q interval [%.17g, %.17g] flags %u, q_hat %.17g, residual %.3g (scenario %zu, "
+                                     "replicate %zu)\n", f.q_prof_lo, f.q_prof_hi, f.q_prof_flags, f.q_hat,
+                             f.q_prof_residual, i % rc::kScenarios, i / rc::kScenarios);
+            }
+        }
     }
-    const auto rmse_bad = rc::rmse_violations(all);
 
-    for (const auto& s : all) {
+    std::vector<rc::Summary> all(rc::kScenarios);
+    std::vector<rc::Fit> scenario_fits(R);
+    for (const std::uint32_t id : ids) {
+        for (std::uint32_t r = 0; r < R; ++r) scenario_fits[r] = fits[static_cast<std::size_t>(r) * rc::kScenarios + id];
+        all[id] = rc::summarise(rc::scenario(id), scenario_fits.data(), R);
+    }
+    const auto rmse_bad = subset ? std::vector<std::string>{} : rc::rmse_violations(all);
+
+    for (const std::uint32_t id : ids) {
+        const rc::Summary& s = all[id];
         std::printf("%2u PD %-5g rho %-4g T %-3lld n %-5lld | PD bias %+.2e rmse %.2e | rho bias %+.4f rmse %.4f | "
                     "flagged %5.1f%% edge %5.1f%% | cov %.3f %.3f band [%.3f, %.3f] | ratio %.3f %.3f | %s / %s | "
                     "profile %.3f %.3f %s / %s | t %.3f %.3f | boot %.3f %.3f %s / %s | quad %lld\n",
@@ -579,20 +753,43 @@ int main(int argc, char** argv) {
                     s.param[0].t_coverage, s.param[1].t_coverage, s.param[0].boot_coverage, s.param[1].boot_coverage,
                     rc::verdict_text(s.param[0].boot_verdict), rc::verdict_text(s.param[1].boot_verdict),
                     static_cast<long long>(s.quad_unconverged));
+        const auto& q = s.q;
+        std::printf("   q %.5f | median rel err %+.4f | profile %.3f %s box-limited %.1f%% (lo %.1f%%) truncated %.1f%% "
+                    "miss below/above %lld/%lld width ratio %.3f | wald %.3f %s | boot %.3f %s\n",
+                    q.truth, q.median_rel_err, q.profile_coverage, rc::verdict_text(q.profile_verdict),
+                    100.0 * static_cast<double>(q.profile_box_limited) / static_cast<double>(R),
+                    100.0 * static_cast<double>(q.profile_box_limited_lo) / static_cast<double>(R),
+                    100.0 * static_cast<double>(q.profile_truncated) / static_cast<double>(R),
+                    static_cast<long long>(q.profile_miss_below), static_cast<long long>(q.profile_miss_above),
+                    std::exp(q.profile_log_width_median), q.wald_coverage, rc::verdict_text(q.wald_verdict),
+                    q.boot_coverage, rc::verdict_text(q.boot_verdict));
     }
     for (const auto& v : rmse_bad) std::printf("RMSE: %s\n", v.c_str());
-    std::printf("%u replicates x %u scenarios in %.0f s\n", R, rc::kScenarios, seconds);
+    std::printf("%u replicates x %zu scenarios in %.0f s\n", R, ids.size(), seconds);
+    if (q_bad > 0) {
+        std::fprintf(stderr, "%d fits fail the S-23 acceptance conditions for q's profile interval\n", q_bad);
+        return 1;
+    }
 
     try {
         if (write) {
             const std::vector<std::string> paths = {
                 vcal::test::golden_path("recovery/summary.csv"), vcal::test::golden_path("recovery/replay.csv"),
                 vcal::test::golden_path("recovery/MANIFEST.json"),
-                std::string(VCAL_SOURCE_DIR) + "/docs/methodology/recovery_results.md"};
+                std::string(VCAL_SOURCE_DIR) + "/docs/methodology/recovery_results.md",
+                vcal::test::golden_path("recovery/replay_panels.csv")};
             write_summary_csv(paths[0], all);
             write_replay_csv(paths[1], fits);
             write_manifest(paths[2], seconds, R);
             write_results_md(paths[3], all, rmse_bad, R);
+            write_replay_panels_csv(paths[4]);
+            verify_written(paths);
+            for (const auto& p : paths) std::printf("wrote %s\n", p.c_str());
+        }
+        if (!replay_dir.empty()) {
+            const std::vector<std::string> paths = {replay_dir + "/replay.csv", replay_dir + "/replay_panels.csv"};
+            write_replay_csv(paths[0], fits);
+            write_replay_panels_csv(paths[1]);
             verify_written(paths);
             for (const auto& p : paths) std::printf("wrote %s\n", p.c_str());
         }

@@ -222,6 +222,53 @@ pinned in the recovery goldens, D-137):
 | D: T = 100 | PD | 21 | 18 | 3 | 0.909–0.948 | 0 | 0.939–0.955 |
 | D | ρ | 21 | 6 | 15 | 0.908–0.938 | 0 | 0.938–0.961 |
 
+## 6c. Intervals for the 99.9% conditional PD (S-23)
+
+Capital and stress calculations use the PD conditional on an adverse factor level, not PD or ρ
+themselves. At the 0.1% adverse quantile of the factor that quantity is
+
+    q(PD, ρ) = Φ( (Φ⁻¹(PD) + √ρ · Φ⁻¹(0.999)) / √(1 − ρ) ),   Φ⁻¹(0.999) = 3.0902.
+
+The engine's convention is that a higher Z means better conditions, so the adverse level is
+Z = −3.09. `engine/conditional_pd.hpp` gives q, its point estimate q̂ = q(PD̂, ρ̂), and three
+95% intervals.
+
+**Profile likelihood (recommended).** The interval is the set of values c whose profile
+log-likelihood P_q(c), the maximum of ℓ(PD, ρ) over the box subject to q(PD, ρ) = c, is within
+1.92073 of ℓ_max: the same threshold as section 6a. On the curve q = c the PD is fixed by ρ:
+
+    PD_c(ρ) = Φ( √(1 − ρ) · Φ⁻¹(c) − √ρ · Φ⁻¹(0.999) ),
+
+so P_q(c) is a maximisation over ρ alone, over the values of ρ for which PD_c(ρ) lies in the box.
+
+1. **Inner maximum.** A guide comes first: the grid's surface, interpolated at points of the curve
+   (eight per grid step of ρ). It chooses a bracket, and Brent's method then maximises the
+   likelihood itself over logit ρ. The bracket widens until the maximum is interior or on a bound.
+   A bound is an end of the ρ axis, or a point where PD_c(ρ) reaches an end of the PD axis.
+2. **Each end.** q is not a grid axis, so the end is bracketed by walking outwards from the
+   maximum in logit(q), one PD grid step at a time. Points where the guide is above the
+   threshold are passed over. The bracket's own ends are always evaluated exactly, since the
+   guide is not a bound. Brent's root finder then solves P_q(c) = ℓ_max − 1.92073 to 10⁻⁹ in
+   logit(q), and the residual is reported: at most 8.8·10⁻¹¹ in the unit test, and asserted
+   below 10⁻⁷ on every recovery fit.
+3. **The box.** q attainable in the box runs from 1.455·10⁻⁴ (PD = 10⁻⁴, ρ = 10⁻³) to 0.9713
+   (PD = 0.2, ρ = 0.5). An interval that is still above the threshold there ends at that limit,
+   flagged *truncated*, and is never extrapolated. An end whose inner maximiser lies on a bound
+   of the box is flagged *box-limited*. Such an end can be held by a bound through the nuisance,
+   ρ usually, without q itself reaching its range. Truncation implies box-limited.
+
+**Delta-method Wald.** q̂'s standard error in logit(q) comes from the covariance of the
+estimates at the Hessian (section 6) and the gradient of logit(q) with respect to logit PD and
+logit ρ. The interval is logit(q̂) ± 1.96·SE. It is unreliable wherever the parameters' Wald
+intervals are: on the grid edge, near a bound, or on a flat surface.
+
+**Bootstrap percentile.** q evaluated at each iid bootstrap replicate's estimates (B = 999),
+with type-7 quantiles. Percentile intervals are invariant under monotone transformations, so
+this is the same as taking them in logit(q).
+
+A second scipy script (section 8) solves the profile end points on its own and checks the
+engine's.
+
 ## 7. Known statistical behaviour (M1.8, M2a, M2b)
 
 The recovery harness fits 1,000 simulated panels for each of 81 settings: PD 0.1–5%, ρ 0.02–0.24,
@@ -285,3 +332,21 @@ directly. They describe what a straightforward independent implementation achiev
     uv run --no-project --with scipy==1.18.1 --with numpy==2.5.3 python validation/scipy/binomial_mixture_mle.py
 
 It takes about five minutes. CI runs it on every commit with the same pinned versions.
+
+**The conditional PD's profile interval (S-23).** `validation/scipy/conditional_pd_profile.py`
+solves the end points of section 6c on its own, on the 162 recovery replay panels
+(`tests/golden/recovery/replay_panels.csv`), and compares them with the engine's
+(`replay.csv`). It uses:
+
+- `scipy.special` (`log_ndtr`, `gammaln`) for the binomial term;
+- the trapezoid rule for each period's integral, on a window around the integrand's mode. The
+  window is placed from a Gaussian approximation and widened until both ends are e⁻⁶⁰ below
+  the maximum. It is not quadrature code shared with the engine;
+- nested bounded Brent over the box for ℓ_max, bounded Brent over the feasible stretch of logit ρ
+  for the inner maximum, and `brentq` for each end point.
+
+The end points agree within 1.2·10⁻⁹ in logit(q) (`TOL_SCIPY_Q_PROFILE_ENDPOINT_S` = 3·10⁻⁹).
+Ends the engine truncated at the limit of q are inside the interval here too, and the
+box-limited flags agree on every end. It takes about three minutes.
+
+    uv run --no-project --with scipy==1.18.1 --with numpy==2.5.3 python validation/scipy/conditional_pd_profile.py

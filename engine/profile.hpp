@@ -155,6 +155,47 @@ double brent_root(const G& g, double a, double b, double ga, double gb, double t
     return b;
 }
 
+// Distinct observations and their multiplicities, in order of first appearance.
+template <class Obs>
+void distinct_observations(const Obs* obs, std::int64_t periods, std::vector<std::int64_t>& first,
+                           std::vector<std::int64_t>& count) {
+    for (std::int64_t t = 0; t < periods; ++t) {
+        std::size_t j = 0;
+        while (j < first.size() && !(obs[first[j]] == obs[t])) ++j;
+        if (j == first.size()) {
+            first.push_back(t);
+            count.push_back(1);
+        } else {
+            ++count[j];
+        }
+    }
+}
+
+// Panel log-likelihood at natural values v, compensated sum over the distinct observations in a
+// fixed order.
+template <class Objective, class Integrator>
+double panel_loglik(const Objective& objective, const Integrator& primary, const typename Objective::Obs* obs,
+                    const std::vector<std::int64_t>& first, const std::vector<std::int64_t>& count, const double (&v)[2]) {
+    const auto th = Objective::theta(v);
+    double sum = 0.0, comp = 0.0;
+    for (std::size_t j = 0; j < first.size(); ++j) {
+        const double x = static_cast<double>(count[j]) * objective.log_contrib(obs[first[j]], th, primary);
+        const double s = sum + x;
+        comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
+        sum = s;
+    }
+    return sum + comp;
+}
+
+// The surface summed over periods, S[k].
+inline std::vector<double> summed_surface(const Grid<2>& grid, const std::vector<double>& L, std::int64_t periods) {
+    const std::int64_t K = grid.size();
+    const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
+    std::vector<double> S(static_cast<std::size_t>(K));
+    for (std::int64_t k = 0; k < K; ++k) S[static_cast<std::size_t>(k)] = weighted_sum(L.data(), periods, K, ones.data(), k);
+    return S;
+}
+
 }  // namespace profile_detail
 
 template <class Objective, class Integrator>
@@ -171,39 +212,18 @@ ProfileIntervals2 profile_intervals(const Objective& objective, const Integrator
         return out;
     }
 
-    // Distinct observations and their multiplicities, in order of first appearance.
     std::vector<std::int64_t> first, count;
-    for (std::int64_t t = 0; t < periods; ++t) {
-        std::size_t j = 0;
-        while (j < first.size() && !(obs[first[j]] == obs[t])) ++j;
-        if (j == first.size()) {
-            first.push_back(t);
-            count.push_back(1);
-        } else {
-            ++count[j];
-        }
-    }
+    profile_detail::distinct_observations(obs, periods, first, count);
     const Axis* ax[2] = {&grid.axis[0], &grid.axis[1]};
-    // Panel log-likelihood at scaled coordinates (u0, u1), compensated sum in a fixed order.
+    // Panel log-likelihood at scaled coordinates (u0, u1).
     const auto loglik = [&](double u0, double u1) {
         ++out.evaluations;
         const double v[2] = {grid::from_scaled(ax[0]->scale, u0), grid::from_scaled(ax[1]->scale, u1)};
-        const auto th = Objective::theta(v);
-        double sum = 0.0, comp = 0.0;
-        for (std::size_t j = 0; j < first.size(); ++j) {
-            const double x = static_cast<double>(count[j]) * objective.log_contrib(obs[first[j]], th, primary);
-            const double s = sum + x;
-            comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
-            sum = s;
-        }
-        return sum + comp;
+        return profile_detail::panel_loglik(objective, primary, obs, first, count, v);
     };
 
     // The surface summed over periods, S[k], and each axis's grid profile.
-    const std::int64_t K = grid.size();
-    const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
-    std::vector<double> S(static_cast<std::size_t>(K));
-    for (std::int64_t k = 0; k < K; ++k) S[static_cast<std::size_t>(k)] = weighted_sum(L.data(), periods, K, ones.data(), k);
+    const std::vector<double> S = profile_detail::summed_surface(grid, L, periods);
     const auto surface = [&](int a, std::int32_t i, std::int32_t j) {  // i along axis a, j along the other
         const std::int32_t idx[2] = {a == 0 ? i : j, a == 0 ? j : i};
         return S[static_cast<std::size_t>(grid.flatten(idx))];

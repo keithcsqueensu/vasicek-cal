@@ -209,12 +209,16 @@ This refits all 81,000 replicates and rewrites:
 
 - `tests/golden/recovery/summary.csv`, one row per scenario with exact hexadecimal values;
 - `tests/golden/recovery/replay.csv`, replicates 0 and 1 of every scenario;
+- `tests/golden/recovery/replay_panels.csv`, those replicates' default counts, which the scipy
+  cross-check of S-23 reads (`unit_recovery` checks them against `dgp/`);
 - `tests/golden/recovery/MANIFEST.json`, the provenance;
 - `docs/methodology/recovery_results.md`.
 
 It then checks that every file exists and is non-empty. The run takes about 48 minutes on 24
 threads, and results do not depend on the thread count. `recovery_harness --replicates 50`
-prints a quick summary without writing anything.
+prints a quick summary without writing anything. `--scenarios 29,37,72,4,68,49,7,43,51` restricts
+a run to the study subset (D-150), and `--replay-dir DIR` writes the two replay files to DIR from
+any run over every scenario.
 
 `recovery_harness --check` refits everything and compares against the committed summary. On
 the platform that wrote it (the same compiler string as `MANIFEST.json`), every count, verdict

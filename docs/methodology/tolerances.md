@@ -205,6 +205,18 @@ directly in the quantity that defines it: log-likelihood.
 | `TOL_XREF_PROFILE_ENDPOINT_U` | 2e-9 logit units | 1.5e-10 | Endpoints, core vs ref, on three M1.7 panels (typical, near the lower ρ bound, near the upper), with truncation required to agree | The two engines use unrelated methods. Core brackets from the grid and solves with Brent; ref maximises by golden-section over the whole range and finds the crossing by bisection. The value combines their solver tolerances (1e-9 and 1e-10) with margin. | `unit_xref: xref_profile_intervals_core_vs_ref` (Release only, label `slow`) |
 | `TOL_PROFILE_CROSS_PLATFORM_REL` | 1e-8 | 0 (Windows); 1.4e-14 (Linux GCC 14, Clang 18), 2.6e-14 (GCC 11), CI; 2.2e-13 on the recovery replay (CI) | Endpoints across platforms vs the regression values (`xref/core_estimates.csv`) and the recovery replay | A last-digit libm difference can move Brent's path anywhere within its 1e-9 logit tolerance. In logit coordinates a shift du moves v by at most v·du, so the bound is 10× the solver tolerance. In practice Brent's path has not diverged: the observed spread is libm-level. Truncation flags are compared exactly. | `unit_xref: xref_core_estimates_match_regression_values`, `unit_recovery: recovery_replay` |
 
+## Conditional PD (S-23)
+
+The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and
+its profile-likelihood interval, `engine/conditional_pd.hpp`. The interval's end points solve
+P_q(c) = ℓ_max − 1.92 like the parameters' end points, so they are held to
+`TOL_PROFILE_ENDPOINT_RESIDUAL_LL` above.
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_CONDITIONAL_PD_REL` | 6e-15 | 2.9e-15 (MSVC) | q and logit(q) against mpmath (40 digits) at the recovery truths and the box corners, relative | q is a composition of `probit`, `log_phi` and `exp`, each accurate to a few ulp; logit(q) is formed as log Φ(x) − log Φ(−x), so it keeps relative accuracy at both ends. Observed, doubled and rounded up. | `unit_profile: conditional_pd_matches_mpmath`, `conditional_pd_interval_at_the_box` |
+| `TOL_CONDITIONAL_PD_GRADIENT_REL` | 1e-9 | 4.9e-10 | The analytic gradient of logit(q) in the logit coordinates, used by the delta-method Wald interval, against central differences with step 1e-5 | The central differences' own O(h²) truncation error dominates; the gradient itself is exact to rounding. Observed, doubled and rounded up. | `unit_profile: conditional_pd_matches_mpmath` |
+
 ## Resampling (M2b)
 
 The resampling engine (D-132–D-135). Its draws are compared bit for bit with the Python mirror,
@@ -233,3 +245,4 @@ versions on Linux (job `validation (scipy)`).
 | `TOL_SCIPY_SURFACE_LL_REL` | 1e-11 | 4.1e-13 (scenario 3) | Panel log-likelihood, scipy vs the engine, at the engine's 702 surface points (`tests/golden/validation/surface.csv`, every 5th point of the 61 × 41 grid) | 10× the per-period accuracy the script requests from `quad` (relative 1e-12), leaving room for other scipy builds and libms. The engine is ε-accurate (M1.7), so this measures the script. | `validation/scipy/binomial_mixture_mle.py`, check 1 |
 | `TOL_SCIPY_OPTIMUM_LL_ABS` | 1e-3 | 3.9e-4 (scenario 1) | Log-likelihood at scipy's own optimum minus at the engine's estimate, both evaluated by scipy | Always ≥ 0 in practice (the unconstrained optimum is at least as good). The size is the cost of the engine's sub-grid refinement error: about z²/2 at z ≈ 0.025 SE. Observed value doubled, rounded up. | same script, check 2 |
 | `TOL_SCIPY_ESTIMATE_SE` | 0.06 SE | 0.0255 (PD), 0.0229 (ρ); scenario 1 | Estimates, scipy's optimum vs the engine's, in units of the engine's SE | Bounded by the engine's sub-grid refinement accuracy, as against ref (M1.7: the same 0.0255). Observed value doubled, rounded up. | same script, check 3 |
+| `TOL_SCIPY_Q_PROFILE_ENDPOINT_S` | 3e-9 logit(q) units | 1.2e-9 (319 solved end points on the 162 recovery replay panels; 5 truncated ends agree) | S-23: the end points of the 99.9% conditional PD's profile interval, scipy against the engine | The script shares no numerics with the engine: trapezoid integrals on a window around each integrand's mode, nested bounded Brent for ℓ_max, bounded Brent for the inner maximum and `brentq` for the end point. Both solve to about 1e-9 in logit(q), so that is the agreement expected. Observed, doubled and rounded up; registered before the full-matrix run (PREDICTION.md). The script also requires the box-limited flags to agree. | `validation/scipy/conditional_pd_profile.py` (CI job `validation (scipy)`) |
