@@ -23,6 +23,7 @@ EDGE_MAJORITY = 0.5            # "mostly at a bound": more than half the replica
 SLOPE_RANGE = (-0.75, -0.30)   # the scaling check (step 2)
 RESIDUAL_MAX = 0.15
 T_STUDIED = (20, 100)
+T_FIT = (20, 40, 100)           # the fitted points, exactly (PREDICTION.md, step 1)
 
 
 def load():
@@ -30,6 +31,8 @@ def load():
         rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
     cells = {}
     for r in rows:
+        if int(r["periods"]) not in T_FIT:
+            continue
         key = (float(r["pd"]), float(r["rho"]), int(r["obligors"]))
         cells.setdefault(key, []).append({
             "T": int(r["periods"]),
@@ -38,8 +41,10 @@ def load():
             "rho": float.fromhex(r["rho_rmse_hex"]),
             "scenario": int(r["scenario"]),
         })
-    for v in cells.values():
+    for key, v in cells.items():
         v.sort(key=lambda p: p["T"])
+        if tuple(p["T"] for p in v) != T_FIT:
+            raise SystemExit(f"cell {key}: the summary holds T = {[p['T'] for p in v]}, not exactly {list(T_FIT)}")
     return cells
 
 

@@ -4,8 +4,8 @@ Pre-registration for study S-2 (`studies/README.md`, D-148). This file is commit
 the table is computed. No RMSE value in the recovery summary was read in writing it: the
 predictions come from large-n theory, stated below, and from facts already recorded in earlier
 entries (RMSE falls with T in every cell, D-124; which scenarios are near-uninformative, D-136).
-The results will be compared with it prediction by prediction, and misses will be reported, not
-explained away.
+Each result will be compared with its prediction, one prediction at a time, and misses will be
+reported, not explained away.
 
 **This file is not edited after the run.** A change of method goes in a new, dated section
 appended at the end, committed before the changed run.
@@ -22,13 +22,15 @@ the committed recovery summary (`tests/golden/recovery/summary.csv`: 81 scenario
 bias and RMSE over all replicates, grid-edge estimates at their grid value, D-121). For each of the
 27 cells (PD, ρ, n) and each parameter:
 
-1. **Points used.** The three scenarios T ∈ {20, 40, 100}. A scenario is **mostly at a bound** if
+1. **Points used.** The three scenarios T ∈ {20, 40, 100}, exactly. The script refuses to run if
+   a cell lacks one of them, and ignores any other T the summary might hold. A scenario is **mostly at a bound** if
    more than half its replicates are on the grid edge (the summary's `edge` count > 500). Such
    scenarios are left out of the fit. If all three are, the cell is **not estimable at any T
    studied**.
 2. **Scaling check.** Ordinary least squares of log RMSE on log T over the points used gives a
    slope b and the largest absolute residual. **The scaling holds** if three points are used,
-   b ∈ [−0.75, −0.30], and every residual is at most 0.15 (15% in RMSE). With two points it is
+   b ∈ [−0.75, −0.30], and every residual is at most 0.15 in log RMSE (a factor of e^0.15 ≈ 1.16).
+   With two points it is
    **unchecked**.
 3. **The implied T.** With the slope fixed at −½, C = exp(mean over the points used of
    (log RMSE + ½ log T)), so RMSE(T) ≈ C/√T, and T* = (1.96·C/target)², with target 0.05 for ρ

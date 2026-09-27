@@ -738,7 +738,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Targets:** ρ within ±0.05 absolute, and PD within ±25% relative, at 95% (1.96 × RMSE).
   - **Method:**
     - RMSE ≈ C/√T, with C fitted in logs over T ∈ {20, 40, 100}, gives T*;
-    - a free-slope OLS fit is the scaling check: slope in [−0.75, −0.30] and every residual ≤ 0.15;
+    - a free-slope OLS fit is the scaling check: slope in [−0.75, −0.30] and every residual ≤ 0.15 in log RMSE;
     - a scenario with more than half its replicates on the grid edge is left out of the fit, and a cell with all three left out is "not estimable at any T studied";
     - T* outside [20, 100] is marked an extrapolation.
   - **Evidence for the predictions:** large-n theory only, SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T and relative SD(PD̂) ≈ λ(Φ⁻¹PD)·√ρ/√T. No RMSE value from the summary was read in writing them.

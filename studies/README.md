@@ -204,7 +204,7 @@ refined in each study's `PREDICTION.md`.
   any T studied".
 - **Cost:** seconds. An optional check refits the subset at one implied T (minutes); not planned
   (D-303).
-- **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them. **Result:** not run. **Mitigation:** n/a (a planning aid).
+- **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15 in log RMSE. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them. **Result:** not run. **Mitigation:** n/a (a planning aid).
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-3 Jackknife bias correction for ρ̂ (`jackknife-bias-rho`)
