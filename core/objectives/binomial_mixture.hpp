@@ -51,6 +51,17 @@ struct BinomialMixture {
     static VCAL_HD Theta theta(const double (&v)[2]) { return {v[0], v[1]}; }
     static const char* panel_error(const Obs* obs, std::int64_t periods) { return binomial_panel_error(obs, periods); }
 
+    // Does the panel carry any information about rho (D-302)? A period with n = 1 has likelihood
+    // E[p(Z)] = PD or 1 - PD, free of rho; rho enters only through periods with n >= 2. With none,
+    // the surface is flat along rho up to rounding, and rho's estimate is whichever grid value
+    // rounding favours (S-1). Exact and structural: it does not depend on the platform.
+    static bool rho_identified(const Obs* obs, std::int64_t periods) {
+        for (std::int64_t t = 0; t < periods; ++t) {
+            if (obs[t].n >= 2) return true;
+        }
+        return false;
+    }
+
     // Size of the terms of l_t = log C(n, d) + log I: the scale of its rounding error. The two
     // terms can nearly cancel (n = 1e6, d = 3e5: each ~6e5, sum ~ -15), so |l_t| understates it.
     // Used by the engine's quadrature check (D-120).

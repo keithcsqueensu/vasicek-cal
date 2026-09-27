@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  *
- * vasicek-cal C ABI, version 0.1 (M2c; D-138..D-144). The only public header.
+ * vasicek-cal C ABI, version 0.2 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302).
+ * The only public header.
  *
  * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
  * consumer as C99 and as C11 so that anything C++-only fails the build.
@@ -70,7 +71,7 @@ extern "C" {
 #endif
 
 #define VCAL_ABI_VERSION_MAJOR 0
-#define VCAL_ABI_VERSION_MINOR 1
+#define VCAL_ABI_VERSION_MINOR 2
 #define VCAL_ABI_VERSION ((VCAL_ABI_VERSION_MAJOR << 16) | VCAL_ABI_VERSION_MINOR)
 
 /* ---- status codes ------------------------------------------------------------------------- */
@@ -111,7 +112,9 @@ enum {
     VCAL_FLAG_QUADRATURE_UNCONVERGED = 1u << 2, /* the doubled-rule check failed somewhere (D-120) */
     VCAL_FLAG_REFINEMENT_REJECTED = 1u << 3,    /* quadratic step left the stencil: grid point kept */
     VCAL_FLAG_NUMERIC = 1u << 4,                /* NaN somewhere on the surface */
-    VCAL_FLAG_NEAR_BOUND = 1u << 5              /* within 2 SEs of a grid bound: use profile intervals */
+    VCAL_FLAG_NEAR_BOUND = 1u << 5,             /* within 2 SEs of a grid bound: use profile intervals */
+    VCAL_FLAG_RHO_NOT_IDENTIFIED = 1u << 6      /* no period has n >= 2: rho is reported but meaningless
+                                                   (its profile interval is the whole box); ABI 0.2, D-302 */
 };
 
 /* Interval flags (uint32_t), per parameter. */

@@ -720,6 +720,17 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Mitigation, decided by the owner:** a structural flag when no period has n_t ≥ 2, with the numbers still reported. It is its own parity decision, D-302. A "flat to rounding" test is not added: that condition depends on the platform and stays with the existing flat-surface flag.
   - **Monitoring implication:** no metric for the sign convention, since calibration outputs do not depend on it; factor-scale outputs state it in adverse and benign terms. A data check reports ρ as not identified when no period has n_t ≥ 2, or when ρ's profile interval spans the whole box.
 
+## Unidentified ρ flagged, 2026-09-27
+
+- **D-302 (owner) — A fit whose panel has no period with n ≥ 2 is flagged `kFlagRhoNotIdentified` (`VCAL_FLAG_RHO_NOT_IDENTIFIED`, bit 6); its numbers are still reported. A parity behaviour change, from S-1's finding (D-301).**
+  - **The condition is exact and structural.** A period with n = 1 contributes E[p(Z)] = PD or 1 − PD, free of ρ, so with no period of n ≥ 2 the data carry no information about ρ at all. It is a check on the counts: it does not depend on rounding or the platform.
+  - **Flag, not refusal.** PD, ρ, the SEs, the log-likelihood and the profile intervals are reported as before. The flag says ρ̂ is meaningless, and ρ's profile interval is the whole box, truncated at both ends. A consistent output shape is easier for consumers than NaN or an error.
+  - **"Flat to rounding along an axis" gets no second flag.** That softer condition depends on the platform, and stays with the existing flat-surface flag.
+  - **Where it lives:** `BinomialMixture::rho_identified(obs, periods)` states the condition in core. `engine::calibrate` sets the flag whenever an objective declares that member, so the engine stays generic, and objectives without it are never flagged. Headline fits only: resampled replicates do not carry it, since `replicate_estimates` sees W × L and not the counts.
+  - **ABI:** a new flag value is additive and breaks no caller. The minor version goes to 0.2, so a caller can tell whether the library may set the bit. The struct sizes are unchanged.
+  - **No golden changes:** no recovery, replay or cross-reference panel lacks a period with n ≥ 2. The recovery replay, which compares flags exactly, passes unchanged. S-1's panel 26 now carries the flag in both conventions, and the pinned S-1 finding is otherwise unchanged.
+  - **Tests:** `unit_engine` (an n = 1 panel is flagged with finite numbers; one period with n = 2 lifts the flag; the reference panel is not flagged) and `abi_c` (the same through the C ABI, with ρ's profile interval the whole box).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

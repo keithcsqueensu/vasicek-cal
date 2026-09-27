@@ -120,7 +120,7 @@ static void test_version_and_build_info(void) {
     CHECK_ERROR_MENTIONS("capacity 4");
     CHECK_STATUS(vcal_build_info(info, (int64_t)sizeof info, &again), VCAL_OK);
     CHECK((int64_t)strlen(info) + 1 == required);
-    CHECK(strstr(info, "abi_version=0.1\n") != NULL);
+    CHECK(strstr(info, "abi_version=0.2\n") != NULL);
     CHECK(strstr(info, "git_commit=") != NULL);
     CHECK(strstr(info, "profiles=parity\n") != NULL);
     printf("%s", info);
@@ -290,6 +290,37 @@ static void test_calibrate_resample(vcal_context* ctx) {
     CHECK(prof.rho_lo < est.rho && est.rho < prof.rho_hi);
     CHECK(prof.pd_flags == 0 && prof.rho_flags == 0 && prof.reserved == 0);
     CHECK(prof.evaluations > 0);
+    CHECK((est.flags & VCAL_FLAG_RHO_NOT_IDENTIFIED) == 0);
+
+    /* D-302: single-obligor periods carry no information about rho. The numbers are still
+     * reported, the flag says rho is meaningless, and rho's profile interval is the whole box. */
+    {
+        int64_t n1[20], d1[20];
+        vcal_panel single;
+        vcal_estimate e1;
+        vcal_profile_intervals p1;
+        for (int t = 0; t < 20; ++t) {
+            n1[t] = 1;
+            d1[t] = t % 4 == 0 ? 1 : 0;
+        }
+        memset(&single, 0, sizeof single);
+        single.struct_size = (uint32_t)sizeof single;
+        single.n_periods = 20;
+        single.n_obligors = n1;
+        single.n_defaults = d1;
+        memset(&e1, 0, sizeof e1);
+        memset(&p1, 0, sizeof p1);
+        e1.struct_size = (uint32_t)sizeof e1;
+        p1.struct_size = (uint32_t)sizeof p1;
+        CHECK_STATUS(vcal_calibrate(ctx, &single, &grid, &e1, &p1), VCAL_OK);
+        CHECK((e1.flags & VCAL_FLAG_RHO_NOT_IDENTIFIED) != 0);
+        CHECK(isfinite(e1.pd) && isfinite(e1.rho) && isfinite(e1.loglik));
+        CHECK(p1.rho_lo == grid.rho_lo && p1.rho_hi == grid.rho_hi);
+        CHECK(p1.rho_flags == (VCAL_INTERVAL_LOWER_TRUNCATED | VCAL_INTERVAL_UPPER_TRUNCATED));
+        n1[7] = 2; /* one period with two obligors identifies rho */
+        CHECK_STATUS(vcal_calibrate(ctx, &single, &grid, &e1, NULL), VCAL_OK);
+        CHECK((e1.flags & VCAL_FLAG_RHO_NOT_IDENTIFIED) == 0);
+    }
 
     /* Profile is optional, and results do not depend on the thread count. */
     {

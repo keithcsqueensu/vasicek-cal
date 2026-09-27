@@ -72,6 +72,7 @@ static_assert(std::uint32_t{VCAL_FLAG_QUADRATURE_UNCONVERGED} == std::uint32_t{e
 static_assert(std::uint32_t{VCAL_FLAG_REFINEMENT_REJECTED} == std::uint32_t{e::kFlagRefinementRejected});
 static_assert(std::uint32_t{VCAL_FLAG_NUMERIC} == std::uint32_t{e::kFlagNumeric});
 static_assert(std::uint32_t{VCAL_FLAG_NEAR_BOUND} == std::uint32_t{e::kFlagNearBound});
+static_assert(std::uint32_t{VCAL_FLAG_RHO_NOT_IDENTIFIED} == std::uint32_t{e::kFlagRhoNotIdentified});
 static_assert(std::uint32_t{VCAL_INTERVAL_LOWER_TRUNCATED} == std::uint32_t{e::kIntervalLowerTruncated});
 static_assert(std::uint32_t{VCAL_INTERVAL_UPPER_TRUNCATED} == std::uint32_t{e::kIntervalUpperTruncated});
 static_assert(std::uint32_t{VCAL_INTERVAL_NOT_COMPUTED} == std::uint32_t{e::kIntervalNotComputed});

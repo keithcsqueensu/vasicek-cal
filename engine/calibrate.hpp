@@ -15,12 +15,18 @@
 //      integrator (parity: the rule of D-118 and its doubled variant). loglik is the primary sum. The check
 //      reports max_t and sum_t |l_t(primary) - l_t(check)|, and sets
 //      kFlagQuadratureUnconverged if any period differs by more than its threshold (D-092, D-120).
+//   6. if the objective declares rho_identified(obs, periods) and it is false, set
+//      kFlagRhoNotIdentified (D-302). The estimate is still reported, unchanged: the flag says its
+//      rho is meaningless, and the profile interval for rho is then the whole box. Objectives
+//      without the member are never flagged.
 // The caller owns L (resized here) so resampling can reuse it (M2).
 #pragma once
 
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "core/grid.hpp"
@@ -40,6 +46,17 @@ inline constexpr double kQuadratureCheckRoundingUlps = 64.0;
 // D-119: Hessian step as a fraction of the stencil SE, and the near-bound distance in SEs.
 inline constexpr double kHessianStepFraction = 0.15;
 inline constexpr double kNearBoundSe = 2.0;
+
+namespace detail {
+
+template <class O, class = void>
+struct has_rho_identified : std::false_type {};
+template <class O>
+struct has_rho_identified<O, std::void_t<decltype(O::rho_identified(std::declval<const typename O::Obs*>(),
+                                                                     std::declval<std::int64_t>()))>>
+    : std::true_type {};
+
+}  // namespace detail
 
 enum class Status : std::int32_t { Ok = 0, InvalidGrid = 1, InvalidPanel = 2, SurfaceUndefined = 3 };
 
@@ -90,6 +107,9 @@ Status calibrate(const Backend& backend, const Objective& objective, const Integ
     out.grid_index = best.k;
     out.nan_count = best.nan_count;
     out.flags = r.flags | (best.nan_count > 0 ? kFlagNumeric : 0u);
+    if constexpr (detail::has_rho_identified<Objective>::value) {
+        if (!Objective::rho_identified(obs, periods)) out.flags |= kFlagRhoNotIdentified;
+    }
 
     const auto theta = Objective::theta(out.value);
     std::vector<double> l_primary(static_cast<std::size_t>(periods));
