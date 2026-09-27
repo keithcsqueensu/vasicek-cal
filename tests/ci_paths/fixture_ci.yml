@@ -1,0 +1,17 @@
+# Fixture for ci_path_filter_sync_fires: never run. Omits README.md, which a test reads, and
+# re-includes STATE.md, which nothing reads.
+on:
+  push:
+    paths:
+      - '**'
+      - '!**.md'
+      - 'docs/methodology/tolerances.md'
+      - 'docs/methodology/recovery_results.md'
+      - 'STATE.md'
+  pull_request:
+    paths:
+      - '**'
+      - '!**.md'
+      - 'docs/methodology/tolerances.md'
+      - 'docs/methodology/recovery_results.md'
+      - 'STATE.md'

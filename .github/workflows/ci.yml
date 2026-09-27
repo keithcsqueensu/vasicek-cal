@@ -1,0 +1,209 @@
+# SPDX-License-Identifier: Apache-2.0
+# CPU-only CI (D-010, D-030): no CUDA toolkit on these runners.
+#
+# What runs when (D-145):
+#   push to main, pull request   the full 12-job matrix; slow-labelled tests excluded
+#   push to any other branch     a reduced set: linux-gcc11 / cpu-release, windows-msvc / cpu-debug
+#                                and the generated-files check
+#   nightly, workflow_dispatch   the full matrix including the slow tests (cross-reference fits,
+#                                recovery replay); nightly only if main moved in the last day
+# Commits touching only prose (*.md other than the test inputs re-included below, LICENSE, NOTICE)
+# start no run. ci_path_filter_sync derives that re-include list from the code and checks it. A newer push to a branch or PR cancels its older run; runs on main are never cancelled.
+name: ci
+
+on:
+  push:
+    paths:
+      - '**'
+      - '!**.md'
+      - '!LICENSE'
+      - '!NOTICE'
+      - 'docs/methodology/tolerances.md'        # read by tolerance_register_sync
+      - 'docs/methodology/recovery_results.md'  # checked by the recovery tests
+      - 'README.md'                             # its C example is compiled and run (readme_c_example)
+  pull_request:
+    paths:
+      - '**'
+      - '!**.md'
+      - '!LICENSE'
+      - '!NOTICE'
+      - 'docs/methodology/tolerances.md'        # read by tolerance_register_sync
+      - 'docs/methodology/recovery_results.md'  # checked by the recovery tests
+      - 'README.md'                             # its C example is compiled and run (readme_c_example)
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+      full: ${{ steps.plan.outputs.full }}
+      slow: ${{ steps.plan.outputs.slow }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        shell: bash
+        run: |
+          run=true; full=false; slow=false
+          case "${{ github.event_name }}" in
+            pull_request) full=true ;;
+            push) [ "${{ github.ref }}" = refs/heads/main ] && full=true ;;
+            workflow_dispatch) full=true; slow=true ;;
+            schedule)
+              full=true; slow=true
+              # Nothing new on main since the last nightly: skip.
+              [ "$(git log -1 --format=%ct)" -lt "$(( $(date +%s) - 25 * 3600 ))" ] && run=false ;;
+          esac
+          configs='[
+            {"name": "linux-gcc11",   "os": "ubuntu-22.04", "cc": "gcc-11",   "cxx": "g++-11"},
+            {"name": "linux-gcc14",   "os": "ubuntu-24.04", "cc": "gcc-14",   "cxx": "g++-14"},
+            {"name": "linux-clang18", "os": "ubuntu-24.04", "cc": "clang-18", "cxx": "clang++-18", "packages": "libomp-18-dev"},
+            {"name": "windows-msvc",  "os": "windows-2025"}]'
+          # linux-gcc11 is the floor (D-027). Reduced set: one Linux and one Windows job, one per preset.
+          matrix=$(jq -c --argjson full "$full" '[.[] as $c | ("cpu-debug", "cpu-release") as $p | $c + {preset: $p}
+            | select($full or (.name == "linux-gcc11" and .preset == "cpu-release")
+                           or (.name == "windows-msvc" and .preset == "cpu-debug"))]' <<< "$configs")
+          echo "run=$run full=$full slow=$slow"
+          echo "$matrix" | jq -r '.[] | "  \(.name) / \(.preset)"'
+          { echo "run=$run"; echo "full=$full"; echo "slow=$slow"; echo "matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+
+  build-test:
+    name: ${{ matrix.name }} / ${{ matrix.preset }}
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build ${{ matrix.packages }}
+          echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
+          echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
+
+      - name: Toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') { "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV }
+          }
+
+      - name: Versions
+        run: cmake --version
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }} ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
+
+      # Observed accuracy per platform, for the tolerance register (D-074); the ABI's build info,
+      # DGP reference-panel check and export count (D-142, D-144).
+      - name: Report accuracy and engine results
+        run: ctest --preset ${{ matrix.preset }} -R "^(unit_(special|quadrature|engine|dgp)|xref_core_regression|recovery_replay|abi_c|abi_exports)$" --verbose ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
+
+  # D-033/D-067/D-082: every generated header and golden table must be reproducible exactly
+  # from the tools/gen_*_tables.py generators at the pinned mpmath version; D-125: the tolerance
+  # header must be current with tests/tolerances.toml (standard library only).
+  generated-files:
+    name: generated files reproducible (mpmath)
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned mpmath
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet mpmath==1.4.1
+      - name: Regenerate and compare
+        run: |
+          .venv/bin/python tools/gen_special_tables.py --check
+          .venv/bin/python tools/gen_quadrature_tables.py --check
+          .venv/bin/python tools/gen_dgp_tables.py --check
+          .venv/bin/python tools/gen_tolerances.py --check
+
+  # D-032, D-126: the plain scipy replication of the binomial-mixture MLE, run against the engine's
+  # committed results. Outside the build; its tolerances are the TOL_SCIPY_* entries of
+  # tests/tolerances.toml.
+  validation-scipy:
+    name: validation (scipy)
+    needs: plan
+    if: needs.plan.outputs.run == 'true' && needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned scipy
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet scipy==1.18.1 numpy==2.5.3
+          .venv/bin/python -c "import sys, scipy, numpy; print(sys.version.split()[0], scipy.__version__, numpy.__version__)"
+      - name: Replicate
+        run: .venv/bin/python validation/scipy/binomial_mixture_mle.py
+
+  # K-1, D-059, D-100: device-visible code must compile as device code. Compile-only (no GPU on
+  # the runners); the CPU tests also run, as a host-side check of the CUDA-enabled build.
+  #   11.8: the supported floor (D-094), GCC 11 as in D-065's range.
+  #   12.8: a newer 12.x toolkit, and the first that also builds sm_120.
+  cuda-compile:
+    name: nvcc ${{ matrix.cuda }} compile-only
+    needs: plan
+    if: needs.plan.outputs.run == 'true' && needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    container: nvidia/cuda:${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CMake pinned to the declared floor (3.25) and to 3.26 (D-105); the other jobs use the
+          # runner image's CMake, reported by their Versions step.
+          - { cuda: "11.8", image: "11.8.0-devel-ubuntu22.04", cmake: "3.25.*" }
+          - { cuda: "12.8", image: "12.8.0-devel-ubuntu22.04", cmake: "3.26.*" }
+    steps:
+      - name: Tools (git, Ninja, pinned CMake)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ninja-build python3-pip
+          python3 -m pip install --quiet "cmake==${{ matrix.cmake }}"
+      - uses: actions/checkout@v4
+      - name: Versions
+        run: |
+          nvcc --version | tail -2
+          gcc --version | head -1
+          cmake --version | head -1
+      - name: Configure
+        run: cmake --preset cuda-release
+      - name: Build (nvcc header check + device compile check + CPU suite)
+        run: cmake --build --preset cuda-release
+      - name: Test (CPU suite)
+        run: ctest --preset cuda-release ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
+      - name: Report DGP reference-panel hash (D-114)
+        run: ctest --preset cuda-release -R "^unit_dgp$" --verbose | grep -E "reference-panel SHA-256|tests failed"
+      - name: Evidence (flags applied, device code generated)
+        run: |
+          grep -oE -- '--Werror=[^ "]*|--generate-code=[^ "]*|-std=c\+\+17' build/cuda-release/compile_commands.json | sort | uniq -c
+          obj=$(find build/cuda-release -name 'device_compile_check.cu.o')
+          cuobjdump --list-elf "$obj"
+          cuobjdump --list-ptx "$obj"

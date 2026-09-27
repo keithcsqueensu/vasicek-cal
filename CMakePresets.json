@@ -1,0 +1,94 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "VCAL_WARNINGS_AS_ERRORS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "cpu-debug",
+      "displayName": "CPU only, Debug",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VCAL_ENABLE_CUDA": "OFF"
+      }
+    },
+    {
+      "name": "cpu-release",
+      "displayName": "CPU only, Release",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCAL_ENABLE_CUDA": "OFF"
+      }
+    },
+    {
+      "name": "cuda-release",
+      "displayName": "CPU + CUDA, Release (Ninja; required for CUDA, D-106)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "VCAL_ENABLE_CUDA": "ON"
+      },
+      "generator": "Ninja"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "cpu-debug",
+      "configurePreset": "cpu-debug"
+    },
+    {
+      "name": "cpu-release",
+      "configurePreset": "cpu-release"
+    },
+    {
+      "name": "cuda-release",
+      "configurePreset": "cuda-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "cpu-debug",
+      "inherits": "base",
+      "configurePreset": "cpu-debug",
+      "filter": {
+        "exclude": {
+          "label": "slow"
+        }
+      }
+    },
+    {
+      "name": "cpu-release",
+      "inherits": "base",
+      "configurePreset": "cpu-release"
+    },
+    {
+      "name": "cuda-release",
+      "inherits": "base",
+      "configurePreset": "cuda-release"
+    }
+  ]
+}

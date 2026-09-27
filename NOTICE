@@ -1,0 +1,8 @@
+vasicek-cal
+Copyright 2026 Keith Yip
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+tests/golden/dgp/random123_philox4x32_kat.txt contains test vectors from Random123
+(https://github.com/DEShawResearch/random123), Copyright 2010-2012 D. E. Shaw Research,
+distributed under the BSD 3-clause licence.

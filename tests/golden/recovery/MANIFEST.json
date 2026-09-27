@@ -1,0 +1,21 @@
+{
+  "description": "M1.8 recovery harness goldens (D-121, D-124)",
+  "generated_by": "recovery_harness --write",
+  "compiler": "MSVC 1951",
+  "dgp_seed": "0x4D31385245434F56",
+  "replicates_per_scenario": 1000,
+  "replay_replicates": 2,
+  "scenarios": "id = ((i_pd*3 + i_rho)*3 + i_T)*3 + i_n; PD {0.001, 0.01, 0.05}, rho {0.02, 0.12, 0.24}, T {20, 40, 100}, n {100, 1000, 10000}",
+  "grid": "PD logit [0.0001, 0.20000000000000001] x 61; rho logit [0.001, 0.5] x 41",
+  "integrator": "parity rule (D-118): adaptive GH 128 for 0 < d < n, composite Gauss-Legendre 16 x 16 for d in {0, n}; check: the rule doubled",
+  "standard_errors": "Hessian of the objective at the estimate, step 0.14999999999999999 x stencil SE (D-119)",
+  "interval": "95% Wald, symmetric in the logit coordinate, z = 1.959963984540054",
+  "coverage_band_z": 3.29,
+  "max_flagged_fraction": 0.050000000000000003,
+  "known_findings": 19,
+  "profile_interval": "profile likelihood (D-128), threshold chi2_1(0.95)/2 = 1.9207294103470629, truncated at the box, never extrapolated",
+  "t_interval": "Wald with t(T-1) quantiles 19/39/99 df, native comparison (D-131)",
+  "bootstrap": "iid bootstrap of periods, B = 999, percentile interval (type 7), seed = recovery seed XOR (scenario << 32 | replicate), resampling key domain (D-132, D-135, D-136)",
+  "profile_findings": "20 conservative, 6 undercoverage (reviewed)",
+  "wall_seconds": 4688
+}

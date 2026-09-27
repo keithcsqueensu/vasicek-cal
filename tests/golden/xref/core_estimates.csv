@@ -1,0 +1,12 @@
+# Regression values: core's own estimates on the fixed DGP panels (D-107 comparison 3).
+# NOT a correctness reference (see xref_estimates_core_vs_ref). Written by this test with
+# VCAL_WRITE_REGRESSION_GOLDENS=1; compared on every platform at TOL_XREF_CROSS_PLATFORM_REL.
+# Written by: MSVC 1951
+# Profile-likelihood intervals (M2) are compared at TOL_PROFILE_CROSS_PLATFORM_REL.
+scenario,pd_hex,rho_hex,se_pd_hex,se_rho_hex,loglik_hex,flags,pd_lo_hex,pd_hi_hex,rho_lo_hex,rho_hi_hex,profile_flags
+0,0x1.b8137c8e3f103p-8,0x1.534a1c84cf247p-5,0x1.1af81fbce8159p-10,0x1.6dc31d4e88f43p-6,-0x1.cb8a44b29d694p+5,0,0x1.40ec3c8f442c1p-8,0x1.40674fda0ae11p-7,0x1.939773702390ap-7,0x1.cd6805ef1dea0p-4,0
+1,0x1.f93cd5173c6fdp-8,0x1.2287654454164p-3,0x1.28356590cbb43p-9,0x1.d07751085bfa4p-5,-0x1.ef5414349cfa5p+5,0,0x1.2c0c335dc8180p-8,0x1.08bb12dcf4815p-6,0x1.08f940e70fadfp-4,0x1.3aa05f112a0b9p-2,0
+2,0x1.47e84eadaef05p-6,0x1.478aac9441a86p-3,0x1.4f959934e8742p-8,0x1.79bab4578b508p-5,-0x1.400b4e62a2681p+6,0,0x1.98feeaeab7c39p-7,0x1.22a231e9244bcp-5,0x1.7c1610b13f1d3p-4,0x1.23263b7551b6dp-2,0
+3,0x1.6e50387279a2bp-10,0x1.926122d80438fp-8,0x1.21bf3e6a666c0p-12,0x1.582ba121bdd70p-6,-0x1.e1599f804f134p+4,32,0x1.e0c3636914200p-11,0x1.12abbfee133dep-9,0x1.0624dd2f1a9fcp-10,0x1.3880bb1c768a2p-4,16
+4,0x1.ba5b353bcd9c2p-5,0x1.d2a727dd454cdp-4,0x1.271a499c48200p-7,0x1.16b499f1a9141p-5,-0x1.867e08ee82149p+6,0,0x1.41d88b51db6b3p-5,0x1.3e59c198aa4c4p-4,0x1.0b83f198d3b8ep-4,0x1.adbcc61dc3fb6p-3,0
+5,0x1.9daf566c43857p-7,0x1.56e058a9a1e1cp-2,0x1.8d494a9f6bf17p-8,0x1.9646d9b151c28p-4,-0x1.009a2df51937fp+6,32,0x1.666ddb88f3c40p-8,0x1.3368c24c2540dp-5,0x1.792e253b1099ep-3,0x1.0000000000000p-1,32

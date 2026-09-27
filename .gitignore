@@ -1,0 +1,10 @@
+/build/
+/out/
+/.vs/
+/.vscode/
+/.idea/
+CMakeUserPresets.json
+*.user
+__pycache__/
+# machine-specific local notes, never committed (D-104)
+*.local.md

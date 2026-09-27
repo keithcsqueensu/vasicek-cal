@@ -1,0 +1,8 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Linker version script (GNU ld, lld): export the vcal_* functions of include/vcal/vcal.h and
+ * nothing else, including the standard-library template instantiations that default visibility
+ * would otherwise leak (D-142). */
+{
+  global: vcal_*;
+  local: *;
+};

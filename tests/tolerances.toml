@@ -1,0 +1,382 @@
+# Tolerance register, data side (D-016, D-125): the single source of every tolerance value.
+# tools/gen_tolerances.py renders tests/tolerances.hpp from this file (CI checks it is current),
+# and validation scripts read it directly. docs/methodology/tolerances.md gives each id's
+# rationale and enforcing test; tolerance_register_sync checks the two lists of ids agree.
+#
+# Each table: type (uint64 | int64 | int | double), value, the section it belongs to, optional
+# comment lines (rendered as C++ comments above the constant) and an optional C++ literal.
+
+[TOL_ERFCX_ULP]
+type = "uint64"
+value = 4
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_LOG_PHI_ULP]
+type = "uint64"
+value = 8
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_LOG_PHI_SUBNORMAL_ABS]
+type = "double"
+value = 2.2250738585072014e-308
+cxx = "DBL_MIN"
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_PROBIT_ULP]
+type = "uint64"
+value = 12
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_LBINOM_ULP]
+type = "uint64"
+value = 4
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_STIRLING_ERROR_ULP]
+type = "uint64"
+value = 4
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_LOG_ADD_EXP_ULP]
+type = "uint64"
+value = 2
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_INVERSE_MILLS_ULP]
+type = "uint64"
+value = 8
+section = "core/special (M1.2): ULP distance to the correctly rounded mpmath value"
+
+[TOL_GH_MOMENT_EPS_PER_DEGREE]
+type = "double"
+value = 5.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_GH_ODD_MOMENT_EPS]
+type = "double"
+value = 1.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_AGH_GAUSSIAN_EPS]
+type = "double"
+value = 4.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_AGH_REGIME_A_MAX_RHO]
+type = "double"
+value = 0.24
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+comment = [
+    "Adaptive GH on binomial-mixture integrals, by measured regime (D-086, D-088):",
+    "A: full precision, 0 < d < n.",
+]
+
+[TOL_AGH_REGIME_A_MIN_N]
+type = "int"
+value = 64
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_AGH_REGIME_A_EPS]
+type = "double"
+value = 5.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_AGH_REGIME_B_MAX_RHO]
+type = "double"
+value = 0.5
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+comment = [
+    "B: rho up to 0.5. Both regimes cover periods with 0 < d < n only (D-116).",
+]
+
+[TOL_AGH_REGIME_B_MIN_N]
+type = "int"
+value = 128
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_AGH_REGIME_B_EPS]
+type = "double"
+value = 5.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+
+[TOL_PARITY_MIXTURE_EPS]
+type = "double"
+value = 24.0
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+comment = [
+    "The parity rule (adaptive GH for 0 < d < n, composite Gauss-Legendre for d in {0, n}, D-118)",
+    "against mpmath on every golden case, rho up to 0.99.",
+]
+
+[TOL_QUAD_CHECK_FLAG_ABS]
+type = "double"
+value = 1e-10
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+comment = [
+    "Per-period |rule - doubled rule| in log L_t above which a period counts as inaccurate in the",
+    "check-contract tests (D-092). The engine's own threshold is max(this, 64 eps x term size),",
+    "D-120; the tests require that no period with a larger true error goes unflagged.",
+]
+
+[TOL_QUAD_CHECK_MIN_DETECTION_RATIO]
+type = "double"
+value = 0.5
+section = "core/quadrature (M1.3): \"eps\" = DBL_EPSILON x max(1, |expected|) on log scale"
+comment = [
+    "The check can understate the true error when the doubled rule is itself inaccurate; over the",
+    "golden set it never reports less than this fraction of the true error.",
+]
+
+[TOL_GRID_ROUND_TRIP_ULP]
+type = "uint64"
+value = 26
+section = "grid and engine (M1.4)"
+
+[TOL_GRID_JACOBIAN_FD_REL]
+type = "double"
+value = 3e-08
+section = "grid and engine (M1.4)"
+
+[TOL_REFINE_QUADRATIC_ABS]
+type = "double"
+value = 2e-15
+section = "grid and engine (M1.4)"
+
+[TOL_REFINE_QUADRATIC_REL]
+type = "double"
+value = 2e-15
+section = "grid and engine (M1.4)"
+
+[TOL_REFINE_VS_FINE_GRID_SE]
+type = "double"
+value = 0.025
+section = "grid and engine (M1.4)"
+
+[TOL_SE_COARSE_VS_FINE_REL]
+type = "double"
+value = 0.01
+section = "grid and engine (M1.4)"
+
+[TOL_SE_STEP_SENSITIVITY_REL]
+type = "double"
+value = 0.0001
+section = "grid and engine (M1.4)"
+
+[TOL_REF_LOG_NCDF_ULP]
+type = "uint64"
+value = 22
+section = "ref/ against mpmath (M1.5)"
+
+[TOL_REF_NCDF_INV_ULP]
+type = "uint64"
+value = 8
+section = "ref/ against mpmath (M1.5)"
+
+[TOL_REF_LCHOOSE_ULP]
+type = "uint64"
+value = 2
+section = "ref/ against mpmath (M1.5)"
+
+[TOL_REF_LOG_MIXTURE_EPS]
+type = "double"
+value = 15.0
+section = "ref/ against mpmath (M1.5)"
+
+[TOL_DGP_LOG_ULP]
+type = "uint64"
+value = 2
+section = "dgp/ (M1.6)"
+
+[TOL_DGP_EXP_ULP]
+type = "uint64"
+value = 2
+section = "dgp/ (M1.6)"
+
+[TOL_DGP_NCDF_ULP]
+type = "uint64"
+value = 1000
+section = "dgp/ (M1.6)"
+
+[TOL_DGP_PROBIT_ULP]
+type = "uint64"
+value = 12
+section = "dgp/ (M1.6)"
+
+[TOL_DGP_MOMENT_Z]
+type = "double"
+value = 4.0
+section = "dgp/ (M1.6)"
+
+[TOL_XREF_PERIOD_LL_EPS]
+type = "double"
+value = 71.0
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+comment = [
+    "1. per-period l_t, core (the parity rule) vs ref, every period, term-scaled eps",
+]
+
+[TOL_XREF_SURFACE_SECOND_DIFF_REL]
+type = "double"
+value = 1e-13
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+comment = [
+    "Smoothness of zero-default surfaces: second differences core vs ref, relative to the largest",
+]
+
+[TOL_XREF_ESTIMATE_SE]
+type = "double"
+value = 0.06
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+comment = [
+    "2. estimates, core vs ref, units of core's SE; SEs relative",
+]
+
+[TOL_XREF_SE_REL]
+type = "double"
+value = 0.032
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+
+[TOL_XREF_REF_BOUND_REL]
+type = "double"
+value = 1e-06
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+
+[TOL_XREF_CROSS_PLATFORM_REL]
+type = "double"
+value = 1e-12
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+comment = [
+    "3. core across platforms vs its own regression values (D-102)",
+]
+
+[TOL_XREF_CROSS_PLATFORM_SE_REL]
+type = "double"
+value = 1e-10
+section = "cross-reference, M1.7: four comparisons, never interchangeable (D-107)"
+comment = [
+    "4. core's SEs across platforms vs its regression values: second differences amplify libm",
+    "   differences, so SEs get their own tolerance (D-107, added with Q17)",
+]
+
+[TOL_RECOVERY_COVERAGE_BAND_Z]
+type = "double"
+value = 3.29
+section = "recovery harness, M1.8 (D-121)"
+comment = [
+    "Monte Carlo band for conditional coverage: 0.95 +- z sqrt(0.95 * 0.05 / m). z = 3.29 is the",
+    "two-sided 0.1% normal quantile: over 162 scenario-parameter verdicts, 0.16 false FAILs expected.",
+]
+
+[TOL_RECOVERY_MAX_FLAGGED_FRACTION]
+type = "double"
+value = 0.05
+section = "recovery harness, M1.8 (D-121)"
+comment = [
+    "At or above this flagged fraction the coverage verdict is DEFERRED to M2 (owner's criterion).",
+]
+
+[TOL_RECOVERY_CROSS_PLATFORM_COUNT]
+type = "int64"
+value = 2
+section = "recovery harness, M1.8 (D-121)"
+comment = [
+    "recovery_harness --check on a platform other than the one that wrote the goldens: flagged and",
+    "covered counts may differ by this many replicates. A replicate within ~1e-12 of a threshold",
+    "(the 2-SE near-bound test, an interval end) can fall either side under libm differences.",
+]
+
+[TOL_RECOVERY_REPLAY_REL]
+type = "double"
+value = 1e-12
+section = "recovery harness, M1.8 (D-121)"
+comment = [
+    "Replay of the recovery panels on another platform (D-107: its own comparison, not M1.7's).",
+    "These panels reach n = 1e4, whose log-likelihood terms are ~1e5 in size; the Hessian's second",
+    "differences at step 0.15 SE divide their last-digit libm differences by ~0.02, so SEs spread",
+    "more than on the M1.7 panels (n = 1000).",
+]
+
+[TOL_RECOVERY_REPLAY_SE_REL]
+type = "double"
+value = 5e-10
+section = "recovery harness, M1.8 (D-121)"
+
+[TOL_SCIPY_SURFACE_LL_REL]
+type = "double"
+value = 1e-11
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "5. The fifth kind of comparison (D-107): validation/scipy/binomial_mixture_mle.py, built from",
+    "   ordinary tools, against the engine's committed results. Read by the script from",
+    "   tests/tolerances.toml; not used by the C++ tests.",
+    "Panel log-likelihood at the engine's surface points, relative. 10x the per-period accuracy the",
+    "script requests from quad (epsrel 1e-12); observed 4.1e-13 on Windows.",
+]
+
+[TOL_SCIPY_OPTIMUM_LL_ABS]
+type = "double"
+value = 1e-3
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "|log-likelihood at scipy's own optimum - at the engine's estimate|, both evaluated by scipy.",
+    "The engine's sub-grid refinement costs ~z^2/2 at z ~ 0.025 SE; observed 3.9e-4, doubled.",
+]
+
+[TOL_SCIPY_ESTIMATE_SE]
+type = "double"
+value = 0.06
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "Estimates, scipy's optimum vs the engine's, in units of the engine's SE; observed 0.0255, doubled.",
+]
+
+[TOL_PROFILE_ENDPOINT_RESIDUAL_LL]
+type = "double"
+value = 1e-7
+section = "profile likelihood, M2 (D-128..D-130)"
+comment = [
+    "|P_a(endpoint) - (l_max - c)| in log-likelihood units, against an independent dense profile;",
+    "also bounds the polished maximum l_max against a dense nested maximisation. Asserted on every fit",
+    "of the recovery harness. Observed 2.1e-9 on the M1.4 test panel, 1.7e-8 worst over the 81,000",
+    "recovery fits (steeper profiles at n = 1e4): the 1e-9 root tolerance in u times the slope.",
+]
+
+[TOL_XREF_PROFILE_ENDPOINT_U]
+type = "double"
+value = 2e-9
+section = "profile likelihood, M2 (D-128..D-130)"
+comment = [
+    "Profile-interval endpoints, core vs ref, in logit units: the two solvers' tolerances (core 1e-9,",
+    "ref 1e-10) with margin. Observed 1.5e-10.",
+]
+
+[TOL_PROFILE_CROSS_PLATFORM_REL]
+type = "double"
+value = 1e-8
+section = "profile likelihood, M2 (D-128..D-130)"
+comment = [
+    "Profile endpoints across platforms vs regression values, relative. The root is solved to",
+    "1e-9 in logit units; a last-digit difference can move Brent's path anywhere inside that, and",
+    "in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.",
+]
+
+[TOL_RESAMPLE_VS_REFIT_REL]
+type = "double"
+value = 1e-12
+section = "resampling, M2b (D-132..D-135)"
+comment = [
+    "A replicate's estimate (W x L) vs calibrate on the explicitly resampled panel, relative. Only",
+    "summation order differs (count x l_t against l_t repeated), amplified by the stencil's differences.",
+    "Observed 0 (iid and moving block, 8 replicates each); a bound, not zero, since agreement is not",
+    "guaranteed by construction.",
+]
+
+[TOL_BOOTSTRAP_CROSS_PLATFORM_REL]
+type = "double"
+value = 2e-11
+section = "resampling, M2b (D-132..D-135)"
+comment = [
+    "Bootstrap percentile-interval ends of the recovery replay across platforms, relative. Each end",
+    "interpolates two replicate estimates; a last-digit difference can reorder near-equal ones or move",
+    "a replicate's refinement. Observed on Linux (GCC 11/14, Clang 18): 8.8e-12, doubled and rounded up.",
+]

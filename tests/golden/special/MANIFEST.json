@@ -1,0 +1,23 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_special_tables.py",
+  "generator_files": {
+    "tools/gen_special_tables.py": "00e92b9228a597a1e0b45bf86e6333f55e3dd622a35cf6966be2ea939a726999",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "core/special/generated/constants.hpp": "de6e8148a02a57661b45b183d2ef16d1edc86b0d02246a7f9eb6c613c51f19b1",
+    "core/special/generated/erfcx_chebyshev.hpp": "b6f29a375c2bfd0992a1d9bb9aac8505694f23a0d93dccf2752486813bc81190",
+    "core/special/generated/stirling_error.hpp": "dcc8c2a04a0ad3bc2b0d88adb9a2cd4b24254a2e77ebc88bc0075b586e912eec",
+    "tests/golden/special/erfcx.csv": "7960195aa1e45dfa1a3dd81261a5e08e74052075da6c5ef54481b196edea4d86",
+    "tests/golden/special/inverse_mills.csv": "c98e3cd2b1139404ce5f2a74bb2bc34997e0b04a8a4ccb7b06f9df2c49867c6d",
+    "tests/golden/special/lbinom.csv": "bfdbc522fd55d490d97d695377d7d7749464176918ea553213ff3a21b95450f4",
+    "tests/golden/special/log_add_exp.csv": "30ef4dec350b142b6c684958edfbd3b4e54fa7d0cb94aa89c70956def1b149b5",
+    "tests/golden/special/log_phi.csv": "fb4502283c63dccf7c3ec811288c12e8b8cf29b0eca1329245f3e21fb3c07899",
+    "tests/golden/special/probit.csv": "a7043954d41e33610f1230adec99d9eb99980c05b5fef4eb50b8cb78af8cf421",
+    "tests/golden/special/stirling_error.csv": "f31524be526eae7e970e52060d5804a8c4e79e01b633ad489fe5c4fd9affca8a"
+  },
+  "python_version": "3.14.6"
+}

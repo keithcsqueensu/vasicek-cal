@@ -1,0 +1,22 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_dgp_tables.py",
+  "generator_files": {
+    "tools/gen_dgp_tables.py": "4e780245123df726ba3286e013d633f292a0422016b74c62797c99a2786c3cad",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "dgp/generated/constants.hpp": "3418fc4ffd8fa6fc9c27962aecd183d40785820dab1352d98fa65c5e9f89e9e7",
+    "tests/golden/dgp/exp.csv": "b83f44780838c74f882421454f41ebdb88a7867c709a22552b774d77ac977f4d",
+    "tests/golden/dgp/log.csv": "fc1b728ee7acac4072783ad19d2525ebcb2e046ee6410ef875fa08635b619b4b",
+    "tests/golden/dgp/mirror_values.csv": "4868cf5e557d98d900c3f90107411b8e4d059abd495df4da7460df9665a4dddf",
+    "tests/golden/dgp/ncdf.csv": "1775cdcf7b1cbe1cdb40059a622ae50604d5b491a0b172edc30fb4f3ded7b98b",
+    "tests/golden/dgp/reference_panels.csv": "f5a13fcc51ca4174be6756ceda10ff22e98368adefd08e68b40c1f2e6be36bea",
+    "tests/golden/dgp/reference_panels.sha256": "bb6edde038bea76c258a4f7f4ca21c86fab636e7f569e34d94d1a73781791b79",
+    "tests/golden/dgp/resample_reference.csv": "7e88939691cd4af2f543d75b9b7318b9402c9b1b2bba260865f92f0a3a446539",
+    "tests/golden/dgp/sha256_vectors.csv": "132788a365dd486dc43d53bda18197b20916d0cf2325da12764e0719ae594821"
+  },
+  "python_version": "3.14.6"
+}

@@ -1,0 +1,17 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_quadrature_tables.py",
+  "generator_files": {
+    "tools/gen_quadrature_tables.py": "d115ec85d8206b16fa6879017a51586c8f60929f561126ce498fa262f7672ac3",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "core/quadrature/generated/gauss_hermite.hpp": "e97b49315ea57eb8cf11cbafc40a92304191c770794ecd33bbd85d5006510045",
+    "core/quadrature/generated/gauss_legendre.hpp": "ae7f820eb22b78ef1d5174d25b9bb3c2b7bcbf9b7a86d22478cdd3c29c53cd91",
+    "tests/golden/quadrature/gh_moments.csv": "61ac069acfaa4dda663239af3a570311861c44f4ea35a7b20ce1ddf0985fc508",
+    "tests/golden/quadrature/mixture.csv": "f3a8850261c85577a47d07d05665f33b90700bb4bba5b20623045eb7bb613852"
+  },
+  "python_version": "3.14.6"
+}
