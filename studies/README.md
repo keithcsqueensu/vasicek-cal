@@ -101,9 +101,9 @@ not delay M3.
 |---|---|---|---|---|
 | S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | registered |
 | S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | not registered |
-| S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | not registered |
+| S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | registered (shared jackknife run) |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
-| S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | not registered |
+| S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | registered (shared jackknife run) |
 | S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | not registered |
@@ -119,7 +119,7 @@ not delay M3.
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
 | S-19 | `z-extraction` | Z_t extraction, E[Z_t given d_t], as a standard output | M7 (deferred) | deferred; not started |
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
-| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | not registered |
+| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | registered (shared jackknife run) |
 | S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
 | S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | registered |
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
@@ -188,7 +188,7 @@ refined in each study's `PREDICTION.md`.
 - **Judged against:** the ρ small-T profile findings (29, 55, 72, 74) and the ρ PASS verdicts it
   could break.
 - **Cost:** about the subset baseline (≈ 7–12 min); pinning ≈ 1.3–2 h.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** backlog item since D-131.
+- **Prediction:** registered, with S-5 and S-21, in [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J1–J6 for S-3) before any run. **Result:** not run. **Mitigation:** backlog item since D-131.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-4 Bartlett-corrected profile threshold (`bartlett-profile`)
@@ -215,7 +215,7 @@ refined in each study's `PREDICTION.md`.
 - **Experiment:** a `native` option. z₀ comes from the existing B = 999 replicates; the
   acceleration from the jackknife (as S-3). Report BCa next to percentile, pairwise.
 - **Cost:** about the subset baseline; pinning ≈ 1.3–2 h.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** backlog item since D-137.
+- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J7–J10 for S-5) before any run. **Result:** not run. **Mitigation:** backlog item since D-137.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-6 Pluto–Tasche most-prudent upper bounds (`pluto-tasche`)
@@ -398,7 +398,7 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** ≈ 10–15 min on the subset including the fits; ≈ 3–5 min on top of an S-3/S-5 run
   (leave-two-out at T = 100 costs about five iid bootstraps). Full matrix ≈ 1.5–2.5 h. The exact
   refits add ≈ 10 min.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J11–J14 for S-21) before any run. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-22 Box sensitivity (`box-sensitivity`)

@@ -697,6 +697,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Scope:** the 38 profile-likelihood verdicts for PD or ρ whose R = 1,000 coverage lies within 0.010 of a band edge, in 31 scenarios, at R = 10,000 (replicates 0–9,999; 0–999 are the pinned ones). The profile interval is the recommended one and S-4 is judged against its findings. Borderline Wald and bootstrap verdicts would take in 66 of the 81 scenarios, which is the whole-matrix run that stays after M4. The other families of the same scenarios are reported at R = 10,000 without predictions.
   - **Results are S-13's own,** in `studies/recovery-r10000/`, with their provenance. At R = 10,000 the band is 0.9428–0.9572, and group B's mean profile coverage (0.937 for ρ, 0.940 for PD, pinned) is below it. So many verdicts that PASS at R = 1,000 are expected to fail at that precision. That is a narrower band detecting a smaller shortfall, not a contradiction, and the pinned verdicts stay as they are. Whether any reviewed list changes is a separate decision.
   - **Pre-registered** in `studies/recovery-r10000/PREDICTION.md` (Q1–Q7), merged before the run. The predictions shrink each R = 1,000 coverage towards its group's mean (empirical Bayes), because the verdicts were selected for lying near an edge. The expected conclusion, if they hold: profile intervals at T = 20 undercover by about one point systematically, not only in the six flagged scenarios. That is the evidence S-4a is to be judged against.
+## The shared jackknife run (S-3, S-5, S-21): pre-registration, 2026-09-27
+
+- **D-155 (owner) — One pre-registration for the three studies that share the jackknife pass, with their definitions fixed before any run.**
+  - **Where:** `studies/jackknife-bias-rho/PREDICTION.md`, predictions J1–J14 (S-3: J1–J6; S-5: J7–J10; S-21: J11–J14), merged before the run.
+  - **S-3:** ρ̃ = T·ρ̂ − (T − 1)·mean ρ̂₍₋ₜ₎ on the natural scale, both from the grid refinement, so the correction measures bias and not a method difference. ρ̃ outside the box is set to the bound and counted. The profile interval is shifted in logit ρ; an end truncated at the box stays there.
+  - **S-5:** BCa in the logit coordinate, with z₀ from the existing B = 999 replicates and the acceleration from the jackknife. An interval with infinite z₀ or no jackknife spread is not computed, and counts as not covering (D-131).
+  - **S-21:** leave-one- and leave-two-period-out influence in Hessian SE units, against the realised Z_t. The resolution check compares the refined leave-one-out estimates with exact off-grid maxima on replicates 0–4 of every scenario.
+  - **Pinning:** one fitting run writes the results, with the reviewed verdict labels for the new families kept in a separate file, so a review never requires a refit. S-3 and S-5 are `native` options reported beside the parity verdicts, which do not change.
 
 ## Open
 
