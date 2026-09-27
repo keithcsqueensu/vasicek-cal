@@ -681,6 +681,16 @@ the plan.
   - **What changed elsewhere:** path references only, in README.md, STATE.md, S-23's `PREDICTION.md` and earlier D-entries (D-148 to D-152). No earlier entry was reworded beyond its paths, and S-23's pre-registered predictions are unchanged: its two edited lines name the index's new path and nothing else.
   - **No code reads the index,** so the CI prose filter's `code_md` list is unchanged (`ci_path_filter_sync` confirms it).
 
+## Studies S-1 and S-2, 2026-09-27
+
+Numbered from D-300 so that entries made in parallel sessions do not collide.
+
+- **D-300 (owner) — S-1 is redesigned as a surface-level property check, not a recovery study.**
+  - **Why:** z → −z is an exact invariance of the likelihood, not a statistical property, so recovery replicates and coverage verdicts add nothing that a direct comparison does not show.
+  - **Design:** a test-only mirrored objective (+√ρ·z, with its own hint) against parity on 34 fixed panels chosen for the hard cases (zero- and all-default periods, high ρ, estimates at or near a bound, n up to 10⁶). The per-period surfaces are compared cell by cell, then estimates, SEs, profile and bootstrap intervals and flags. A wrong-hint control must be detected.
+  - **Prediction:** ε-level agreement with bounds derived from the rules' exact node symmetry and reversed summation order, and identical flags; any larger difference is a finding. Registered in `studies/z-sign-invariance/PREDICTION.md` before any run.
+  - **The recovery-matrix version** is kept in reserve, run only if the check finds a difference that needs statistical characterisation.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

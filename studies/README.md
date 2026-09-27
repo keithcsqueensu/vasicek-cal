@@ -99,7 +99,7 @@ not delay M3.
 
 | # | Slug | Question (short) | Milestone | Status |
 |---|---|---|---|---|
-| S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | not registered |
+| S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | registered |
 | S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | not registered |
 | S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | not registered |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
@@ -147,15 +147,20 @@ refined in each study's `PREDICTION.md`.
   conditions (R-2). Z is integrated out of the likelihood, and its distribution is symmetric, so
   the calibration should not depend on that choice. Are PD̂, ρ̂, the log-likelihood and every
   interval (Wald, profile, bootstrap percentile) identical under z → −z, within rounding?
-- **Experiment:** a test-only objective with the opposite sign (+√ρ·z), fitted to the 162 replay
-  panels and to the subset. Compare every output with the parity fit. The integration rules must
-  mirror as well (adaptive GH centred on the mirrored mode; the Gauss–Legendre sinh map for
-  d ∈ {0, n} centred on the mirrored half-point), so this also tests that the rules have no
-  hidden asymmetry.
+- **Experiment (redesigned, D-300):** an exact invariance, so a pass/fail property check, not a
+  statistical study. A test-only objective with the opposite sign (+√ρ·z) and its own hint is
+  compared with parity on 34 fixed panels chosen for the hard cases (zero- and all-default
+  periods, high ρ, estimates at or near a bound, n up to 10⁶): first the per-period surfaces cell
+  by cell, then estimates, SEs, profile and bootstrap intervals and flags. The integration rules
+  must mirror as well (adaptive GH centred on the mirrored mode; the Gauss–Legendre sinh map for
+  d ∈ {0, n} centred on the mirrored half-point), so this also tests that the rules have no hidden
+  asymmetry. A wrong-hint control proves the comparison can see an asymmetry. No coverage verdicts;
+  the recovery-matrix version runs only if the check finds a difference that needs statistical
+  characterisation.
 - **Scope:** the calibration half only. The half where the sign matters, extracting Z_t and
   mapping macro effects to signs, is S-18 and S-19.
-- **Cost:** under a minute.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** none needed unless it fails.
+- **Cost:** a few minutes on 4 cores.
+- **Prediction:** registered in [`studies/z-sign-invariance/PREDICTION.md`](z-sign-invariance/PREDICTION.md) before any run: agreement at the ε level (bounds derived from the rules' exact node symmetry and reversed summation order), identical flags, and any larger difference a finding. **Result:** not run. **Mitigation:** none needed unless it fails.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-2 Sample-size planning table (`sample-size-table`)
