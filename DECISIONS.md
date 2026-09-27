@@ -559,7 +559,7 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
   - **Checks.** `ci_path_filter_sync` now compares the derived list with `plan`'s `code_md` list and also fails on any workflow-level `paths` or `paths-ignore` filter. `ci_path_filter_sync_fires` (a wrong list) and `ci_path_filter_sync_fires_paths` (a path filter) prove that both checks fire. The `plan` logic was simulated on prose-only, code-reading-Markdown, code and new-branch diffs, and the `ci-ok` decision on every combination of job results, before the first run.
   - **Rules that follow:** work goes to a branch and reaches `main` through a pull request, which runs the full matrix. The nightly and `workflow_dispatch` rules of D-145 are unchanged.
 
-## Research studies and variants: ground rules, 2026-09-27
+## Research studies and variants: ground rules and addendum, 2026-09-27
 
 Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20), indexed in
 `docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
@@ -598,6 +598,15 @@ the plan.
     bootstrap (S-10, S-4b), the misspecification runs (S-11) and R = 10,000 (S-13) W × L jobs. It
     extends D-122 across panels, and results would be bitwise unchanged. A spike would confirm it
     before any study's placement changes.
+
+- **D-149 (owner; extends D-148) — Addendum: studies S-21 to S-28, and two further ground rules.**
+  - **Placement:**
+    - **Now** (existing machinery): S-21 period influence, S-22 box sensitivity, S-23 intervals for derived quantities.
+    - **Now, as small DGP variants:** S-24 PD heterogeneity, S-25 PD trend, S-26 varying portfolio size.
+    - **With M3:** S-27 the large-portfolio approximation and S-28 zero-default treatments for rate-based estimators.
+  - **A variant is judged on every verdict it could change**, not only the findings it targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it is reported as both.
+  - **A new DGP variant is specified like the base DGP:** a prose description, a line-for-line Python mirror and a reference-panel hash (D-110–D-112), in its own key domain.
+  - **Recorded while planning:** a diagnostic refit of replicates 0–39 of the 20 CONSERVATIVE profile verdicts (the pinned run's own panels, no variant) found that truncation is almost only at the lower bounds (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-only truncation was at most 6 of 40 in any verdict. S-22 therefore gains a lower-bound arm beside the ρ ≤ 0.9 arm. This finding is recorded in its `questions.md` entry so that S-22's prediction is written knowing it.
 
 ## Open
 

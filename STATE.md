@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research studies and variants roadmap, D-148; planning only)
+Last updated: 2026-09-27 (research studies and variants roadmap, D-148 and D-149; planning only)
 
 ## Current status
 
@@ -169,8 +169,8 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148; planning
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
-- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Twenty studies, S-1 to S-20, are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
-  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis.
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Twenty-eight studies, S-1 to S-28 (the addendum S-21 to S-28 is D-149), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
+  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash.
   - **Study subset (proposed, awaiting approval):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
   - **Awaiting the owner:** approval of the plan and the subset, and the placement questions raised with it.
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
@@ -178,7 +178,7 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148; planning
 ## Next steps
 
 1. Owner review of the research roadmap (D-148) and the proposed study subset. Nothing is implemented until it is approved.
-2. M3: the remaining single-factor estimators, with studies S-1 to S-9 alongside. Awaiting the owner's go.
+2. M3: the remaining single-factor estimators, with studies S-1 to S-9 and S-21 to S-28 alongside. Awaiting the owner's go.
 3. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
@@ -235,6 +235,17 @@ methodology note and a scipy script.
 | S-5 | BCa intervals | the 125 pinned percentile findings |
 | S-6 | Pluto–Tasche most-prudent upper bounds (closed form; serially correlated version stays in M6) | coverage of the true PD in low-default scenarios |
 | S-7 | Grid resolution against accuracy and runtime | 61 × 41 (D-115) against 31 × 21 … 241 × 161 |
+| S-21 | Period influence: leave-one- and leave-two-periods-out changes in PD̂ and ρ̂ from jackknife-type weights; the most influential periods per scenario. Shares the jackknife pass with S-3 and S-5 | descriptive; no verdicts |
+| S-22 | Box sensitivity: estimates and profile intervals with the ρ cap at 0.9 against 0.5, plus a lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), grid spacing held fixed | every verdict (full matrix), chiefly the 20 CONSERVATIVE |
+| S-23 | Profile-likelihood intervals for the 99.9% conditional PD (other quantiles optional), coverage in the recovery harness | a new verdict family, same band and policy |
+
+**Small DGP variants, now** (each a prose description, a Python mirror and a hash; D-149):
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-24 | PD heterogeneity: two pooled sub-segments with different PDs on the same factor; inflation of ρ̂ | bias and coverage against the stated estimand |
+| S-25 | PD trend: PD drifting over the sample; inflation of ρ̂, and oracle and estimated detrending (needs a `native` per-period offset objective) | bias and coverage against the stated estimand |
+| S-26 | Varying portfolio size: n_t declining over time (a scenario definition; the DGP already takes n per period) | every verdict of the paired constant-n scenario |
 
 **Studies with M3:**
 
@@ -242,6 +253,8 @@ methodology note and a scipy script.
 |---|---|---|
 | S-8 | MLE against method of moments efficiency (relative RMSE, full matrix) | pairwise on the recovery panels |
 | S-9 | Frequentist coverage of grid-Bayesian credible intervals, flat and Jeffreys priors | the Monte Carlo band, beside the profile verdicts |
+| S-27 | Large-portfolio approximation: the n at which Vasicek-rate MLE is indistinguishable from binomial MLE; a rule of thumb by PD and ρ (adds n = 10⁵, 10⁶; after or with S-28) | pairwise on the same panels |
+| S-28 | Zero-default treatments for rate-based estimators: refuse (parity) vs drop vs censored likelihood (native, D-044) | bias, RMSE, coverage; refusal rate; binomial MLE as benchmark |
 
 **Studies on the subset now, full matrix after M4** (new data per replicate):
 

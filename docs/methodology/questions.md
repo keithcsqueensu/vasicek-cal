@@ -13,6 +13,15 @@ running them are in D-148:
   study's verdicts.
 - **Verdicts follow the M1.8/M2a policy:** PASS, CONSERVATIVE, KNOWN FINDING or DEFERRED, each with
   a diagnosis.
+- **A variant is judged on every verdict it could change** (D-149), not only on the findings it
+  targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it
+  is reported as both.
+- **New DGP variants are specified like the base DGP** (D-149): a prose description, a line-for-line
+  Python mirror and a reference-panel hash (D-110–D-112).
+- **Misspecification studies state their estimand.** Where the fitted model is not the generating
+  one, the prediction names the value the estimate is judged against: the generating parameter,
+  or the pseudo-true value the fit converges to on a very long panel. Bias against one is not bias
+  against the other.
 
 Each entry records the question, the experiment, the prediction, the result, and the status of
 any mitigation. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
@@ -74,6 +83,14 @@ groups (D-136).
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
 | S-19 | `z-extraction` | Z_t extraction, E[Z_t given d_t], as a standard output | M7 (deferred) | deferred; not started |
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
+| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | not registered |
+| S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
+| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | now | not registered |
+| S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
+| S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
+| S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
+| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | not registered |
+| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | not registered |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -273,6 +290,159 @@ refined in each study's `PREDICTION.md`.
 - **Experiment:** the `perf/` suite on each architecture. A performance benchmark rather than a
   methodology question: its results live in `perf/`, with this entry as the pointer.
 - **Cost:** hours per GPU; needs access to hardware beyond the development machine's sm_120.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+## Addendum: now (reuse existing machinery; D-149)
+
+### S-21 Period influence (`period-influence`)
+
+- **Question:** how much do one or two extreme periods drive ρ̂ (and PD̂)? Report the influence of
+  every period and the most influential periods in each scenario.
+- **Experiment:** leave-one-period-out estimates from the existing jackknife weights (M2b), and
+  leave-two-out from the T(T − 1)/2 pairs, which is also a W matrix (190, 780 and 4,950 rows at
+  T = 20, 40, 100). Influence is reported in SE units, against the period's default rate and the
+  realised factor Z_t (known from the DGP).
+- **Resolution:** jackknife replicates use the 3 × 3 quadratic refinement on the grid surface, not
+  the polished off-grid maximum. For a few replicates per scenario the leave-one-out estimates are
+  also refitted exactly, so the refinement error is measured rather than assumed small.
+- **Overlap:** the same jackknife pass serves S-3 and S-5, so the three should share one run. It is
+  also the first slice of M6's window and influence analysis, which then extends it to windows.
+- **Verdicts it could change:** none; it is descriptive.
+- **Cost:** ≈ 10–15 min on the subset including the fits; ≈ 3–5 min on top of an S-3/S-5 run
+  (leave-two-out at T = 100 costs about five iid bootstraps). Full matrix ≈ 1.5–2.5 h. The exact
+  refits add ≈ 10 min.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-22 Box sensitivity (`box-sensitivity`)
+
+- **Question:** how much of the CONSERVATIVE group (20 profile verdicts, coverage 0.977–0.999) does
+  the estimation box itself create?
+- **Prior evidence, from the pinned run and not from this study:** in a diagnostic refit of
+  replicates 0–39 of those 20 verdicts, done while planning, truncated intervals were truncated
+  almost only at the *lower* bound (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-bound truncation occurred mostly
+  together with lower (intervals spanning the whole axis, in near-uninformative panels); upper-only
+  truncation was at most 6 of 40 in any verdict. Raising the ρ cap alone therefore tests the
+  smaller part of the question. This is recorded here so that the prediction is written knowing
+  it.
+- **Experiment, two arms, each against parity on the same panels:**
+  - **Upper cap:** ρ ≤ 0.9 instead of 0.5 (as asked).
+  - **Lower bounds:** ρ ≥ 1e-5 and PD ≥ 1e-6 instead of 1e-3 and 1e-4. As ρ → 0 the model reaches
+    the binomial, a true boundary of the parameter space, so this arm separates conservativeness
+    caused by the box from conservativeness the boundary causes (D-129's boundary mixture).
+  - In both arms the grid keeps its logit spacing and gains points, so the box effect is not
+    confounded with grid resolution (S-7).
+  - Above ρ = 0.5 the quadrature's precision rests on D-118 and the per-run check (D-092); any
+    flagged fit is reported, not dropped.
+- **Verdicts it could change:** every one. The box moves the grid-edge and near-bound flags, so
+  Wald deferrals, profile truncation and bootstrap boundary breakdown can all move; hence the full
+  matrix.
+- **Cost:** each arm ≈ 1.1–1.4 × the baseline: ≈ 20–30 min on the subset for both arms,
+  ≈ 3–5 h for the full matrix.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-23 Intervals for derived quantities (`derived-quantity-intervals`)
+
+- **Question:** are intervals for the quantity a stress or capital calculation actually uses as
+  reliable as those for PD and ρ? The primary quantity is the 99.9% conditional PD,
+  q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)); other quantiles are optional.
+- **Experiment:** a profile-likelihood interval for q, profiling along the curve on which q is
+  fixed (reparametrise to (q, ρ) with PD = Φ(√(1 − ρ)·Φ⁻¹(q) − √ρ·Φ⁻¹(0.999))). q is not a grid
+  axis, so the crossing is bracketed by search rather than from the grid, and the endpoint residual
+  is asserted as in D-128. The delta-method Wald interval and the bootstrap percentile interval
+  of q come for free and are reported beside it. A scipy script cross-checks the profile for q.
+- **Verdicts it could change:** none of the existing ones; it adds a verdict family (81 per
+  quantile) under the same band and policy.
+- **Cost:** ≈ 1.15 × the baseline (one more profile per replicate): ≈ 8–14 min on the subset,
+  ≈ 1.5–2.3 h for the full matrix.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+## Addendum: small DGP variants (D-149)
+
+Each variant is built from the existing binomial DGP and gets its own key domain, a prose
+description, a Python mirror and a hash. S-24 and S-25 are misspecification studies of the same
+kind as S-11 and share its estimand rule.
+
+### S-24 PD heterogeneity (`pd-heterogeneity`)
+
+- **Question:** each panel pools two sub-segments with different PDs, loading on the same factor
+  with the same ρ (no extra factor correlation). How much does the unmodelled heterogeneity
+  inflate ρ̂?
+- **DGP change:** the second segment's Bernoulli draws need their own stream but the same Z_t.
+  Two calls of the existing `simulate_panel` with the same key would share the uniforms as well
+  (common random numbers, an artificial dependence), so a segment index joins the key.
+- **Design:** the scenario's n split between the segments and their PDs set so that the pooled
+  PD equals the scenario's; PD ratios of about 2, 5 and 10.
+- **Verdicts it could change:** none pinned; it reports bias and coverage against the stated
+  estimand.
+- **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
+  full matrix. Plus the DGP extension and its mirror.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-25 PD trend (`pd-trend`)
+
+- **Question:** PD drifts smoothly over the sample. How much does the trend inflate ρ̂, and does
+  detrending fix it?
+- **DGP change:** a PD per period (today's `PanelSpec` takes one PD).
+- **Design:** a trend linear in probit(PD) with the scenario's PD at mid-sample, two slopes. Three
+  fits per panel: naive; **oracle-detrended** (the true trend as a per-period probit offset, an
+  upper bound on what detrending can do); and **estimated-detrended** (the trend estimated first,
+  then ρ fitted with the offsets fixed, which ignores the trend's own estimation error).
+- **Needs:** the detrended fits need an objective with per-period probit offsets, a `native`
+  objective. A trend is a covariate, so this is the structure M7's specification fits need; a joint
+  fit of trend, PD and ρ is a three-parameter problem and belongs there.
+- **Verdicts it could change:** none pinned; bias and coverage against the stated estimand.
+- **Cost:** ≈ the baseline per slope and fit arm: ≈ 45–70 min on the subset, ≈ 8–12 h for the full
+  matrix (CPU, overnight). Plus the DGP extension and the offset objective.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-26 Varying portfolio size (`varying-n`)
+
+- **Question:** n_t changes over time, for example a steady decline as in bank-count data. Does
+  anything in the estimator or intervals implicitly assume a stable n?
+- **No DGP change needed:** the DGP already takes an n per period, and its stream addressing
+  already guarantees that changing one period's n leaves the others unchanged (M1.6). The variant
+  is a scenario definition, not new generator code, so no new mirror or hash is required.
+- **Design:** for each scenario, n_t declining linearly from 1.5·n to 0.5·n, so the mean n is the
+  scenario's and results pair with the constant-n scenario.
+- **Where a stable n is assumed:** D-122's deduplication only saves time when n repeats, so fits
+  cost more but must be bitwise unaffected; the iid bootstrap resamples periods of different sizes;
+  walk-forward windows differ in information. Among M3's estimators, method of moments needs a
+  weighting across n and the Vasicek-rate MLE treats every period's rate alike, so they are the
+  likelier places for the assumption; S-26 is repeated for them in M3.
+- **Verdicts it could change:** every verdict of the paired constant-n scenario.
+- **Cost:** without deduplication, fits cost ≈ 1.5–3 × the baseline: ≈ 15–35 min on the subset,
+  ≈ 3–6 h for the full matrix.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+## Addendum: with M3 (D-149)
+
+### S-27 Large-portfolio approximation (`large-portfolio`)
+
+- **Question:** at what n does the Vasicek-rate MLE become indistinguishable from the binomial MLE,
+  in estimates and in coverage? Deliver a rule of thumb by PD and ρ.
+- **Experiment:** both estimators on the same panels; the matrix's n ∈ {100, 10³, 10⁴} is extended
+  with n ∈ {10⁵, 10⁶}. "Indistinguishable" is defined in the prediction, for example a mean
+  difference below 0.1 SE and coverage that differs by less than the Monte Carlo band allows.
+- **Depends on S-28:** at low PD and moderate n many periods have no defaults, where the rate model
+  is undefined, so S-27's answer depends on the zero-default treatment. Run S-28 first, or together.
+- **Overlap:** the same estimator-comparison pass as S-8.
+- **Cost:** the Vasicek-rate MLE is closed form (seconds). The binomial fits at the new n, without
+  bootstrap, ≈ 1.5–2 h for the full matrix and ≈ 10–20 min for the subset's 18 new scenarios; for
+  n ≤ 10⁴ the goldens are reused.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+
+### S-28 Zero-default treatments for rate-based estimators (`zero-default-rates`)
+
+- **Question:** for the Vasicek-rate MLE and method of moments on rates, compare refusing (parity,
+  D-044), dropping zero-default periods, and the censored likelihood (native, D-044) by bias, RMSE
+  and coverage.
+- **Design notes:** refusal produces no estimate, so its row is the refusal rate, not a bias.
+  Dropping is a data edit, so it can only be an explicit `native` option, never silent (D-044).
+  The censored likelihood uses the Vasicek rate CDF, which is closed form, at a censoring point stated
+  in the prediction. The binomial MLE, which handles zero defaults exactly, is the benchmark row.
+- **Verdicts it could change:** none of the binomial verdicts; it adds the rate-based estimators'
+  verdicts for each treatment.
+- **Cost:** closed-form likelihoods: minutes for the full matrix.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 
 ## Deferred to M7 (recorded together, not started)
