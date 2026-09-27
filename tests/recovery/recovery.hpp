@@ -266,13 +266,24 @@ inline const char* verdict_text(Verdict v) {
 // Reviewed out-of-band coverage verdicts (D-124), from the R = 1000 run of 2026-09-26. Each is a
 // property of Wald intervals, not of the engine; the diagnostic ratio sd(u_hat) / rms(se_u) is in
 // recovery_results.md. All are re-assessed with M2's profile-likelihood intervals.
-enum class Diagnosis { SmallTUndercoverage, SkewedOvercoverage };
+// The last two are S-23's, for the delta-method interval of q.
+enum class Diagnosis { SmallTUndercoverage, SkewedOvercoverage, BiasedLowUndercoverage, SeOverstatedOvercoverage };
 
 inline const char* diagnosis_text(Diagnosis d) {
-    return d == Diagnosis::SmallTUndercoverage
-               ? "small-T Wald undercoverage: the Hessian SE understates the spread of the estimates"
-               : "overcoverage of a skewed estimate: the Hessian SE does not understate the spread (SE ratio <= 1), "
-                 "but u_hat is skewed in the logit coordinate, so the symmetric interval is miscalibrated";
+    switch (d) {
+        case Diagnosis::SmallTUndercoverage:
+            return "small-T Wald undercoverage: the Hessian SE understates the spread of the estimates";
+        case Diagnosis::SkewedOvercoverage:
+            return "overcoverage of a skewed estimate: the Hessian SE does not understate the spread (SE ratio <= 1), "
+                   "but u_hat is skewed in the logit coordinate, so the symmetric interval is miscalibrated";
+        case Diagnosis::BiasedLowUndercoverage:
+            return "undercoverage from a low estimate: the delta-method SE matches the spread of logit(q-hat) (SE "
+                   "ratio about 1), but q-hat is biased low (rho-hat's downward bias carried into q), so the misses "
+                   "fall almost all below the truth";
+        case Diagnosis::SeOverstatedOvercoverage:
+            return "overcoverage: the delta-method SE overstates the spread of logit(q-hat) (SE ratio 0.94)";
+    }
+    return "?";
 }
 
 struct KnownFinding {
@@ -460,9 +471,108 @@ inline bool q_bootstrap_covers(const Fit& f, double truth) { return f.q_boot_lo 
 
 // Reviewed out-of-band verdicts for q (S-23), with param = 2, one list per interval; same rules as
 // the lists for PD and rho, each kind valid only on its own side of the band.
-inline const std::vector<KnownProfileFinding> kKnownQProfileFindings = {};
-inline const std::vector<KnownFinding> kKnownQWaldFindings = {};
-inline const std::vector<KnownBootstrapFinding> kKnownQBootstrapFindings = {};
+// Reviewed from the S-23 full-matrix run of 2026-09-27 (studies/README.md, S-23; D-156).
+inline const std::vector<KnownProfileFinding> kKnownQProfileFindings = {
+    // 15 conservative: near-uninformative data, the lower end box-limited in 52-100% of replicates.
+    {0, 2, ProfileDiagnosis::TruncationConservative},  {1, 2, ProfileDiagnosis::TruncationConservative},
+    {3, 2, ProfileDiagnosis::TruncationConservative},  {4, 2, ProfileDiagnosis::TruncationConservative},
+    {6, 2, ProfileDiagnosis::TruncationConservative},  {9, 2, ProfileDiagnosis::TruncationConservative},
+    {12, 2, ProfileDiagnosis::TruncationConservative}, {15, 2, ProfileDiagnosis::TruncationConservative},
+    {18, 2, ProfileDiagnosis::TruncationConservative}, {21, 2, ProfileDiagnosis::TruncationConservative},
+    {24, 2, ProfileDiagnosis::TruncationConservative}, {27, 2, ProfileDiagnosis::TruncationConservative},
+    {30, 2, ProfileDiagnosis::TruncationConservative}, {33, 2, ProfileDiagnosis::TruncationConservative},
+    {54, 2, ProfileDiagnosis::TruncationConservative},
+    // 2 undercovering at T = 20, misses mostly below the truth, as for rho in the same scenarios.
+    {72, 2, ProfileDiagnosis::SmallTUndercoverage}, {74, 2, ProfileDiagnosis::SmallTUndercoverage},
+};
+inline const std::vector<KnownFinding> kKnownQWaldFindings = {
+    {11, 2, Diagnosis::BiasedLowUndercoverage}, {29, 2, Diagnosis::BiasedLowUndercoverage},
+    {32, 2, Diagnosis::BiasedLowUndercoverage}, {35, 2, Diagnosis::BiasedLowUndercoverage},
+    {37, 2, Diagnosis::BiasedLowUndercoverage}, {38, 2, Diagnosis::BiasedLowUndercoverage},
+    {47, 2, Diagnosis::BiasedLowUndercoverage}, {49, 2, Diagnosis::BiasedLowUndercoverage},
+    {55, 2, Diagnosis::BiasedLowUndercoverage}, {56, 2, Diagnosis::BiasedLowUndercoverage},
+    {59, 2, Diagnosis::BiasedLowUndercoverage}, {64, 2, Diagnosis::BiasedLowUndercoverage},
+    {65, 2, Diagnosis::BiasedLowUndercoverage}, {67, 2, Diagnosis::BiasedLowUndercoverage},
+    {68, 2, Diagnosis::BiasedLowUndercoverage}, {73, 2, Diagnosis::BiasedLowUndercoverage},
+    {74, 2, Diagnosis::BiasedLowUndercoverage}, {13, 2, Diagnosis::SeOverstatedOvercoverage},
+};
+// 73 below the band, none above. Each takes the diagnosis of rho's bootstrap finding in the same
+// scenario (else PD's): q inherits them.
+inline const std::vector<KnownBootstrapFinding> kKnownQBootstrapFindings = {
+    {0, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {1, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {2, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {3, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {4, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {5, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {6, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {7, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {8, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {9, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {10, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {11, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {12, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {13, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {14, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {15, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {16, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {17, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {18, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {19, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {20, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {21, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {22, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {23, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {24, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {25, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {27, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {28, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {29, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {30, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {31, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {32, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {33, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {35, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {36, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {37, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {38, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {39, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {40, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {41, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {42, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {43, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {45, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {46, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {47, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {48, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {49, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {50, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {51, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {52, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {53, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {54, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {55, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {56, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {57, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {58, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {59, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {60, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {63, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {64, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {65, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {66, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {67, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {68, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {70, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {72, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {73, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {74, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {75, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {76, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {77, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {78, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {80, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+};
 
 template <class K>
 const K* known_q_finding(const std::vector<K>& list, std::uint32_t scenario) {

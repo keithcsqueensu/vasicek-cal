@@ -16,6 +16,10 @@
 //   --replay-dir DIR                    also write replay.csv and replay_panels.csv to DIR (every
 //                                        scenario; any R >= kReplayReplicates), e.g. for the scipy
 //                                        cross-check before a full run.
+//   --summary-out FILE                  also write the summary (summary.csv's format) to FILE, one row
+//                                        per scenario run (with --scenarios, those only), --load-fits
+//                                        included: for reviewing verdicts before a --write run, and for
+//                                        studies at other R (S-13).
 //   --scenarios ID,ID,...               fit and summarise only these scenarios (exploration, e.g. the
 //                                        study subset of D-150); not with --write or --check.
 //   --save-fits FILE / --load-fits FILE  developer convenience: write every fit to a binary file,
@@ -302,7 +306,26 @@ void write_conditional_pd_md(std::ofstream& out, const std::vector<rc::Summary>&
             << rc::verdict_text(q.wald_verdict) << " | " << fmt("%.3f", q.boot_coverage) << " | "
             << rc::verdict_text(q.boot_verdict) << " |\n";
     }
-    out << "\n";
+    out << "\n### The 99.9% conditional PD: reviewed findings\n\n"
+        << "| interval | scenario | coverage | verdict | diagnosis |\n|---|---|---|---|---|\n";
+    for (const auto& k : rc::kKnownQProfileFindings) {
+        const auto& q = all[k.scenario].q;
+        out << "| profile | " << k.scenario << " | " << fmt("%.3f", q.profile_coverage) << " | "
+            << rc::verdict_text(q.profile_verdict) << " | " << rc::profile_diagnosis_text(k.diagnosis) << " |\n";
+    }
+    for (const auto& k : rc::kKnownQWaldFindings) {
+        const auto& q = all[k.scenario].q;
+        out << "| delta-method Wald | " << k.scenario << " | " << fmt("%.3f", q.wald_coverage) << " | "
+            << rc::verdict_text(q.wald_verdict) << " | " << rc::diagnosis_text(k.diagnosis) << " |\n";
+    }
+    int boundary = 0, no_correction = 0;
+    for (const auto& k : rc::kKnownQBootstrapFindings) {
+        (k.diagnosis == rc::BootstrapDiagnosis::BoundaryBreakdown ? boundary : no_correction) += 1;
+    }
+    out << "\nBootstrap: " << rc::kKnownQBootstrapFindings.size() << " reviewed findings, all below the band: "
+        << boundary << " " << rc::bootstrap_diagnosis_text(rc::BootstrapDiagnosis::BoundaryBreakdown) << "; "
+        << no_correction << " " << rc::bootstrap_diagnosis_text(rc::BootstrapDiagnosis::NoBiasSkewCorrection)
+        << ". Each takes the diagnosis of ρ's bootstrap finding in the same scenario (else PD's).\n\n";
 }
 
 void write_results_md(const std::string& path, const std::vector<rc::Summary>& all,
@@ -611,7 +634,7 @@ int main(int argc, char** argv) {
     bool write = false, check = false;
     std::string save_fits, load_fits;
     std::vector<std::uint32_t> ids;
-    std::string replay_dir;
+    std::string replay_dir, summary_out;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--write") == 0) {
             write = true;
@@ -623,6 +646,8 @@ int main(int argc, char** argv) {
             save_fits = argv[++i];
         } else if (std::strcmp(argv[i], "--load-fits") == 0 && i + 1 < argc) {
             load_fits = argv[++i];
+        } else if (std::strcmp(argv[i], "--summary-out") == 0 && i + 1 < argc) {
+            summary_out = argv[++i];
         } else if (std::strcmp(argv[i], "--replay-dir") == 0 && i + 1 < argc) {
             replay_dir = argv[++i];
         } else if (std::strcmp(argv[i], "--scenarios") == 0 && i + 1 < argc) {
@@ -785,6 +810,13 @@ int main(int argc, char** argv) {
             write_replay_panels_csv(paths[4]);
             verify_written(paths);
             for (const auto& p : paths) std::printf("wrote %s\n", p.c_str());
+        }
+        if (!summary_out.empty()) {
+            std::vector<rc::Summary> chosen;
+            for (const std::uint32_t id : ids) chosen.push_back(all[id]);
+            write_summary_csv(summary_out, chosen);
+            verify_written({summary_out});
+            std::printf("wrote %s\n", summary_out.c_str());
         }
         if (!replay_dir.empty()) {
             const std::vector<std::string> paths = {replay_dir + "/replay.csv", replay_dir + "/replay_panels.csv"};

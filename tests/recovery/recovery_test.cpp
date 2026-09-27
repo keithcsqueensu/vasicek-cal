@@ -209,6 +209,26 @@ VCAL_TEST(recovery_q_summary_on_a_constructed_sample) {
     VCAL_CHECK_REL(qs.profile_log_width_median, 0.5 * (std::log(1.5 / 1.1) + std::log(1.3 / 0.8)), 1e-12);
 }
 
+// S-23 acceptance: q's interval contains q_hat. Two replicates whose estimate is the box's corner
+// (PD 1e-4, rho 1e-3), where q_hat is the lower limit of q and the lower end is truncated there;
+// in the first full-matrix run the end was 1 ulp above q_hat (a round trip through logit).
+VCAL_TEST(recovery_q_interval_contains_the_estimate_at_the_corner) {
+    const std::uint32_t cases[2][2] = {{6, 534}, {22, 793}};
+    for (const auto& c : cases) {
+        const rc::Fit f = rc::fit(rc::scenario(c[0]), c[1]);
+        const auto g = rc::grid();
+        vcal::test::note("scenario " + std::to_string(c[0]) + " replicate " + std::to_string(c[1]) + ": estimate (" +
+                         describe(f.value[0]) + ", " + describe(f.value[1]) + "), q_hat " + describe(f.q_hat) +
+                         ", interval [" + describe(f.q_prof_lo) + ", " + describe(f.q_prof_hi) + "], flags " +
+                         std::to_string(f.q_prof_flags));
+        VCAL_CHECK_EQ(f.value[0], g.axis[0].lo);
+        VCAL_CHECK_EQ(f.value[1], g.axis[1].lo);
+        VCAL_CHECK(f.q_prof_flags & e::kIntervalLowerTruncated);
+        VCAL_CHECK_EQ(f.q_prof_lo, f.q_hat);
+        VCAL_CHECK(f.q_prof_lo <= f.q_hat && f.q_hat <= f.q_prof_hi);
+    }
+}
+
 // --- the committed goldens meet the exit criteria ------------------------------------------------
 
 VCAL_TEST(recovery_goldens_meet_the_exit_criteria) {

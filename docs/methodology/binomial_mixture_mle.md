@@ -345,6 +345,27 @@ solves the end points of section 6c on its own, on the 162 recovery replay panel
 - nested bounded Brent over the box for ℓ_max, bounded Brent over the feasible stretch of logit ρ
   for the inner maximum, and `brentq` for each end point.
 
+**Two pitfalls for anyone writing their own script.** Both showed up while this one was being
+written, and both make an independent check disagree with a correct engine:
+
+- **Nelder–Mead stalls on a bound of the box.** With bounds, `scipy.optimize.minimize(...,
+  method="Nelder-Mead")` clips the simplex. When the maximum lies just inside the box (ρ̂ a little
+  above 10⁻³ with few defaults), the simplex collapses onto the bound and stops there. On one
+  replay panel ℓ_max came out 1.5·10⁻⁶ too low, which moved both interval ends by about 10⁻⁶ in
+  logit(q). The script therefore maximises by nested one-dimensional searches over the whole box
+  instead.
+- **Bounded Brent stops short of a bound.** `minimize_scalar(..., method="bounded")` never
+  evaluates at the bounds, and its tolerance includes a relative term √ε·|x| (about 10⁻⁷ in logit
+  ρ). When the maximum lies *on* a bound, which is common for box-limited ends and for ρ̂ = 10⁻³,
+  it returns a point up to that distance inside. With a steep likelihood that costs up to 10⁻⁷ in
+  log-likelihood. The script evaluates the bound itself whenever the search ends within 10⁻⁶ of
+  it, and keeps the better value.
+
+Both errors are small in log-likelihood but systematic, and the second is exactly where the
+interesting intervals are, at the box. A replication that skips these fixes should expect
+disagreements of 10⁻⁷–10⁻⁶ in logit(q) at box-limited ends, and should not read them as engine
+errors.
+
 The end points agree within 1.2·10⁻⁹ in logit(q) (`TOL_SCIPY_Q_PROFILE_ENDPOINT_S` = 3·10⁻⁹).
 Ends the engine truncated at the limit of q are inside the interval here too, and the
 box-limited flags agree on every end. It takes about three minutes.

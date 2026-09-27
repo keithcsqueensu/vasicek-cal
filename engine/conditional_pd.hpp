@@ -186,9 +186,12 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
         for (std::int32_t k = 1; k <= fine; ++k) {
             if (f(w_at(k)) < f(w_at(best))) best = k;
         }
-        double w = w_at(best);
-        if (best > 0 && best < fine) w = brent_min(f, w_at(best - 1), w_at(best + 1), kProfileMaxTol).x;
-        const double rho = grid::from_scaled(arho.scale, w);
+        // At an end of the axis, the bound itself: a round trip through w could move it by an ulp,
+        // and the limit must be the q of the box's corner exactly (an estimate there has that q).
+        double rho = best == 0 ? arho.lo : arho.hi;
+        if (best > 0 && best < fine) {
+            rho = grid::from_scaled(arho.scale, brent_min(f, w_at(best - 1), w_at(best + 1), kProfileMaxTol).x);
+        }
         return Limit{logit_phi(conditional_pd_x(pd, rho, z_a)), pd, rho};
     };
     const Limit limit[2] = {edge_extreme(apd.lo, -1.0), edge_extreme(apd.hi, +1.0)};
@@ -350,7 +353,9 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
             out.residual_max = std::fmax(out.residual_max, std::fabs(at.value - level));
             if (at.on_bound) out.flags |= box;
         }
-        (side < 0 ? out.lo : out.hi) = grid::from_scaled(AxisScale::Logit, endpoint);
+        // A truncated end is q at the limit point, evaluated directly (not through logit and back).
+        (side < 0 ? out.lo : out.hi) = truncated ? conditional_pd(lim.pd, lim.rho, z_a)
+                                                 : grid::from_scaled(AxisScale::Logit, endpoint);
     }
     if (out.flags & kIntervalNotComputed) out.lo = out.hi = nan;
     return out;
