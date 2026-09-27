@@ -409,6 +409,15 @@ comment = [
     "guaranteed by construction.",
 ]
 
+[TOL_RESAMPLE_JACKKNIFE_REL]
+type = "double"
+value = 2e-15
+section = "resampling, M2b (D-132..D-135)"
+comment = [
+    "The jackknife bias correction (the plug-in variance becomes the unbiased one) and BCa (z0, a and",
+    "both ends) against scipy/numpy on small cases, relative. Observed 5.4e-16; doubled and rounded up.",
+]
+
 [TOL_BOOTSTRAP_CROSS_PLATFORM_REL]
 type = "double"
 value = 2e-11
