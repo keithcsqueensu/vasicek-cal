@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-150; planning only)
+Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-151; planning only)
 
 ## Current status
 
@@ -171,15 +171,29 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-150;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
 - **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-three studies, S-1 to S-33 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
   - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
-  - **Study subset (proposed, awaiting approval):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
-  - **Awaiting the owner:** approval of the subset; the D-150 open points (pseudo-true value for non-stationary designs, multi-grade calibration in M6, one DGP observation layer, a grade scenario matrix).
+  - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
+  - **Decided (D-151):**
+    - multi-grade calibration becomes an M6 item;
+    - the pseudo-true value is defined;
+    - one DGP observation layer;
+    - the grade scenario matrix: 9 scenarios, seed "GRADESCN";
+    - S-33's redesign;
+    - scipy and `ref/` oracles for S-32;
+    - a priority order (Next steps).
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
 ## Next steps
 
-1. Owner review of the research roadmap (D-148) and the proposed study subset. Nothing is implemented until it is approved.
-2. M3: the remaining single-factor estimators, with studies S-1 to S-9 and S-21 to S-33 (their single-segment parts) alongside. Awaiting the owner's go.
-3. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+1. **First batch of studies (D-151), in this order, before M3:**
+   1. S-23: profile-likelihood intervals for the 99.9% conditional PD;
+   2. S-13 targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T profile findings are real;
+   3. the shared jackknife run: S-3, S-5, S-21;
+   4. S-1 and S-2.
+
+   Each starts with its `PREDICTION.md` committed before any run (D-148).
+2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in.
+3. **The other studies** keep the placement below and are ordered when M3 ends.
+4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
    - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound): now study S-5;
@@ -264,6 +278,7 @@ methodology note and a scipy script.
 | S-8 | MLE against method of moments efficiency (relative RMSE, full matrix) | pairwise on the recovery panels |
 | S-9 | Frequentist coverage of grid-Bayesian credible intervals, flat and Jeffreys priors | the Monte Carlo band, beside the profile verdicts |
 | S-27 | Large-portfolio approximation: the n at which Vasicek-rate MLE is indistinguishable from binomial MLE; a rule of thumb by PD and ρ (adds n = 10⁵, 10⁶; after or with S-28) | pairwise on the same panels |
+| S-15 | Simulation-based calibration of the Bayesian estimator (moved from after M4, D-151) | rank uniformity |
 | S-28 | Zero-default treatments for rate-based estimators: refuse (parity) vs drop vs censored likelihood (native, D-044) | bias, RMSE, coverage; refusal rate; binomial MLE as benchmark |
 
 **Studies on the subset now, full matrix after M4** (new data per replicate):
@@ -286,9 +301,8 @@ in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D
 | S-10 | Parametric bootstrap intervals: full matrix |
 | S-11 | Misspecification: full matrix |
 | S-12 | Double (iterated) bootstrap to calibrate interval coverage |
-| S-13 | R = 10,000 recovery re-run to settle borderline verdicts |
+| S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
 | S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50% |
-| S-15 | Simulation-based calibration of the Bayesian estimator |
 | S-16 | FP32 search with FP64 finalisation against pure FP64 |
 | S-17 | Performance scaling across GPU generations (results in `perf/`) |
 
@@ -301,8 +315,16 @@ report data plus rendering outside the core (D-045).
 ### M6 — Benchmark models
 
 Multi-segment correlated factors (two-stage + pairwise composite likelihood, PSD repair
-documented), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
+documented), multi-grade calibration on one factor with a shared ρ (D-151), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
 distributions, Pluto–Tasche and window/influence analysis.
+
+**Multi-grade calibration (D-151):**
+
+- **Model:** a single-factor model with K grades, each with its own PD, and a shared ρ.
+- **Likelihood:** each period's likelihood stays a one-dimensional integral over the shared Z_t, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz.
+- **Optimiser:** a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent), so the profile machinery for ρ is kept.
+- **Quadrature:** the adaptive rule's mode hint is revisited for the product integrand.
+- **Needed by:** S-29 and S-30, run on the grade scenario matrix (`questions.md`).
 
 **Studies in M6** (the parts that need multi-grade calibration; D-150):
 
@@ -313,7 +335,6 @@ distributions, Pluto–Tasche and window/influence analysis.
 | S-31 | The inflow calibrated as a separate segment |
 | S-33 | Late rating assignment (selection per grade) |
 
-Open point (D-150): multi-grade calibration (K PDs on one factor with a shared ρ) is not yet an M6 item; S-29 and S-30 need it.
 
 ### M7 — Macro pipeline
 

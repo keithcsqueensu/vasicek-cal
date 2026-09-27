@@ -578,7 +578,7 @@ the plan.
     each with a diagnosis (D-124, D-131).
   - **Every study has an entry in `docs/methodology/questions.md`:** the question, the experiment,
     the prediction, the result and the status of any mitigation.
-  - **The study subset (proposed; awaiting the owner's approval):** scenarios 29, 37, 72 (T = 20),
+  - **The study subset (approved by the owner; recorded in D-150):** scenarios 29, 37, 72 (T = 20),
     4, 68, 49 (T = 40) and 7, 43, 51 (T = 100), one per (T, ρ) cell, at R = 1,000 with the recovery
     seeds, so every subset panel is the pinned run's panel and comparisons are pairwise. It holds
     3 of the 6 small-T profile findings, a truncation-conservative verdict, both bootstrap
@@ -627,11 +627,36 @@ the plan.
       - S-32: in full;
       - S-33: at portfolio level.
     - **M6** (multi-grade calibration): S-29's probabilistic mapping, joint break and full scale; S-30's shared ρ and its cross with S-29; S-31's separate segment; S-33's late rating assignment.
-  - **Raised for the owner, not decided:**
+  - **The study subset is approved** as proposed in D-148: the paired design of 9 scenarios (29, 37, 72, 4, 68, 49, 7, 43, 51) at R = 1,000 with the recovery seeds.
+  - **Raised for the owner (all four decided in D-151):**
     - **Pseudo-true value for non-stationary designs.** A "very long panel" changes the design when the design itself changes over the sample (S-25, S-29, S-31, S-32, S-33). Proposed definition: the maximiser of the expected log-likelihood of the study's exact design, exact by quadrature where the recorded counts have a computable distribution, simulated otherwise. For a stationary design it equals the very-long-panel value.
     - **Multi-grade calibration is not in M6 as written.** M6 lists multi-segment correlated factors. K grades with their own PDs on one factor with a shared ρ (the ASRF model) is a different, (K + 1)-parameter model that needs its own optimiser. Proposed: add it to M6 explicitly.
     - **One DGP observation layer.** S-29, S-31, S-32 and S-33 all alter what is recorded from a true panel: grade relabelling, missed or spurious defaults, dropped defaulters, a segment added from a date. Proposed: build these once as a single layer with one prose description, one Python mirror and one hash.
     - **A grade scenario matrix** for S-29 and S-30, whose scales the single-PD subset and matrix cannot express.
+
+- **D-151 (owner) — Decisions on the D-150 open points, and a priority order for the studies.**
+  - **Multi-grade calibration becomes an explicit M6 item:** a single-factor model with K grades, each with its own PD, and a shared ρ.
+    - All grades share the same Z_t, so each period's likelihood is still a one-dimensional integral, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz. The quadrature stays cheap; only the optimiser grows.
+    - Approach: a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent). This keeps the profile-likelihood machinery for ρ intact.
+    - The adaptive rule's mode hint is revisited for the product integrand.
+  - **The pseudo-true value** (for misspecification studies, D-150) is the maximiser of the expected log-likelihood under the study's exact design: by quadrature where the recorded counts have a computable distribution, by simulation otherwise. For a stationary design it equals the very-long-panel value.
+  - **One DGP observation layer**, with one prose description, one Python mirror and one hash, shared by S-29 and S-31 to S-33.
+  - **The grade scenario matrix** is defined explicitly in `questions.md`, with its own seed (`0x475241444553434E`, "GRADESCN") and description:
+    - 3 scales (L, M, H) × T ∈ {20, 40, 100};
+    - a 17-grade master scale, PD_k = 0.03% × 1.5^(k−1);
+    - 10,000 obligors per period, spread over the grades by a discretised normal of standard deviation 4 grades;
+    - ρ of 0.24, 0.12 and 0.02, and portfolio PDs of 0.61%, 1.54% and 3.42%;
+    - R = 1,000.
+  - **S-33's redesign is approved:** partial survivorship, and a misjudged recording-change date.
+  - **S-32's misclassification-aware objective has two oracles:** a scipy script and `ref/`. The changed integrand is exactly where the adaptive rule's assumptions could fail, and `ref/` shares no quadrature code with core.
+  - **Priority order.** 33 studies are a research programme, and running them in placement order would delay M3 indefinitely.
+    1. **First batch, the highest value per hour:**
+       1. S-23;
+       2. S-13 targeted (R = 10,000 on the borderline scenarios, which settles whether the 6 small-T profile findings are real);
+       3. the shared jackknife run (S-3, S-5, S-21);
+       4. S-1 and S-2.
+    2. **Then M3,** with S-8, S-9, S-15, S-27 and S-28 folded into it. S-15 moves from after M4 to M3.
+    3. **The rest** keep their placement and are ordered at the end of M3.
 
 ## Open
 

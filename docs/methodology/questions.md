@@ -27,11 +27,11 @@ running them are in D-148:
     misspecification bias a practitioner cares about.
 
   This applies to S-11, S-24, S-25 and S-29 to S-33.
-  - **Proposed, not yet decided: non-stationary designs.** A "very long panel" is well defined when
+  - **The pseudo-true value, defined (D-151).** A "very long panel" is well defined when
     every period has the same distribution (S-11, S-24). It is not when the design changes over
     the sample (a trend, a break, an inflow, a recording change: S-25, S-29, S-31, S-32, S-33),
-    where a longer panel changes the design itself. The proposed definition, which covers both:
-    the pseudo-true value is the maximiser of the expected log-likelihood of the study's exact
+    where a longer panel changes the design itself. The definition, which covers both: the
+    pseudo-true value is the maximiser of the expected log-likelihood of the study's exact
     design (the same T, n_t and PD path), computed by summing over d with the quadrature where the
     observed counts have a computable distribution, and by a long simulation otherwise. For a
     stationary design it equals the very-long-panel value.
@@ -40,7 +40,7 @@ Each entry records the question, the experiment, the prediction, the result, and
 any mitigation. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
 nothing is run before then.
 
-## The study subset (proposed, awaiting owner approval)
+## The study subset (approved, D-150)
 
 Nine recovery scenarios, one for each combination of period count T ∈ {20, 40, 100} and
 correlation ρ ∈ {0.02, 0.12, 0.24}. Within each cell, PD and n were chosen so that the subset holds
@@ -72,6 +72,21 @@ groups (D-136).
 - **The 72 other scenarios are held out.** Nothing tuned during exploration has seen them, which is
   what makes the full-matrix run a test rather than a confirmation.
 
+## Priority order (D-151)
+
+Placement says *when* a study can run; this order says which run first, so that the studies do
+not delay M3.
+
+1. **First batch, the highest value per hour, before M3:**
+   1. S-23: intervals for the 99.9% conditional PD, the quantity capital and stress calculations
+      use;
+   2. S-13, targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T
+      profile findings are real;
+   3. the shared jackknife run: S-3, S-5 and S-21;
+   4. S-1 and S-2: fast, and they give this index its first finished entries.
+2. **Then M3 itself,** with S-8, S-9, S-15, S-27 and S-28 folded into it (S-15 moves from after M4).
+3. **Everything else** keeps its placement and is ordered when M3 ends.
+
 ## Index
 
 | # | Slug | Question (short) | Milestone | Status |
@@ -88,9 +103,9 @@ groups (D-136).
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | subset now, full after M4 | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
-| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | after M4 | not registered |
+| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | not registered |
 | S-14 | `backtest-power` | How many years detect a misstated PD? | after M4 | not registered |
-| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | after M4 | not registered |
+| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
 | S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
@@ -272,6 +287,8 @@ refined in each study's `PREDICTION.md`.
 - **Question:** which borderline verdicts survive a Monte Carlo band about three times narrower?
 - **Experiment:** the recovery harness at R = 10,000 for the scenarios whose verdicts lie within
   about 0.01 of a band edge, with the replicates 0–999 unchanged.
+- **Placement (D-151):** the targeted run is in the first batch, before S-4 is judged against the
+  6 small-T profile findings; the whole matrix at R = 10,000 stays after M4.
 - **Cost:** the whole matrix ≈ 12–21 h on 24 threads on CPU; the borderline scenarios alone
   ≈ 3 h.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
@@ -292,6 +309,7 @@ refined in each study's `PREDICTION.md`.
 - **Experiment:** draw (PD, ρ) from the prior, simulate a panel, compute the posterior rank; a few
   (n, T) settings. Ties on a discrete grid need a stated tie-breaking rule.
 - **Cost:** thousands of calibrate-only fits: minutes on CPU.
+- **Placement (D-151):** folded into M3 with the grid-Bayesian estimator and S-9; it needs no GPU.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 
 ### S-16 FP32 search, FP64 finalisation (`fp32-search`)
@@ -496,23 +514,54 @@ All five report the two targets of the misspecification rule (D-150).
 | S-32 | All of it: exclusion, the sensitivity band and the misclassification-aware likelihood (a `native` objective) | nothing |
 | S-33 | Portfolio-level survivorship and backfill; truncation at the recording change, at the true and at a misjudged date | Late rating assignment, which acts per grade |
 
-**Three prerequisites, raised for the owner:**
+**Prerequisites (decided, D-151):**
 
-- **Multi-grade calibration is not yet in M6 as written.** M6 lists multi-segment *correlated
-  factors* (a factor per segment). S-29 and S-30 need K grades with their own PDs on *one* factor
-  with a shared ρ: K + 1 parameters, beyond today's two-parameter grid. It is the model under the
-  ASRF, and it needs its own optimiser (for example a grid in ρ with the per-grade PDs solved
-  inside). The proposal is to add it to M6 explicitly.
-- **A shared observation layer for the DGP.** Every study here takes the true panel from the
-  base DGP (with S-24's segments) and alters what is *recorded*: grades relabelled through a
-  crosswalk (S-29), defaults missed or added (S-32), defaulters dropped from a backfilled history
-  (S-33), a segment added from a date on (S-31). These are binomial and multinomial thinnings of
-  counts. Building them once as a single observation layer, with one prose description, one
-  Python mirror and one hash, costs less than five separate variants and keeps them consistent.
-- **A grade scenario matrix.** The study subset and the 81-scenario matrix are single-PD. S-29 and
-  S-30 need grade scales (a set of PDs and their obligor shares), so they need their own small
-  matrix, defined in their `PREDICTION.md` files. Their costs below assume 9 grade scenarios (3
-  scales × T ∈ {20, 40, 100}) at R = 1,000.
+- **Multi-grade calibration is an M6 item:** a single-factor model with K grades, each with its
+  own PD, and a shared ρ (the model under the ASRF). All grades share the same Z_t, so each
+  period's likelihood is still a one-dimensional integral,
+  ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz. The quadrature stays cheap and only the optimiser
+  grows. The approach: a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ
+  (Newton or coordinate ascent), which keeps the profile-likelihood machinery for ρ intact. The
+  adaptive rule's mode hint is revisited for the product integrand.
+- **One DGP observation layer.** Every study here takes the true panel from the base DGP (with
+  S-24's segments) and alters what is *recorded*: grades relabelled through a crosswalk (S-29),
+  defaults missed or added (S-32), defaulters dropped from a backfilled history (S-33), a segment
+  added from a date on (S-31). These are binomial and multinomial thinnings of counts, built once
+  as a single layer with one prose description, one Python mirror and one hash, shared by S-29 and
+  S-31 to S-33.
+- **The grade scenario matrix**, below. The study subset and the 81-scenario matrix are single-PD,
+  and S-29 and S-30 need grade scales.
+
+### The grade scenario matrix (D-151)
+
+Nine scenarios: three grade scales × T ∈ {20, 40, 100}, numbered id = i_scale·3 + i_T with the
+scales in the order L, M, H.
+
+- **The master scale:** 17 grades with PD_k = 0.03% × 1.5^(k−1), k = 1, …, 17, from 0.03% to 19.7%.
+- **Obligors:** 10,000 per period, the same in every period. Grade k's share is proportional to
+  exp(−(k − c)²/32), a discretised normal of standard deviation 4 grades centred on grade c. The
+  counts n_k are 10,000 × share rounded down, with the remainder given one each to the largest
+  fractional parts (ties to the lower k), so they sum to 10,000 exactly.
+- **The three scales** (ρ shared by all grades of a scale; the values are the recovery matrix's,
+  so results can be set beside the recovery scenarios of similar PD):
+
+  | Scale | Centre c | ρ | Portfolio PD | Smallest grade |
+  |---|---|---|---|---|
+  | L (low default) | 5 | 0.24 | 0.61% | 13 obligors (grade 17) |
+  | M (mid) | 8 | 0.12 | 1.54% | 83 obligors (grade 17) |
+  | H (high default) | 11 | 0.02 | 3.42% | 46 obligors (grade 1) |
+
+  Obligors per grade, k = 1 … 17:
+  - L: 696, 866, 1012, 1112, 1147, 1112, 1012, 866, 696, 525, 373, 248, 155, 91, 50, 26, 13
+  - M: 224, 337, 475, 629, 783, 916, 1006, 1037, 1006, 916, 783, 629, 475, 337, 224, 140, 83
+  - H: 46, 84, 143, 229, 343, 484, 641, 797, 932, 1024, 1056, 1024, 932, 797, 641, 484, 343
+- **Data:** replicate r of grade scenario id is the panel the DGP produces for seed
+  `0x475241444553434E` ("GRADESCN"), scenario id, replicate r, with grade k drawn under S-24's
+  segment index k on one factor Z_t per period. The observation layer then alters what is recorded.
+  R = 1,000 replicates, so the Monte Carlo band is the recovery band.
+- **Study-specific settings**, such as S-29's two-grade version (derived from these scales) and its
+  crosswalk error levels, or S-30's bucketings, are stated in each study's `PREDICTION.md`.
+- **Cost:** the costs in S-29 and S-30 below assume these 9 scenarios at R = 1,000.
 
 ### S-29 Rating-scale version changes (`scale-version-change`)
 
@@ -588,8 +637,10 @@ All five report the two targets of the misspecification rule (D-150).
   estimated. The question is how wrong the assumption can be before the fit is worse than the
   naive one.
 - **Numerics:** the aware likelihood changes the integrand, so the adaptive rule's mode hint (built
-  for the binomial-mixture integrand) may no longer fit it. The per-run check catches a poor rule;
-  the objective also needs a scipy cross-check before any study result is trusted.
+  for the binomial-mixture integrand) may no longer fit it. The per-run check catches a poor rule.
+  Before any study result is trusted, the objective is cross-checked against two oracles (D-151):
+  a scipy script and `ref/`, whose adaptive Gauss–Kronrod integration shares no quadrature code
+  with core.
 - **All of it runs now** on the single-segment engine.
 - **Cost:** 3 error settings × about 5 fits (naive, exclusion, the aware fit at 3 assumed rates,
   which also form the band): about 20–35 min at R = 200 on the subset, 1.5–3 h at R = 1,000; the
@@ -602,7 +653,7 @@ All five report the two targets of the misspecification rule (D-150).
 - **Question:** part of the early history is recorded only for obligors that survived to a later
   date, or ratings were assigned late rather than at origination. How large is the bias, and does
   truncating the history at the recording change remove it?
-- **A design point:** in its pure form the mechanism is trivial. An obligor recorded only if it
+- **A design point (approved, D-151):** in its pure form the mechanism is trivial. An obligor recorded only if it
   survived to date s cannot have defaulted before s, so every backfilled period shows zero
   defaults, and truncating at s removes the problem by construction. The study is informative only
   where that is not true:
