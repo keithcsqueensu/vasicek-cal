@@ -101,7 +101,7 @@ not delay M3.
 
 | # | Slug | Question (short) | Milestone | Status |
 |---|---|---|---|---|
-| S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | registered |
+| S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
 | S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | not registered |
 | S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | registered (shared jackknife run) |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
@@ -162,8 +162,34 @@ refined in each study's `PREDICTION.md`.
 - **Scope:** the calibration half only. The half where the sign matters, extracting Z_t and
   mapping macro effects to signs, is S-18 and S-19.
 - **Cost:** a few minutes on 4 cores.
-- **Prediction:** registered in [`studies/z-sign-invariance/PREDICTION.md`](z-sign-invariance/PREDICTION.md) before any run: agreement at the ε level (bounds derived from the rules' exact node symmetry and reversed summation order), identical flags, and any larger difference a finding. **Result:** not run. **Mitigation:** none needed unless it fails.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`studies/z-sign-invariance/PREDICTION.md`](z-sign-invariance/PREDICTION.md) before any run: agreement at the ε level (bounds derived from the rules' exact node symmetry and reversed summation order), identical flags, and any larger difference a finding.
+- **Result ([`RESULTS.md`](z-sign-invariance/RESULTS.md), D-301): FINDING, reviewed; the invariance
+  holds.**
+  - **The surfaces agree at the ε level on all 34 panels.** The hints are exact mirrors at all
+    912,865 cells. The worst surface cell is at 0.24 of its bound (5.7e-14), and every flag is
+    identical. The wrong-hint control is caught (17 fits flagged by the quadrature check).
+  - **Downstream, on 33 of 34 panels,** estimates agree to 8.5e-14, SEs to 2.7e-10, profile end
+    points to 2.7e-12 logit and bootstrap ends to 2.4e-12. All are inside their bounds, though
+    three sizes were underestimated (C3, C8, C10).
+  - **Panel 26 (n = 1 in every period) is the finding.** ρ is not identified there, since a single
+    obligor's likelihood does not involve ρ. The surface is flat along ρ to 2.8e-14, so rounding
+    picks ρ̂: 0.262 under parity, 0.001 mirrored, and 767 of its 999 bootstrap argmaxes differ. The
+    flags and the profile interval (the whole box, truncated at both ends) agree. This is not a
+    sign asymmetry: any rounding perturbation would move ρ̂ the same way.
+  - **The recovery-matrix version is not run (owner, D-301):** the mechanism is structural (every
+    n_t = 1), every recovery scenario has n ≥ 100, and subset panels 1–9 pass every check.
+- **Mitigation:** proposed, not implemented (parity unchanged; the owner's decision, D-301). Either
+  flag or refuse ρ when no period has n_t ≥ 2, or flag a surface that is flat to rounding along an
+  axis at its argmax, and report no point estimate for that parameter. `study_z_sign_invariance`
+  (CTest, slow) guards the invariance and pins the finding.
+- **Monitoring implication (D-152):**
+  - **No metric for the sign itself.** PD̂, ρ̂ and every interval are the same under either
+    convention, so a calibration run need not record it. Any output expressed on the factor scale
+    (Z_t extraction, conditional PD by factor level, reverse stress) must state it, in adverse and
+    benign terms (D-152, S-18, S-19).
+  - **A data check:** ρ is identified only by periods with n_t ≥ 2. A monitoring report shows ρ
+    as not identified, never as a number, when no period has n_t ≥ 2, or when ρ's profile interval
+    is truncated at both ends of the box.
 
 ### S-2 Sample-size planning table (`sample-size-table`)
 
