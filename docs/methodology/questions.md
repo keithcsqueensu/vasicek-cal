@@ -111,7 +111,7 @@ not delay M3.
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
 | S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | not registered |
-| S-14 | `backtest-power` | How many years detect a misstated PD? | after M4 | not registered |
+| S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
 | S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
 | S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
@@ -330,9 +330,9 @@ refined in each study's `PREDICTION.md`.
     the per-period exceedance probability; with an AR(1) factor (M6) it needs simulation;
   - both with the table built from the true parameters and from estimated ones, so that the effect
     of estimation error on the false-alarm rate is visible.
-- **Needs:** the M5 backtests and the threshold table. Its placement after M4 predates D-152; the
-  study can run as soon as M5 has them.
-- **Cost:** minutes. Needs the M5 backtests.
+- **Placement:** M5, where the backtests and the threshold table it needs are built (moved from
+  after M4).
+- **Cost:** minutes.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 

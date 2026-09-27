@@ -26,7 +26,7 @@ conditional on the factor at its 0.1% quantile, the adverse side.
 
 True values (%), which depend only on PD and ρ:
 
-| PD \ ρ | 0.02 | 0.12 | 0.24 |
+| PD / ρ | 0.02 | 0.12 | 0.24 |
 |---|---|---|---|
 | 0.1% | 0.368 | 1.566 | 3.529 |
 | 1% | 2.816 | 9.033 | 17.568 |
@@ -37,7 +37,7 @@ Over the estimation box (PD ∈ [1e-4, 0.2], ρ ∈ [1e-3, 0.5]) q ranges from 1
 ## What is run
 
 - **Panels and fits:** the recovery panels and fits, unchanged: same seeds, same replicates, same
-  box and grid, the parity integrator and its check (recovery.md). The model is correctly
+  box and grid, the parity integrator and its check ([`docs/methodology/recovery.md`](../../docs/methodology/recovery.md)). The model is correctly
   specified, so the target is the true q above; there is no pseudo-true value.
 - **Order:** the study subset first (scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51, R = 1,000), then the
   full matrix (81 × 1,000) to pin verdicts.

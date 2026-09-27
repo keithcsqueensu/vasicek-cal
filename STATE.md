@@ -305,7 +305,6 @@ in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D
 | S-11 | Misspecification: full matrix |
 | S-12 | Double (iterated) bootstrap to calibrate interval coverage |
 | S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
-| S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50%; plus the threshold table's false-alarm rate and detection delay (D-152). Needs M5's backtests and threshold table |
 | S-16 | FP32 search with FP64 finalisation against pure FP64 |
 | S-17 | Performance scaling across GPU generations (results in `perf/`) |
 
@@ -316,6 +315,8 @@ run ledger (canonical serialisation + SHA-256, links calibration and backtest ru
 report data plus rendering outside the core (D-045).
 
 **Monitoring design draws on the studies (D-152).** Each `questions.md` entry has a monitoring implication, filled in when the study finishes. M5's metrics, thresholds and data checks are taken from finished entries, and the design is not frozen until the studies it relies on are done.
+
+**Study in M5:** S-14, backtest power (years of data needed to detect a PD misstated by 20% / 50%), plus the threshold table's false-alarm rate and detection delay (D-152). Moved from after M4: it needs M5's backtests and threshold table.
 
 **Features (D-152):**
 
