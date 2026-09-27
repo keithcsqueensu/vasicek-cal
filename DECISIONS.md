@@ -691,6 +691,13 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Prediction:** ε-level agreement with bounds derived from the rules' exact node symmetry and reversed summation order, and identical flags; any larger difference is a finding. Registered in `studies/z-sign-invariance/PREDICTION.md` before any run.
   - **The recovery-matrix version** is kept in reserve, run only if the check finds a difference that needs statistical characterisation.
 
+## S-13 targeted: scope and pre-registration, 2026-09-27
+
+- **D-154 (owner) — S-13's targeted run covers the borderline profile verdicts, and its results never overwrite the pinned R = 1,000 verdicts.**
+  - **Scope:** the 38 profile-likelihood verdicts for PD or ρ whose R = 1,000 coverage lies within 0.010 of a band edge, in 31 scenarios, at R = 10,000 (replicates 0–9,999; 0–999 are the pinned ones). The profile interval is the recommended one and S-4 is judged against its findings. Borderline Wald and bootstrap verdicts would take in 66 of the 81 scenarios, which is the whole-matrix run that stays after M4. The other families of the same scenarios are reported at R = 10,000 without predictions.
+  - **Results are S-13's own,** in `studies/recovery-r10000/`, with their provenance. At R = 10,000 the band is 0.9428–0.9572, and group B's mean profile coverage (0.937 for ρ, 0.940 for PD, pinned) is below it. So many verdicts that PASS at R = 1,000 are expected to fail at that precision. That is a narrower band detecting a smaller shortfall, not a contradiction, and the pinned verdicts stay as they are. Whether any reviewed list changes is a separate decision.
+  - **Pre-registered** in `studies/recovery-r10000/PREDICTION.md` (Q1–Q7), merged before the run. The predictions shrink each R = 1,000 coverage towards its group's mean (empirical Bayes), because the verdicts were selected for lying near an edge. The expected conclusion, if they hold: profile intervals at T = 20 undercover by about one point systematically, not only in the six flagged scenarios. That is the evidence S-4a is to be judged against.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

@@ -187,7 +187,7 @@ Last updated: 2026-09-27 (research roadmap D-148 to D-152; S-23 prediction regis
 
 1. **First batch of studies (D-151), in this order, before M3:**
    1. S-23: profile-likelihood intervals for the 99.9% conditional PD;
-   2. S-13 targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T profile findings are real;
+   2. S-13 targeted: R = 10,000 on the 38 borderline profile verdicts, to settle whether the 6 small-T profile findings are real (registered, D-154; its results do not overwrite the pinned verdicts);
    3. the shared jackknife run: S-3, S-5, S-21;
    4. S-1 and S-2;
    5. S-34: sensitivity to severe new periods (D-152).

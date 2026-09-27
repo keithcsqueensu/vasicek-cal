@@ -111,7 +111,7 @@ not delay M3.
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | subset now, full after M4 | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
-| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | not registered |
+| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part registered |
 | S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
 | S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
@@ -316,8 +316,14 @@ refined in each study's `PREDICTION.md`.
 - **Placement (D-151):** the targeted run is in the first batch, before S-4 is judged against the
   6 small-T profile findings; the whole matrix at R = 10,000 stays after M4.
 - **Cost:** the whole matrix ≈ 12–21 h on 24 threads on CPU; the borderline scenarios alone
-  ≈ 3 h.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+  ≈ 3–4 h.
+- **Targeted scope (D-154):** the 38 profile-likelihood verdicts for PD or ρ within 0.010 of a band
+  edge at R = 1,000, in 31 scenarios; the other families are reported for those scenarios without
+  predictions. Results are S-13's own: the pinned R = 1,000 verdicts are not overwritten.
+- **Prediction:** the targeted part is registered in
+  [`recovery-r10000/PREDICTION.md`](recovery-r10000/PREDICTION.md) before any run: predictions
+  Q1–Q7, from an empirical-Bayes shrinkage of each coverage towards its group. The whole-matrix
+  run is not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-14 Backtest power (`backtest-power`)
