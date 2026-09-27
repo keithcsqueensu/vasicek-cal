@@ -377,6 +377,7 @@ int main() {
         }
         // C2-C4: surface cells and the panel surface; the control's cells for C12.
         const bool large_n = p.id == 18 || p.id == 19 || p.id == 20 || p.id == 30;
+        const std::vector<double> ones(static_cast<std::size_t>(T), 1.0);
         for (std::int64_t k = 0; k < K; ++k) {
             double sum_bound = 0.0;
             for (std::int64_t t = 0; t < T; ++t) {
@@ -399,7 +400,6 @@ int main() {
                     control_worst_large_n = std::fmax(control_worst_large_n, std::isfinite(dc) ? dc - bound : HUGE_VAL);
                 }
             }
-            const std::vector<double> ones(static_cast<std::size_t>(T), 1.0);
             c4.see(absdiff(engine::weighted_sum(a.L.data(), T, K, ones.data(), k),
                            engine::weighted_sum(b.L.data(), T, K, ones.data(), k)),
                    sum_bound, pid + " k " + std::to_string(k));
