@@ -744,6 +744,16 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Evidence for the predictions:** large-n theory only, SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T and relative SD(PD̂) ≈ λ(Φ⁻¹PD)·√ρ/√T. No RMSE value from the summary was read in writing them.
   - **The optional refit at an implied T is not planned.** It would be added under an appended prediction if asked.
 
+## Study S-2 result, 2026-09-27
+
+- **D-304 — S-2 result: the sample-size planning table.** The table, the comparison and the diagnosis are in `studies/sample-size-table/RESULTS.md`.
+  - **Scaling:** RMSE ∝ T^(−½) holds in all 24 cells where it could be checked. Two cells are unchecked and one is not estimable, all at PD 0.1% and n = 100.
+  - **ρ within ±0.05:** about 35–40 years at ρ = 0.12 with n·PD ≥ 50, rising to 180–225 at n·PD = 1. More than 100 years at ρ = 0.24 everywhere studied.
+  - **PD within ±25%:** 6–7, 38–39 and 82–86 years at 5% PD for ρ = 0.02, 0.12 and 0.24.
+  - **The large-n formula** is close at n·PD ≥ 50. Finite n multiplies the years by 1.6–2 at n·PD = 10 and by 5–7 at n·PD = 1.
+  - **Against the prediction:** Q1, Q2, Q3, Q5, Q7 and Q10 held; Q4, Q6, Q8 and Q9 missed. The common cause of Q4, Q6 and Q9: with few defaults, the estimators do better than predicted when ρ is low, since PD is then close to the pooled binomial estimate. Q8 missed in size (188 years against ≤ 170).
+  - **Monitoring implication:** a data-sufficiency check printed beside every calibration: the expected half-width 1.96·C/√T and the years each target needs, with the shortfall stated when the history is shorter. No year-on-year threshold follows from it; that is S-34's and S-21's question.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

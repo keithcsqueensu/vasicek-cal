@@ -113,6 +113,24 @@ def main():
             b_str = f"{bench / pd:.4g} x PD" if param == "pd" else f"{bench:.4g}"
             print(f"| {pd:g} | {rho:g} | {n:,} | {n * pd:g} | {param} | {r['used']} | {slope} | {resid} | {r['scaling']} "
                   f"| {c_str} | {b_str} | {fmt_t(r['T_fixed'])} | {fmt_t(r.get('T_slope'))} |")
+    # The planning grids: fixed-slope T* per (PD, n) row and rho column, one grid per target.
+    pds = sorted({k[0] for k in cells})
+    rhos = sorted({k[1] for k in cells})
+    ns = sorted({k[2] for k in cells})
+    for param, title in (("rho", "Years for rho within +-0.05 (95%)"), ("pd", "Years for PD within +-25% (95%)")):
+        print(f"\n{title}\n")
+        print("| PD | n | n PD | " + " | ".join(f"rho = {r:g}" for r in rhos) + " |")
+        print("|---|---|---|" + "---|" * len(rhos))
+        for pd in pds:
+            for n in ns:
+                cols = []
+                for rho in rhos:
+                    r = results[((pd, rho, n), param)]
+                    if r["status"] == "not estimable":
+                        cols.append("not estimable")
+                    else:
+                        cols.append(fmt_t(r["T_fixed"]) + ("" if r["scaling"] == "holds" else f" ({r['scaling']})"))
+                print(f"| {pd:g} | {n:,} | {n * pd:g} | " + " | ".join(cols) + " |")
     return results
 
 

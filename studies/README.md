@@ -102,7 +102,7 @@ not delay M3.
 | # | Slug | Question (short) | Milestone | Status |
 |---|---|---|---|---|
 | S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
-| S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | registered |
+| S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | finished (D-304) |
 | S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | registered (shared jackknife run) |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
 | S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | registered (shared jackknife run) |
@@ -204,9 +204,31 @@ refined in each study's `PREDICTION.md`.
   any T studied".
 - **Cost:** seconds. An optional check refits the subset at one implied T (minutes); not planned
   (D-303).
-- **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15 in log RMSE. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them. **Result:** not run. **Mitigation:** n/a (a planning aid).
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
-
+- **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15 in log RMSE. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them.
+- **Result ([`RESULTS.md`](sample-size-table/RESULTS.md), D-304):** the planning grids for both
+  targets, by PD, n and ρ.
+  - **The T^(−½) law holds** in all 24 cells where it could be checked (slope −0.40 to −0.59). One
+    cell (PD 0.1%, ρ 0.02, n = 100) is not estimable at any T studied.
+  - **ρ within ±0.05** takes about 35–40 years at ρ = 0.12 with n·PD ≥ 50, about 56 with
+    n·PD = 10, and 180–225 with n·PD = 1. At ρ = 0.24 it takes more than 100 years everywhere
+    (110–120 for large portfolios).
+  - **PD within ±25%** is limited by the factor cycle: at 5% PD it takes 6–7, 38–39 and 82–86 years
+    at ρ = 0.02, 0.12 and 0.24; at ρ = 0.12, 1% PD takes 71–81 years.
+  - **Finite n** raises the years 1.6–2× at n·PD = 10 and 5–7× at n·PD = 1, against the large-n
+    formula, which is close (T\* within about 16%) at n·PD ≥ 50.
+  - **Six of the ten predictions held.** Q4, Q6, Q8 and Q9 missed: estimates with few defaults do
+    better than predicted when ρ is low (PD is then close to the pooled binomial,
+    T\* ≈ 61/(n·PD)), and (1%, 0.24, 10,000) needs 188 years against a predicted ≤ 170.
+- **Mitigation:** n/a (a planning aid). The optional refit at an implied T was not run (D-303).
+- **Monitoring implication (D-152):**
+  - **A data-sufficiency check,** to be printed beside every calibration. It gives the expected 95%
+    half-width 1.96·C/√T for the portfolio's PD, ρ and n, from the fitted C in `RESULTS.md`, or the
+    large-n formula with the finite-n factor above, and the years T\* each target needs. When the
+    history is shorter than T\*, the report says the data do not determine ρ (or PD) to that
+    accuracy, so the value used rests partly on judgement or a floor and is documented as such.
+  - **No threshold for year-on-year change.** The half-width is the scale of sampling error for
+    one calibration. Successive calibrations share most of their periods, so how far one new year
+    should move the estimates is S-34's question, and how far one period drives them is S-21's.
 ### S-3 Jackknife bias correction for ρ̂ (`jackknife-bias-rho`)
 
 - **Question:** ρ̂ is biased downwards at small T (0.0002–0.014 where identified). Does the
