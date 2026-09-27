@@ -1,8 +1,9 @@
-# Methodology questions
+# Studies
 
-An index of the methodology questions this project asks of its own estimators, and how each was
-answered. Every research study and every `native` variant gets one entry here. The rules for
-running them are in D-148:
+The index of this project's studies of its own estimators, and how each came out. Every research
+study and every `native` variant gets one entry here, which states the study's own research
+question. A study's files live beside this index, in `studies/<slug>/` (D-153). The rules for
+running studies are in D-148:
 
 - **A variant never changes parity.** It is a `native` option or a standalone study.
 - **Every study is pre-registered.** Before any run, `studies/<slug>/PREDICTION.md` is committed,
@@ -41,7 +42,7 @@ running them are in D-148:
   monitoring design draws its metrics from finished entries and is not frozen until the studies it
   relies on are done.
 
-Each entry records the question, the experiment, the prediction, the result, the status of any
+Each entry records the study's research question, the experiment, the prediction, the result, the status of any
 mitigation and the monitoring implication. An entry's prediction is "not registered" until its `PREDICTION.md` is committed;
 nothing is run before then.
 
@@ -362,7 +363,7 @@ refined in each study's `PREDICTION.md`.
 - **Question:** how do surface and fused-reduce throughput scale across GPU generations (at least
   sm_89 and sm_120)?
 - **Experiment:** the `perf/` suite on each architecture. A performance benchmark rather than a
-  methodology question: its results live in `perf/`, with this entry as the pointer.
+  methodology study: its results live in `perf/`, with this entry as the pointer.
 - **Cost:** hours per GPU; needs access to hardware beyond the development machine's sm_120.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
@@ -431,7 +432,7 @@ refined in each study's `PREDICTION.md`.
   quantile) under the same band and policy.
 - **Cost:** ≈ 1.15 × the baseline (one more profile per replicate): ≈ 8–14 min on the subset,
   ≈ 1.5–2.3 h for the full matrix.
-- **Prediction:** registered in [`studies/derived-quantity-intervals/PREDICTION.md`](../../studies/derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`studies/derived-quantity-intervals/PREDICTION.md`](derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Addendum: synthetic data variants (D-149)

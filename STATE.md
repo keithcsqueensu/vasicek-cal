@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research roadmap D-148 to D-152; S-23 prediction registered)
+Last updated: 2026-09-27 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153)
 
 ## Current status
 
@@ -169,7 +169,7 @@ Last updated: 2026-09-27 (research roadmap D-148 to D-152; S-23 prediction regis
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
-- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-four studies, S-1 to S-34 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150; S-34 in D-152), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation, monitoring implication).
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-four studies, S-1 to S-34 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150; S-34 in D-152), are placed in the milestones below and indexed in `studies/README.md` (moved from `docs/methodology/questions.md`, D-153), one entry each (question, experiment, prediction, result, mitigation, monitoring implication).
   - **S-23's prediction is registered** (`studies/derived-quantity-intervals/PREDICTION.md`), committed before any S-23 computation. Next: implement the profile interval for q and run the subset.
   - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
   - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
@@ -240,11 +240,11 @@ grid Bayesian (`LogSumExpPosterior`, documented priors). Parity and native profi
 real registry whitelists (D-035, D-036, D-044). Each estimator gets recovery tests, goldens, a
 methodology note and a scipy script.
 
-**Studies now or alongside M3** (cheap: they reuse the per-period surfaces; D-148, `questions.md`):
+**Studies now or alongside M3** (cheap: they reuse the per-period surfaces; D-148, `studies/README.md`):
 
 | # | Study | Judged against / output |
 |---|---|---|
-| S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `questions.md` entry | replay panels and subset; rounding-level agreement |
+| S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `studies/README.md` entry | replay panels and subset; rounding-level agreement |
 | S-2 | Sample-size planning table from the existing recovery results: years needed for ρ within ±0.05 (and PD within a stated relative error) by PD and n | committed recovery summary; no new fits |
 | S-3 | Jackknife bias correction for ρ̂; profile intervals around the corrected estimate | ρ small-T profile findings and the PASS verdicts they could break |
 | S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10) | the 6 pinned small-T profile findings |
@@ -297,7 +297,7 @@ Surface and fused-reduce kernels, a fat binary (sm_89 + sm_120 when nvcc ≥ 12.
 policies (D-039), and a CPU↔GPU parity suite with tolerance definitions (D-041). Install the CUDA toolkit first. Performance goes
 in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D-100). Install the development machine's toolkit (11.8 + MSVC 14.39, D-094) before starting.
 
-**Studies after M4** (GPU scale; D-148, `questions.md`):
+**Studies after M4** (GPU scale; D-148, `studies/README.md`):
 
 | # | Study |
 |---|---|
@@ -314,7 +314,7 @@ Backtests (exact binomial, Jeffreys, correlation-adjusted binomial, traffic ligh
 run ledger (canonical serialisation + SHA-256, links calibration and backtest runs) and
 report data plus rendering outside the core (D-045).
 
-**Monitoring design draws on the studies (D-152).** Each `questions.md` entry has a monitoring implication, filled in when the study finishes. M5's metrics, thresholds and data checks are taken from finished entries, and the design is not frozen until the studies it relies on are done.
+**Monitoring design draws on the studies (D-152).** Each `studies/README.md` entry has a monitoring implication, filled in when the study finishes. M5's metrics, thresholds and data checks are taken from finished entries, and the design is not frozen until the studies it relies on are done.
 
 **Study in M5:** S-14, backtest power (years of data needed to detect a PD misstated by 20% / 50%), plus the threshold table's false-alarm rate and detection delay (D-152). Moved from after M4: it needs M5's backtests and threshold table.
 
@@ -340,7 +340,7 @@ distributions, Pluto–Tasche and window/influence analysis.
 - **Likelihood:** each period's likelihood stays a one-dimensional integral over the shared Z_t, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz.
 - **Optimiser:** a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent), so the profile machinery for ρ is kept.
 - **Quadrature:** the adaptive rule's mode hint is revisited for the product integrand.
-- **Needed by:** S-29 and S-30, run on the grade scenario matrix (`questions.md`).
+- **Needed by:** S-29 and S-30, run on the grade scenario matrix (`studies/README.md`).
 
 **Studies in M6** (the parts that need multi-grade calibration; D-150):
 
@@ -359,7 +359,7 @@ the B dimension), pluggable scorers and a config-driven ranker (config parsed ou
 
 Deferred item R-2 (DECISIONS.md): the Z sign convention and macro sign filters. Expected effects are declared in economic terms (worsens or improves credit conditions) and mapped to coefficient signs in one place through the engine's Z convention (higher Z = better conditions). The mapping is tested on a synthetic DGP. Revisit when the macro pipeline starts interacting with the estimator.
 
-**Studies deferred to M7** (recorded together, not started; D-148, `questions.md`):
+**Studies deferred to M7** (recorded together, not started; D-148, `studies/README.md`):
 
 | # | Study |
 |---|---|
