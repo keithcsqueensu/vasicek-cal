@@ -754,6 +754,11 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Against the prediction:** Q1, Q2, Q3, Q5, Q7 and Q10 held; Q4, Q6, Q8 and Q9 missed. The common cause of Q4, Q6 and Q9: with few defaults, the estimators do better than predicted when ρ is low, since PD is then close to the pooled binomial estimate. Q8 missed in size (188 years against ≤ 170).
   - **Monitoring implication:** a data-sufficiency check printed beside every calibration: the expected half-width 1.96·C/√T and the years each target needs, with the shortfall stated when the history is shorter. No year-on-year threshold follows from it; that is S-34's and S-21's question.
 
+- **D-305 (owner) — S-2's write-up marks its extrapolations, and adds a relative target for ρ as a post-hoc view.**
+  - **Extrapolations:** the T^(−½) law was verified at T = 20, 40 and 100 only. In the grids, figures beyond 100 years are marked † and figures below 20 are marked ‡, each with a footnote; cells where the law could not be checked are marked §. D-304's figures above 100 years, namely 180–225 years for ρ at n·PD = 1, 110–120 at ρ = 0.24, and Q8's 188, are extrapolations. What is observed is that those targets are not met at T = 100.
+  - **ρ within ±25% relative,** beside ±0.05 absolute. ±0.05 is about ±20% of ρ at 0.24 but ±40% at 0.12, which partly explains why high-ρ cells looked hard. Under the relative target the order reverses: 76–83 years at ρ = 0.24, 95–111 at 0.12 and 124–183† at 0.02, for large portfolios. That matches the large-n relative SD √2·(1 − ρ)/√T.
+  - **Not pre-registered, and labelled post hoc.** With the slope fixed at −½, T\* scales as 1/target², so the relative grid follows from the already published C by arithmetic (T\*(relative) = T\*(absolute) × (0.05/(0.25·ρ))²). There was nothing left to predict blind. No new fits; the registered prediction is unchanged.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
