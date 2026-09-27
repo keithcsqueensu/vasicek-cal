@@ -559,9 +559,49 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
   - **Checks.** `ci_path_filter_sync` now compares the derived list with `plan`'s `code_md` list and also fails on any workflow-level `paths` or `paths-ignore` filter. `ci_path_filter_sync_fires` (a wrong list) and `ci_path_filter_sync_fires_paths` (a path filter) prove that both checks fire. The `plan` logic was simulated on prose-only, code-reading-Markdown, code and new-branch diffs, and the `ci-ok` decision on every combination of job results, before the first run.
   - **Rules that follow:** work goes to a branch and reaches `main` through a pull request, which runs the full matrix. The nightly and `workflow_dispatch` rules of D-145 are unchanged.
 
+## Research studies and variants: ground rules, 2026-09-27
+
+Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20), indexed in
+`docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
+the plan.
+
+- **D-148 (owner) — Ground rules for research studies and variants.**
+  - **Variants never change parity.** Every variant is a `native` option or a standalone study.
+  - **Every study is pre-registered.** Before any run, `studies/<slug>/PREDICTION.md` is committed,
+    stating the expected results, their direction and their rough size. Results are compared with
+    it, and misses are reported, not explained away. This generalises D-136, whose bootstrap
+    predictions were committed before the run and never edited afterwards.
+  - **Explore on the study subset; pin on the full matrix.** Exploration uses a fixed subset of
+    about 9 scenarios, spanning short, medium and long T and low and high ρ, that runs in about 10
+    minutes on the CPU. The full 81 × 1,000 matrix is run only to pin a study's verdicts.
+  - **Pinned verdicts follow the M1.8/M2a policy:** PASS, CONSERVATIVE, KNOWN FINDING or DEFERRED,
+    each with a diagnosis (D-124, D-131).
+  - **Every study has an entry in `docs/methodology/questions.md`:** the question, the experiment,
+    the prediction, the result and the status of any mitigation.
+  - **The study subset (proposed; awaiting the owner's approval):** scenarios 29, 37, 72 (T = 20),
+    4, 68, 49 (T = 40) and 7, 43, 51 (T = 100), one per (T, ρ) cell, at R = 1,000 with the recovery
+    seeds, so every subset panel is the pinned run's panel and comparisons are pairwise. It holds
+    3 of the 6 small-T profile findings, a truncation-conservative verdict, both bootstrap
+    diagnoses, a Wald skewed-overcoverage finding and profile PASS verdicts, and touches all four
+    D-136 groups. **Measured:** 16.7 s of single-thread CPU per replicate across the nine (fit
+    10.5, profile 4.2, bootstrap 2.0), so 4.6 thread-hours at R = 1,000: about 12 minutes on 24
+    threads at the measuring machine's speed, an estimated 7 on the development machine. The full
+    matrix measured 50.6 thread-hours for the same steps.
+  - **Placement:** S-1 to S-7 now or alongside M3; S-8 and S-9 with M3; S-10 and S-11 on the subset
+    now and the full matrix after M4; S-12 to S-17 after M4; S-18 to S-20 deferred to M7 and
+    recorded together (S-18 is R-2).
+  - **Noted for the owner, not decided:** with a fixed n per period, the 1,000 replicates of a
+    scenario contain far fewer distinct default counts than their periods do (measured on the
+    subset: 10 to 2,074 distinct d across a scenario's 1,000 replicates, against 4,750 to 39,000
+    surface rows evaluated today after D-122's deduplication within each panel).
+    A surface cached by (n, d), with each panel a count vector over it, would make the parametric
+    bootstrap (S-10, S-4b), the misspecification runs (S-11) and R = 10,000 (S-13) W × L jobs. It
+    extends D-122 across panels, and results would be bitwise unchanged. A spike would confirm it
+    before any study's placement changes.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
-- **R-2 (revisit at M7, when the macro pipeline starts interacting with the estimator) — Z sign convention and macro sign filters.** Declare expected macro effects in economic terms ("worsens" or "improves credit conditions"). Map them to coefficient signs in one place, through the engine's Z convention, and test the mapping on a synthetic DGP.
+- **R-2 (revisit at M7, when the macro pipeline starts interacting with the estimator) — Z sign convention and macro sign filters.** Declare expected macro effects in economic terms ("worsens" or "improves credit conditions"). Map them to coefficient signs in one place, through the engine's Z convention, and test the mapping on a synthetic DGP. Tracked as study S-18 (D-148).
   - **The engine's convention:** p(z) = Φ((Φ⁻¹(PD) − √ρ·z)/√(1 − ρ)), in `core/model/vasicek.hpp` and `dgp/`. A higher Z therefore means *better* credit conditions (a lower conditional PD).
   - **The risk:** a macro variable that worsens credit conditions has a negative coefficient on Z, but a positive one on a PD or default-rate scale. A sign filter written against the wrong scale silently keeps the wrong specifications.

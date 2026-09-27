@@ -95,6 +95,7 @@ Start with the methodology note. It is self-contained.
 | [reference_implementation.md](docs/methodology/reference_implementation.md) | The independent `ref/` implementation |
 | [dgp.md](docs/methodology/dgp.md) | The synthetic data generator, precise enough to re-implement |
 | [parity_signoff.md](docs/methodology/parity_signoff.md) | The M1 exit: requirements, deferred verdicts and their M2 re-assessment |
+| [questions.md](docs/methodology/questions.md) | Index of methodology questions and research studies: question, experiment, pre-registered prediction, result, mitigation (D-148) |
 | `validation/scipy/binomial_mixture_mle.py` | A 125-line scipy replication, run in CI |
 
 [DECISIONS.md](DECISIONS.md) records every design decision and its rationale (D-nnn).

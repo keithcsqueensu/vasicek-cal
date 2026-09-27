@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (public release; enforced green main, D-147)
+Last updated: 2026-09-27 (research studies and variants roadmap, D-148; planning only)
 
 ## Current status
 
@@ -169,15 +169,20 @@ Last updated: 2026-09-27 (public release; enforced green main, D-147)
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Twenty studies, S-1 to S-20, are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
+  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis.
+  - **Study subset (proposed, awaiting approval):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
+  - **Awaiting the owner:** approval of the plan and the subset, and the placement questions raised with it.
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
 ## Next steps
 
-1. M3: the remaining single-factor estimators. Awaiting the owner's go.
-2. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
-   - a Bartlett-type correction of the profile threshold;
-   - a bias-corrected ρ̂, the small-sample bias benchmark;
-   - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound);
+1. Owner review of the research roadmap (D-148) and the proposed study subset. Nothing is implemented until it is approved.
+2. M3: the remaining single-factor estimators, with studies S-1 to S-9 alongside. Awaiting the owner's go.
+3. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+   - a Bartlett-type correction of the profile threshold: now study S-4;
+   - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
+   - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound): now study S-5;
    - the stationary bootstrap and a data-driven block length (Politis–White); moving-block coverage is studied in M6 with AR(1) data.
 
 ## Milestones
@@ -219,11 +224,50 @@ grid Bayesian (`LogSumExpPosterior`, documented priors). Parity and native profi
 real registry whitelists (D-035, D-036, D-044). Each estimator gets recovery tests, goldens, a
 methodology note and a scipy script.
 
+**Studies now or alongside M3** (cheap: they reuse the per-period surfaces; D-148, `questions.md`):
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `questions.md` entry | replay panels and subset; rounding-level agreement |
+| S-2 | Sample-size planning table from the existing recovery results: years needed for ρ within ±0.05 (and PD within a stated relative error) by PD and n | committed recovery summary; no new fits |
+| S-3 | Jackknife bias correction for ρ̂; profile intervals around the corrected estimate | ρ small-T profile findings and the PASS verdicts they could break |
+| S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10) | the 6 pinned small-T profile findings |
+| S-5 | BCa intervals | the 125 pinned percentile findings |
+| S-6 | Pluto–Tasche most-prudent upper bounds (closed form; serially correlated version stays in M6) | coverage of the true PD in low-default scenarios |
+| S-7 | Grid resolution against accuracy and runtime | 61 × 41 (D-115) against 31 × 21 … 241 × 161 |
+
+**Studies with M3:**
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-8 | MLE against method of moments efficiency (relative RMSE, full matrix) | pairwise on the recovery panels |
+| S-9 | Frequentist coverage of grid-Bayesian credible intervals, flat and Jeffreys priors | the Monte Carlo band, beside the profile verdicts |
+
+**Studies on the subset now, full matrix after M4** (new data per replicate):
+
+| # | Study |
+|---|---|
+| S-10 | Parametric bootstrap intervals via the DGP (subset exploration here; full matrix in M4) |
+| S-11 | Misspecification: standard Vasicek fitted to t-copula, AR(1)-factor and beta-mixture data; bias and coverage (subset here; full matrix in M4) |
+
 ### M4 — CUDA backend
 
 Surface and fused-reduce kernels, a fat binary (sm_89 + sm_120 when nvcc ≥ 12.8 + compute_80 PTX, D-026/D-040), precision
 policies (D-039), and a CPU↔GPU parity suite with tolerance definitions (D-041). Install the CUDA toolkit first. Performance goes
 in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D-100). Install the development machine's toolkit (11.8 + MSVC 14.39, D-094) before starting.
+
+**Studies after M4** (GPU scale; D-148, `questions.md`):
+
+| # | Study |
+|---|---|
+| S-10 | Parametric bootstrap intervals: full matrix |
+| S-11 | Misspecification: full matrix |
+| S-12 | Double (iterated) bootstrap to calibrate interval coverage |
+| S-13 | R = 10,000 recovery re-run to settle borderline verdicts |
+| S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50% |
+| S-15 | Simulation-based calibration of the Bayesian estimator |
+| S-16 | FP32 search with FP64 finalisation against pure FP64 |
+| S-17 | Performance scaling across GPU generations (results in `perf/`) |
 
 ### M5 — Monitoring
 
@@ -243,6 +287,14 @@ Transform library with lineage, pre-screen filters, batched specification fits (
 the B dimension), pluggable scorers and a config-driven ranker (config parsed outside the core, D-045).
 
 Deferred item R-2 (DECISIONS.md): the Z sign convention and macro sign filters. Expected effects are declared in economic terms (worsens or improves credit conditions) and mapped to coefficient signs in one place through the engine's Z convention (higher Z = better conditions). The mapping is tested on a synthetic DGP. Revisit when the macro pipeline starts interacting with the estimator.
+
+**Studies deferred to M7** (recorded together, not started; D-148, `questions.md`):
+
+| # | Study |
+|---|---|
+| S-18 | Z sign convention and macro sign filters: expected macro effects declared in economic terms, mapped to coefficient signs in one place, the mapping tested on a synthetic DGP (this is R-2) |
+| S-19 | Z_t extraction, E[Z_t given d_t], as a standard output |
+| S-20 | A reference Belkin–Suchower–Forest apply function (TTC migration matrix + ρ + z → conditional matrix) with a conventions test; needs a scope decision first |
 
 ### M8 — Public-data demonstrations + replication pack + ABI 1.0
 
