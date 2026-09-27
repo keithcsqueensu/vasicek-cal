@@ -205,30 +205,38 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** seconds. An optional check refits the subset at one implied T (minutes); not planned
   (D-303).
 - **Prediction:** registered in [`studies/sample-size-table/PREDICTION.md`](sample-size-table/PREDICTION.md) before any run (Q1–Q10), with the method fixed (D-303). The PD target is ±25% relative. A scenario is "mostly at a bound" when more than half its replicates are on the grid edge. The scaling holds when the log–log slope is in [−0.75, −0.30] with residuals ≤ 0.15 in log RMSE. The predictions come from large-n theory (SD(ρ̂) ≈ √2·ρ(1 − ρ)/√T), and no RMSE value was read in writing them.
-- **Result ([`RESULTS.md`](sample-size-table/RESULTS.md), D-304):** the planning grids for both
-  targets, by PD, n and ρ.
+- **Result ([`RESULTS.md`](sample-size-table/RESULTS.md), D-304, D-305):** the planning grids by
+  PD, n and ρ. Figures marked † (beyond 100 years) or ‡ (below 20) extrapolate the T^(−½) law,
+  which was verified only at T = 20, 40 and 100.
   - **The T^(−½) law holds** in all 24 cells where it could be checked (slope −0.40 to −0.59). One
     cell (PD 0.1%, ρ 0.02, n = 100) is not estimable at any T studied.
   - **ρ within ±0.05** takes about 35–40 years at ρ = 0.12 with n·PD ≥ 50, about 56 with
-    n·PD = 10, and 180–225 with n·PD = 1. At ρ = 0.24 it takes more than 100 years everywhere
-    (110–120 for large portfolios).
+    n·PD = 10, and 180–225† with n·PD = 1. At ρ = 0.24 it is not met by T = 100 anywhere
+    (110–120† for large portfolios).
+  - **ρ within ±25% relative** (a post-hoc view, D-305) reverses the order: for large portfolios
+    it takes 76–83 years at ρ = 0.24, 95–111 at 0.12 and 124–183† at 0.02. Much of the absolute
+    target's high-ρ difficulty is its shape, since ±0.05 is ±20% of ρ at 0.24 but ±40% at 0.12.
+    Relative to its size, ρ is estimated best when it is large (relative SD √2·(1 − ρ)/√T).
   - **PD within ±25%** is limited by the factor cycle: at 5% PD it takes 6–7, 38–39 and 82–86 years
     at ρ = 0.02, 0.12 and 0.24; at ρ = 0.12, 1% PD takes 71–81 years.
   - **Finite n** raises the years 1.6–2× at n·PD = 10 and 5–7× at n·PD = 1, against the large-n
     formula, which is close (T\* within about 16%) at n·PD ≥ 50.
   - **Six of the ten predictions held.** Q4, Q6, Q8 and Q9 missed: estimates with few defaults do
     better than predicted when ρ is low (PD is then close to the pooled binomial,
-    T\* ≈ 61/(n·PD)), and (1%, 0.24, 10,000) needs 188 years against a predicted ≤ 170.
+    T\* ≈ 61/(n·PD)), and (1%, 0.24, 10,000) needs 188† years against a predicted ≤ 170.
 - **Mitigation:** n/a (a planning aid). The optional refit at an implied T was not run (D-303).
 - **Monitoring implication (D-152):**
   - **A data-sufficiency check,** to be printed beside every calibration. It gives the expected 95%
     half-width 1.96·C/√T for the portfolio's PD, ρ and n, from the fitted C in `RESULTS.md`, or the
-    large-n formula with the finite-n factor above, and the years T\* each target needs. When the
-    history is shorter than T\*, the report says the data do not determine ρ (or PD) to that
-    accuracy, so the value used rests partly on judgement or a floor and is documented as such.
+    large-n formula with the finite-n factor above, and the years T\* each target needs, marking any
+    figure outside the verified 20–100 years as extrapolated, with ρ given against both an
+    absolute and a relative target. When the history is shorter than T\*, the report says the
+    data do not determine ρ (or PD) to that accuracy, so the value used rests partly on judgement
+    or a floor and is documented as such.
   - **No threshold for year-on-year change.** The half-width is the scale of sampling error for
     one calibration. Successive calibrations share most of their periods, so how far one new year
     should move the estimates is S-34's question, and how far one period drives them is S-21's.
+
 ### S-3 Jackknife bias correction for ρ̂ (`jackknife-bias-rho`)
 
 - **Question:** ρ̂ is biased downwards at small T (0.0002–0.014 where identified). Does the

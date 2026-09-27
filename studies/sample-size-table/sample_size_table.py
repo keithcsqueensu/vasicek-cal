@@ -18,6 +18,7 @@ SUMMARY = ROOT / "tests" / "golden" / "recovery" / "summary.csv"
 
 Z = 1.959963984540054          # z_0.975
 RHO_TARGET = 0.05              # absolute
+RHO_TARGET_REL = 0.25          # relative; a post-hoc view added at the owner's request (D-305)
 PD_TARGET_REL = 0.25           # relative
 EDGE_MAJORITY = 0.5            # "mostly at a bound": more than half the replicates on the grid edge
 SLOPE_RANGE = (-0.75, -0.30)   # the scaling check (step 2)
@@ -82,8 +83,15 @@ def fmt_t(t):
     if t is None:
         return "-"
     whole = math.ceil(t - 1e-9)
-    mark = "" if T_STUDIED[0] <= whole <= T_STUDIED[1] else " (extrap.)"
+    # Outside the verified range T in [20, 100] the figure extrapolates the T^(-1/2) law (D-305).
+    mark = " †" if whole > T_STUDIED[1] else " ‡" if whole < T_STUDIED[0] else ""
     return f"{whole:,}{mark}"
+
+
+FOOTNOTE = """- † Beyond 100 years: an extrapolation of the T^(-1/2) law, verified only at T = 20, 40 and 100.
+- ‡ Below 20 years: shorter than any history studied, also an extrapolation.
+- § Unchecked: only T = 100 was usable (at T = 20 and 40 most estimates are on the grid edge), so
+  the law could not be checked in this cell."""
 
 
 def benchmark(pd, rho):
@@ -101,8 +109,9 @@ def main():
     for key in sorted(cells):
         pd, rho, n = key
         bench_rho, bench_pd = benchmark(pd, rho)
-        for param, target, bench in (("rho", RHO_TARGET, bench_rho), ("pd", PD_TARGET_REL * pd, bench_pd * pd)):
-            r = analyse(cells[key], param, target)
+        for param, target, bench in (("rho", RHO_TARGET, bench_rho), ("rho_rel", RHO_TARGET_REL * rho, bench_rho),
+                                     ("pd", PD_TARGET_REL * pd, bench_pd * pd)):
+            r = analyse(cells[key], "rho" if param == "rho_rel" else param, target)
             results[(key, param)] = r
             if r["status"] == "not estimable":
                 print(f"| {pd:g} | {rho:g} | {n:,} | {n * pd:g} | {param} | 0 | | | | | | not estimable at any T studied | |")
@@ -117,7 +126,9 @@ def main():
     pds = sorted({k[0] for k in cells})
     rhos = sorted({k[1] for k in cells})
     ns = sorted({k[2] for k in cells})
-    for param, title in (("rho", "Years for rho within +-0.05 (95%)"), ("pd", "Years for PD within +-25% (95%)")):
+    for param, title in (("rho", "Years for rho within +-0.05 absolute (95%)"),
+                         ("rho_rel", "Years for rho within +-25% relative (95%; post hoc, D-305)"),
+                         ("pd", "Years for PD within +-25% relative (95%)")):
         print(f"\n{title}\n")
         print("| PD | n | n PD | " + " | ".join(f"rho = {r:g}" for r in rhos) + " |")
         print("|---|---|---|" + "---|" * len(rhos))
@@ -129,8 +140,9 @@ def main():
                     if r["status"] == "not estimable":
                         cols.append("not estimable")
                     else:
-                        cols.append(fmt_t(r["T_fixed"]) + ("" if r["scaling"] == "holds" else f" ({r['scaling']})"))
+                        cols.append(fmt_t(r["T_fixed"]) + ("" if r["scaling"] == "holds" else " §"))
                 print(f"| {pd:g} | {n:,} | {n * pd:g} | " + " | ".join(cols) + " |")
+        print("\n" + FOOTNOTE)
     return results
 
 
