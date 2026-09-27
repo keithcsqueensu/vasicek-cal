@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research roadmap D-148 to D-152; planning only)
+Last updated: 2026-09-27 (research roadmap D-148 to D-152; S-23 prediction registered)
 
 ## Current status
 
@@ -170,6 +170,7 @@ Last updated: 2026-09-27 (research roadmap D-148 to D-152; planning only)
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
 - **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-four studies, S-1 to S-34 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150; S-34 in D-152), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation, monitoring implication).
+  - **S-23's prediction is registered** (`studies/derived-quantity-intervals/PREDICTION.md`), committed before any S-23 computation. Next: implement the profile interval for q and run the subset.
   - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
   - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
   - **Decided (D-151):**

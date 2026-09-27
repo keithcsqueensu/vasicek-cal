@@ -120,7 +120,7 @@ not delay M3.
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
 | S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | not registered |
 | S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
-| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | now | not registered |
+| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | registered |
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
 | S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
@@ -431,7 +431,7 @@ refined in each study's `PREDICTION.md`.
   quantile) under the same band and policy.
 - **Cost:** ≈ 1.15 × the baseline (one more profile per replicate): ≈ 8–14 min on the subset,
   ≈ 1.5–2.3 h for the full matrix.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`studies/derived-quantity-intervals/PREDICTION.md`](../../studies/derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Addendum: synthetic data variants (D-149)
