@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-151; planning only)
+Last updated: 2026-09-27 (research roadmap D-148 to D-152; planning only)
 
 ## Current status
 
@@ -169,7 +169,7 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-151;
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
-- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-three studies, S-1 to S-33 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-four studies, S-1 to S-34 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150; S-34 in D-152), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation, monitoring implication).
   - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
   - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
   - **Decided (D-151):**
@@ -188,7 +188,8 @@ Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-151;
    1. S-23: profile-likelihood intervals for the 99.9% conditional PD;
    2. S-13 targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T profile findings are real;
    3. the shared jackknife run: S-3, S-5, S-21;
-   4. S-1 and S-2.
+   4. S-1 and S-2;
+   5. S-34: sensitivity to severe new periods (D-152).
 
    Each starts with its `PREDICTION.md` committed before any run (D-148).
 2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in.
@@ -252,6 +253,7 @@ methodology note and a scipy script.
 | S-21 | Period influence: leave-one- and leave-two-periods-out changes in PD̂ and ρ̂ from jackknife-type weights; the most influential periods per scenario. Shares the jackknife pass with S-3 and S-5 | descriptive; no verdicts |
 | S-22 | Box sensitivity: estimates and profile intervals with the ρ cap at 0.9 against 0.5, plus a lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), grid spacing held fixed | every verdict (full matrix), chiefly the 20 CONSERVATIVE |
 | S-23 | Profile-likelihood intervals for the 99.9% conditional PD (other quantiles optional), coverage in the recovery harness | a new verdict family, same band and policy |
+| S-34 | Sensitivity to severe new periods: shifts in PD̂, ρ̂ and the 99.9% conditional PD after one or two 1-in-100 or 1-in-1,000 adverse periods, by T (D-152; first batch) | descriptive; no verdicts |
 
 **Synthetic data variants, now** (D-149): S-24 and S-25 are DGP variants, each with a prose description, a Python mirror and a hash; S-26 is a scenario definition on the existing DGP and needs none:
 
@@ -302,7 +304,7 @@ in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D
 | S-11 | Misspecification: full matrix |
 | S-12 | Double (iterated) bootstrap to calibrate interval coverage |
 | S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
-| S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50% |
+| S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50%; plus the threshold table's false-alarm rate and detection delay (D-152). Needs M5's backtests and threshold table |
 | S-16 | FP32 search with FP64 finalisation against pure FP64 |
 | S-17 | Performance scaling across GPU generations (results in `perf/`) |
 
@@ -311,6 +313,18 @@ in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D
 Backtests (exact binomial, Jeffreys, correlation-adjusted binomial, traffic light). Also a
 run ledger (canonical serialisation + SHA-256, links calibration and backtest runs) and
 report data plus rendering outside the core (D-045).
+
+**Monitoring design draws on the studies (D-152).** Each `questions.md` entry has a monitoring implication, filled in when the study finishes. M5's metrics, thresholds and data checks are taken from finished entries, and the design is not frozen until the studies it relies on are done.
+
+**Features (D-152):**
+
+| Feature | What it does | Builds on |
+|---|---|---|
+| What-if recalibration | Refits with hypothetical future periods added. A hypothetical period is one more row of per-period surfaces, so nothing already computed is recomputed | the surface engine; S-34 |
+| Default-count threshold table | Maps next period's default count to a tiered status (within tolerance / warning / threshold exceeded). Each tier is tied to a stated rule, for example a quantile of the predictive default-count distribution under the fitted model | S-14's operating characteristics |
+| Parameter-shock propagation | Shows how shocks to PD and ρ move the 99.9% conditional PD | S-23's machinery |
+| Conditional PD by factor level, and reverse factor stress | Conditional PD from benign to adverse factor levels (for example 1-in-10 to 1-in-1,000 years), and the adverse level at which conditional PD or expected defaults reach a stated value. Expressed as adverse or benign, never as a raw sign of Z | the Z convention in one place (S-1, S-18) |
+| Estimator comparison | The same data fitted by each estimator, with PD, ρ and the 99.9% conditional PD side by side | S-8 and S-11 |
 
 ### M6 — Benchmark models
 
