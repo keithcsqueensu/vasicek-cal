@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (pre-publication pass, D-146)
+Last updated: 2026-09-27 (public release; enforced green main, D-147)
 
 ## Current status
 
@@ -164,6 +164,11 @@ Last updated: 2026-09-27 (pre-publication pass, D-146)
   - CI run numbers and commit hashes from before the public release are replaced by neutral wording ("verified in CI prior to public release");
   - the public repository is published from a single squashed snapshot, tagged `v0.1.0-parity-binomial`.
   - **Verified locally (Linux, GCC 13.3, cpu-release):** 35/35 tests pass, slow tests included.
+- **Public release.** The repository is public, starting from a single squashed snapshot.
+- **Enforced green main (D-147):**
+  - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
+  - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
+  - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
 ## Next steps

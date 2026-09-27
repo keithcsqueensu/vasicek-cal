@@ -245,10 +245,11 @@ if(NOT TEST abi_exports)
     message(WARNING "vcal: no nm/dumpbin found; the abi_exports test is not registered")
 endif()
 
-# --- CI path filter (D-145) ---------------------------------------------------------------------------
-# Prose-only commits start no CI run, so every Markdown file the code reads must be re-included in the
-# workflow's path filters. ci_path_filter_sync derives that list from the code; _fires runs it against
-# a workflow that omits README.md and lists a file nothing reads, and must report both.
+# --- CI prose filter (D-145, D-147) --------------------------------------------------------------------
+# Prose-only changes build nothing, so every Markdown file the code reads must be in the plan job's
+# code_md list. ci_path_filter_sync derives that list from the code; _fires runs it against a workflow
+# that omits README.md and lists a file nothing reads, and must report both; _fires_paths against one
+# with a workflow-level path filter, which would leave the required ci-ok check unreported.
 add_test(NAME ci_path_filter_sync
     COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DWORKFLOW=${PROJECT_SOURCE_DIR}/.github/workflows/ci.yml"
             -P "${PROJECT_SOURCE_DIR}/cmake/CiPathFilterCheck.cmake")
@@ -257,6 +258,11 @@ add_test(NAME ci_path_filter_sync_fires
             -P "${PROJECT_SOURCE_DIR}/cmake/CiPathFilterCheck.cmake")
 set_tests_properties(ci_path_filter_sync_fires PROPERTIES
     PASS_REGULAR_EXPRESSION "read but not re-included: README\\.md[\r\n]+ *re-included but not read by any test: STATE\\.md")
+add_test(NAME ci_path_filter_sync_fires_paths
+    COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DWORKFLOW=${CMAKE_CURRENT_SOURCE_DIR}/ci_paths/fixture_paths_ci.yml"
+            -P "${PROJECT_SOURCE_DIR}/cmake/CiPathFilterCheck.cmake")
+set_tests_properties(ci_path_filter_sync_fires_paths PROPERTIES
+    PASS_REGULAR_EXPRESSION "workflow-level path filter")
 
 # --- tolerance register (ARCHITECTURE.md §7) -------------------------------------
 add_test(NAME tolerance_register_sync
