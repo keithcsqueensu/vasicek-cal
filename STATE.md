@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-27 (public release; enforced green main, D-147)
+Last updated: 2026-09-27 (research studies and variants roadmap, D-148 to D-151; planning only)
 
 ## Current status
 
@@ -169,15 +169,34 @@ Last updated: 2026-09-27 (public release; enforced green main, D-147)
   - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
   - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
   - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
+- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-three studies, S-1 to S-33 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150), are placed in the milestones below and indexed in `docs/methodology/questions.md`, one entry each (question, experiment, prediction, result, mitigation).
+  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
+  - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
+  - **Decided (D-151):**
+    - multi-grade calibration becomes an M6 item;
+    - the pseudo-true value is defined;
+    - one DGP observation layer;
+    - the grade scenario matrix: 9 scenarios, seed "GRADESCN";
+    - S-33's redesign;
+    - scipy and `ref/` oracles for S-32;
+    - a priority order (Next steps).
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
 ## Next steps
 
-1. M3: the remaining single-factor estimators. Awaiting the owner's go.
-2. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
-   - a Bartlett-type correction of the profile threshold;
-   - a bias-corrected ρ̂, the small-sample bias benchmark;
-   - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound);
+1. **First batch of studies (D-151), in this order, before M3:**
+   1. S-23: profile-likelihood intervals for the 99.9% conditional PD;
+   2. S-13 targeted: R = 10,000 on the borderline scenarios, to settle whether the 6 small-T profile findings are real;
+   3. the shared jackknife run: S-3, S-5, S-21;
+   4. S-1 and S-2.
+
+   Each starts with its `PREDICTION.md` committed before any run (D-148).
+2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in.
+3. **The other studies** keep the placement below and are ordered when M3 ends.
+4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+   - a Bartlett-type correction of the profile threshold: now study S-4;
+   - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
+   - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound): now study S-5;
    - the stationary bootstrap and a data-driven block length (Politis–White); moving-block coverage is studied in M6 with AR(1) data.
 
 ## Milestones
@@ -219,11 +238,73 @@ grid Bayesian (`LogSumExpPosterior`, documented priors). Parity and native profi
 real registry whitelists (D-035, D-036, D-044). Each estimator gets recovery tests, goldens, a
 methodology note and a scipy script.
 
+**Studies now or alongside M3** (cheap: they reuse the per-period surfaces; D-148, `questions.md`):
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `questions.md` entry | replay panels and subset; rounding-level agreement |
+| S-2 | Sample-size planning table from the existing recovery results: years needed for ρ within ±0.05 (and PD within a stated relative error) by PD and n | committed recovery summary; no new fits |
+| S-3 | Jackknife bias correction for ρ̂; profile intervals around the corrected estimate | ρ small-T profile findings and the PASS verdicts they could break |
+| S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10) | the 6 pinned small-T profile findings |
+| S-5 | BCa intervals | the 125 pinned percentile findings |
+| S-6 | Pluto–Tasche most-prudent upper bounds (closed form; serially correlated version stays in M6) | coverage of the true PD in low-default scenarios |
+| S-7 | Grid resolution against accuracy and runtime | 61 × 41 (D-115) against 31 × 21 … 241 × 161 |
+| S-21 | Period influence: leave-one- and leave-two-periods-out changes in PD̂ and ρ̂ from jackknife-type weights; the most influential periods per scenario. Shares the jackknife pass with S-3 and S-5 | descriptive; no verdicts |
+| S-22 | Box sensitivity: estimates and profile intervals with the ρ cap at 0.9 against 0.5, plus a lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), grid spacing held fixed | every verdict (full matrix), chiefly the 20 CONSERVATIVE |
+| S-23 | Profile-likelihood intervals for the 99.9% conditional PD (other quantiles optional), coverage in the recovery harness | a new verdict family, same band and policy |
+
+**Synthetic data variants, now** (D-149): S-24 and S-25 are DGP variants, each with a prose description, a Python mirror and a hash; S-26 is a scenario definition on the existing DGP and needs none:
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-24 | PD heterogeneity: two pooled sub-segments with different PDs on the same factor; inflation of ρ̂ | bias and coverage against the stated estimand |
+| S-25 | PD trend: PD drifting over the sample; inflation of ρ̂, and oracle and estimated detrending (needs a `native` per-period offset objective) | bias and coverage against the stated estimand |
+| S-26 | Varying portfolio size: n_t declining over time (a scenario definition; the DGP already takes n per period) | every verdict of the paired constant-n scenario |
+
+**Data and population instability, now** (single-segment parts; D-150; the M6 parts are listed under M6):
+
+| # | Study (part that runs now) | Judged against / output |
+|---|---|---|
+| S-29 | Rating-scale version change, two-grade version: per-grade fits on the remapped history, a two-stage structural break, portfolio-level fit with allocation; crosswalk error from 0 to about 20% plus many-to-many | crosswalk error at which ρ̂ inflation is material |
+| S-30 | Grade granularity: K = 4, 7, 10, 20 buckets of a 15–20-grade true scale, per-bucket separate fits; PD error, ρ̂ per bucket, 99.9% loss quantile, by T | the K that minimises error |
+| S-31 | Composition shock: a riskier segment joining in a stress year; pooled bias, exclusion, a two-stage joining indicator | pseudo-true value and the distance from the generating parameters |
+| S-32 | Default misrecording: exclusion, a sensitivity band, a misclassification-aware likelihood (`native` objective) | pseudo-true value and the distance from the generating parameters |
+| S-33 | Survivorship and backfill at portfolio level: partial survivorship, truncation at the true and at a misjudged date | pseudo-true value and the distance from the generating parameters |
+
+**Studies with M3:**
+
+| # | Study | Judged against / output |
+|---|---|---|
+| S-8 | MLE against method of moments efficiency (relative RMSE, full matrix) | pairwise on the recovery panels |
+| S-9 | Frequentist coverage of grid-Bayesian credible intervals, flat and Jeffreys priors | the Monte Carlo band, beside the profile verdicts |
+| S-27 | Large-portfolio approximation: the n at which Vasicek-rate MLE is indistinguishable from binomial MLE; a rule of thumb by PD and ρ (adds n = 10⁵, 10⁶; after or with S-28) | pairwise on the same panels |
+| S-15 | Simulation-based calibration of the Bayesian estimator (moved from after M4, D-151) | rank uniformity |
+| S-28 | Zero-default treatments for rate-based estimators: refuse (parity) vs drop vs censored likelihood (native, D-044) | bias, RMSE, coverage; refusal rate; binomial MLE as benchmark |
+
+**Studies on the subset now, full matrix after M4** (new data per replicate):
+
+| # | Study |
+|---|---|
+| S-10 | Parametric bootstrap intervals via the DGP (subset exploration here; full matrix in M4) |
+| S-11 | Misspecification: standard Vasicek fitted to t-copula, AR(1)-factor and beta-mixture data; bias and coverage (subset here; full matrix in M4) |
+
 ### M4 — CUDA backend
 
 Surface and fused-reduce kernels, a fat binary (sm_89 + sm_120 when nvcc ≥ 12.8 + compute_80 PTX, D-026/D-040), precision
 policies (D-039), and a CPU↔GPU parity suite with tolerance definitions (D-041). Install the CUDA toolkit first. Performance goes
 in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D-100). Install the development machine's toolkit (11.8 + MSVC 14.39, D-094) before starting.
+
+**Studies after M4** (GPU scale; D-148, `questions.md`):
+
+| # | Study |
+|---|---|
+| S-10 | Parametric bootstrap intervals: full matrix |
+| S-11 | Misspecification: full matrix |
+| S-12 | Double (iterated) bootstrap to calibrate interval coverage |
+| S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
+| S-14 | Backtest power: years of data needed to detect a PD misstated by 20% / 50% |
+| S-16 | FP32 search with FP64 finalisation against pure FP64 |
+| S-17 | Performance scaling across GPU generations (results in `perf/`) |
 
 ### M5 — Monitoring
 
@@ -234,8 +315,26 @@ report data plus rendering outside the core (D-045).
 ### M6 — Benchmark models
 
 Multi-segment correlated factors (two-stage + pairwise composite likelihood, PSD repair
-documented), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
+documented), multi-grade calibration on one factor with a shared ρ (D-151), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
 distributions, Pluto–Tasche and window/influence analysis.
+
+**Multi-grade calibration (D-151):**
+
+- **Model:** a single-factor model with K grades, each with its own PD, and a shared ρ.
+- **Likelihood:** each period's likelihood stays a one-dimensional integral over the shared Z_t, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz.
+- **Optimiser:** a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent), so the profile machinery for ρ is kept.
+- **Quadrature:** the adaptive rule's mode hint is revisited for the product integrand.
+- **Needed by:** S-29 and S-30, run on the grade scenario matrix (`questions.md`).
+
+**Studies in M6** (the parts that need multi-grade calibration; D-150):
+
+| # | Study (M6 part) |
+|---|---|
+| S-29 | Probabilistic crosswalk mapping in the likelihood; the structural break fitted jointly with a shared ρ; the full multi-grade scale |
+| S-30 | Buckets calibrated with a shared ρ; K crossed with S-29's crosswalk error |
+| S-31 | The inflow calibrated as a separate segment |
+| S-33 | Late rating assignment (selection per grade) |
+
 
 ### M7 — Macro pipeline
 
@@ -243,6 +342,14 @@ Transform library with lineage, pre-screen filters, batched specification fits (
 the B dimension), pluggable scorers and a config-driven ranker (config parsed outside the core, D-045).
 
 Deferred item R-2 (DECISIONS.md): the Z sign convention and macro sign filters. Expected effects are declared in economic terms (worsens or improves credit conditions) and mapped to coefficient signs in one place through the engine's Z convention (higher Z = better conditions). The mapping is tested on a synthetic DGP. Revisit when the macro pipeline starts interacting with the estimator.
+
+**Studies deferred to M7** (recorded together, not started; D-148, `questions.md`):
+
+| # | Study |
+|---|---|
+| S-18 | Z sign convention and macro sign filters: expected macro effects declared in economic terms, mapped to coefficient signs in one place, the mapping tested on a synthetic DGP (this is R-2) |
+| S-19 | Z_t extraction, E[Z_t given d_t], as a standard output |
+| S-20 | A reference Belkin–Suchower–Forest apply function (TTC migration matrix + ρ + z → conditional matrix) with a conventions test; needs a scope decision first |
 
 ### M8 — Public-data demonstrations + replication pack + ABI 1.0
 

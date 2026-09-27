@@ -559,9 +559,108 @@ today, and leave anything not yet built out of v0 rather than stubbing it.
   - **Checks.** `ci_path_filter_sync` now compares the derived list with `plan`'s `code_md` list and also fails on any workflow-level `paths` or `paths-ignore` filter. `ci_path_filter_sync_fires` (a wrong list) and `ci_path_filter_sync_fires_paths` (a path filter) prove that both checks fire. The `plan` logic was simulated on prose-only, code-reading-Markdown, code and new-branch diffs, and the `ci-ok` decision on every combination of job results, before the first run.
   - **Rules that follow:** work goes to a branch and reaches `main` through a pull request, which runs the full matrix. The nightly and `workflow_dispatch` rules of D-145 are unchanged.
 
+## Research studies and variants: ground rules and addenda, 2026-09-27
+
+Owner's notes: a roadmap of research studies and `native` variants (S-1 to S-20 here; the addenda D-149 to D-151 extend it to S-33), indexed in
+`docs/methodology/questions.md`. Planning only; nothing is implemented until the owner approves
+the plan.
+
+- **D-148 (owner) — Ground rules for research studies and variants.**
+  - **Variants never change parity.** Every variant is a `native` option or a standalone study.
+  - **Every study is pre-registered.** Before any run, `studies/<slug>/PREDICTION.md` is committed,
+    stating the expected results, their direction and their rough size. Results are compared with
+    it, and misses are reported, not explained away. This generalises D-136, whose bootstrap
+    predictions were committed before the run and never edited afterwards.
+  - **Explore on the study subset; pin on the full matrix.** Exploration uses a fixed subset of
+    about 9 scenarios, spanning short, medium and long T and low and high ρ, that runs in about 10
+    minutes on the CPU. The full 81 × 1,000 matrix is run only to pin a study's verdicts.
+  - **Pinned verdicts follow the M1.8/M2a policy:** PASS, CONSERVATIVE, KNOWN FINDING or DEFERRED,
+    each with a diagnosis (D-124, D-131).
+  - **Every study has an entry in `docs/methodology/questions.md`:** the question, the experiment,
+    the prediction, the result and the status of any mitigation.
+  - **The study subset (approved by the owner; recorded in D-150):** scenarios 29, 37, 72 (T = 20),
+    4, 68, 49 (T = 40) and 7, 43, 51 (T = 100), one per (T, ρ) cell, at R = 1,000 with the recovery
+    seeds, so every subset panel is the pinned run's panel and comparisons are pairwise. It holds
+    3 of the 6 small-T profile findings, a truncation-conservative verdict, both bootstrap
+    diagnoses, a Wald skewed-overcoverage finding and profile PASS verdicts, and touches all four
+    D-136 groups. **Measured:** 16.7 s of single-thread CPU per replicate across the nine (fit
+    10.5, profile 4.2, bootstrap 2.0), so 4.6 thread-hours at R = 1,000: about 12 minutes on 24
+    threads at the measuring machine's speed, an estimated 7 on the development machine. The full
+    matrix measured 50.6 thread-hours for the same steps.
+  - **Placement:** S-1 to S-7 now or alongside M3; S-8 and S-9 with M3; S-10 and S-11 on the subset
+    now and the full matrix after M4; S-12 to S-17 after M4; S-18 to S-20 deferred to M7 and
+    recorded together (S-18 is R-2).
+  - **Noted for the owner, not decided:** with a fixed n per period, the 1,000 replicates of a
+    scenario contain far fewer distinct default counts than their periods do (measured on the
+    subset: 10 to 2,074 distinct d across a scenario's 1,000 replicates, against 4,750 to 39,000
+    surface rows evaluated today after D-122's deduplication within each panel).
+    A surface cached by (n, d), with each panel a count vector over it, would make the parametric
+    bootstrap (S-10, S-4b), the misspecification runs (S-11) and R = 10,000 (S-13) W × L jobs. It
+    extends D-122 across panels, and results would be bitwise unchanged. A spike would confirm it
+    before any study's placement changes.
+
+- **D-149 (owner; extends D-148) — Addendum: studies S-21 to S-28, and two further ground rules.**
+  - **Placement:**
+    - **Now** (existing machinery): S-21 period influence, S-22 box sensitivity, S-23 intervals for derived quantities.
+    - **Now, on synthetic data variants:** S-24 PD heterogeneity and S-25 PD trend (DGP variants), and S-26 varying portfolio size (a scenario definition only: the DGP already takes n per period, so no new mirror or hash).
+    - **With M3:** S-27 the large-portfolio approximation and S-28 zero-default treatments for rate-based estimators.
+  - **A variant is judged on every verdict it could change**, not only the findings it targets. A fix that moves the targeted findings into the band but pushes PASS verdicts out of it is reported as both.
+  - **A new DGP variant is specified like the base DGP:** a prose description, a line-for-line Python mirror and a reference-panel hash (D-110–D-112), in its own key domain.
+  - **Recorded while planning:** a diagnostic refit of replicates 0–39 of the 20 CONSERVATIVE profile verdicts (the pinned run's own panels, no variant) found that truncation is almost only at the lower bounds (ρ ≥ 1e-3, PD ≥ 1e-4). Upper-only truncation was at most 6 of 40 in any verdict. S-22 therefore gains a lower-bound arm beside the ρ ≤ 0.9 arm. This finding is recorded in its `questions.md` entry so that S-22's prediction is written knowing it.
+
+- **D-150 (owner; extends D-148 and D-149) — Decisions on the D-149 points, and studies S-29 to S-33 under the theme "data and population instability".**
+  - **Approved:**
+    - S-22's lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), with the grid's spacing held fixed so it is not confounded with S-7;
+    - S-21 shares the jackknife run with S-3 and S-5, with exact refits to measure the quadratic refinement's error;
+    - S-24's separate stream key for the second segment;
+    - S-25's oracle and two-stage detrending arms now, the joint fit in M7;
+    - S-26 paired with the constant-n scenarios and repeated for the M3 estimators;
+    - S-27 and S-28 in the S-8 estimator-comparison run, with S-28's "refuse" row reported as the refusal share.
+  - **Misspecification studies report two targets** (S-11, S-24, S-25, S-29 to S-33):
+    - **primary:** the pseudo-true value, the value the fit converges to on a very long panel. That is what the estimator estimates under misspecification, and coverage is judged against it;
+    - **also reported:** the distance from the generating parameter, because that gap is the misspecification bias a practitioner cares about.
+  - **Placement of S-29 to S-33:**
+    - **Now** (single-segment engine and small DGP variants):
+      - S-29: a two-grade version, with per-grade fits on the remapped history, a two-stage structural break and a portfolio-level fit with allocation;
+      - S-30: per-bucket separate fits;
+      - S-31: the bias, exclusion and a two-stage joining indicator;
+      - S-32: in full;
+      - S-33: at portfolio level.
+    - **M6** (multi-grade calibration): S-29's probabilistic mapping, joint break and full scale; S-30's shared ρ and its cross with S-29; S-31's separate segment; S-33's late rating assignment.
+  - **The study subset is approved** as proposed in D-148: the paired design of 9 scenarios (29, 37, 72, 4, 68, 49, 7, 43, 51) at R = 1,000 with the recovery seeds.
+  - **Raised for the owner (all four decided in D-151):**
+    - **Pseudo-true value for non-stationary designs.** A "very long panel" changes the design when the design itself changes over the sample (S-25, S-29, S-31, S-32, S-33). Proposed definition: the maximiser of the expected log-likelihood of the study's exact design, exact by quadrature where the recorded counts have a computable distribution, simulated otherwise. For a stationary design it equals the very-long-panel value.
+    - **Multi-grade calibration is not in M6 as written.** M6 lists multi-segment correlated factors. K grades with their own PDs on one factor with a shared ρ (the ASRF model) is a different, (K + 1)-parameter model that needs its own optimiser. Proposed: add it to M6 explicitly.
+    - **One DGP observation layer.** S-29, S-31, S-32 and S-33 all alter what is recorded from a true panel: grade relabelling, missed or spurious defaults, dropped defaulters, a segment added from a date. Proposed: build these once as a single layer with one prose description, one Python mirror and one hash.
+    - **A grade scenario matrix** for S-29 and S-30, whose scales the single-PD subset and matrix cannot express.
+
+- **D-151 (owner) — Decisions on the D-150 open points, and a priority order for the studies.**
+  - **Multi-grade calibration becomes an explicit M6 item:** a single-factor model with K grades, each with its own PD, and a shared ρ.
+    - All grades share the same Z_t, so each period's likelihood is still a one-dimensional integral, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz. The quadrature stays cheap; only the optimiser grows.
+    - Approach: a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent). This keeps the profile-likelihood machinery for ρ intact.
+    - The adaptive rule's mode hint is revisited for the product integrand.
+  - **The pseudo-true value** (for misspecification studies, D-150) is the maximiser of the expected log-likelihood under the study's exact design: by quadrature where the recorded counts have a computable distribution, by simulation otherwise. For a stationary design it equals the very-long-panel value.
+  - **One DGP observation layer**, with one prose description, one Python mirror and one hash, shared by S-29 and S-31 to S-33.
+  - **The grade scenario matrix** is defined explicitly in `questions.md`, with its own seed (`0x475241444553434E`, "GRADESCN") and description:
+    - 3 scales (L, M, H) × T ∈ {20, 40, 100};
+    - a 17-grade master scale, PD_k = 0.03% × 1.5^(k−1);
+    - 10,000 obligors per period, spread over the grades by a discretised normal of standard deviation 4 grades;
+    - ρ of 0.24, 0.12 and 0.02, and portfolio PDs of 0.61%, 1.54% and 3.42%;
+    - R = 1,000.
+  - **S-33's redesign is approved:** partial survivorship, and a misjudged recording-change date.
+  - **S-32's misclassification-aware objective has two oracles:** a scipy script and `ref/`. The changed integrand is exactly where the adaptive rule's assumptions could fail, and `ref/` shares no quadrature code with core.
+  - **Priority order.** 33 studies are a research programme, and running them in placement order would delay M3 indefinitely.
+    1. **First batch, the highest value per hour:**
+       1. S-23;
+       2. S-13 targeted (R = 10,000 on the borderline scenarios, which settles whether the 6 small-T profile findings are real);
+       3. the shared jackknife run (S-3, S-5, S-21);
+       4. S-1 and S-2.
+    2. **Then M3,** with S-8, S-9, S-15, S-27 and S-28 folded into it. S-15 moves from after M4 to M3.
+    3. **The rest** keep their placement and are ordered at the end of M3.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
-- **R-2 (revisit at M7, when the macro pipeline starts interacting with the estimator) — Z sign convention and macro sign filters.** Declare expected macro effects in economic terms ("worsens" or "improves credit conditions"). Map them to coefficient signs in one place, through the engine's Z convention, and test the mapping on a synthetic DGP.
+- **R-2 (revisit at M7, when the macro pipeline starts interacting with the estimator) — Z sign convention and macro sign filters.** Declare expected macro effects in economic terms ("worsens" or "improves credit conditions"). Map them to coefficient signs in one place, through the engine's Z convention, and test the mapping on a synthetic DGP. Tracked as study S-18 (D-148).
   - **The engine's convention:** p(z) = Φ((Φ⁻¹(PD) − √ρ·z)/√(1 − ρ)), in `core/model/vasicek.hpp` and `dgp/`. A higher Z therefore means *better* credit conditions (a lower conditional PD).
   - **The risk:** a macro variable that worsens credit conditions has a negative coefficient on Z, but a positive one on a PD or default-rate scale. A sign filter written against the wrong scale silently keeps the wrong specifications.
