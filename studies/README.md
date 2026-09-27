@@ -178,9 +178,10 @@ refined in each study's `PREDICTION.md`.
     sign asymmetry: any rounding perturbation would move ρ̂ the same way.
   - **The recovery-matrix version is not run (owner, D-301):** the mechanism is structural (every
     n_t = 1), every recovery scenario has n ≥ 100, and subset panels 1–9 pass every check.
-- **Mitigation:** proposed, not implemented (parity unchanged; the owner's decision, D-301). Either
-  flag or refuse ρ when no period has n_t ≥ 2, or flag a surface that is flat to rounding along an
-  axis at its argmax, and report no point estimate for that parameter. `study_z_sign_invariance`
+- **Mitigation: adopted (D-302).** A fit with no period of n_t ≥ 2 is flagged ρ not identified
+  (`kFlagRhoNotIdentified`, `VCAL_FLAG_RHO_NOT_IDENTIFIED`), with its numbers still reported. A
+  "flat to rounding" test is not added; that condition depends on the platform and stays with the
+  existing flat-surface flag. `study_z_sign_invariance`
   (CTest, slow) guards the invariance and pins the finding.
 - **Monitoring implication (D-152):**
   - **No metric for the sign itself.** PD̂, ρ̂ and every interval are the same under either

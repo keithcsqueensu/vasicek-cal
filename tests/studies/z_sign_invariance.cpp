@@ -460,6 +460,7 @@ int main() {
         if (e.flags & engine::kFlagRefinementRejected) fl += "rejected ";
         if (e.flags & engine::kFlagQuadratureUnconverged) fl += "quad ";
         if (e.flags & engine::kFlagNumeric) fl += "numeric ";
+        if (e.flags & engine::kFlagRhoNotIdentified) fl += "rho-not-identified ";
         if (fl.empty()) fl = "-";
         const auto tr = [](std::uint32_t f) {
             std::string s;

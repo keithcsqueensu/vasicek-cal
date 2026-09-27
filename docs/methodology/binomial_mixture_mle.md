@@ -157,6 +157,7 @@ Outside them, the per-run check's reported maximum and total are the measure. Do
 | quadrature unconverged | a period failed the per-run check (section 4) | the reported maximum and total bound the error |
 | numeric | a non-finite value appeared on the surface | investigate the inputs |
 | **near bound** | the estimate is within 2 SEs of a bound of the box, in logit coordinates | the Wald interval is unreliable here; use the profile-likelihood interval (section 6a) |
+| **ρ not identified** | no period has n ≥ 2 (D-302). A single obligor's likelihood is E[p(Z)] = PD or 1 − PD, with no ρ in it | ρ̂ is still reported but is meaningless: rounding picks it (S-1). Its profile interval is the whole box. PD is unaffected |
 
 The near-bound flag matters in practice. Low-default panels and small correlations routinely put
 ρ̂ within two standard errors of zero. There the likelihood is far from quadratic, and a

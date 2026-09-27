@@ -53,6 +53,7 @@ std::string flags_text(std::uint32_t f) {
     if (f & e::kFlagRefinementRejected) s += "rejected ";
     if (f & e::kFlagNumeric) s += "numeric ";
     if (f & e::kFlagNearBound) s += "near-bound ";
+    if (f & e::kFlagRhoNotIdentified) s += "rho-not-identified ";
     return s.empty() ? "none" : s;
 }
 
@@ -300,6 +301,26 @@ VCAL_TEST(calibrate_flags_estimates_on_the_grid_edge) {
     VCAL_CHECK(b.flags & e::kFlagGridEdge);
     VCAL_CHECK_EQ(b.value[1], vcal::kDefaultRhoUpper);
     vcal::test::note("edge cases: flags " + flags_text(a.flags) + "/ " + flags_text(b.flags));
+}
+
+// D-302: rho enters the likelihood only through periods with n >= 2. With none, calibrate still
+// reports every number, and flags rho as not identified. One period with n = 2 lifts the flag.
+VCAL_TEST(calibrate_flags_rho_not_identified_without_a_period_of_two_or_more) {
+    std::vector<double> L;
+    std::vector<Obs> single;
+    for (int t = 0; t < 20; ++t) single.push_back({1, t % 10 == 0 ? 1 : 0});
+    e::Status st{};
+    const auto a = run(0, single, coarse_grid(), L, &st);
+    VCAL_CHECK(st == e::Status::Ok);
+    VCAL_CHECK(a.flags & e::kFlagRhoNotIdentified);
+    VCAL_CHECK(std::isfinite(a.value[0]) && std::isfinite(a.value[1]) && std::isfinite(a.loglik));
+    VCAL_CHECK(std::fabs(a.value[0] - 0.1) < 0.02);  // PD is identified: 2 defaults in 20 trials
+
+    single[7].n = 2;
+    const auto b = run(0, single, coarse_grid(), L);
+    VCAL_CHECK(!(b.flags & e::kFlagRhoNotIdentified));
+    VCAL_CHECK(!(run(0, panel(), coarse_grid(), L).flags & e::kFlagRhoNotIdentified));
+    vcal::test::note("n = 1 panel: flags " + flags_text(a.flags) + "/ one n = 2 period: " + flags_text(b.flags));
 }
 
 VCAL_TEST(calibrate_rejects_invalid_input) {

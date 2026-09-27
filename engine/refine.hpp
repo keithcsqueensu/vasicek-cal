@@ -33,6 +33,7 @@ enum : std::uint32_t {
     kFlagRefinementRejected = 1u << 3,
     kFlagNumeric = 1u << 4,  // NaN somewhere in the surface
     kFlagNearBound = 1u << 5,  // within kNearBoundSe standard errors of an axis bound (D-119)
+    kFlagRhoNotIdentified = 1u << 6,  // the data carry no information about rho (D-302); set by calibrate
 };
 
 struct Refined2 {
