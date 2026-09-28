@@ -53,7 +53,7 @@ std::string make() {
 #endif
     s += "cuda=off\n";
     s += "backends=cpu\n";
-    s += "profiles=parity\n";
+    s += "profiles=parity,native\n";
     s += "fp_contract=off\n";
     return s;
 }

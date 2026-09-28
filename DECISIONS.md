@@ -917,6 +917,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Why:** with surface rows shared across panels (D-167), a parametric-bootstrap panel's surface is a copy, and what remains of S-10 and S-4b is per-replicate profile and bootstrap work, which parallelises on the CPU. M4 (GPU) is no longer on the critical path of any registered study; M6 unlocks the multi-grade, misspecification and data-instability studies.
   - **Order:** (1) merge the M3 PRs and the cache; (2) C ABI 0.3 exposing the three M3 estimators, the rate MLE's zero-default treatments as an enum of explicit options with no recommended default until S-28 reports; (3) the M3 folded studies (S-8/S-27/S-28, S-9, S-15) with the cache; (4) S-10 and S-4b on the CPU; (5) a short consolidation (tag v0.2; README updated with the study results); then M6; M4 becomes a later performance milestone.
 
+## C ABI 0.3: the M3 estimators, 2026-09-28
+
+- **D-169 (owner) — ABI 0.3 exposes the three M3 estimators in one minor version, adds the `native` profile, and offers the rate MLE's zero-default treatments as explicit options with no recommended default until S-28 reports.**
+  - **Functions (additive; no existing struct or function changes):** `vcal_calibrate_rate` (count data, rates d/n with detection limits 1/(2n), or a `vcal_rate_series` with its own limits), `vcal_calibrate_moments` (counts or rates) and `vcal_calibrate_posterior` (flat or Jeffreys prior). New structs `vcal_rate_series` (32 bytes), `vcal_moments_estimate` (32) and `vcal_posterior` (112), padding-free and checked from C.
+  - **Zero rates:** `VCAL_ZERO_RATES_REFUSE` (0) is the parity behaviour of D-044, and its refusal names the periods in the error message; `_CENSOR`, `_SUBSTITUTE` and `_DROP` are native enhancements and need a `VCAL_PROFILE_NATIVE` context (parity refuses them with a message saying so). The enum has no recommended value: which to prefer is S-28's question, and when it reports the recommendation is documentation plus a default value, with no ABI change.
+  - **The native profile:** `VCAL_PROFILE_NATIVE` (1) is accepted by `vcal_context_create`; every existing function behaves as under parity. Build info reports `profiles=parity,native`.
+  - **Limits, explicit errors rather than silent behaviour:** the Jeffreys prior needs the same n in every period (`VCAL_E_UNSUPPORTED` otherwise, since the table is per n); the posterior needs logit axes.
+  - **Tests:** `abi_engine_equivalence` checks every new call against the engine bit for bit (the rate MLE under each treatment, on counts and on a rate series; MoM on counts and rates; the posterior under both priors, including the context's cached Jeffreys table) and the refusals; `abi_c_test` checks the layouts and calls each function from C.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

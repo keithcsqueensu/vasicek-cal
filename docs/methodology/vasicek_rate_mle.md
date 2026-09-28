@@ -145,8 +145,8 @@ CI job "validation (scipy)".
 
 ## 7. What is not here yet
 
-- **The C ABI** exposes only the binomial-mixture MLE (ABI v0). Exposing the rate objective and its
-  zero-rate treatments needs an ABI minor version and is decided separately.
+- **The C ABI** exposes it from 0.3 as `vcal_calibrate_rate` (D-169), with the zero-rate
+  treatments as explicit options and no recommended default until S-28 reports.
 - **Resampling:** the rate objective's surface is an ordinary L, so the W × L resampling of M2b
   applies unchanged; its bootstrap intervals are not validated here.
 - **Which zero-rate treatment to prefer, and when the rate MLE is close enough to the binomial one,**

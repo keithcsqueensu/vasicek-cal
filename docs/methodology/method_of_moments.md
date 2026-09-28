@@ -91,5 +91,4 @@ every flag. It runs in the CI job "validation (scipy)".
 
 - **Intervals:** MoM has no likelihood, so no profile interval. Bootstrap intervals come from the W
   machinery above; their coverage is not validated here.
-- **The C ABI** exposes only the binomial MLE (ABI v0); exposing MoM needs an ABI minor version,
-  decided separately.
+- **The C ABI** exposes it from 0.3 as `vcal_calibrate_moments` (D-169).

@@ -21,6 +21,7 @@
 #include <limits>
 #include <new>
 #include <stdexcept>
+#include <map>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -29,10 +30,13 @@
 #include "backends/cpu/cpu_backend.hpp"
 #include "core/grid.hpp"
 #include "core/objectives/binomial_mixture.hpp"
+#include "core/objectives/vasicek_rate.hpp"
 #include "core/quadrature/parity.hpp"
 #include "core/special/lbinom.hpp"
 #include "dgp/dgp.hpp"
 #include "engine/calibrate.hpp"
+#include "engine/moments.hpp"
+#include "engine/posterior.hpp"
 #include "engine/profile.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
@@ -42,6 +46,9 @@
 struct vcal_context {
     std::int32_t profile;
     std::int32_t n_threads;
+    // Jeffreys tables for vcal_calibrate_posterior, one per (n, grid): expensive, and the same for
+    // every panel with that n. A context is used by one thread at a time (vcal.h, "Threads").
+    std::map<std::string, vcal::engine::JeffreysTable> jeffreys;
 };
 
 namespace {
@@ -63,6 +70,17 @@ static_assert(sizeof(vcal_resample_spec) == 88);
 static_assert(sizeof(vcal_replicates) == 56);
 static_assert(sizeof(vcal_percentile_intervals) == 80);
 static_assert(sizeof(vcal_dgp_spec) == 56);
+static_assert(sizeof(vcal_rate_series) == 32);
+static_assert(sizeof(vcal_moments_estimate) == 32);
+static_assert(sizeof(vcal_posterior) == 112);
+static_assert(std::uint32_t{VCAL_MOMENTS_REFUSED} == std::uint32_t{vcal::engine::kMomRefused});
+static_assert(std::uint32_t{VCAL_MOMENTS_RHO_AT_FLOOR} == std::uint32_t{vcal::engine::kMomRhoAtFloor});
+static_assert(std::uint32_t{VCAL_MOMENTS_RHO_AT_CAP} == std::uint32_t{vcal::engine::kMomRhoAtCap});
+static_assert(std::uint32_t{VCAL_MOMENTS_PD_OUTSIDE_BOX} == std::uint32_t{vcal::engine::kMomPdOutsideBox});
+static_assert(std::uint32_t{VCAL_POSTERIOR_REFINED} == std::uint32_t{vcal::engine::kPosteriorRefined});
+static_assert(std::uint32_t{VCAL_POSTERIOR_REFUSED} == std::uint32_t{vcal::engine::kPosteriorRefused});
+static_assert(std::uint32_t{VCAL_POSTERIOR_MASS_OUTSIDE_LOCAL} == std::uint32_t{vcal::engine::kPosteriorMassOutsideLocal});
+static_assert(std::uint32_t{VCAL_POSTERIOR_NUMERIC} == std::uint32_t{vcal::engine::kPosteriorNumeric});
 
 // ---- the ABI's constants are the engine's ----
 
@@ -281,6 +299,98 @@ std::vector<double> surface(const vcal_context& c, const std::vector<Obs>& obs, 
 
 // ---- resampling specs ----
 
+// ---- the M3 estimators (ABI 0.3) ----
+
+namespace o3 = vcal::objectives;
+
+// Exactly one of counts and rates, as rate observations. Count data: d/n and 1/(2n). Rates: the
+// given detection limits where supplied, else 0.25 as a placeholder that no treatment reads (a
+// rate of 0 or 1 without a limit is refused below whenever a treatment would read it).
+std::vector<o3::RateObs> read_rates(const vcal_panel* counts, const vcal_rate_series* rates, bool& has_limits) {
+    if ((counts == nullptr) == (rates == nullptr)) invalid("pass exactly one of counts and rates");
+    std::vector<o3::RateObs> obs;
+    if (counts != nullptr) {
+        for (const auto& y : read_panel(counts)) obs.push_back(o3::rate_obs(y.n, y.d));
+        has_limits = true;
+        return obs;
+    }
+    const vcal_rate_series v = read_in(rates, "rates");
+    check_reserved(v.reserved, "rates");
+    if (v.n_periods < 1) invalid("rates.n_periods = " + num(v.n_periods) + ": need at least 1");
+    if (v.rates == nullptr) invalid("rates.rates is NULL");
+    has_limits = v.detection_limits != nullptr;
+    for (std::int64_t t = 0; t < v.n_periods; ++t) {
+        const double r = v.rates[t];
+        if (!(r >= 0.0 && r <= 1.0)) invalid("rates.rates[" + num(t) + "] = " + num(r) + ": need 0 <= rate <= 1");
+        double lim = 0.25;
+        if (has_limits) {
+            lim = v.detection_limits[t];
+            if (!(lim > 0.0 && lim < 0.5)) {
+                invalid("rates.detection_limits[" + num(t) + "] = " + num(lim) + ": need 0 < limit < 1/2");
+            }
+        }
+        obs.push_back({r, lim});
+    }
+    return obs;
+}
+
+std::string period_list(const std::vector<std::int64_t>& periods) {
+    std::string s;
+    for (std::size_t i = 0; i < periods.size() && i < 20; ++i) s += (i ? ", " : "") + num(periods[i]);
+    if (periods.size() > 20) s += ", ... (" + num(static_cast<std::int64_t>(periods.size())) + " in all)";
+    return s;
+}
+
+vcal_estimate estimate_out(const e::Estimate2& est) {
+    vcal_estimate out{};
+    out.flags = est.flags;
+    out.pd = est.value[0];
+    out.rho = est.value[1];
+    out.se_pd = est.se[0];
+    out.se_rho = est.se[1];
+    out.corr_pd_rho = est.corr;
+    out.loglik = est.loglik;
+    out.quad_check_max = est.quad_check_max;
+    out.quad_check_total = est.quad_check_total;
+    out.quad_check_flagged = est.quad_check_flagged;
+    out.grid_index = est.grid_index;
+    out.nan_count = est.nan_count;
+    return out;
+}
+
+vcal_profile_intervals profile_out(const e::ProfileIntervals2& p) {
+    vcal_profile_intervals prof{};
+    prof.pd_flags = p.flags[0];
+    prof.rho_flags = p.flags[1];
+    prof.pd_lo = p.lo[0];
+    prof.pd_hi = p.hi[0];
+    prof.rho_lo = p.lo[1];
+    prof.rho_hi = p.hi[1];
+    prof.loglik_max = p.loglik_max;
+    prof.pd_at_max = p.max_at[0];
+    prof.rho_at_max = p.max_at[1];
+    prof.residual_max = p.residual_max;
+    prof.evaluations = p.evaluations;
+    return prof;
+}
+
+template <class O>
+void fit_rates(const vcal_context& c, const std::vector<o3::RateObs>& obs, const vcal::Grid<2>& g,
+               vcal_estimate* estimate, vcal_profile_intervals* profile) {
+    const auto T = static_cast<std::int64_t>(obs.size());
+    surface_cells(T, g);
+    std::vector<double> L;
+    e::Estimate2 est{};
+    switch (e::calibrate(backend(c), O{}, primary_rule(), check_rule(), obs.data(), T, g, L, est)) {
+        case e::Status::Ok: break;
+        case e::Status::SurfaceUndefined:
+            throw AbiError(VCAL_E_NUMERIC, "the log-likelihood is not finite at any grid point");
+        default: throw std::logic_error("the engine rejected a grid or panel that the ABI accepted");
+    }
+    write_out(estimate, estimate_out(est));
+    if (profile != nullptr) write_out(profile, profile_out(e::profile_intervals(O{}, primary_rule(), obs.data(), T, g, L, est)));
+}
+
 struct Resample {
     vcal_resample_spec spec;
     std::int64_t periods;
@@ -473,9 +583,11 @@ VCAL_API vcal_status VCAL_CALL vcal_context_create(const vcal_context_options* o
             o = read_in(options, "options");
             check_reserved(o.reserved, "options");
         }
-        if (o.profile != VCAL_PROFILE_PARITY) invalid("options.profile = " + num(o.profile) + " is not a VCAL_PROFILE_* value");
+        if (o.profile != VCAL_PROFILE_PARITY && o.profile != VCAL_PROFILE_NATIVE) {
+            invalid("options.profile = " + num(o.profile) + " is not a VCAL_PROFILE_* value");
+        }
         if (o.n_threads < 0) invalid("options.n_threads = " + num(o.n_threads) + ": need >= 0 (0 = the OpenMP default)");
-        *context = new vcal_context{o.profile, o.n_threads};
+        *context = new vcal_context{o.profile, o.n_threads, {}};
     });
 }
 
@@ -560,6 +672,151 @@ VCAL_API vcal_status VCAL_CALL vcal_calibrate(vcal_context* context, const vcal_
         }
         write_out(estimate, out);
         if (profile != nullptr) write_out(profile, prof);
+    });
+}
+
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_rate(vcal_context* context, const vcal_panel* counts,
+                                                   const vcal_rate_series* rates, const vcal_grid* grid,
+                                                   int32_t zero_rates, vcal_estimate* estimate,
+                                                   vcal_profile_intervals* profile) {
+    return guard("vcal_calibrate_rate", [&] {
+        const vcal_context& c = context_of(context);
+        bool has_limits = false;
+        std::vector<o3::RateObs> obs = read_rates(counts, rates, has_limits);
+        const vcal::Grid<2> g = read_grid(grid);
+        check_size(estimate, "estimate");
+        if (profile != nullptr) check_size(profile, "profile");
+        if (zero_rates < VCAL_ZERO_RATES_REFUSE || zero_rates > VCAL_ZERO_RATES_DROP) {
+            invalid("zero_rates = " + num(zero_rates) + " is not a VCAL_ZERO_RATES_* value");
+        }
+        if (zero_rates != VCAL_ZERO_RATES_REFUSE && c.profile != VCAL_PROFILE_NATIVE) {
+            invalid("zero_rates = " + num(zero_rates) +
+                    " is a native treatment (D-044): it needs a VCAL_PROFILE_NATIVE context; parity refuses");
+        }
+        const auto boundary = o3::zero_rate_periods(obs.data(), static_cast<std::int64_t>(obs.size()));
+        if (!boundary.empty()) {
+            if (zero_rates == VCAL_ZERO_RATES_REFUSE) {
+                invalid("refused (D-044): periods " + period_list(boundary) +
+                        " have a default rate of 0 or 1; a native context offers VCAL_ZERO_RATES_CENSOR, _SUBSTITUTE or _DROP");
+            }
+            if (zero_rates != VCAL_ZERO_RATES_DROP && !has_limits) {
+                invalid("periods " + period_list(boundary) + " have a rate of 0 or 1: rates.detection_limits is needed");
+            }
+        }
+        using P = vcal::PrecisionF64;
+        switch (zero_rates) {
+            case VCAL_ZERO_RATES_CENSOR: fit_rates<o3::VasicekRate<P, o3::ZeroRates::Censor>>(c, obs, g, estimate, profile); break;
+            case VCAL_ZERO_RATES_SUBSTITUTE:
+                fit_rates<o3::VasicekRate<P, o3::ZeroRates::Substitute>>(c, obs, g, estimate, profile);
+                break;
+            case VCAL_ZERO_RATES_DROP: {
+                const auto kept = o3::drop_zero_rate_periods(obs.data(), static_cast<std::int64_t>(obs.size()));
+                if (kept.size() < 3) {
+                    invalid("VCAL_ZERO_RATES_DROP leaves " + num(static_cast<std::int64_t>(kept.size())) +
+                            " periods: need at least 3");
+                }
+                fit_rates<o3::VasicekRate<P, o3::ZeroRates::Refuse>>(c, kept, g, estimate, profile);
+                break;
+            }
+            default: fit_rates<o3::VasicekRate<P, o3::ZeroRates::Refuse>>(c, obs, g, estimate, profile); break;
+        }
+    });
+}
+
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_moments(vcal_context* context, const vcal_panel* counts,
+                                                      const vcal_rate_series* rates, const vcal_grid* grid,
+                                                      vcal_moments_estimate* estimate) {
+    return guard("vcal_calibrate_moments", [&] {
+        context_of(context);
+        if ((counts == nullptr) == (rates == nullptr)) invalid("pass exactly one of counts and rates");
+        const vcal::Grid<2> g = read_grid(grid);
+        check_size(estimate, "estimate");
+        e::MomEstimate m{};
+        if (counts != nullptr) {
+            const std::vector<Obs> obs = read_panel(counts);
+            m = e::mom_from_counts(primary_rule(), obs.data(), static_cast<std::int64_t>(obs.size()), g.axis[0].lo,
+                                   g.axis[0].hi, g.axis[1].lo, g.axis[1].hi);
+        } else {
+            bool has_limits = false;
+            const auto obs = read_rates(nullptr, rates, has_limits);
+            std::vector<double> r(obs.size());
+            for (std::size_t t = 0; t < obs.size(); ++t) r[t] = obs[t].rate;
+            m = e::mom_from_rates(primary_rule(), r.data(), static_cast<std::int64_t>(r.size()), g.axis[0].lo, g.axis[0].hi,
+                                  g.axis[1].lo, g.axis[1].hi);
+        }
+        vcal_moments_estimate out{};
+        out.flags = m.flags;
+        out.pd = m.pd;
+        out.rho = m.rho;
+        out.pd2 = m.pd2;
+        write_out(estimate, out);
+    });
+}
+
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, const vcal_panel* panel,
+                                                        const vcal_grid* grid, int32_t prior,
+                                                        vcal_posterior* posterior) {
+    return guard("vcal_calibrate_posterior", [&] {
+        vcal_context& c = *const_cast<vcal_context*>(&context_of(context));
+        const std::vector<Obs> obs = read_panel(panel);
+        const vcal::Grid<2> g = read_grid(grid);
+        check_size(posterior, "posterior");
+        if (prior != VCAL_PRIOR_FLAT && prior != VCAL_PRIOR_JEFFREYS) {
+            invalid("prior = " + num(prior) + " is not a VCAL_PRIOR_* value");
+        }
+        for (int a = 0; a < 2; ++a) {
+            if (g.axis[a].scale != vcal::AxisScale::Logit) {
+                throw AbiError(VCAL_E_UNSUPPORTED, "the grid posterior needs logit axes (ABI 0.3)");
+            }
+        }
+        const auto T = static_cast<std::int64_t>(obs.size());
+        surface_cells(T, g);
+        const vcal::engine::JeffreysTable* jt = nullptr;
+        if (prior == VCAL_PRIOR_JEFFREYS) {
+            for (const auto& y : obs) {
+                if (y.n != obs[0].n) {
+                    throw AbiError(VCAL_E_UNSUPPORTED, "the Jeffreys prior needs the same n in every period (ABI 0.3)");
+                }
+            }
+            const std::string key = num(obs[0].n) + "|" + e::surface_configuration(Objective{}, primary_rule(), g);
+            auto it = c.jeffreys.find(key);
+            if (it == c.jeffreys.end()) {
+                it = c.jeffreys.emplace(key, e::jeffreys_table(backend(c), Objective{}, primary_rule(), obs[0].n, g)).first;
+            }
+            jt = &it->second;
+        }
+        std::vector<double> L;
+        e::Estimate2 est{};
+        switch (e::calibrate(backend(c), Objective{}, primary_rule(), check_rule(), obs.data(), T, g, L, est)) {
+            case e::Status::Ok: break;
+            case e::Status::SurfaceUndefined:
+                throw AbiError(VCAL_E_NUMERIC, "the log-likelihood is not finite at any grid point");
+            default: throw std::logic_error("the engine rejected a grid or panel that the ABI accepted");
+        }
+        double se_u[2];
+        for (int a = 0; a < 2; ++a) {
+            se_u[a] = est.se[a] / vcal::grid::dvalue_dscaled(g.axis[a].scale, vcal::grid::to_scaled(g.axis[a].scale, est.value[a]));
+        }
+        const auto r = e::grid_posterior(backend(c), Objective{}, primary_rule(), obs.data(), T, g, L,
+                                         prior == VCAL_PRIOR_FLAT ? e::Prior::Flat : e::Prior::Jeffreys, jt, se_u);
+        vcal_posterior out{};
+        out.flags = r.flags;
+        out.refinements = r.refinements;
+        const double nan = std::nan("");
+        const bool ok = !(r.flags & (e::kPosteriorRefused | e::kPosteriorNumeric));
+        out.pd_et_lo = ok ? r.et_lo[0] : nan;
+        out.pd_et_hi = ok ? r.et_hi[0] : nan;
+        out.pd_hpd_lo = ok ? r.hpd_lo[0] : nan;
+        out.pd_hpd_hi = ok ? r.hpd_hi[0] : nan;
+        out.rho_et_lo = ok ? r.et_lo[1] : nan;
+        out.rho_et_hi = ok ? r.et_hi[1] : nan;
+        out.rho_hpd_lo = ok ? r.hpd_lo[1] : nan;
+        out.rho_hpd_hi = ok ? r.hpd_hi[1] : nan;
+        out.pd_mean_logit = r.mean[0];
+        out.rho_mean_logit = r.mean[1];
+        out.pd_sd_logit = r.sd[0];
+        out.rho_sd_logit = r.sd[1];
+        write_out(posterior, out);
     });
 }
 

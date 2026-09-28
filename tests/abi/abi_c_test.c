@@ -34,6 +34,9 @@ VCAL_LAYOUT(vcal_resample_spec, weights, 88);
 VCAL_LAYOUT(vcal_replicates, flags, 56);
 VCAL_LAYOUT(vcal_percentile_intervals, grid_edge, 80);
 VCAL_LAYOUT(vcal_dgp_spec, n_obligors, 56);
+VCAL_LAYOUT(vcal_rate_series, detection_limits, 32);
+VCAL_LAYOUT(vcal_moments_estimate, pd2, 32);
+VCAL_LAYOUT(vcal_posterior, rho_sd_logit, 112);
 
 /* ---- a minimal runner ---- */
 
@@ -120,9 +123,9 @@ static void test_version_and_build_info(void) {
     CHECK_ERROR_MENTIONS("capacity 4");
     CHECK_STATUS(vcal_build_info(info, (int64_t)sizeof info, &again), VCAL_OK);
     CHECK((int64_t)strlen(info) + 1 == required);
-    CHECK(strstr(info, "abi_version=0.2\n") != NULL);
+    CHECK(strstr(info, "abi_version=0.3\n") != NULL);
     CHECK(strstr(info, "git_commit=") != NULL);
-    CHECK(strstr(info, "profiles=parity\n") != NULL);
+    CHECK(strstr(info, "profiles=parity,native\n") != NULL);
     printf("%s", info);
 }
 
@@ -512,6 +515,58 @@ static void test_calibrate_resample(vcal_context* ctx) {
     }
 }
 
+/* ABI 0.3 (D-169): the M3 estimators from C, on the test panel; the numbers are checked against
+ * the engine in abi_engine_equivalence, so here: they run, fill their outputs, and refuse as
+ * documented. */
+static void test_m3_estimators(vcal_context* parity) {
+    vcal_panel p = make_panel();
+    vcal_grid g = default_grid();
+    vcal_estimate est;
+    vcal_moments_estimate mom;
+    vcal_posterior post;
+    vcal_context_options o;
+    vcal_context* native = NULL;
+    double rates[3] = {0.01, 0.0, 0.03};
+    double limits[3] = {0.005, 0.005, 0.005};
+    vcal_rate_series rs;
+    memset(&est, 0, sizeof est);
+    est.struct_size = sizeof est;
+    memset(&mom, 0, sizeof mom);
+    mom.struct_size = sizeof mom;
+    memset(&post, 0, sizeof post);
+    post.struct_size = sizeof post;
+    memset(&rs, 0, sizeof rs);
+    rs.struct_size = sizeof rs;
+    rs.n_periods = 3;
+    rs.rates = rates;
+
+    CHECK_STATUS(vcal_calibrate_moments(parity, &p, NULL, &g, &mom), VCAL_OK);
+    CHECK(mom.pd > 0.0 && mom.pd2 > 0.0);
+    CHECK_STATUS(vcal_calibrate_moments(parity, &p, &rs, &g, &mom), VCAL_E_INVALID_ARGUMENT);
+    CHECK_ERROR_MENTIONS("exactly one of counts and rates");
+    CHECK_STATUS(vcal_calibrate_posterior(parity, &p, &g, VCAL_PRIOR_FLAT, &post), VCAL_OK);
+    CHECK((post.flags & VCAL_POSTERIOR_REFUSED) == 0 && post.pd_et_lo < post.pd_et_hi && post.rho_et_lo < post.rho_et_hi);
+    /* Parity refuses a zero rate, and names the period; the native treatments need a native context. */
+    CHECK_STATUS(vcal_calibrate_rate(parity, NULL, &rs, &g, VCAL_ZERO_RATES_REFUSE, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+    CHECK_ERROR_MENTIONS("periods 1 have a default rate of 0 or 1");
+    CHECK_STATUS(vcal_calibrate_rate(parity, NULL, &rs, &g, VCAL_ZERO_RATES_CENSOR, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+    CHECK_ERROR_MENTIONS("VCAL_PROFILE_NATIVE");
+    memset(&o, 0, sizeof o);
+    o.struct_size = sizeof o;
+    o.profile = VCAL_PROFILE_NATIVE;
+    CHECK_STATUS(vcal_context_create(&o, &native), VCAL_OK);
+    if (native != NULL) {
+        CHECK_STATUS(vcal_calibrate_rate(native, NULL, &rs, &g, VCAL_ZERO_RATES_CENSOR, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+        CHECK_ERROR_MENTIONS("detection_limits is needed");
+        rs.detection_limits = limits;
+        CHECK_STATUS(vcal_calibrate_rate(native, NULL, &rs, &g, VCAL_ZERO_RATES_CENSOR, &est, NULL), VCAL_OK);
+        CHECK(est.pd > 0.0 && est.rho > 0.0);
+        CHECK_STATUS(vcal_calibrate_rate(native, NULL, &rs, &g, VCAL_ZERO_RATES_DROP, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+        CHECK_ERROR_MENTIONS("need at least 3");
+        CHECK_STATUS(vcal_context_destroy(native), VCAL_OK);
+    }
+}
+
 int main(int argc, char** argv) {
     vcal_context* ctx = NULL;
     if (argc != 2) {
@@ -524,6 +579,7 @@ int main(int argc, char** argv) {
     if (ctx != NULL) {
         test_dgp_reference_panels(ctx, argv[1]);
         test_calibrate_resample(ctx);
+        test_m3_estimators(ctx);
         CHECK_STATUS(vcal_context_destroy(ctx), VCAL_OK);
     }
     printf("abi_c_test: %d checks, %d failed\n", g_checks, g_failures);
