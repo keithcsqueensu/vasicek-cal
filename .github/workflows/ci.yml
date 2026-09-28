@@ -194,6 +194,8 @@ jobs:
         run: .venv/bin/python validation/scipy/vasicek_rate_mle.py
       - name: Method of moments against the engine (M3)
         run: .venv/bin/python validation/scipy/method_of_moments.py
+      - name: Grid posterior against the engine (M3)
+        run: .venv/bin/python validation/scipy/grid_posterior.py
 
   # K-1, D-059, D-100: device-visible code must compile as device code. Compile-only (no GPU on
   # the runners); the CPU tests also run, as a host-side check of the CUDA-enabled build.

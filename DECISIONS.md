@@ -890,6 +890,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Why its own seed:** S-8 compares MoM with the MLE on the recovery panels and is scored by a script committed before its run (D-161). Running MoM over the recovery matrix here would compute S-8's result first. Likewise M3.1's replay touched nine recovery count panels (replicate 0, PD 1%, n = 100) under the censored rate likelihood; that is disclosed for S-28, whose run covers 81,000 panels.
   - **Not in this step:** intervals (no likelihood; bootstrap via W, not validated here) and the C ABI.
 
+## M3.3: the grid-Bayesian estimator, 2026-09-28
+
+- **D-166 — The grid-Bayesian estimator carries the resolution rule (at least 4 grid points per posterior SD on each axis), refining on local grids whose extent follows the posterior's SD and tails; the registered extent (±8 of the smaller of the Hessian SE and the posterior SD) is amended before S-9 runs, because it dropped real mass for skewed posteriors.**
+  - **What:** `engine/posterior.hpp`. The posterior on the grid in logit coordinates, flat (natural scale) or Jeffreys priors (√det I_u of one period, tabulated per n and interpolated), cell-uniform marginals, the resolution rule with local refinement or refusal, equal-tailed and HPD intervals. `docs/methodology/grid_bayesian.md`.
+  - **The amendment, and why:** on the estimator's own validation panels (seed M3BAYVAL, T = 20, n = 100), the registered extent refused 3 of 16 fits: the ρ posterior is wide and skewed towards the box's floor, so ±8 Hessian SEs dropped posterior mass. The extent now follows the posterior SD and the marginal's 5·10⁻⁸ tails (snapped to cell edges, so the mass check and the quantiles agree), and the spacing follows the smaller of the SD and the SE, at 5 points per SD. Recorded as an addendum to `studies/bayes-coverage/PREDICTION.md` before any S-9 run; F1–F5 are unchanged. No recovery panel was used.
+  - **Validation:** exact against a normal posterior (equal-tailed ends 0.009 SD, HPD 0.071 SD, both within bounds derived from the rule); the Jeffreys table against scipy's adaptive quad (1.45·10⁻⁹ in log); 16 reference fits replicated by `validation/scipy/grid_posterior.py` (3.0·10⁻⁵ in logit, the rule's decisions exactly); thread-count determinism.
+  - **M3 is complete with this step:** the Vasicek-rate MLE (D-164), the method of moments (D-165) and the grid-Bayesian estimator (D-166). Still open, and decided separately: exposing them through the C ABI (a minor version), and the registered studies S-8, S-9, S-15, S-27 and S-28 that run on them.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

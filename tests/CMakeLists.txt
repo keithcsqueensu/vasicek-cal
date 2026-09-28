@@ -110,6 +110,11 @@ vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::eng
 vcal_add_test_executable(unit_profile SOURCES unit/profile_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_vasicek_rate SOURCES unit/vasicek_rate_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
 vcal_add_test_executable(unit_moments SOURCES unit/moments_test.cpp LIBS vcal::engine vcal::dgp)
+vcal_add_test_executable(unit_posterior SOURCES unit/posterior_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
+# M3: the grid-Bayesian estimator's reference results, for its regression test and scipy replication.
+add_executable(posterior_reference recovery/posterior_reference.cpp)
+target_link_libraries(posterior_reference PRIVATE vcal_test_harness vcal::engine vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(posterior_reference)
 # M3: the method of moments' reference results, for its regression test and scipy replication.
 add_executable(mom_reference recovery/mom_reference.cpp)
 target_link_libraries(mom_reference PRIVATE vcal_test_harness vcal::engine vcal::dgp)
