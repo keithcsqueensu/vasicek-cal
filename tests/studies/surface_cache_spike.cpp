@@ -10,10 +10,9 @@
 //      (evaluate_surface, D-122 within the panel), the rest of calibrate (argmax, refinement,
 //      quadrature check, Hessian), the profile intervals, the bootstrap (weights, W x L reduction,
 //      percentile ends), and S-23's q interval and q bootstrap ends;
-//   3. CACHED: compute each distinct (n, d) of the scenario's panels once, as a row over the grid
-//      (log_contrib at every grid point, exactly as evaluate_surface computes it), then fit every
-//      replicate from its rows copied out of the cache (engine::calibrate_from_surface), the other
-//      phases unchanged;
+//   3. CACHED: fit every replicate with its surface from engine::SurfaceRowCache (D-167), one cache per
+//      scenario, rows filled on demand the first time a count appears (their cost is counted in the
+//      surface phase), the other phases unchanged;
 //   4. compare every field of every replicate's Fit, cached and uncached, with recovery::fit: bit for
 //      bit (the padding bytes excluded).
 // Reports surface rows computed, and per phase the CPU time summed over replicates (each fit is
@@ -27,11 +26,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <map>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "engine/surface_cache.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -61,11 +60,10 @@ double since(Clock::time_point& t0) {
     return s;
 }
 
-using RowCache = std::map<std::int64_t, std::vector<double>>;  // d -> K values (n is the scenario's)
 
 // recovery::fit, phase by phase; with cache != nullptr the surface is assembled from cached rows.
 rc::Fit fit_timed(const rc::Scenario& s, std::uint32_t replicate, const std::vector<std::int64_t>& d,
-                  const RowCache* cache, Phases& ph, std::int64_t& rows) {
+                  engine::SurfaceRowCache* cache, Phases& ph, std::int64_t& rows) {
     std::vector<Objective::Obs> obs(d.size());
     for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {s.obligors, d[t]};
     static const auto primary = quadrature::parity_rule();
@@ -79,10 +77,7 @@ rc::Fit fit_timed(const rc::Scenario& s, std::uint32_t replicate, const std::vec
         engine::evaluate_surface(serial, Objective{}, primary, obs.data(), T, g, L.data());
         rows += static_cast<std::int64_t>(std::set<std::int64_t>(d.begin(), d.end()).size());
     } else {
-        for (std::int64_t t = 0; t < T; ++t) {
-            const auto& row = cache->at(d[static_cast<std::size_t>(t)]);
-            std::copy(row.begin(), row.end(), L.begin() + t * K);
-        }
+        engine::evaluate_surface_cached(serial, *cache, Objective{}, primary, obs.data(), T, g, L.data());
     }
     ph.surface += since(t0);
     engine::Estimate2 est{};
@@ -181,13 +176,10 @@ int main(int argc, char** argv) {
         }
     }
     const backends::CpuBackend all{};
-    static const auto primary = quadrature::parity_rule();
-    const Grid<2> g = rc::grid();
-    const std::int64_t K = g.size();
     Phases un_total, ca_total;
-    double un_wall = 0, ca_wall = 0, build_wall = 0, build_cpu = 0;
+    double un_wall = 0, ca_wall = 0;
     std::int64_t un_rows = 0, ca_rows = 0, mismatches = 0, compared = 0;
-    std::printf("scenario  T    n     | rows uncached  cached | CPU s uncached: surface  rest | cached: build  rest | "
+    std::printf("scenario  T    n     | rows uncached  cached | CPU s uncached: surface  rest | cached: surface  rest | "
                 "identical\n");
     for (const std::uint32_t id : ids) {
         const rc::Scenario s = rc::scenario(id);
@@ -209,25 +201,9 @@ int main(int argc, char** argv) {
             p_un += ph[r];
             r_un += rows[r];
         }
-        // CACHED: the scenario's distinct counts, each row once (parallel over rows x grid points).
-        std::set<std::int64_t> distinct;
-        for (const auto& p : panels) distinct.insert(p.begin(), p.end());
-        const std::vector<std::int64_t> ds(distinct.begin(), distinct.end());
-        RowCache cache;
-        for (const auto d : ds) cache[d].assign(static_cast<std::size_t>(K), 0.0);
+        // CACHED: one cache for the scenario, rows filled on demand.
+        engine::SurfaceRowCache cache;
         t0 = Clock::now();
-        std::vector<double> cpu(static_cast<std::size_t>(ds.size() * static_cast<std::size_t>(K)));
-        all.parallel_for(static_cast<std::int64_t>(ds.size()) * K, [&](std::int64_t j) {
-            const auto t1 = Clock::now();
-            const std::int64_t d = ds[static_cast<std::size_t>(j / K)], k = j % K;
-            double v[2];
-            g.values(k, v);
-            cache[d][static_cast<std::size_t>(k)] = Objective{}.log_contrib({s.obligors, d}, Objective::theta(v), primary);
-            cpu[static_cast<std::size_t>(j)] = std::chrono::duration<double>(Clock::now() - t1).count();
-        });
-        const double w_build = since(t0);
-        double c_build = 0;
-        for (const double c : cpu) c_build += c;
         std::vector<Phases> ph2(R);
         std::vector<std::int64_t> rows2(R, 0);
         all.parallel_for(R, [&](std::int64_t r) {
@@ -237,6 +213,7 @@ int main(int argc, char** argv) {
         const double w_ca = since(t0);
         Phases p_ca;
         for (std::uint32_t r = 0; r < R; ++r) p_ca += ph2[r];
+        const std::size_t distinct = cache.size();
         // The reference: the library's own recovery::fit.
         all.parallel_for(R, [&](std::int64_t r) { ref[static_cast<std::size_t>(r)] = rc::fit(s, static_cast<std::uint32_t>(r)); });
         std::int64_t bad = 0;
@@ -250,13 +227,11 @@ int main(int argc, char** argv) {
         ca_total += p_ca;
         un_wall += w_un;
         ca_wall += w_ca;
-        build_wall += w_build;
-        build_cpu += c_build;
         un_rows += r_un;
-        ca_rows += static_cast<std::int64_t>(ds.size());
+        ca_rows += static_cast<std::int64_t>(distinct);
         std::printf("%-8u  %-4lld %-5lld | %8lld  %8zu | %22.1f %5.1f | %13.2f %5.1f | %s\n", id,
                     static_cast<long long>(s.periods), static_cast<long long>(s.obligors), static_cast<long long>(r_un),
-                    ds.size(), p_un.surface, p_un.total() - p_un.surface, c_build, p_ca.total() - p_ca.surface,
+                    distinct, p_un.surface, p_un.total() - p_un.surface, p_ca.surface, p_ca.total() - p_ca.surface,
                     bad == 0 ? "yes" : "NO");
     }
     const auto line = [](const char* name, const Phases& p) {
@@ -268,10 +243,9 @@ int main(int argc, char** argv) {
     std::printf("CPU seconds summed over replicates (each fit serial):\n");
     line("uncached", un_total);
     line("cached", ca_total);
-    std::printf("  cache build (CPU) %.2f; cached total incl. build %.1f (%.2fx the uncached)\n", build_cpu,
-                ca_total.total() + build_cpu, (ca_total.total() + build_cpu) / un_total.total());
-    std::printf("wall clock, all threads: uncached %.1f s; cached %.1f s (build %.1f s + fits %.1f s)\n", un_wall,
-                build_wall + ca_wall, build_wall, ca_wall);
+    std::printf("  cached total %.2fx the uncached (its surface phase includes filling the cache)\n",
+                ca_total.total() / un_total.total());
+    std::printf("wall clock, all threads: uncached %.1f s; cached %.1f s\n", un_wall, ca_wall);
     std::printf("fits compared with recovery::fit: %lld, differing: %lld\n", static_cast<long long>(compared),
                 static_cast<long long>(mismatches));
     return mismatches == 0 ? 0 : 1;

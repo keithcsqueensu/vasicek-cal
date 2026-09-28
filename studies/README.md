@@ -110,7 +110,7 @@ not delay M3.
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | registered (D-161) |
 | S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | registered (D-161) |
-| S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | subset now, full after M4 | not registered |
+| S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | on the CPU after the M3 folded studies, full matrix (D-168) | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
 | S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
@@ -408,6 +408,8 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** with a full refit per bootstrap panel, B = 999 on the subset is ≈ 70 h on 24 threads;
   R = 200 and B = 199 is ≈ 5 h. If surfaces are cached by (n, d) (see the note in D-148), this
   becomes a W × L job at about the cost of the iid bootstrap.
+- **Placement (D-168):** the row cache is built (D-167), so S-10, and S-4b with it, runs on the CPU
+  on the full matrix after the M3 folded studies, not after M4.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 

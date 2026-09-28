@@ -92,6 +92,8 @@ struct SpFit {
 
 // se, when given, receives the SEs at the refined estimate as recovery.hpp's fit computes them: the
 // Hessian SEs of PD and rho (D-119) and S-23's delta-method SE of logit q.
+engine::SurfaceRowCache g_cache;  // shared across panels, variants and scenarios (D-167)
+
 Side fit_panel(const rc::Scenario& s, const std::vector<rc::Objective::Obs>& obs, double* se = nullptr) {
     using Objective = rc::Objective;
     static const auto primary = quadrature::parity_rule();
@@ -100,8 +102,8 @@ Side fit_panel(const rc::Scenario& s, const std::vector<rc::Objective::Obs>& obs
     const auto T = static_cast<std::int64_t>(obs.size());
     std::vector<double> L;
     engine::Estimate2 est{};
-    if (engine::calibrate(backends::CpuBackend{1}, Objective{}, primary, check, obs.data(), T, g, L, est) !=
-        engine::Status::Ok) {
+    if (engine::calibrate_cached(backends::CpuBackend{1}, g_cache, Objective{}, primary, check, obs.data(), T, g, L,
+                                 est) != engine::Status::Ok) {
         std::abort();
     }
     const auto prof = engine::profile_intervals(Objective{}, primary, obs.data(), T, g, L, est);

@@ -33,6 +33,7 @@
 #include "core/reducers/argmax.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
+#include "engine/surface_cache.hpp"
 
 namespace vcal::engine {
 
@@ -178,6 +179,21 @@ Status calibrate(const Backend& backend, const Objective& objective, const Integ
     const std::int64_t K = grid.size();
     L.assign(static_cast<std::size_t>(periods * K), 0.0);
     evaluate_surface(backend, objective, primary, obs, periods, grid, L.data());
+    return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out, hessian_step_fraction);
+}
+
+// calibrate with the surface taken from a row cache shared across panels (D-167): identical results.
+template <class Backend, class Objective, class Integrator>
+Status calibrate_cached(const Backend& backend, SurfaceRowCache& cache, const Objective& objective,
+                        const Integrator& primary, const Integrator& check, const typename Objective::Obs* obs,
+                        std::int64_t periods, const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
+                        double hessian_step_fraction = kHessianStepFraction) {
+    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
+    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
+    const std::int64_t K = grid.size();
+    L.assign(static_cast<std::size_t>(periods * K), 0.0);
+    evaluate_surface_cached(backend, cache, objective, primary, obs, periods, grid, L.data());
     return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out, hessian_step_fraction);
 }
 

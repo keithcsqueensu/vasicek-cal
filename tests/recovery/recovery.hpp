@@ -148,8 +148,9 @@ inline std::vector<std::int64_t> panel(const Scenario& s, std::uint32_t replicat
 }
 
 // Simulates and fits one replicate. The fit is serial (the caller parallelises over replicates);
-// results do not depend on the thread count (§6).
-inline Fit fit(const Scenario& s, std::uint32_t replicate) {
+// results do not depend on the thread count (§6). With a row cache (D-167) the surface's rows come from
+// it, shared across replicates and scenarios; the result is identical bit for bit.
+inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCache* cache = nullptr) {
     const std::vector<std::int64_t> d = panel(s, replicate);
     std::vector<Objective::Obs> obs(d.size());
     for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {s.obligors, d[t]};
@@ -158,10 +159,11 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate) {
     std::vector<double> L;
     engine::Estimate2 est{};
     const Grid<2> g = grid();
-    if (engine::calibrate(backends::CpuBackend{1}, Objective{}, primary, check, obs.data(), s.periods, g, L, est) !=
-        engine::Status::Ok) {
-        std::abort();
-    }
+    const auto status = cache != nullptr ? engine::calibrate_cached(backends::CpuBackend{1}, *cache, Objective{}, primary,
+                                                                    check, obs.data(), s.periods, g, L, est)
+                                         : engine::calibrate(backends::CpuBackend{1}, Objective{}, primary, check,
+                                                             obs.data(), s.periods, g, L, est);
+    if (status != engine::Status::Ok) std::abort();
     const auto prof = engine::profile_intervals(Objective{}, primary, obs.data(), s.periods, g, L, est);
     const auto idx = resample::bootstrap_indices(bootstrap_seed(s.id, replicate), resample::Scheme::IidBootstrap,
                                                  kBootstrapReplicates, s.periods);

@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168)
 
 ## Current status
 
@@ -199,12 +199,13 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    - **M3.1 done (D-164):** the Vasicek-rate MLE (`core/objectives/vasicek_rate.hpp`), with refuse / censor / substitute treatments and a drop edit; goldens, a scipy script, recovery on its own model (4 of 5 predictions held), `docs/methodology/vasicek_rate_mle.md`. The C ABI stays v0 until decided.
    - **M3.2 done (D-165):** the joint-default-probability method of moments (`engine/moments.hpp`), exact in finite n, W-reweightable; goldens, a scipy script (Owen's T), `docs/methodology/method_of_moments.md`. Validated on its own seed, so S-8's comparison waits for S-8's run.
    - **M3.3 done (D-166):** the grid-Bayesian estimator (`engine/posterior.hpp`) with flat and Jeffreys priors and the resolution rule (4 points per posterior SD; local refinement or refusal; the registered extent amended before S-9 runs). **M3 is complete.** Open: C ABI exposure (a decision), and the registered runs S-8/S-27/S-28, S-9, S-15.
-3. **The other studies** keep the placement below and are ordered when M3 ends.
-4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
-   - **M3.2 done (D-165):** the joint-default-probability method of moments (`engine/moments.hpp`), exact in finite n, W-reweightable; goldens, a scipy script (Owen's T), `docs/methodology/method_of_moments.md`. Validated on its own seed, so S-8's comparison waits for S-8's run. Next: M3.3 grid Bayesian with the resolution rule (D-161).
-3. **Surface-row cache across replicates (D-167, proposed; spike on `spike-surface-cache`):** after M3. Bit-for-bit identical, 50× fewer surface rows and 2.1× faster on the recovery subset; makes S-10 and S-4b feasible on CPU. Adopt in the recovery harness and study tools once reviewed.
-4. **The other studies** keep the placement below and are ordered when M3 ends.
-5. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+3. **Surface-row cache across panels (D-167):** approved; adopted in the recovery harness and study tools, keyed on everything that determines a row, filled on demand.
+4. **C ABI 0.3 (D-168):** the three M3 estimators; the rate MLE's zero-default treatments as explicit options, no recommended default until S-28.
+5. **The M3 folded studies:** S-8/S-27/S-28 (one pass), S-9, S-15, with the cache.
+6. **S-10 and S-4b on the CPU** (D-168; were after M4).
+7. **Consolidation:** tag v0.2; README updated with the study results.
+8. **M6** (multi-grade, misspecification, data instability), then the other studies by their placement below; **M4** (GPU) becomes a later performance milestone (D-168).
+9. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
    - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;

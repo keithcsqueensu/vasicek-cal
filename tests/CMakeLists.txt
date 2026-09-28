@@ -125,6 +125,7 @@ target_link_libraries(rate_recovery_harness PRIVATE vcal_test_harness vcal::resa
 vcal_target_defaults(rate_recovery_harness)
 add_test(NAME recovery_rate_replay COMMAND rate_recovery_harness)
 set_tests_properties(recovery_rate_replay PROPERTIES LABELS slow)
+vcal_add_test_executable(unit_surface_cache SOURCES unit/surface_cache_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::resample vcal::dgp)
 vcal_add_test_executable(unit_resample SOURCES unit/resample_test.cpp LIBS vcal::resample vcal::backend_cpu)
 vcal_add_test_executable(unit_ref SOURCES unit/ref_test.cpp LIBS vcal::ref)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
