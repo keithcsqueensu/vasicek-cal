@@ -1,5 +1,5 @@
 {
-  "study": "S-34, sensitivity to severe new periods (D-160, D-162)",
+  "study": "S-34, sensitivity to severe new periods (D-160, D-162, D-163)",
   "prediction": "studies/severe-period-sensitivity/PREDICTION.md, merged as #20 at 2026-09-28T07:30:51-04:00, before any run",
   "scoring": "compare.py, committed ef5207f at 2026-09-28T07:33:19-04:00, before the full run started; run as: python compare.py summary.csv",
   "compiler": "MSVC 1951, cpu-release",
@@ -23,7 +23,7 @@
   },
   "files": {
     "summary.csv": "sha256 6c2265641948be5de972225e0a0e9eef78230595c72ac88be039555599f160c8",
-    "replicates.parquet": "sha256 33ef4f4927399ed724fe42dcfd9a5a818a794ee1ff3d2755fadb858a62182c9c; from replicates.csv (not committed, 104 MB, sha256 16072cf9ef8c6de72b144e0ce65a7500dd28d49683014135c5299c0dc8b7501c) by export_replicates.py (pyarrow 25.0.1, zstd 19); all 7,695,000 cells equal",
+    "replicates.parquet (not committed, D-163)": "sha256 33ef4f4927399ed724fe42dcfd9a5a818a794ee1ff3d2755fadb858a62182c9c, 28,257,109 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s34-data-2026-09-28; regenerable exactly by the full run's command at its commit, then export_replicates.py (pyarrow 25.0.1, zstd 19) from replicates.csv (sha256 16072cf9ef8c6de72b144e0ce65a7500dd28d49683014135c5299c0dc8b7501c); all 7,695,000 cells equal the CSV's",
     "large_n_reference.py": "the model-only reference behind the predictions, committed with them"
   }
 }
