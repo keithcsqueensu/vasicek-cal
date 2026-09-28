@@ -1,0 +1,17 @@
+{
+  "study": "S-13 targeted: the borderline profile verdicts at R = 10,000 (D-154, D-158)",
+  "prediction": "studies/recovery-r10000/PREDICTION.md (merged in #7 before the run)",
+  "generated_by": "recovery_harness --replicates 10000 --scenarios 1,2,6,7,9,12,15,18,21,22,24,27,28,29,30,31,37,41,45,47,49,54,55,59,60,64,65,68,72,73,74 --summary-out summary_r10000.csv --save-fits r10000.fits",
+  "harness_commit": "b08f7cfc90ae7933c7d1d89ab402a2dfef4a9449 (fitting code identical to the S-23 pinning commit)",
+  "compiler": "MSVC 1951",
+  "started": "2026-09-27T21:18:44-04:00",
+  "finished": "2026-09-28T01:00:58-04:00",
+  "wall_seconds": 13333,
+  "replicates": "0-9,999 per scenario, recovery seed; 0-999 are the pinned R = 1,000 replicates and reproduce them field for field (31,000 records compared)",
+  "files": {
+    "summary_r10000.csv": "sha256 ef89732161f3af673970fe1eb6d8ffa2f10afb7436652d439394ef4b4526b527",
+    "fits_r10000.parquet": "sha256 8dfe5d2256369a0a627c80b970b137937824994c787c6b85303af253b7994e72; written by export_fits.py (pyarrow 25.0.1, zstd 19)",
+    "r10000.fits (not committed, 162 MB)": "sha256 8c3eaf03a7c88991005ad05053878c4918b72e0dace46816638ffbecb7989da2"
+  },
+  "scoring": "compare.py (committed before the results) on summary_r10000.csv and fits_r10000.parquet"
+}
