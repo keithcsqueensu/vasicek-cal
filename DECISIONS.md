@@ -846,6 +846,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - M5's what-if recalibration reports the expected jump beside the refit;
     - the monitoring implications in the S-34 entry (the expected jump, the breach of the previous interval as a review trigger, and post-crisis refits reported with the number of severe years) go into M5's monitoring design (D-152).
   - **Per-replicate data are committed** as Parquet (`replicates.parquet`, 28 MB, exact in all 7,695,000 cells). That is larger than earlier studies' because the nine double columns per row (estimates and interval ends for five panels per replicate) do not compress.
+## Phase 2 pre-registrations: S-8, S-9, S-15, S-27, S-28, 2026-09-28
+
+- **D-161 — S-8, S-9, S-15, S-27 and S-28 are registered before M3's estimators exist, with the estimators defined in the registrations for M3 to implement.**
+  - **Files:** `studies/mle-vs-mom/PREDICTION.md` for the estimator-comparison pass (S-8, S-27, S-28; D-150; E1–E12), with pointer files for S-27 and S-28; `studies/bayes-coverage/PREDICTION.md` (S-9; F1–F5); `studies/bayes-sbc/PREDICTION.md` (S-15; G1–G5).
+  - **Definitions fixed there:** MoM in the joint-default-probability form, exact in finite n; the Vasicek-rate MLE with a profile-likelihood interval, and its three zero-default treatments (refuse, drop, censored at c_n = 1/(2n)); "indistinguishable" for S-27 (0.1 SE in the mean, 0.0227 in coverage); the grid posterior with flat and Jeffreys priors and cell-uniform marginals; SBC's draws and continuous rank statistic. If M3 has to define an estimator differently, the change is appended to the registration, dated, before the study runs.
+  - **Evidence:** model-only reference scripts (`mle-vs-mom/model_reference.py`, `bayes-coverage/grid_spread.py`) and pinned results; no estimator of these studies has run on any panel.
+  - **Design point found while registering:** on the parity grid (61 × 41) the estimator's spread is under half a grid spacing for PD in 8 scenarios of groups B–D, so a grid posterior there is set by the grid, not the data. S-9 and S-15 therefore add a 4 × finer grid on the subset, and predict the parity grid's failure mode (overcoverage, and a hump in the SBC ranks) in advance. This bears on M3's choice of grid for the Bayesian estimator, and on S-7.
+  - **Headline mechanisms:** MoM loses efficiency for ρ by a factor that grows with ρ, with lower PD and with T (1.04–2.68 in the large-n limit); the rate MLE's ρ̂ is biased up by binomial noise, about 1/n; the parity rate estimator refuses exactly 1 − (1 − P₀)^T of panels, which is most of the matrix at n ≤ 1,000.
 
 ## S-34 follow-up, per-replicate data policy, and the CI gate, 2026-09-28
 

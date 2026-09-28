@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161)
 
 ## Current status
 
@@ -195,7 +195,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    5. S-34 (done, D-162): after a severe year q̂ jumps by about 3.7/√T SE per 1-in-100 year (6.5/√T per 1-in-1,000), and the refitted interval moves up rather than widening; a breach of the previous interval takes two 1-in-1,000 years at T = 20.
 
    Each starts with its `PREDICTION.md` committed before any run (D-148).
-2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in.
+2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in (registered, D-161; the registrations define the estimators M3 implements).
 3. **The other studies** keep the placement below and are ordered when M3 ends.
 4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;

@@ -108,14 +108,14 @@ not delay M3.
 | S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
 | S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
-| S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | not registered |
-| S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | not registered |
+| S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | registered (D-161) |
+| S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | registered (D-161) |
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | subset now, full after M4 | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
 | S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
 | S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
-| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
+| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | registered (D-161) |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
 | S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
@@ -127,8 +127,8 @@ not delay M3.
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
 | S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
-| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | not registered |
-| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | not registered |
+| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | registered (D-161) |
+| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | registered (D-161) |
 | S-29 | `scale-version-change` | How much crosswalk error before ρ̂ inflation is material? | now (two-grade part); M6 (full) | not registered |
 | S-30 | `grade-granularity` | Which number of grades K minimises error, given T and scale stability? | now (per-bucket part); M6 (shared ρ) | not registered |
 | S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
@@ -383,7 +383,7 @@ refined in each study's `PREDICTION.md`.
   with the MLE.
 - **Cost:** minutes for MoM itself; ≈ 1 h if the MLE is refitted for pairing rather than read from
   the goldens.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E1–E5, in the estimator-comparison pass's shared file, with S-27 and S-28 (D-150). The estimators are defined there, for M3 to implement. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-9 Frequentist coverage of grid-Bayesian credible intervals (`bayes-coverage`)
@@ -394,7 +394,7 @@ refined in each study's `PREDICTION.md`.
   resolution matters for a discretised posterior, so S-7 informs the grid.
 - **Cost:** about the fit cost (≈ 5 min subset, ≈ 1 h full matrix), plus the Jeffreys prior once
   per n.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`bayes-coverage/PREDICTION.md`](bayes-coverage/PREDICTION.md) before any run: F1–F5. The parity grid is too coarse for a grid posterior where the estimator's spread is under half a spacing (PD in 8 scenarios of groups B–D), so a 4 × finer grid runs on the subset beside it. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Subset now, full matrix after M4 (new data per replicate)
@@ -535,7 +535,7 @@ refined in each study's `PREDICTION.md`.
   (n, T) settings. Ties on a discrete grid need a stated tie-breaking rule.
 - **Cost:** thousands of calibrate-only fits: minutes on CPU.
 - **Placement (D-151):** folded into M3 with the grid-Bayesian estimator and S-9; it needs no GPU.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`bayes-sbc/PREDICTION.md`](bayes-sbc/PREDICTION.md) before any run: G1–G5, with the rank statistic made continuous by S-9's cell-uniform convention, so no tie-breaking rule is needed. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-16 FP32 search, FP64 finalisation (`fp32-search`)
@@ -764,7 +764,7 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** the Vasicek-rate MLE is closed form (seconds). The binomial fits at the new n, without
   bootstrap, ≈ 1.5–2 h for the full matrix and ≈ 10–20 min for the subset's 18 new scenarios; for
   n ≤ 10⁴ the goldens are reused.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E6–E8, in the estimator-comparison pass's shared file (D-150), with "indistinguishable" defined there. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-28 Zero-default treatments for rate-based estimators (`zero-default-rates`)
@@ -780,7 +780,7 @@ kind as S-11 and report both targets (D-150).
 - **Verdicts it could change:** none of the binomial verdicts; it adds the rate-based estimators'
   verdicts for each treatment.
 - **Cost:** closed-form likelihoods: minutes for the full matrix.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E9–E12, in the estimator-comparison pass's shared file (D-150), with the censoring point c_n = 1/(2n). **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Theme: data and population instability (S-29 to S-33; D-150)
