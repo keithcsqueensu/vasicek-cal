@@ -168,3 +168,49 @@ Both sub-arms use s = logit(q), in the coordinate of S-23's delta-method interva
 | J16 | **(b) covers at least as well as (a):** in at least 14 of the 17, and (b) is in the band in at least as many of the 17 as (a). If (a) and (b) come out the same, the simpler (a) is preferred |
 | J17 | **The mechanism, tested directly:** the error–SE correlation is lower for SE_J than for SE_Δ in at least 12 of the 17 |
 | J18 | **What it costs elsewhere:** among S-23's 32 Wald PASS scenarios, at most 3 leave the band under (a) and at most 3 under (b). (b) is above the band in at most 5 of the 50 assessed scenarios (the jackknife variance tends to be too large) |
+
+## Addendum, 2026-09-28: a polished arm, after exploring the study subset
+
+Appended after the subset exploration of the registered arms (R = 1,000 on scenarios 29, 37, 72,
+4, 68, 49, 7, 43, 51) and before the polished arm below has run on it. Nothing above changes: the
+registered arms run on the full matrix exactly as defined, and J1–J18 are scored as written.
+
+### What the subset showed
+
+- **Delete-one estimates are not exact.** The jackknife estimates come from the grid refinement,
+  and the resolution check (J14's refits) found gaps of up to 0.52 SE where a delete-one fit's
+  refinement is rejected (the estimate is then a grid point), and 0.12 SE where it is accepted, at
+  scenario 29 (ρ = 0.02, n = 10⁴). Elsewhere on the subset the gap is at most 0.05 SE.
+- **S-3 amplifies them.** ρ̃ multiplies the delete-one mean by T − 1. The shifted interval's
+  coverage fell well below the parity profile's at 29 (0.873 against 0.927), where the resolution
+  error is largest, and at 4 and 7 (group A), where ρ̃ was set to the box's floor in 36% and 21% of
+  replicates.
+- So the registered S-3 arm measures the grid as well as the jackknife. The arm below separates
+  them.
+
+**Seen before writing this:** the subset summary of the registered arms, and a 4-replicate smoke
+test of the polished arm on scenario 29, run to check the code (shifted interval covering 4 of 4,
+ρ̃'s RMSE 0.0051 on those 4). Nothing else of the polished arm.
+
+### The polished arm (subset only)
+
+- **Estimates:** ρ̂_p and PD̂_p are the full panel's exact off-grid maximum (the profile code's
+  polished maximum). ρ̂_p₍₋ₜ₎ and PD̂_p₍₋ₜ₎ are each delete-one panel's, from the same code on
+  that panel. ρ̃_p = T·ρ̂_p − (T − 1)·mean ρ̂_p₍₋ₜ₎, set to a bound of the box where it leaves it.
+- **S-3's shifted interval:** the parity profile interval shifted in logit ρ by
+  logit ρ̃_p − logit ρ̂_p, truncated ends staying at the box, as for the registered arm.
+- **J15–J18's sub-arms:** (a) and (b) centred at logit q(PD̂_p, ρ̃_p); (b)'s jackknife SE from the
+  polished delete-one estimates.
+- **Cost:** one profile per delete-one panel, about 3 h on the subset. The full matrix is not run.
+
+### Predictions
+
+The six informative subset scenarios are 29, 37, 68, 49 (T = 20, 40) and 43, 51 (T = 100).
+
+| # | Prediction |
+|---|---|
+| J19 | **Resolution explains 29:** the polished arm's shifted-interval coverage at scenario 29 is at least 0.91 (registered arm 0.873), and ρ̃_p's RMSE there is at least 20% below the registered ρ̃'s (0.0099) |
+| J20 | **Where resolution is small, polishing changes little:** in 37, 68, 49, 43 and 51, the polished and registered arms' shifted-interval coverages differ by at most 0.01 |
+| J21 | **Clamping is not a resolution effect:** in 4 and 7 the polished arm's shifted-interval coverage is still at least 0.03 below the parity profile's (0.986 and 0.964) |
+| J22 | **With exact estimates, S-3's shift is harmless in the informative scenarios:** in at least 5 of the 6, the polished arm's shifted-interval coverage is within 0.015 of the parity profile's |
+| J23 | **q, sub-arm (a):** in each of the six, the polished (a)'s coverage is at least the registered (a)'s minus 0.005, and it is higher at 29 |

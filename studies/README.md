@@ -255,7 +255,7 @@ refined in each study's `PREDICTION.md`.
 - **Judged against:** the ρ small-T profile findings (29, 55, 72, 74) and the ρ PASS verdicts it
   could break.
 - **Cost:** about the subset baseline (≈ 7–12 min); pinning ≈ 1.3–2 h.
-- **Prediction:** registered, with S-5 and S-21, in [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J1–J6 for S-3) before any run. **Result:** not run. **Mitigation:** backlog item since D-131.
+- **Prediction:** registered, with S-5 and S-21, in [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J1–J6 for S-3) before any run, with addenda for the q Wald arms (J15–J18) and, after the subset exploration, a polished arm on the subset (J19–J23). **Result:** not run. **Mitigation:** backlog item since D-131.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-4 Bartlett-corrected profile threshold (`bartlett-profile`)
