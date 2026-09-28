@@ -775,6 +775,20 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Process change for later studies (owner):** a pinning run should be a `--write` run from the start, with reviewed verdict labels kept in a separate file, so that review never needs a refit (adopted in D-155 for the shared jackknife run). S-23 needed two full runs.
   - **scipy pitfalls, recorded for validators** (methodology note §8): Nelder–Mead stalls on a bound of the box when the maximum lies just inside it, and bounded Brent stops about √ε·|x| short of a bound. Before the script handled them they cost 10⁻⁷ to 10⁻⁶ in logit(q).
 
+## S-1's bounds on the Windows libm, 2026-09-27
+
+- **D-157 (owner) — Two of S-1's check bounds are set from the worst measured platform, and C6 joins the panel-26 review. Recorded as a post-registration change: S-1's prediction file is unchanged.**
+  - **What failed:** S-1's test (`study_z_sign_invariance`, label `slow`) passed on Linux (glibc), where S-1 was pinned (D-301). It failed on Windows, where both MSVC and MinGW GCC use the UCRT libm, with the same figures on both. PR CI runs no slow tests, so the nightly and dispatch runs caught it; `main` was red there on Windows.
+    - C8, panel 20 (n = 10⁵, ρ = 0.24): the correlation differs by 6.95·10⁻¹⁰ against a bound of 5·10⁻¹⁰.
+    - C11, panel 20: the quadrature check's value differs by 3.64·10⁻¹² against an absolute 10⁻¹².
+    - C6, panel 26: two bootstrap replicates' flags differ.
+  - **Why these are rounding:**
+    - **C8:** its bound was `TOL_RECOVERY_REPLAY_SE_REL`, measured on panels up to n = 10⁴. The Hessian's finite differences cancel more at n = 10⁵.
+    - **C11:** it compares the check's own value, a difference of two rounded log-likelihoods. The engine treats such a difference as rounding below 64 ε times the term size (D-120), and an absolute 10⁻¹² ignores the term size at n = 10⁵.
+    - **C6:** on panel 26 the bootstrap flags follow the argmax along ρ, which rounding decides because ρ is not identified. That is exactly D-301's reviewed finding, which already covers C5, C7 and C10 there.
+  - **The change:** C8's bound becomes `TOL_ZSIGN_SE_REL` = 2·10⁻⁹ (observed, doubled and rounded up), and C11's becomes 10⁻¹² + 64 ε × the largest term size at the estimate. C6 is allowed to differ on panel 26 only. On MinGW GCC, C8 is now at 0.35 of its bound and C11 at 0.005. The verdict is again "FINDING, reviewed (D-301)" on every platform, and the test exits 0.
+  - **Why not rewrite S-1:** by the prediction's rule, any excess is a finding. So these are recorded as platform findings, reviewed as rounding, and S-1's `PREDICTION.md` and D-301 stand as written.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

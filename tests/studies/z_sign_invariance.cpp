@@ -338,11 +338,11 @@ int main() {
     Check c5{"C5", "grid argmax k*, and every bootstrap replicate's", "identical"};
     Check c6{"C6", "flags: fit, quad-check count, profile, bootstrap edge/excluded/per-replicate", "identical"};
     Check c7{"C7", "PD, rho, loglik at the estimate, relative", "1e-12"};
-    Check c8{"C8", "SEs and correlation, relative", "5e-10"};
+    Check c8{"C8", "SEs and correlation, relative", "TOL_ZSIGN_SE_REL (D-157)"};
     Check c9a{"C9", "profile end points, logit units", "2e-9"};
     Check c9b{"C9", "polished maximum l_max, relative", "1e-12"};
     Check c10{"C10", "bootstrap percentile end points, relative", "2e-11"};
-    Check c11{"C11", "quadrature check max |l(rule) - l(doubled)|, absolute diff", "1e-12"};
+    Check c11{"C11", "quadrature check max |l(rule) - l(doubled)|, absolute diff", "1e-12 + 64 eps scale (D-157)"};
     std::vector<CellStats> cell(P);
     double control_worst_large_n = 0.0;  // largest |diff| - bound over panels 18, 19, 20, 30
     int control_flagged = 0;
@@ -420,18 +420,29 @@ int main() {
         const char* nm[2] = {"PD", "rho"};
         for (int q = 0; q < 2; ++q) {
             c7.see(rel(a.est.value[q], b.est.value[q]), 1e-12, pid + " " + nm[q]);
-            c8.see(rel(a.est.se[q], b.est.se[q]), 5e-10, pid + " se " + nm[q]);
+            c8.see(rel(a.est.se[q], b.est.se[q]), tol::TOL_ZSIGN_SE_REL, pid + " se " + nm[q]);
             c9a.see(logit_diff(a.prof.lo[q], b.prof.lo[q]), 2e-9, pid + " lo " + nm[q]);
             c9a.see(logit_diff(a.prof.hi[q], b.prof.hi[q]), 2e-9, pid + " hi " + nm[q]);
         }
         c7.see(rel(a.est.loglik, b.est.loglik), 1e-12, pid + " loglik");
-        c8.see(rel(a.est.corr, b.est.corr), 5e-10, pid + " corr");
+        c8.see(rel(a.est.corr, b.est.corr), tol::TOL_ZSIGN_SE_REL, pid + " corr");
         c9b.see(rel(a.prof.loglik_max, b.prof.loglik_max), 1e-12, pid + " l_max");
         c10.see(rel(a.boot[0].lo, b.boot[0].lo), 2e-11, pid + " boot lo PD");
         c10.see(rel(a.boot[0].hi, b.boot[0].hi), 2e-11, pid + " boot hi PD");
         c10.see(rel(a.boot[1].lo, b.boot[1].lo), 2e-11, pid + " boot lo rho");
         c10.see(rel(a.boot[1].hi, b.boot[1].hi), 2e-11, pid + " boot hi rho");
-        c11.see(absdiff(a.est.quad_check_max, b.est.quad_check_max), 1e-12, pid + " quad-check max");
+        // C11 compares the check's value, a difference of two rounded log-likelihoods: below the
+        // engine's own rounding threshold (64 eps x the period's term size, D-120) it is rounding.
+        double check_scale = 0.0;
+        {
+            static const auto rule = quadrature::parity_rule();
+            const auto th = Parity::theta(a.est.value);
+            for (const Obs& y : p.obs) {
+                check_scale = std::fmax(check_scale, Parity::rounding_scale(y, Parity{}.log_contrib(y, th, rule)));
+            }
+        }
+        c11.see(absdiff(a.est.quad_check_max, b.est.quad_check_max),
+                1e-12 + engine::kQuadratureCheckRoundingUlps * kEps * check_scale, pid + " quad-check max");
         // C12: the control's own quadrature check.
         if (ctl[i].status == engine::Status::Ok && (ctl[i].est.flags & engine::kFlagQuadratureUnconverged)) {
             ++control_flagged;
@@ -513,11 +524,12 @@ int main() {
                 c12 ? "yes" : "NO");
     // The reviewed finding (D-301): panel 26 (n = 1 in every period) does not identify rho, so the
     // panel surface is flat along rho to rounding and the argmax along rho, and the bootstrap's, is
-    // decided by rounding. It is pinned: C5, C7 and C10 may fail there and nowhere else, and the
-    // exit status stays 0 only while every other comparison holds.
+    // decided by rounding. It is pinned: C5, C7 and C10 may fail there and nowhere else, and C6
+    // too, since a bootstrap replicate's flags follow its rounding-decided argmax (D-157: seen with
+    // the Windows UCRT libm). The exit status stays 0 only while every other comparison holds.
     bool unreviewed = false;
-    for (const Check* c : {&c1, &c2, &c3, &c4, &c6, &c8, &c9a, &c9b, &c11}) unreviewed = unreviewed || !c->holds();
-    for (const Check* c : {&c5, &c7, &c10}) unreviewed = unreviewed || !(c->failing.empty() || c->failing == "panel 26;");
+    for (const Check* c : {&c1, &c2, &c3, &c4, &c8, &c9a, &c9b, &c11}) unreviewed = unreviewed || !c->holds();
+    for (const Check* c : {&c5, &c6, &c7, &c10}) unreviewed = unreviewed || !(c->failing.empty() || c->failing == "panel 26;");
     std::printf("\nVerdict: %s\n", !c12 ? "NOT TRUSTED (control did not fire)"
                                    : ok ? "PASS"
                                    : unreviewed ? "FINDING, UNREVIEWED"

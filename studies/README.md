@@ -178,6 +178,13 @@ refined in each study's `PREDICTION.md`.
     sign asymmetry: any rounding perturbation would move ρ̂ the same way.
   - **The recovery-matrix version is not run (owner, D-301):** the mechanism is structural (every
     n_t = 1), every recovery scenario has n ≥ 100, and subset panels 1–9 pass every check.
+- **Platform note (D-157):** the pinned result is from glibc. With the Windows UCRT libm (MSVC and
+  MinGW GCC alike), panel 20 (n = 10⁵) exceeded two bounds at rounding level: C8 at 6.95·10⁻¹⁰
+  against 5·10⁻¹⁰, and C11 at 3.6·10⁻¹² against an absolute 10⁻¹². C6 also differed on panel 26,
+  the reviewed finding's own panel. By the prediction's rule these are findings. They are reviewed
+  as rounding, not a convention error. C8 is now `TOL_ZSIGN_SE_REL` = 2·10⁻⁹; C11 is scaled by the
+  engine's own rounding threshold; C6 joins C5, C7 and C10 in the panel-26 review. The prediction
+  file is unchanged.
 - **Mitigation: adopted (D-302).** A fit with no period of n_t ≥ 2 is flagged ρ not identified
   (`kFlagRhoNotIdentified`, `VCAL_FLAG_RHO_NOT_IDENTIFIED`), with its numbers still reported. A
   "flat to rounding" test is not added; that condition depends on the platform and stays with the

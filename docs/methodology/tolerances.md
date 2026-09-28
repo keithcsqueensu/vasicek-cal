@@ -217,6 +217,12 @@ P_q(c) = ℓ_max − 1.92 like the parameters' end points, so they are held to
 | `TOL_CONDITIONAL_PD_REL` | 6e-15 | 2.9e-15 (MSVC) | q and logit(q) against mpmath (40 digits) at the recovery truths and the box corners, relative | q is a composition of `probit`, `log_phi` and `exp`, each accurate to a few ulp; logit(q) is formed as log Φ(x) − log Φ(−x), so it keeps relative accuracy at both ends. Observed, doubled and rounded up. | `unit_profile: conditional_pd_matches_mpmath`, `conditional_pd_interval_at_the_box` |
 | `TOL_CONDITIONAL_PD_GRADIENT_REL` | 1e-9 | 4.9e-10 | The analytic gradient of logit(q) in the logit coordinates, used by the delta-method Wald interval, against central differences with step 1e-5 | The central differences' own O(h²) truncation error dominates; the gradient itself is exact to rounding. Observed, doubled and rounded up. | `unit_profile: conditional_pd_matches_mpmath` |
 
+## Study S-1, z-sign invariance (D-300, D-301, D-157)
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_ZSIGN_SE_REL` | 2e-9 | 6.95e-10 (panel 20's correlation, Windows UCRT libm: MSVC and MinGW GCC alike); within 5e-10 with glibc | S-1's C8: the SEs and their correlation, parity against the mirrored convention, relative | Registered at first as `TOL_RECOVERY_REPLAY_SE_REL` (5e-10), which was measured on panels up to n = 10⁴. Panel 20 has n = 10⁵ and ρ = 0.24, so the Hessian's finite differences cancel more. A post-registration change, recorded in D-157. Observed, doubled and rounded up. | `study_z_sign_invariance` (label `slow`) |
+
 ## Resampling (M2b)
 
 The resampling engine (D-132–D-135). Its draws are compared bit for bit with the Python mirror,
