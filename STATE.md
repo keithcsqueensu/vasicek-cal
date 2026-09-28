@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163)
 
 ## Current status
 

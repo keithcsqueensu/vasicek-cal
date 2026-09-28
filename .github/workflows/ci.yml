@@ -14,7 +14,9 @@
 # check, and main's required check (ci-ok) would then wait forever.
 #
 # ci-ok always runs and is the one check that main's ruleset requires (D-147): it passes only if
-# every job the plan called for succeeded. A newer push to a branch or PR cancels its older run;
+# every job the plan called for succeeded. Only the pull_request run reports it under that name
+# (D-163): a push to the PR's branch starts a reduced run too, and its gate, named "ci-ok (push)",
+# must not satisfy the required check before the full run's scipy and matrix jobs have finished. A newer push to a branch or PR cancels its older run;
 # runs on main are never cancelled.
 name: ci
 
@@ -236,7 +238,8 @@ jobs:
   # reports. Passes only if the plan succeeded and every job it called for succeeded; a job the
   # plan skipped counts as passing, a failed or cancelled one never does.
   ci-ok:
-    name: ci-ok
+    # The required check's name belongs to the pull_request run alone (D-163).
+    name: ${{ github.event_name == 'pull_request' && 'ci-ok' || format('ci-ok ({0})', github.event_name) }}
     needs: [plan, build-test, generated-files, validation-scipy, cuda-compile]
     if: always()
     runs-on: ubuntu-24.04
