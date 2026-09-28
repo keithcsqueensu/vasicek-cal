@@ -430,9 +430,9 @@ VCAL_TEST(recovery_replay) {
         if (static_cast<std::int64_t>(f.q_prof_flags) != vcal::test::parse_int(r[t.column("q_profile_flags")])) {
             ++flag_mismatches;
         }
-        const auto rel_to = [&](double got, const char* c) {
+        const auto rel_to = [&](double value, const char* c) {
             const double want = vcal::test::parse_double(r[t.column(c)]);
-            return std::isnan(want) && std::isnan(got) ? 0.0 : std::fabs(got / want - 1.0);
+            return std::isnan(want) && std::isnan(value) ? 0.0 : std::fabs(value / want - 1.0);
         };
         worst_q = std::fmax(worst_q, rel_to(f.q_hat, "q_hat_hex"));
         worst_q_se = std::fmax(worst_q_se, rel_to(f.q_se_s, "q_se_s_hex"));
