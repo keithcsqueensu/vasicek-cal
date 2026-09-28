@@ -22,7 +22,10 @@
 // here: they live in studies/jackknife-bias-rho/reviewed.csv, so a review never needs a refit
 // (D-155). Results do not depend on the thread count.
 //
-//   study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE]
+//   study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE]
+//
+// --replicates-out writes one CSV row per (scenario, replicate) with every JkFit field, doubles
+// to 17 significant digits (exact round trip), for conversion to a committed Parquet file.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -277,10 +280,12 @@ double correlation(const std::vector<double>& a, const std::vector<double>& b) {
 int main(int argc, char** argv) {
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
-    std::string summary_out;
+    std::string summary_out, replicates_out;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
+        } else if (std::strcmp(argv[i], "--replicates-out") == 0 && i + 1 < argc) {
+            replicates_out = argv[++i];
         } else if (std::strcmp(argv[i], "--summary-out") == 0 && i + 1 < argc) {
             summary_out = argv[++i];
         } else if (std::strcmp(argv[i], "--scenarios") == 0 && i + 1 < argc) {
@@ -295,7 +300,8 @@ int main(int argc, char** argv) {
                 c = *end == ',' ? end + 1 : end;
             }
         } else {
-            std::fprintf(stderr, "usage: study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE]\n");
+            std::fprintf(stderr, "usage: study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] "
+                                 "[--replicates-out FILE]\n");
             return 2;
         }
     }
@@ -419,6 +425,33 @@ int main(int argc, char** argv) {
     }
     std::printf("%u replicates x %zu scenarios in %.0f s\n", R, ids.size(),
                 std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
+    if (!replicates_out.empty()) {
+        std::ofstream out(replicates_out, std::ios::binary);
+        out << "scenario,replicate,pd,rho,rho_tilde,q_err_a,flags,clamped,parity_rho_cover,shifted_rho_cover,"
+               "pd_bca_cover,pd_bca_below,rho_bca_cover,rho_bca_below,pd_pct_cover,rho_pct_cover,qa_cover,qa_below,"
+               "qb_cover,qb_below,qb_cover_all,se_delta,se_jack,infl_rho,infl_pd,infl_pair_rho,extreme_z_is_top,"
+               "refit_gap,refit_gap_clean\n";
+        char line[1024];
+        for (std::size_t k = 0; k < ids.size(); ++k) {
+            for (std::uint32_t r = 0; r < R; ++r) {
+                const JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
+                std::snprintf(line, sizeof line,
+                              "%u,%u,%.17g,%.17g,%.17g,%.17g,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,"
+                              "%.17g,%.17g,%.17g,%d,%.17g,%.17g\n",
+                              ids[k], r, f.pd, f.rho, f.rho_tilde, f.q_true_err_a, f.flags, f.clamped ? 1 : 0,
+                              f.parity_rho_cover, f.shifted_rho_cover, f.bca_cover[0], f.bca_below[0], f.bca_cover[1],
+                              f.bca_below[1], f.pct_cover[0], f.pct_cover[1], f.qa_cover, f.qa_below, f.qb_cover,
+                              f.qb_below, f.qb_cover_all, f.se_delta, f.se_jack, f.infl_rho, f.infl_pd, f.infl_pair_rho,
+                              f.extreme_z_is_top, f.refit_gap, f.refit_gap_clean);
+                out << line;
+            }
+        }
+        if (!out) {
+            std::fprintf(stderr, "cannot write %s\n", replicates_out.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", replicates_out.c_str());
+    }
     if (!summary_out.empty()) {
         std::ofstream out(summary_out, std::ios::binary);
         out << csv;
