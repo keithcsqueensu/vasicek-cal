@@ -185,4 +185,29 @@ inline constexpr double TOL_SCIPY_RATE_LOGLIK_ABS = 1e-12;
 // Observed 2.3e-10; set to the engine's own root tolerance (1e-9) so that a platform's last digits
 // cannot fail it.
 inline constexpr double TOL_SCIPY_RATE_PROFILE_U = 1e-9;
+
+// --- method of moments, M3 -----------------------------------------------------------------------
+// log PD_2 = log E[p(Z)^2] by the parity integrator (the n = 2, d = 2 binomial-mixture integral)
+// against mpmath's tanh-sinh quadrature at 50 digits (tests/golden/moments). Observed 7.1e-15;
+// doubled and rounded up.
+inline constexpr double TOL_MOM_JOINT_DEFAULT_LOG_ABS = 2e-14;
+// rho-hat from the golden PD_2 against the rho it came from, in logit units: Brent's 1e-12
+// tolerance on the root, where the function is steep. Observed 1.3e-13; doubled and rounded up.
+inline constexpr double TOL_MOM_INVERSION_U = 3e-13;
+// Statistical: on one T = 20,000 panel of the MoM validation seed, PD-hat and rho-hat in units of
+// their large-T standard deviation from the model (rho's bounded by twice the MLE's). The seed is
+// fixed, so the outcome is deterministic; 4 as for TOL_DGP_MOMENT_Z. Observed |z| 0.97 and 1.74.
+inline constexpr double TOL_MOM_CONSISTENCY_Z = 4;
+// The committed MoM reference results recomputed, relative. The same on MSVC and MinGW GCC (0);
+// the root is solved to 1e-12 in logit, so a platform's libm last digits move rho-hat by at most
+// about that; 1e-10 leaves margin.
+inline constexpr double TOL_MOM_REFERENCE_REL = 1e-10;
+
+// --- scipy replication, M1.9: a plain scipy script against the engine (D-126) --------------------
+// M3: validation/scipy/method_of_moments.py. PD-hat and PD_2-hat, scipy vs the engine, relative:
+// sums of the same counts in a possibly different order. Observed 6.7e-16; a few ulps allowed.
+inline constexpr double TOL_SCIPY_MOM_MOMENT_REL = 4e-15;
+// M3: rho-hat, scipy (Owen's T, exact Phi_2 at equal arguments; brentq) vs the engine (Gauss-Hermite
+// E[p^2]; Brent), in logit units, on 108 reference panels. Observed 1.6e-11; doubled, rounded up.
+inline constexpr double TOL_SCIPY_MOM_RHO_U = 5e-11;
 }  // namespace vcal::tol

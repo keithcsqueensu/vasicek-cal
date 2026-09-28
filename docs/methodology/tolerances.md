@@ -217,6 +217,20 @@ goldens are mpmath values at 50 digits, evaluated at the binary64 inputs
 |---|---|---|---|---|---|
 | `TOL_VASICEK_RATE_LOGLIK_EPS` | 6 | 2.88 (GCC 16, UCRT) | abs(l_t − mpmath) / (ε × the size of l_t's terms): the log density over rates 1e-8 to 1 − 1e-6 and the box's PD and ρ, and the censored and substituted boundary terms at n = 100 and 10⁶ | The terms (½ log ρ, x²/2, and u²/(2ρ) with u = √(1 − ρ)x − c) are added in double, and u can cancel, so the error is relative to the terms' size, not to l_t. Observed, doubled, rounded up. | `unit_vasicek_rate: vasicek_rate_log_density_matches_mpmath`, `vasicek_rate_boundary_treatments_match_mpmath` |
 | `TOL_VASICEK_RATE_POLISH_U` | 4e-7 | 5.4e-8 (unit panels); 1.6e-7 over the 27,000 rate-recovery fits | The profile code's polished maximum against the closed-form MLE, in logit units | Brent's 1e-9 tolerance on the profile's value moves a flat maximum's position by about its square root. The log-likelihood at the polished maximum is within 3.4e-13 of the closed form's, under `TOL_PROFILE_ENDPOINT_RESIDUAL_LL`. Observed, doubled, rounded up; it was 2e-7 when the recovery prediction V1 was registered and scored against it. | `unit_vasicek_rate: vasicek_rate_grid_fit_matches_the_closed_form`, `vasicek_rate_recovery_summary_verdicts` |
+
+## Method of moments (M3)
+
+The joint-default-probability MoM (`engine/moments.hpp`; `docs/methodology/method_of_moments.md`).
+PD_2 = E[p(Z)²] is the binomial-mixture integral of a period with n = 2, d = 2, by the parity
+integrator; its goldens are mpmath tanh-sinh values at 50 digits (`tools/gen_moments_goldens.py`,
+`tests/golden/moments/`).
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_MOM_JOINT_DEFAULT_LOG_ABS` | 2e-14 | 7.1e-15 | abs(log PD_2 − mpmath) over the box's PD and ρ | The parity rule on a smooth n = 2 integrand. Observed, doubled, rounded up. | `unit_moments: mom_joint_default_matches_mpmath` |
+| `TOL_MOM_INVERSION_U` | 3e-13 | 1.3e-13 | ρ̂ from a golden PD_2 against its ρ, logit units | Brent's 1e-12 tolerance on the root. Observed, doubled, rounded up. | `unit_moments: mom_inversion_recovers_rho` |
+| `TOL_MOM_CONSISTENCY_Z` | 4 | 0.97 (PD), 1.74 (ρ) | PD̂ and ρ̂ on one T = 20,000 panel of the MoM validation seed, in large-T standard deviations from the model (ρ's bounded by twice the MLE's) | Statistical, with a fixed seed, so deterministic; 4 as for `TOL_DGP_MOMENT_Z`. | `unit_moments: mom_is_consistent_on_a_long_panel` |
+| `TOL_MOM_REFERENCE_REL` | 1e-10 | 0 (MSVC vs MinGW GCC) | The committed reference results recomputed, relative | The root is solved to 1e-12 in logit; a platform's libm last digits move it by about that. | `unit_moments: mom_reference_results_reproduce` |
 ## Conditional PD (S-23)
 
 The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and
@@ -268,3 +282,5 @@ versions on Linux (job `validation (scipy)`).
 | `TOL_SCIPY_RATE_ESTIMATE_U` | 4e-7 | 1.8e-7 (closed form 7.2e-8) | M3: the Vasicek-rate maximum, scipy (nested bounded Brent; the closed form for rate panels) vs the engine's polished maximum, logit units, 63 replay panels | Both optimisers place a flat maximum to about the square root of their tolerance on its value. Observed, doubled, rounded up. | `validation/scipy/vasicek_rate_mle.py` (CI job "validation (scipy)") |
 | `TOL_SCIPY_RATE_LOGLIK_ABS` | 1e-12 | 3.4e-13 | M3: the maximum log-likelihood, scipy vs the engine | Closed-form terms on both sides. Observed, doubled, rounded up. | same |
 | `TOL_SCIPY_RATE_PROFILE_U` | 1e-9 | 2.3e-10 | M3: the PD and ρ profile-interval end points, scipy's brentq vs the engine, logit units | Set to the engine's root tolerance, so a platform's last digits cannot fail it. | same |
+| `TOL_SCIPY_MOM_MOMENT_REL` | 4e-15 | 6.7e-16 | M3: PD̂ and PD̂₂, scipy vs the engine, relative | Sums of the same counts, possibly in a different order. A few ulps allowed. | `validation/scipy/method_of_moments.py` |
+| `TOL_SCIPY_MOM_RHO_U` | 5e-11 | 1.6e-11 | M3: ρ̂, scipy (Owen's T, exact Φ₂ at equal arguments; brentq) vs the engine (Gauss–Hermite E[p²]; Brent), logit units, 108 reference panels | Two independent evaluations of Φ₂ and two root finders. Observed, doubled, rounded up. | same |

@@ -881,6 +881,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Recovery on its own model:** the n → ∞ limit of the recovery panels (the same factor draws), 27 cells × 1,000. Predictions V1–V5 were committed before the run; 4 held. The one miss (V5) is 1.8–2.2% near-bound flags at ρ = 0.24, T = 20, against ≤ 1% predicted: ρ̂ within two SEs of the 0.5 cap. 78 of 81 coverage verdicts are in the band; the three below (29/PD, 68/PD, 74/q) use the factor draws of pinned binomial small-T findings, so the dips belong to those draws at small T, not to the binomial likelihood. Reviewed in `unit_vasicek_rate`.
   - **Not in this step:** the C ABI (still v0, binomial only; exposing M3's estimators needs an ABI minor version, decided separately), and bootstrap intervals for the rate objective.
 
+## M3.2: the method of moments, 2026-09-28
+
+- **D-165 — The method of moments is an engine function over per-period sufficient statistics, joint-default-probability form, exact in finite n; its joint default probability is the n = 2, d = 2 binomial-mixture integral, so it shares the parity integrator. It is validated on panels of its own seed, not the recovery panels, so S-8's comparison is first computed in S-8's registered run.**
+  - **What:** `engine/moments.hpp`. PD̂ = Σd/Σn and PD̂₂ = Σd(d − 1)/Σn(n − 1), weighted by a W row when resampling (D-042); ρ̂ solves E[p(Z)²](PD̂, ρ) = PD̂₂ by Brent in logit(ρ) over the box. No defaults: refused; PD̂₂ outside what the box's ρ range gives: ρ̂ at the floor or the cap, flagged; PD̂ outside the PD box: flagged. A rate-series form (mean rate, mean squared rate) for D-046's rate data.
+  - **Why the n = 2 integral:** Φ₂(c, c; ρ) = E[p(Z)²] is exactly the binomial-mixture integral with n = 2, d = 2, so no bivariate-normal routine is added to core, and the moment uses the same validated integrator as the likelihood.
+  - **Validation:** mpmath goldens (tanh-sinh at 50 digits; `tools/gen_moments_goldens.py` in the generated-files check), within 7.1·10⁻¹⁵ in log PD₂; inversion within 1.3·10⁻¹³; edge cases and weights; consistency on a 20,000-period panel; 108 reference panels (count and rate series, the recovery matrix's cells at n = 1,000, seed M3MOMVAL) reproduced on MSVC and GCC and replicated by `validation/scipy/method_of_moments.py` with Owen's T (exact Φ₂ at equal arguments), within 1.6·10⁻¹¹ in logit(ρ̂).
+  - **Why its own seed:** S-8 compares MoM with the MLE on the recovery panels and is scored by a script committed before its run (D-161). Running MoM over the recovery matrix here would compute S-8's result first. Likewise M3.1's replay touched nine recovery count panels (replicate 0, PD 1%, n = 100) under the censored rate likelihood; that is disclosed for S-28, whose run covers 81,000 panels.
+  - **Not in this step:** intervals (no likelihood; bootstrap via W, not validated here) and the C ABI.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

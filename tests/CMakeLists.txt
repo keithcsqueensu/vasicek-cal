@@ -109,6 +109,11 @@ vcal_add_test_executable(unit_reducer SOURCES unit/reducer_test.cpp LIBS vcal::c
 vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_profile SOURCES unit/profile_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_vasicek_rate SOURCES unit/vasicek_rate_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
+vcal_add_test_executable(unit_moments SOURCES unit/moments_test.cpp LIBS vcal::engine vcal::dgp)
+# M3: the method of moments' reference results, for its regression test and scipy replication.
+add_executable(mom_reference recovery/mom_reference.cpp)
+target_link_libraries(mom_reference PRIVATE vcal_test_harness vcal::engine vcal::dgp)
+vcal_target_defaults(mom_reference)
 # M3: the Vasicek-rate MLE's recovery on its own model; writes or replays (slow) its summary.
 add_executable(rate_recovery_harness recovery/rate_recovery.cpp)
 target_link_libraries(rate_recovery_harness PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
