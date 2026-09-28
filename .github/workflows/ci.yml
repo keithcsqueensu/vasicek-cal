@@ -166,6 +166,7 @@ jobs:
           .venv/bin/python tools/gen_special_tables.py --check
           .venv/bin/python tools/gen_quadrature_tables.py --check
           .venv/bin/python tools/gen_dgp_tables.py --check
+          .venv/bin/python tools/gen_vasicek_rate_goldens.py --check
           .venv/bin/python tools/gen_tolerances.py --check
 
   # D-032, D-126: the plain scipy replication of the binomial-mixture MLE, run against the engine's
@@ -188,6 +189,8 @@ jobs:
         run: .venv/bin/python validation/scipy/binomial_mixture_mle.py
       - name: Cross-check the conditional PD's profile interval (S-23)
         run: .venv/bin/python validation/scipy/conditional_pd_profile.py
+      - name: Vasicek-rate MLE against the engine (M3)
+        run: .venv/bin/python validation/scipy/vasicek_rate_mle.py
 
   # K-1, D-059, D-100: device-visible code must compile as device code. Compile-only (no GPU on
   # the runners); the CPU tests also run, as a host-side check of the CUDA-enabled build.

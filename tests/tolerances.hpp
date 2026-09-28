@@ -160,4 +160,29 @@ inline constexpr double TOL_RESAMPLE_JACKKNIFE_REL = 2e-15;
 // interpolates two replicate estimates; a last-digit difference can reorder near-equal ones or move
 // a replicate's refinement. Observed on Linux (GCC 11/14, Clang 18): 8.8e-12, doubled and rounded up.
 inline constexpr double TOL_BOOTSTRAP_CROSS_PLATFORM_REL = 2e-11;
+
+// --- Vasicek-rate objective, M3 ------------------------------------------------------------------
+// |l_t - mpmath| / (eps x the size of l_t's terms), for the log density and the censored and
+// substituted boundary terms (tests/golden/vasicek_rate). Observed 2.88 (GCC 16, UCRT); doubled
+// and rounded up.
+inline constexpr double TOL_VASICEK_RATE_LOGLIK_EPS = 6;
+// The profile code's polished maximum against the closed-form MLE, in logit units. Observed 5.4e-8
+// on the unit test's panels and 1.6e-7 over the 27,000 rate-recovery fits (MSVC): Brent's 1e-9
+// tolerance on a flat maximum moves the argmax by about its square root. Doubled, rounded up; was
+// 2e-7 when prediction V1 was registered and scored.
+inline constexpr double TOL_VASICEK_RATE_POLISH_U = 4e-7;
+
+// --- scipy replication, M1.9: a plain scipy script against the engine (D-126) --------------------
+// M3: validation/scipy/vasicek_rate_mle.py. The Vasicek-rate maximum, scipy's nested bounded Brent
+// (and, for rate panels, the closed form) vs the engine's polished maximum, in logit units, on the 63
+// replay panels. Observed 1.8e-7 (the closed form: 7.2e-8): both optimisers place a flat maximum to
+// about the square root of their tolerance on its value. Doubled and rounded up.
+inline constexpr double TOL_SCIPY_RATE_ESTIMATE_U = 4e-7;
+// M3: the maximum log-likelihood, scipy vs the engine, on the same panels. Observed 3.4e-13;
+// doubled and rounded up.
+inline constexpr double TOL_SCIPY_RATE_LOGLIK_ABS = 1e-12;
+// M3: the PD and rho profile-interval end points, scipy's brentq vs the engine, in logit units.
+// Observed 2.3e-10; set to the engine's own root tolerance (1e-9) so that a platform's last digits
+// cannot fail it.
+inline constexpr double TOL_SCIPY_RATE_PROFILE_U = 1e-9;
 }  // namespace vcal::tol
