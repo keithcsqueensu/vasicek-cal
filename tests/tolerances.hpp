@@ -210,4 +210,38 @@ inline constexpr double TOL_SCIPY_MOM_MOMENT_REL = 4e-15;
 // M3: rho-hat, scipy (Owen's T, exact Phi_2 at equal arguments; brentq) vs the engine (Gauss-Hermite
 // E[p^2]; Brent), in logit units, on 108 reference panels. Observed 1.6e-11; doubled, rounded up.
 inline constexpr double TOL_SCIPY_MOM_RHO_U = 5e-11;
+
+// --- grid Bayesian, M3 ---------------------------------------------------------------------------
+// Equal-tailed interval ends (and the mean and SD) of the grid posterior against an exactly normal
+// posterior in logit units, in posterior SDs, with the resolution rule (4 points per SD; local grids
+// at 5). For a normal posterior, cell-uniform marginals at 4 points per SD put the ends within 0.01 SD
+// at any grid offset (the rule's derivation, D-161). Observed 0.004.
+inline constexpr double TOL_POSTERIOR_ET_END_SD = 0.01;
+// HPD interval ends on the same posteriors. The HPD of the cell-uniform (step) density is the
+// shortest interval under it, which can lie up to half a cell from the smooth HPD while its width is
+// right: half a cell at the rule's minimum of 4 points per SD is 0.125 SD. Set from that bound, not
+// observed. Observed 0.07.
+inline constexpr double TOL_POSTERIOR_HPD_END_SD = 0.13;
+
+// --- scipy replication, M1.9: a plain scipy script against the engine (D-126) --------------------
+// M3: validation/scipy/grid_posterior.py. The Jeffreys table (log sqrt det I_u, n = 100, 13 x 9 points),
+// scipy's adaptive quad vs the engine's parity rule, both scoring by central differences (step 1e-4),
+// which divide each probability's error by 2e-4. Observed 1.45e-9; doubled and rounded up.
+inline constexpr double TOL_SCIPY_JEFFREYS_LOG_ABS = 3e-9;
+// M3: the grid posterior's equal-tailed and HPD ends, scipy (a fixed 200-node Gauss-Hermite rule for
+// the likelihood and the Jeffreys table, vectorised) vs the engine, in logit units, on 16 reference
+// fits. The fixed rule's error in log P(d), about 5e-7 at worst for n = 100, summed over 20 periods,
+// moves the posterior slightly. Observed 3.0e-5; doubled and rounded up.
+inline constexpr double TOL_SCIPY_POSTERIOR_END_U = 1e-4;
+
+// --- grid Bayesian, M3 ---------------------------------------------------------------------------
+// M3: the committed grid-posterior reference results (tests/golden/posterior) recomputed,
+// relative: interval ends from sums of exponentials of the surface, and the Jeffreys table from
+// central differences. A platform's libm last digits move them by far less.
+inline constexpr double TOL_POSTERIOR_REFERENCE_REL = 1e-10;
+// M3: the committed Jeffreys table recomputed, absolutely (log sqrt det I_u can be near 0, and the
+// error does not scale with it). The score's central differences (step 1e-4) divide a platform's
+// last-bit differences in log P(d) by 2e-4. Observed 2.85e-10 over the 117 points (Linux glibc vs
+// Windows UCRT; values from -11.4 to +0.03); 1e-9 leaves a factor of 3.5.
+inline constexpr double TOL_POSTERIOR_JEFFREYS_ABS = 1e-9;
 }  // namespace vcal::tol

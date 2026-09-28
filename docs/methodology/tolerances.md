@@ -231,6 +231,17 @@ integrator; its goldens are mpmath tanh-sinh values at 50 digits (`tools/gen_mom
 | `TOL_MOM_INVERSION_U` | 3e-13 | 1.3e-13 | ρ̂ from a golden PD_2 against its ρ, logit units | Brent's 1e-12 tolerance on the root. Observed, doubled, rounded up. | `unit_moments: mom_inversion_recovers_rho` |
 | `TOL_MOM_CONSISTENCY_Z` | 4 | 0.97 (PD), 1.74 (ρ) | PD̂ and ρ̂ on one T = 20,000 panel of the MoM validation seed, in large-T standard deviations from the model (ρ's bounded by twice the MLE's) | Statistical, with a fixed seed, so deterministic; 4 as for `TOL_DGP_MOMENT_Z`. | `unit_moments: mom_is_consistent_on_a_long_panel` |
 | `TOL_MOM_REFERENCE_REL` | 1e-10 | 0 (MSVC vs MinGW GCC) | The committed reference results recomputed, relative | The root is solved to 1e-12 in logit; a platform's libm last digits move it by about that. | `unit_moments: mom_reference_results_reproduce` |
+
+## Grid Bayesian (M3)
+
+The grid posterior with its resolution rule (`engine/posterior.hpp`; `docs/methodology/grid_bayesian.md`).
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_POSTERIOR_ET_END_SD` | 0.01 | 0.009 | Equal-tailed interval ends, mean and SD of the grid posterior against an exactly normal posterior, in posterior SDs | For a normal posterior, cell-uniform marginals at the rule's 4 points per SD put the ends within 0.010 SD at any grid offset (the rule's derivation). The worst case is a fit the parity grid already resolves at 4.6 points per SD. | `unit_posterior: posterior_intervals_are_exact_on_a_normal_posterior` |
+| `TOL_POSTERIOR_HPD_END_SD` | 0.13 | 0.071 | HPD interval ends on the same posteriors | The HPD of the cell-uniform (step) density is the shortest interval under it, which can sit up to half a cell from the smooth HPD while its width is right: half a cell at 4 points per SD is 0.125 SD. Set from that bound. | same |
+| `TOL_POSTERIOR_REFERENCE_REL` | 1e-10 | 0 (MinGW GCC vs MSVC) | The committed grid-posterior reference results recomputed, relative | Sums of exponentials of the surface and central differences; a platform's libm last digits move them by far less. | `unit_posterior: posterior_reference_results_reproduce` |
+| `TOL_POSTERIOR_JEFFREYS_ABS` | 1e-9 | 2.85e-10 over 117 points (Linux glibc vs Windows UCRT) | The committed Jeffreys table recomputed, absolutely | The error is absolute, about 1–3·10⁻¹⁰ whatever the value (−11.4 to +0.03): the score's central differences divide last-bit differences in log P(d) by 2e-4. 1e-9 leaves a factor of 3.5. | `unit_posterior: posterior_reference_results_reproduce` |
 ## Conditional PD (S-23)
 
 The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and
@@ -284,3 +295,5 @@ versions on Linux (job `validation (scipy)`).
 | `TOL_SCIPY_RATE_PROFILE_U` | 1e-9 | 2.3e-10 | M3: the PD and ρ profile-interval end points, scipy's brentq vs the engine, logit units | Set to the engine's root tolerance, so a platform's last digits cannot fail it. | same |
 | `TOL_SCIPY_MOM_MOMENT_REL` | 4e-15 | 6.7e-16 | M3: PD̂ and PD̂₂, scipy vs the engine, relative | Sums of the same counts, possibly in a different order. A few ulps allowed. | `validation/scipy/method_of_moments.py` |
 | `TOL_SCIPY_MOM_RHO_U` | 5e-11 | 1.6e-11 | M3: ρ̂, scipy (Owen's T, exact Φ₂ at equal arguments; brentq) vs the engine (Gauss–Hermite E[p²]; Brent), logit units, 108 reference panels | Two independent evaluations of Φ₂ and two root finders. Observed, doubled, rounded up. | same |
+| `TOL_SCIPY_JEFFREYS_LOG_ABS` | 3e-9 | 1.45e-9 | M3: the Jeffreys table (n = 100, 13 × 9 points), scipy's adaptive quad vs the engine's parity rule | Both score by central differences with step 1e-4, which divide each probability's error by 2e-4. Observed, doubled, rounded up. | `validation/scipy/grid_posterior.py` |
+| `TOL_SCIPY_POSTERIOR_END_U` | 1e-4 | 3.0e-5 | M3: grid-posterior interval ends, scipy (a fixed 200-node Gauss–Hermite rule, vectorised) vs the engine, logit units, 16 reference fits | The fixed rule's error in log P(d) (about 5·10⁻⁷ at worst for n = 100) summed over 20 periods. Observed, doubled, rounded up. | same |

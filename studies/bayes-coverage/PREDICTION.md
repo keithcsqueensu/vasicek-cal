@@ -92,3 +92,28 @@ but misses in size is recorded as not held, with the size of the miss. The rows 
 script committed before the full-matrix run's results exist. Results, the comparison, a mitigation
 and a monitoring implication go in `studies/README.md` (the S-9 entry) and in a D-entry, with a
 `MANIFEST.json`. The pinned verdicts are unchanged.
+
+## Addendum, 2026-09-28: the resolution rule as implemented (M3.3), before S-9 runs
+
+Appended under this file's rule for changes M3 has to make, before any S-9 run; nothing above is
+edited, and F1–F5 are unchanged. **Evidence:** the estimator's unit tests and its reference panels,
+which use a validation seed of their own (M3BAYVAL), not the recovery panels.
+
+As registered, the local grid's **extent** was ±8 SD with SD the smaller of the Hessian SE and the
+posterior SD. At small n and T the ρ posterior is wide and skewed towards the box's floor, so the
+Hessian SE at the mode is far smaller than the posterior SD, and a ±8 SE grid dropped real posterior
+mass: 3 of 16 reference fits (T = 20, n = 100) were refused. That would have made F2 fail for a
+reason unrelated to the question. As implemented (`engine/posterior.hpp`, D-166):
+
+- **Extent:** the hull of the posterior mean ± 8 posterior SDs and the edges of the cells holding the
+  current marginal's 5·10⁻⁸ and 1 − 5·10⁻⁸ quantiles, at least ±2 current spacings, clipped to the
+  box. Centred on the posterior **mean**, not the mode.
+- **Spacing:** at most s/5, s the smaller of the posterior SD and (on the first refinement) the
+  Hessian SE: 5 points per SD rather than 4, because the cell-uniform SD shrinks slightly with the
+  cells, and a grid built at exactly 4 would fail the rule it was built for.
+- **Refusal:** after three local grids that still fail the rule, if a local grid would need more than
+  2,001 points on an axis, or if the current grid's mass outside the next grid exceeds 10⁻⁶.
+- **HPD:** the shortest interval holding 95% of the cell-uniform marginal (a partial cell at each end),
+  as registered; it can lie up to half a cell from the smooth HPD (`TOL_POSTERIOR_HPD_END_SD`).
+
+The rule itself (at least 4 grid points per posterior SD on each axis) is unchanged.
