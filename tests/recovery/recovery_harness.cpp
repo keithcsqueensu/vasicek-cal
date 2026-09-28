@@ -20,6 +20,10 @@
 //                                        per scenario run (with --scenarios, those only), --load-fits
 //                                        included: for reviewing verdicts before a --write run, and for
 //                                        studies at other R (S-13).
+//   --results-md FILE                   also write the results page (recovery_results.md's format) to
+//                                        FILE, from any run over every scenario, --load-fits included:
+//                                        the page is a function of the fits and the reviewed labels,
+//                                        so a change of labels or diagnoses needs no refit.
 //   --scenarios ID,ID,...               fit and summarise only these scenarios (exploration, e.g. the
 //                                        study subset of D-150); not with --write or --check.
 //   --save-fits FILE / --load-fits FILE  developer convenience: write every fit to a binary file,
@@ -634,7 +638,7 @@ int main(int argc, char** argv) {
     bool write = false, check = false;
     std::string save_fits, load_fits;
     std::vector<std::uint32_t> ids;
-    std::string replay_dir, summary_out;
+    std::string replay_dir, summary_out, results_md;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--write") == 0) {
             write = true;
@@ -646,6 +650,8 @@ int main(int argc, char** argv) {
             save_fits = argv[++i];
         } else if (std::strcmp(argv[i], "--load-fits") == 0 && i + 1 < argc) {
             load_fits = argv[++i];
+        } else if (std::strcmp(argv[i], "--results-md") == 0 && i + 1 < argc) {
+            results_md = argv[++i];
         } else if (std::strcmp(argv[i], "--summary-out") == 0 && i + 1 < argc) {
             summary_out = argv[++i];
         } else if (std::strcmp(argv[i], "--replay-dir") == 0 && i + 1 < argc) {
@@ -676,7 +682,7 @@ int main(int argc, char** argv) {
         return 2;
     }
     const bool subset = !ids.empty();
-    if (subset && (write || check || !replay_dir.empty())) {
+    if (subset && (write || check || !replay_dir.empty() || !results_md.empty())) {
         std::fprintf(stderr, "--scenarios cannot be combined with --write or --check: goldens cover every scenario\n");
         return 2;
     }
@@ -810,6 +816,11 @@ int main(int argc, char** argv) {
             write_replay_panels_csv(paths[4]);
             verify_written(paths);
             for (const auto& p : paths) std::printf("wrote %s\n", p.c_str());
+        }
+        if (!results_md.empty()) {
+            write_results_md(results_md, all, rmse_bad, R);
+            verify_written({results_md});
+            std::printf("wrote %s\n", results_md.c_str());
         }
         if (!summary_out.empty()) {
             std::vector<rc::Summary> chosen;

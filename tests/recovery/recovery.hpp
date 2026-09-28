@@ -277,9 +277,10 @@ inline const char* diagnosis_text(Diagnosis d) {
             return "overcoverage of a skewed estimate: the Hessian SE does not understate the spread (SE ratio <= 1), "
                    "but u_hat is skewed in the logit coordinate, so the symmetric interval is miscalibrated";
         case Diagnosis::BiasedLowUndercoverage:
-            return "undercoverage from a low estimate: the delta-method SE matches the spread of logit(q-hat) (SE "
-                   "ratio about 1), but q-hat is biased low (rho-hat's downward bias carried into q), so the misses "
-                   "fall almost all below the truth";
+            return "low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into "
+                   "q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the "
+                   "lowest estimates get the narrowest intervals and the misses fall almost all below the truth; "
+                   "removing the mean bias alone would leave coverage at 0.916-0.947";
         case Diagnosis::SeOverstatedOvercoverage:
             return "overcoverage: the delta-method SE overstates the spread of logit(q-hat) (SE ratio 0.94)";
     }

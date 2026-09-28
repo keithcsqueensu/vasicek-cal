@@ -184,8 +184,8 @@ would not fix group A.
 - **Outcome:**
   - profile: 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING. In every informative scenario q's
     coverage is within 0.015 of PD's and ρ's.
-  - delta-method Wald: 32 PASS, 18 KNOWN FINDING, 31 DEFERRED. The findings come from q̂'s low
-    bias, not from the SE.
+  - delta-method Wald: 32 PASS, 18 KNOWN FINDING, 31 DEFERRED. The findings are low estimates
+    with narrow intervals: q̂ is biased low, and its SE shrinks with it.
   - bootstrap: 8 PASS, 73 KNOWN FINDING.
 
   The tables are in [recovery_results.md](recovery_results.md); the comparison with the

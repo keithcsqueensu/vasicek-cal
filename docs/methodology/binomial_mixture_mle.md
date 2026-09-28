@@ -272,8 +272,10 @@ this is the same as taking them in logit(q).
   coverage is within 0.015 of theirs. Two scenarios at T = 20 are below the band. 15 are above it,
   where the data are nearly uninformative and the ends are held by the box.
 - **Delta-method Wald interval:** undercovers in 17 of the 50 assessed scenarios, and not only at
-  T = 20. Its SE is right, but q̂ is biased low (median q̂/q − 1 between −1% and −11%), because
-  ρ̂'s small-sample bias carries into q.
+  T = 20. q̂ is biased low (median q̂/q − 1 between −1% and −11%), because ρ̂'s small-sample
+  bias carries into q, and its SE moves with the estimate: the lowest estimates get the narrowest
+  intervals. The SE is right on average but wrong where it matters, so removing the bias alone
+  would not be enough.
 - **Bootstrap percentile interval:** undercovers in 73 of 81 scenarios, for the reasons found for ρ.
 
 Use the profile interval for q. The study's entry in `studies/README.md` lists the mitigations and
