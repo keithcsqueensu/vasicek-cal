@@ -831,6 +831,22 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Predictions K1–K10:** direction, scaling with T and with the number of periods, size against the reference where n·PD ≥ 100, dilution where n·PD ≤ 10, exceedance of the original q interval, coverage of the unchanged truth (predicted to rise after one 1-in-100 period, and to fall after two 1-in-1,000 periods at T = 20), relative size, and three scenarios (0, 3, 6) where the "severe" period has a median of zero defaults.
   - **Process:** the subset first, then one full-matrix run that pins the results, scored by a script committed before that run's results exist. S-34 is descriptive and adds no verdict family.
 
+## Study S-34 result, 2026-09-28
+
+- **D-162 — S-34 result: after a severe year q̂ jumps by an amount predictable from T alone (about 3.7/√T SE per 1-in-100 year, 6.5/√T per 1-in-1,000), and the refitted interval moves up rather than widening, so it covers the unchanged truth far less often. 8 of 10 predictions held.**
+  - **What was run:** every recovery panel refitted after adding one or two periods at a 1-in-100 or 1-in-1,000 adverse factor level (median default count), with exact off-grid estimates and the PD, ρ and q profile intervals: the subset first (35 min), then the full matrix (81 × 1,000 × 4 variants, 6 h 12 min). `studies/severe-period-sensitivity/MANIFEST.json` has the commits, commands and hashes. The original panels' q coverage reproduces the pinned recovery summary in all 81 scenarios.
+  - **Result:**
+    - the jump matches the model's large-n limit: 0.93–1.02 × the reference for q where n·PD ≥ 100, and 0.61–1.33 × (median 0.98) where n·PD ≤ 10;
+    - the refitted interval's lower end rises more than its upper end (for ρ in every B–D scenario and variant), so coverage of the unchanged truth falls: to 0.81–0.89 after one 1-in-1,000 year at T = 20, and to 0.26–0.51 after two;
+    - the refitted q̂ exceeds the original interval in at most 6.3% of replicates after one severe year, and 28–45% after two 1-in-1,000 years at T = 20;
+    - in 10 group A scenarios (n·PD ≤ 1) a "1-in-100" year lowers q̂.
+  - **Predictions:** 8 of 10 held (K1–K4, K6, K7, K9, K10). K5 missed: the predicted dilution at small n·PD did not appear. K8 missed in size in its first part: after one 1-in-100 year coverage stayed level rather than rising. The subset had shown both before the full run; the predictions were not amended.
+  - **Consequences:**
+    - no estimator change;
+    - M5's what-if recalibration reports the expected jump beside the refit;
+    - the monitoring implications in the S-34 entry (the expected jump, the breach of the previous interval as a review trigger, and post-crisis refits reported with the number of severe years) go into M5's monitoring design (D-152).
+  - **Per-replicate data are committed** as Parquet (`replicates.parquet`, 28 MB, exact in all 7,695,000 cells). That is larger than earlier studies' because the nine double columns per row (estimates and interval ends for five panels per replicate) do not compress.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
