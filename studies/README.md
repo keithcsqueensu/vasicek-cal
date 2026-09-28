@@ -394,7 +394,7 @@ refined in each study's `PREDICTION.md`.
   resolution matters for a discretised posterior, so S-7 informs the grid.
 - **Cost:** about the fit cost (≈ 5 min subset, ≈ 1 h full matrix), plus the Jeffreys prior once
   per n.
-- **Prediction:** registered in [`bayes-coverage/PREDICTION.md`](bayes-coverage/PREDICTION.md) before any run: F1–F5. The parity grid is too coarse for a grid posterior where the estimator's spread is under half a spacing (PD in 8 scenarios of groups B–D), so a 4 × finer grid runs on the subset beside it. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`bayes-coverage/PREDICTION.md`](bayes-coverage/PREDICTION.md) before any run: F1–F5. The parity grid is too coarse for a grid posterior where the estimator's spread is under half a spacing (PD in 8 scenarios of groups B–D), so the estimator carries a resolution rule, at least 4 grid points per posterior SD on each axis, refining locally or refusing; the parity grid without the rule runs beside it as a diagnostic. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Subset now, full matrix after M4 (new data per replicate)
@@ -780,7 +780,7 @@ kind as S-11 and report both targets (D-150).
 - **Verdicts it could change:** none of the binomial verdicts; it adds the rate-based estimators'
   verdicts for each treatment.
 - **Cost:** closed-form likelihoods: minutes for the full matrix.
-- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E9–E12, in the estimator-comparison pass's shared file (D-150), with the censoring point c_n = 1/(2n). **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E9–E13, in the estimator-comparison pass's shared file (D-150): refuse, drop, a censored likelihood (the Vasicek CDF below the detection limit 1/(2n)) and substitution (a continuity correction, half a default); E9 is an implementation check. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Theme: data and population instability (S-29 to S-33; D-150)

@@ -24,7 +24,10 @@ prior the parameters are drawn from, the posterior CDF at the true value is unif
   as S-9's marginals). A panel is simulated with the recovery DGP (D-109) under a separate stream:
   scenario id 1000 + setting, replicate = draw.
 - **Priors:** flat on the natural scale (every setting); Jeffreys (setting (1,000, 20) only).
-- **Posterior:** as in S-9, on the parity grid; and on S-9's fine grid (241 × 161) at (1,000, 100).
+- **Posterior:** S-9's estimator, with its resolution rule (at least 4 grid points per posterior SD
+  on each axis, refining locally); and, as a diagnostic, the parity grid with the rule switched
+  off. Under the rule, a draw's rank is taken on the grid the estimator ends on, with the prior's
+  mass on that grid.
 - **Rank statistic:** the marginal posterior CDF at the true value, for PD and for ρ. It is
   continuous under the cell-uniform convention, so there are no ties.
 - **Reported:** a 20-bin histogram per parameter, its χ² p-value against uniform, and the **tail
@@ -41,18 +44,18 @@ prior the parameters are drawn from, the posterior CDF at the true value is unif
   tail share below 0.05. In logit units the posterior SD of ρ̂ is about √(2/T), 0.32 at T = 20,
   0.22 at 40 and 0.14 at 100, against a spacing of 0.173. For PD it depends on (PD, ρ); under the
   flat prior most draws have PD above 5%, where the logit SD at T = 100 is about 0.1, against a
-  spacing of 0.130. So (1,000, 20) should be calibrated and (1,000, 100) should not, on the parity
-  grid; the fine grid, with spacings a quarter as wide, should restore it.
+  spacing of 0.130. So on the parity grid without the rule (1,000, 20) should be calibrated and
+  (1,000, 100) should not; the resolution rule should restore calibration everywhere.
 
 ## Predictions
 
 | # | Prediction |
 |---|---|
-| G1 | **(1,000, 20), parity grid, flat prior:** for PD and for ρ, the χ² p-value is at least 0.01 and the tail share is within 0.027–0.073 |
-| G2 | **(1,000, 20), Jeffreys prior:** the same holds |
-| G3 | **(1,000, 100), parity grid:** for ρ and for PD the tail share is below 0.027, a hump |
-| G4 | **(1,000, 100), fine grid:** for PD and for ρ, the tail share is within 0.027–0.073 |
-| G5 | **(10⁴, 40), parity grid:** the tail share for ρ lies between those of (1,000, 20) and (1,000, 100) on the parity grid |
+| G1 | **(1,000, 20), with the rule, flat prior:** for PD and for ρ, the χ² p-value is at least 0.01 and the tail share is within 0.027–0.073 |
+| G2 | **(1,000, 20), with the rule, Jeffreys prior:** the same holds |
+| G3 | **(1,000, 100), parity grid without the rule:** for ρ and for PD the tail share is below 0.027, a hump |
+| G4 | **(1,000, 100), with the rule:** for PD and for ρ, the χ² p-value is at least 0.01 and the tail share is within 0.027–0.073 |
+| G5 | **(10⁴, 40), parity grid without the rule:** the tail share for ρ lies between those of (1,000, 20) and (1,000, 100) without the rule |
 
 ## How the comparison will be reported
 

@@ -35,14 +35,19 @@ dated, before the pass runs.
     Vasicek rate distribution, maximised over the box off the grid. For data without zero or 100%
     rates its maximum is the closed form PD̂ = Φ(μ̂/√(1 + v̂)), ρ̂ = v̂/(1 + v̂), from the mean μ̂ and
     1/T variance v̂ of Φ⁻¹(d_t/n_t), when that lies in the box. Its 95% interval is the profile
-    likelihood interval of the rate likelihood (threshold 1.9207, D-129). Three zero-default
-    treatments (D-044):
+    likelihood interval of the rate likelihood (threshold 1.9207, D-129). Four zero-default
+    treatments (D-044); "censored" and "substituted" are different treatments, and both are run:
     - **refuse** (parity): no estimate if any period has d_t = 0 or d_t = n_t;
     - **drop** (`native`, an explicit data edit): those periods are removed, and the fit refuses if
       fewer than 3 remain;
-    - **censored** (`native`): a zero-default period contributes P(DR ≤ c_n) =
-      Φ((√(1 − ρ)·Φ⁻¹(c_n) − Φ⁻¹(PD))/√ρ) with the censoring point **c_n = 1/(2n)** (half a
-      default); a 100% period contributes P(DR ≥ 1 − c_n).
+    - **censored** (`native`): a true censored likelihood. A zero-default period is treated as a
+      rate below the detection limit **c_n = 1/(2n)** (half a default), and contributes the
+      probability of that event, the Vasicek rate CDF P(DR ≤ c_n) =
+      Φ((√(1 − ρ)·Φ⁻¹(c_n) − Φ⁻¹(PD))/√ρ), instead of a density. A 100% period contributes
+      P(DR ≥ 1 − c_n);
+    - **substituted** (`native`, a continuity correction): a zero count is replaced by half a
+      default, so the period enters the ordinary density at the rate c_n = 1/(2n) (and a 100%
+      period at 1 − c_n). It is a data edit, stated as such, not a censored likelihood.
   - **Method of moments on rates** (for rate series, D-046): PD̂ the mean rate, and ρ̂ solving
     Φ₂(c, c; ρ) − PD̂² = var(d_t/n_t); zero rates enter as zeros. Reported, with the drop treatment
     beside it, without predictions.
@@ -152,9 +157,12 @@ dated, before the pass runs.
 
   **Dropping** zero periods keeps only the worse periods: PD̂ is biased upwards, and the kept
   periods' rates are dominated by binomial noise at small counts (d = 1 or 2), which the rate model
-  reads as factor variance. **Censoring** at half a default keeps the zero periods' information
-  about the mean, so its PD̂ should be much less biased; but it cannot remove the binomial noise in
-  the non-zero periods, so where the S-27 bias is large neither treatment rescues the rate MLE.
+  reads as factor variance. **Censoring** keeps the zero periods' information that the rate was
+  low, without claiming how low, so its PD̂ should be much less biased; but it cannot remove the
+  binomial noise in the non-zero periods, so where the S-27 bias is large no treatment rescues the
+  rate MLE. **Substitution** claims every zero period sat exactly at 1/(2n): where n·PD is small
+  that fixed rate is far from the periods' typical rate and is repeated in many periods, so it
+  moves PD̂ further than censoring does.
 
 ## Predictions
 
@@ -183,10 +191,11 @@ grouped by T and are not in A–D.
 
 | # | Prediction |
 |---|---|
-| E9 | **Refusal is exactly predictable:** the parity rate estimator's refusal share lies within ±3.29·√(q(1 − q)/1,000) of q = 1 − (1 − P₀)^T (table above) in at least 79 of the 81 scenarios with n ≤ 10⁴ |
+| E9 | **Refusal is exactly predictable:** the parity rate estimator's refusal share lies within ±3.29·√(q(1 − q)/1,000) of q = 1 − (1 − P₀)^T (table above) in at least 79 of the 81 scenarios with n ≤ 10⁴. *This is a check of the implementation and the DGP, not an uncertain prediction:* the share follows from the model exactly, so a miss means a bug |
 | E10 | **Drop biases PD upwards:** where P₀ ≥ 0.2, the drop treatment's mean relative error of PD̂ exceeds +10% in every scenario where it estimates in at least half the replicates |
 | E11 | **Censoring helps PD:** where P₀ ≥ 0.05, the censored treatment's absolute mean relative error of PD̂ is smaller than drop's in at least 90% of the scenarios where both estimate in at least half the replicates |
-| E12 | **Neither rescues ρ where the rate model is wrong:** where the S-27 reference bias is at least 1 SE, the ρ profile coverage of both drop and censored is below the band in at least 80% of the scenarios where they estimate in at least half the replicates |
+| E12 | **No treatment rescues ρ where the rate model is wrong:** where the S-27 reference bias is at least 1 SE, the ρ profile coverage of drop, censored and substituted is below the band in at least 80% of the scenarios where each estimates in at least half the replicates |
+| E13 | **Censoring beats substitution for PD:** where P₀ ≥ 0.2, the censored treatment's absolute mean relative error of PD̂ is smaller than the substituted treatment's in at least 80% of the scenarios where both estimate in at least half the replicates |
 
 ## How the comparison will be reported
 
