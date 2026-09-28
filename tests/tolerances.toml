@@ -388,6 +388,16 @@ comment = [
     "1e-5), relative. The differences' own O(h^2) error dominates: observed 4.9e-10, doubled and rounded up.",
 ]
 
+[TOL_ZSIGN_SE_REL]
+type = "double"
+value = 2e-9
+section = "study S-1, z-sign invariance (D-300, D-301, D-157)"
+comment = [
+    "S-1's C8: SEs and their correlation, parity vs the mirrored convention, relative. Registered as",
+    "TOL_RECOVERY_REPLAY_SE_REL (5e-10), measured on panels up to n = 1e4. On panel 20 (n = 1e5, rho",
+    "0.24) the Windows UCRT libm gives 6.95e-10 (MSVC and MinGW GCC alike; glibc passes). Doubled, rounded up.",
+]
+
 [TOL_RESAMPLE_VS_REFIT_REL]
 type = "double"
 value = 1e-12
