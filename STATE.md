@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160)
 
 ## Current status
 
@@ -192,7 +192,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    2. S-13 targeted (done, D-158): at T = 20 the profile interval undercovers by about one point, systematically (coverage about 0.94 at R = 10,000); the six findings are real but not special;
    3. the shared jackknife run (done, D-159): BCa beats the percentile interval for ρ (20 of 21 in the band at T = 100) but not for PD; jackknife bias correction removes ρ̂'s bias only with exact delete-one refits, and is a point-estimate adjustment, not an interval method; bias correction plus Wald does not rescue q; the most influential period is often not the one with the most extreme factor (S-3, S-5, S-21);
    4. S-1 (done, D-301) and S-2 (done, D-304);
-   5. S-34: sensitivity to severe new periods (D-152).
+   5. S-34: sensitivity to severe new periods (D-152; registered, D-160).
 
    Each starts with its `PREDICTION.md` committed before any run (D-148).
 2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in.

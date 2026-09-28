@@ -823,6 +823,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - a `native` BCa interval for ρ is recommended over the percentile interval; the percentile interval stays the parity bootstrap interval;
     - the full matrix was not polished, so the S-3 conclusion rests on the 6 informative subset scenarios.
 
+## Study S-34: pre-registration, 2026-09-28
+
+- **D-160 — S-34 is registered before any run, with its method fixed: added periods at the median default count of a fixed adverse factor level, exact off-grid estimates, and predictions from the model's large-n limit.**
+  - **Method:** each recovery panel is extended by one or two periods at a 1-in-100 or 1-in-1,000 adverse factor level, each with the median default count at that level, so the added periods are the same for every replicate. PD̂, ρ̂ and q̂ are the exact off-grid maxima of the original and extended panels, since D-159 showed the grid refinement's error matters in differences. Shifts are reported in the original panel's SE units and in relative terms, with the extended panel's profile intervals, their coverage of the unchanged truth, and how often the new q̂ lies above the original interval.
+  - **Mechanism:** in the large-n limit q̂'s shift in SE units depends only on T and the added periods, not on PD or ρ: about (3.6–3.8)/√T SE for one 1-in-100 period and (6.3–6.7)/√T for one 1-in-1,000. `large_n_reference.py` computes the reference from the model alone, reading no recovery panel. Finite n should dilute the shift where n·PD is small.
+  - **Predictions K1–K10:** direction, scaling with T and with the number of periods, size against the reference where n·PD ≥ 100, dilution where n·PD ≤ 10, exceedance of the original q interval, coverage of the unchanged truth (predicted to rise after one 1-in-100 period, and to fall after two 1-in-1,000 periods at T = 20), relative size, and three scenarios (0, 3, 6) where the "severe" period has a median of zero defaults.
+  - **Process:** the subset first, then one full-matrix run that pins the results, scored by a script committed before that run's results exist. S-34 is descriptive and adds no verdict family.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
