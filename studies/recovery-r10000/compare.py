@@ -2,21 +2,19 @@
 """S-13 targeted: score the pre-registered predictions (PREDICTION.md, Q1-Q7) against the run.
 
 Reads the R = 10,000 summary (summary_r10000.csv, written by recovery_harness --summary-out; same
-columns as tests/golden/recovery/summary.csv) and, for Q7 only, the run's saved fits: the summary
-does not carry the direction of PD's and rho's profile misses. The fits file (recovery_harness
---save-fits) is too large to commit; its SHA-256 is printed and recorded with the results.
-Prints one Markdown row per prediction: predicted, result, held or not. Standard library only.
+columns as tests/golden/recovery/summary.csv) and, for Q7 only, the committed per-replicate table
+fits_r10000.parquet (export_fits.py): the summary does not carry the direction of PD's and rho's
+profile misses. Prints one Markdown row per prediction: predicted, result, held or not.
 Committed before the run's results were seen.
 
-    python studies/recovery-r10000/compare.py SUMMARY_CSV FITS_FILE
+    uv run --no-project --with pyarrow==25.0.1 python studies/recovery-r10000/compare.py SUMMARY_CSV FITS_PARQUET
 """
 
 import csv
-import hashlib
 import math
-import struct
 import sys
-from pathlib import Path
+
+import pyarrow.parquet as pq
 
 R = 10_000
 BAND = (0.95 - 3.29 * math.sqrt(0.95 * 0.05 / R), 0.95 + 3.29 * math.sqrt(0.95 * 0.05 / R))
@@ -30,31 +28,23 @@ ALL38 = (GROUP_B + [(68, "pd"), (41, "pd"), (31, "rho"), (49, "rho"), (59, "pd")
          + A_CONSERVATIVE + A_UPPER_PASS)
 PDS, RHOS = (0.001, 0.01, 0.05), (0.02, 0.12, 0.24)
 
-# The harness's Fit record (tests/recovery/recovery.hpp), 200 bytes, little-endian, x64 layout.
-FIT = struct.Struct("<2d2dd I4x 2d2d 2I d 2d2d 2I d d d d I4x d d d")
-
 
 def coverage(rows, sid, p):
     return int(rows[sid][f"{p}_profile_covered"]) / R
 
 
-def rho_misses(fits_path, scenarios):
-    """Per scenario, (rho profile intervals entirely below the true rho, entirely above)."""
-    data = Path(fits_path).read_bytes()
-    assert len(data) == R * 81 * FIT.size, "fits file size does not match R = 10,000 x 81 scenarios"
-    out = {}
-    for sid in scenarios:
+def rho_misses(parquet_path, scenarios):
+    """Per scenario, [rho profile intervals entirely below the true rho, entirely above]."""
+    t = pq.read_table(parquet_path, columns=["scenario", "rho_lo", "rho_hi", "rho_profile_flags"]).to_pydict()
+    out = {sid: [0, 0] for sid in scenarios}
+    for sid, lo, hi, flags in zip(t["scenario"], t["rho_lo"], t["rho_hi"], t["rho_profile_flags"]):
+        if sid not in out or flags & 4:  # not computed: not covering, but in neither direction
+            continue
         truth = RHOS[(sid // 9) % 3]
-        below = above = 0
-        for r in range(R):
-            f = FIT.unpack_from(data, (r * 81 + sid) * FIT.size)
-            lo, hi, flags = f[7], f[9], f[11]  # prof_lo[1], prof_hi[1], prof_flags[1]
-            if flags & 4:
-                continue
-            below += hi < truth
-            above += lo > truth
-        out[sid] = (below, above)
-    return out, hashlib.sha256(data).hexdigest()
+        out[sid][0] += hi < truth
+        out[sid][1] += lo > truth
+    return out
+
 
 
 def main():
@@ -102,11 +92,11 @@ def main():
     row("Q6", "Totals over the 38: below 19-25; above 10-16; PASS 1-6", f"below {nb}; above {na}; PASS {npass}",
         19 <= nb <= 25 and 10 <= na <= 16 and 1 <= npass <= 6)
     b_rho_below = [k for k in GROUP_B if k[1] == "rho" and below(k)]
-    misses, digest = rho_misses(fits, sorted({k[0] for k in b_rho_below}))
+    misses = rho_misses(fits, sorted({k[0] for k in b_rho_below}))
     fr = {k: misses[k[0]][0] / (R - int(rows[k[0]]["rho_profile_covered"])) for k in b_rho_below}
     row("Q7", "Group B ρ verdicts below the band: more than 2/3 of non-covering intervals entirely below the truth",
         "; ".join(f"{name(k)} {v:.2f}" for k, v in fr.items()) or "none below", bool(fr) and all(v > 2 / 3 for v in fr.values()))
-    print(f"Band at R = {R}: {BAND[0]:.4f}-{BAND[1]:.4f}. Fits file SHA-256: {digest}\n")
+    print(f"Band at R = {R}: {BAND[0]:.4f}-{BAND[1]:.4f}.\n")
     print("| # | Prediction | Result | Held |\n|---|---|---|---|")
     print("\n".join(out))
 
