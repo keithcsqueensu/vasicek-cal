@@ -696,8 +696,11 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // fits[r * kScenarios + id]; jobs run in batches of replicates so progress can be reported.
+    // fits[r * kScenarios + id]; jobs run in batches of replicates so progress can be reported. One
+    // surface-row cache serves the whole run (D-167): rows depend on (n, d) and the configuration only,
+    // so replicates and scenarios with the same n share them; results are identical bit for bit.
     std::vector<rc::Fit> fits(static_cast<std::size_t>(R) * rc::kScenarios);
+    vcal::engine::SurfaceRowCache cache;
     const auto start = std::chrono::steady_clock::now();
     const std::uint32_t batch = 25;
     const std::size_t bytes = fits.size() * sizeof(rc::Fit);
@@ -717,12 +720,16 @@ int main(int argc, char** argv) {
         vcal::backends::CpuBackend{}.parallel_for(jobs, [&](std::int64_t j) {
             const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / per);
             const std::uint32_t id = ids[static_cast<std::size_t>(j % per)];
-            fits[static_cast<std::size_t>(r) * rc::kScenarios + id] = rc::fit(rc::scenario(id), r);
+            fits[static_cast<std::size_t>(r) * rc::kScenarios + id] = rc::fit(rc::scenario(id), r, &cache);
         });
         const double s = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R, s);
     }
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    if (R > 0) {
+        std::fprintf(stderr, "surface rows: %zu computed, %lld reused\n", cache.size(),
+                     static_cast<long long>(cache.hits()));
+    }
     const auto selected = [&](std::size_t i) {
         return std::find(ids.begin(), ids.end(), static_cast<std::uint32_t>(i % rc::kScenarios)) != ids.end();
     };

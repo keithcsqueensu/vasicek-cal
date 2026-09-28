@@ -33,6 +33,7 @@
 #include "core/reducers/argmax.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
+#include "engine/surface_cache.hpp"
 
 namespace vcal::engine {
 
@@ -73,18 +74,20 @@ struct Estimate2 {
     std::uint32_t flags;
 };
 
+// Steps 2 to 6 of calibrate on a surface already evaluated: L must hold exactly what stage 1 would
+// compute for this panel, grid and primary integrator (row t = log_contrib(obs[t], theta_k, primary)),
+// for example assembled from rows cached across panels with the same observations. Given the same L
+// the result is bit for bit calibrate's.
 template <class Backend, class Objective, class Integrator>
-Status calibrate(const Backend& backend, const Objective& objective, const Integrator& primary,
-                 const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
-                 const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
-                 double hessian_step_fraction = kHessianStepFraction) {
+Status calibrate_from_surface(const Backend& backend, const Objective& objective, const Integrator& primary,
+                              const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
+                              const Grid<2>& grid, const std::vector<double>& L, Estimate2& out,
+                              double hessian_step_fraction = kHessianStepFraction) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
-
     const std::int64_t K = grid.size();
-    L.assign(static_cast<std::size_t>(periods * K), 0.0);
-    evaluate_surface(backend, objective, primary, obs, periods, grid, L.data());
+    if (static_cast<std::int64_t>(L.size()) != periods * K) return Status::InvalidGrid;
 
     const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
     const reducers::ArgMax argmax;
@@ -163,6 +166,35 @@ Status calibrate(const Backend& backend, const Objective& objective, const Integ
         }
     }
     return Status::Ok;
+}
+
+template <class Backend, class Objective, class Integrator>
+Status calibrate(const Backend& backend, const Objective& objective, const Integrator& primary,
+                 const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
+                 const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
+                 double hessian_step_fraction = kHessianStepFraction) {
+    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
+    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
+    const std::int64_t K = grid.size();
+    L.assign(static_cast<std::size_t>(periods * K), 0.0);
+    evaluate_surface(backend, objective, primary, obs, periods, grid, L.data());
+    return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out, hessian_step_fraction);
+}
+
+// calibrate with the surface taken from a row cache shared across panels (D-167): identical results.
+template <class Backend, class Objective, class Integrator>
+Status calibrate_cached(const Backend& backend, SurfaceRowCache& cache, const Objective& objective,
+                        const Integrator& primary, const Integrator& check, const typename Objective::Obs* obs,
+                        std::int64_t periods, const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
+                        double hessian_step_fraction = kHessianStepFraction) {
+    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
+    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
+    const std::int64_t K = grid.size();
+    L.assign(static_cast<std::size_t>(periods * K), 0.0);
+    evaluate_surface_cached(backend, cache, objective, primary, obs, periods, grid, L.data());
+    return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out, hessian_step_fraction);
 }
 
 }  // namespace vcal::engine

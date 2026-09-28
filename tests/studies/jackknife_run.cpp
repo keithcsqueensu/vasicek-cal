@@ -81,6 +81,8 @@ struct JkFit {
 
 double clamp(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+engine::SurfaceRowCache g_cache;  // shared across the run's replicates and scenarios (D-167)
+
 JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
     using Objective = rc::Objective;
     const std::int64_t T = s.periods;
@@ -95,8 +97,8 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
     const Grid<2> g = rc::grid();
     std::vector<double> L;
     engine::Estimate2 est{};
-    if (engine::calibrate(backends::CpuBackend{1}, Objective{}, primary, check, obs.data(), T, g, L, est) !=
-        engine::Status::Ok) {
+    if (engine::calibrate_cached(backends::CpuBackend{1}, g_cache, Objective{}, primary, check, obs.data(), T, g, L,
+                                 est) != engine::Status::Ok) {
         std::abort();
     }
     const auto prof = engine::profile_intervals(Objective{}, primary, obs.data(), T, g, L, est);
