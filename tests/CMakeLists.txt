@@ -162,6 +162,13 @@ set_tests_properties(study_jackknife_run_smoke PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)
 
+# S-34 (D-160): a study tool, with a smoke test on two replicates of one scenario.
+add_executable(study_severe_period studies/severe_period.cpp)
+target_link_libraries(study_severe_period PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_severe_period)
+add_test(NAME study_severe_period_smoke COMMAND study_severe_period --replicates 2 --scenarios 29)
+set_tests_properties(study_severe_period_smoke PROPERTIES LABELS slow)
+
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
 # pedantic errors (C11 on MSVC, which has no C99 mode), so anything C++-only in the header breaks
