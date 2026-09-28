@@ -121,3 +121,50 @@ Each prediction gets a row: prediction, result, held or not. A prediction that h
 but misses in size is recorded as not held, with the size of the miss. Results and the comparison
 go in `studies/README.md` (the S-3, S-5 and S-21 entries) and in a D-entry. The pinned parity
 verdicts are unchanged: S-3 and S-5 are `native` options reported beside them.
+
+## Addendum, 2026-09-27: a bias-corrected Wald interval for q (S-23's mitigation 3a)
+
+Appended after S-23 was pinned (D-156) and before any jackknife run, under this file's rule for
+additions. Nothing above changes. **Evidence used:** S-23's pinned results
+(`tests/golden/recovery/summary.csv`, the q columns) and its diagnosis of the delta-method Wald
+findings for q.
+
+### What S-23 found, and why this arm
+
+S-23's delta-method Wald interval for the 99.9% conditional PD q is below the band in 17 of the 50
+assessed scenarios. The diagnosis is **low estimates with narrow intervals**:
+
+- q̂ is biased low, by −0.13 to −0.36 SE on average, carrying ρ̂'s downward bias;
+- the delta-method SE moves with the estimate, so the lowest estimates get the narrowest intervals:
+  across replicates, the error in logit(q̂) and its SE correlate at +0.64 to +0.88;
+- removing the mean bias exactly (an oracle shift of the pinned estimates) lifts coverage only to
+  0.916–0.947. That would bring 15 of the 17 into the band, all but 29 (0.916) and 64 (0.924).
+
+So both the centre and the SE matter. The arm below tests each with the jackknife this run
+computes anyway, at no extra cost.
+
+### Definitions
+
+Both sub-arms use s = logit(q), in the coordinate of S-23's delta-method interval.
+
+- **Centre:** s̃ = logit q(PD̂, ρ̃), with ρ̃ S-3's corrected estimate (set to the bound where it
+  leaves the box) and PD̂ the parity estimate.
+- **(a) delta-method SE:** s̃ ± 1.96·SE_Δ, with SE_Δ S-23's delta-method SE of logit(q̂) at the
+  estimate.
+- **(b) jackknife SE:** s̃ ± 1.96·SE_J, with SE_J² = ((T − 1)/T)·Σₜ(s₍₋ₜ₎ − s̄)² and
+  s₍₋ₜ₎ = logit q(PD̂₍₋ₜ₎, ρ̂₍₋ₜ₎), from the same delete-one estimates.
+- **Coverage:** on the replicates without a Wald flag, the set S-23's Wald interval uses, so that the
+  three are compared pairwise. The verdict follows S-23's Wald rule. (b) is also reported over all
+  replicates, since it needs no Hessian.
+- **Reported:** coverage and verdict per scenario, and misses below and above. The mechanism is
+  also reported directly: the correlation across replicates between the error s̃ − s_true and each
+  SE.
+
+### Predictions
+
+| # | Prediction |
+|---|---|
+| J15 | **(a) helps, partially:** among S-23's 17 below-band Wald scenarios, (a)'s coverage exceeds S-23's Wald coverage in at least 14, and (a) is in the band in 5–12 of them. That is fewer than the oracle's 15: the jackknife removes only part of the bias, adds variance, and keeps the delta-method SE's link to the estimate |
+| J16 | **(b) covers at least as well as (a):** in at least 14 of the 17, and (b) is in the band in at least as many of the 17 as (a). If (a) and (b) come out the same, the simpler (a) is preferred |
+| J17 | **The mechanism, tested directly:** the error–SE correlation is lower for SE_J than for SE_Δ in at least 12 of the 17 |
+| J18 | **What it costs elsewhere:** among S-23's 32 Wald PASS scenarios, at most 3 leave the band under (a) and at most 3 under (b). (b) is above the band in at most 5 of the 50 assessed scenarios (the jackknife variance tends to be too large) |
