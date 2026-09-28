@@ -21,9 +21,9 @@ VCAL_TEST(jackknife_reviewed_labels_match_the_summary) {
                                                              {"bca_rho", "rho_bca_class"},
                                                              {"q_wald_a", "qa_class"},
                                                              {"q_wald_b", "qb_class"}};
-    const std::set<std::string> diagnoses = {"near_bound",         "conservative_box",    "small_rho_resolution",
-                                             "correction_noise",   "boundary_breakdown",  "resampling_variance",
-                                             "se_overstated",      "jackknife_se_small"};
+    const std::set<std::string> diagnoses = {"near_bound",          "conservative_box",      "small_rho_resolution",
+                                             "refinement_resolution", "boundary_breakdown",  "resampling_variance",
+                                             "se_overstated",       "se_tracks_error",       "jackknife_se_noisy"};
     std::map<std::pair<std::string, std::string>, std::string> label;  // (scenario, family) -> side
     for (const auto& r : reviewed.rows) {
         VCAL_CHECK(diagnoses.count(r[reviewed.column("diagnosis")]) == 1);

@@ -1,0 +1,33 @@
+{
+  "study": "The shared jackknife run: S-3, S-5, S-21 and the q Wald sub-arms (D-155, D-159)",
+  "prediction": "studies/jackknife-bias-rho/PREDICTION.md: J1-J14 merged in #8, J15-J18 in #15, J19-J23 in #18, each before the run it concerns",
+  "scoring": "compare.py, committed 2026-09-28T01:46:21-04:00, after the full run started (01:28:52) and before any of its results existed; run as: python compare.py summary.csv summary_polished.csv",
+  "compiler": "MSVC 1951, cpu-release",
+  "runs": {
+    "full": {
+      "command": "study_jackknife_run --replicates 1000 --summary-out summary.csv --replicates-out replicates.csv",
+      "commit": "6913c464a4315029676b57599d66633231b1b343 before the rebase onto main; 582895c after it (the rebase added only #17 and #18's study files and docs; no code differs)",
+      "started": "2026-09-28T01:28:52-04:00",
+      "finished": "2026-09-28T05:10:42-04:00",
+      "wall_seconds": 13309,
+      "scope": "81 scenarios x replicates 0-999, the pinned recovery panels"
+    },
+    "polished": {
+      "command": "study_jackknife_run --replicates 1000 --scenarios 29,37,72,4,68,49,7,43,51 --polished --summary-out summary_polished.csv --replicates-out replicates_polished.csv",
+      "commit": "0b09fcb2057ce0c8b04c36b49169b8d64f252ee0 before the rebase; 9bb1862 after it (no code differs)",
+      "registration": "J19-J23 merged as #18 at 2026-09-28T01:44:21-04:00, before this run started",
+      "started": "2026-09-28T05:10:53-04:00",
+      "finished": "2026-09-28T07:12:26-04:00",
+      "wall_seconds": 7290,
+      "consistency": "its registered-arm columns equal the full run's for the same 9 scenarios, all 45 columns"
+    }
+  },
+  "files": {
+    "summary.csv": "sha256 bd27adfc5b6eff17875ab4af76d946584dcfc40f80c066a1b6f4700683bb7194",
+    "replicates.parquet": "sha256 b3aa7875350b5e1081ca04debeaff5b2d2a8f5b68b12f51044af2cacbf51922d; from replicates.csv (not committed, 17.3 MB, sha256 5aa0c195172a3179a0026f0b0a93b606540232d7168de133fe10d8bd029240bd) by export_replicates.py (pyarrow 25.0.1, zstd 19); all 2,349,000 cells equal",
+    "summary_polished.csv": "sha256 a41758517923de286997bd4a9851afd49f7d05938ab4e00ea81700cdeb738538",
+    "replicates_polished.parquet": "sha256 61f171bb9f3388624ddfb2e948f23003215b64650f948f4e0a377e6f4f6e1645; from replicates_polished.csv (not committed, sha256 e7d1d382d0a2908ea52994e2cb41c5108279d8c0e118a1bbac199027e329c438) the same way; all 315,000 cells equal",
+    "reviewed.csv": "the reviewed labels of the full run's out-of-band classes, kept apart from the run's output (D-155); checked by unit_study_jackknife",
+    "diagnose.py": "post-hoc diagnostics of the q Wald sub-arms, written after the results; scores nothing"
+  }
+}
