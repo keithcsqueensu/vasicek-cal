@@ -113,7 +113,7 @@ not delay M3.
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | subset now, full after M4 | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
-| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part registered |
+| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
 | S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
 | S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | not registered |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
@@ -390,7 +390,57 @@ refined in each study's `PREDICTION.md`.
 - **Prediction:** the targeted part is registered in
   [`recovery-r10000/PREDICTION.md`](recovery-r10000/PREDICTION.md) before any run: predictions
   Q1–Q7, from an empirical-Bayes shrinkage of each coverage towards its group. The whole-matrix
-  run is not registered. **Result:** not run. **Mitigation:** n/a.
+  run is not registered.
+- **Result (targeted part, D-158):** at R = 10,000 (band 0.9428–0.9572), **profile-likelihood
+  intervals at T = 20 undercover by about one point, systematically**, not only in the six flagged
+  scenarios.
+  - **Group B:** all 11 targeted verdicts are below the band, with coverage 0.932–0.942. Seven of
+    them were PASS at R = 1,000.
+  - **The six findings:** all six stay below the band (0.932–0.942). They are real, but not special.
+  - **q (S-23):** its profile interval shows the same at T = 20. Every informative T = 20 scenario
+    here is at 0.936–0.941, below the band, where R = 1,000 had flagged only 72 and 74.
+  - **Group C (T = 40):** a smaller shortfall for PD. 68/PD is just below the band (0.9422); 41/PD
+    is inside it (0.9471), as are ρ's two borderline verdicts.
+  - **Group A:** 6 of the 8 lower-edge verdicts are below the band. All 13 upper-edge verdicts are
+    above it, including the six that were PASS at R = 1,000: the conservative, box-limited ones.
+  - **Direction:** for ρ, 75–80% of misses lie entirely below the truth (ρ̂'s downward small-T
+    bias).
+  - **The other families of these scenarios, at R = 10,000, reported without predictions:**
+    - Wald: 18 below the band, 1 above, 3 PASS, 40 DEFERRED;
+    - bootstrap: 61 below the band, 1 PASS;
+    - q's delta-method Wald: 10 below, 1 above, 20 DEFERRED;
+    - q's bootstrap: all 31 below.
+  - **Provenance:** replicates 0–999 reproduce the pinned fits field for field. The per-replicate
+    estimates and profile ends are committed as
+    [`recovery-r10000/fits_r10000.parquet`](recovery-r10000/fits_r10000.parquet), and the summary
+    as `summary_r10000.csv`, with a `MANIFEST.json`. The pinned R = 1,000 verdicts are unchanged
+    (D-154).
+- **Comparison with the predictions** (scored by
+  [`recovery-r10000/compare.py`](recovery-r10000/compare.py), committed before the run's results):
+  4 held and 3 did not. The misses are in size, not direction.
+  - **Q1** missed by 0.0002: 68/PD came in at 0.9422 against a predicted ceiling of 0.942, though
+    all six are below the band as predicted.
+  - **Q3:** 41/PD is inside the band, not below it.
+  - **Q4:** 72/ρ came in at 0.9399, above its predicted range of 0.915–0.938, though below the band
+    as predicted.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | Q1 | The six findings below the band, coverage 0.915-0.942 | 29/PD 0.9416, 29/ρ 0.9408, 55/ρ 0.9323, 68/PD 0.9422, 72/ρ 0.9399, 74/ρ 0.9369 | not held |
+  | Q2 | Every targeted group B verdict (11) below the band, coverage 0.930-0.942 | 29/PD 0.9416, 74/ρ 0.9369, 55/ρ 0.9323, 29/ρ 0.9408, 73/PD 0.9420, 64/ρ 0.9376, 37/ρ 0.9414, 74/PD 0.9405, 47/PD 0.9417, 55/PD 0.9388, 65/PD 0.9418 | held |
+  | Q3 | 68/PD and 41/PD below; 31/ρ and 49/ρ inside; 59/PD inside or above | 68/PD 0.9422, 41/PD 0.9471, 31/ρ 0.9443, 49/ρ 0.9461, 59/PD 0.9468 | not held |
+  | Q4 | 72/ρ below (0.915-0.938); at least 6 of the other 8 group A lower-edge verdicts below | 72/ρ 0.9399; 6 of 8 below (2/ρ 0.9399, 45/PD 0.9352, 45/ρ 0.9387, 22/ρ 0.9399, 60/PD 0.9446, 72/PD 0.9422, 2/PD 0.9419, 28/PD 0.9450) | not held |
+  | Q5 | All seven CONSERVATIVE above; at least 4 of the six upper-edge PASS verdicts above | CONSERVATIVE above: 7 of 7; PASS above: 6 of 6 (1/PD 0.9593, 7/ρ 0.9610, 27/PD 0.9615, 15/PD 0.9762, 24/PD 0.9748, 54/ρ 0.9765) | held |
+  | Q6 | Totals over the 38: below 19-25; above 10-16; PASS 1-6 | below 19; above 13; PASS 6 | held |
+  | Q7 | Group B ρ verdicts below the band: more than 2/3 of non-covering intervals entirely below the truth | 74/ρ 0.77; 55/ρ 0.80; 29/ρ 0.80; 64/ρ 0.78; 37/ρ 0.75 | held |
+
+- **Mitigation:** the evidence S-4a (a Bartlett-corrected threshold) is to be judged against is
+  now a systematic shortfall of about one point at T = 20, in PD, ρ and q, and about half a point
+  for PD at T = 40. It is not six isolated findings. A correction should move group B as a whole,
+  not only the flagged scenarios.
+- **Monitoring implication:** at T = 20 a nominal 95% profile interval is about a 94% interval.
+  A monitoring threshold built on it at T ≈ 20 should either widen it (S-4) or state its
+  coverage as about 94%. Long histories (T ≥ 100) show no such shortfall.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-14 Backtest power (`backtest-power`)

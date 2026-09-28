@@ -789,6 +789,24 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The change:** C8's bound becomes `TOL_ZSIGN_SE_REL` = 2·10⁻⁹ (observed, doubled and rounded up), and C11's becomes 10⁻¹² + 64 ε × the largest term size at the estimate. C6 is allowed to differ on panel 26 only. On MinGW GCC, C8 is now at 0.35 of its bound and C11 at 0.005. The verdict is again "FINDING, reviewed (D-301)" on every platform, and the test exits 0.
   - **Why not rewrite S-1:** by the prediction's rule, any excess is a finding. So these are recorded as platform findings, reviewed as rounding, and S-1's `PREDICTION.md` and D-301 stand as written.
 
+## Study S-13 targeted result, 2026-09-28
+
+- **D-158 (owner) — S-13's targeted run: profile-likelihood intervals at T = 20 undercover by about one point, systematically. The pinned R = 1,000 verdicts are unchanged (D-154), and the finding is S-13's own.**
+  - **What was run:** R = 10,000 on the 38 borderline profile verdicts in 31 scenarios. The band at that precision is 0.9428–0.9572. Replicates 0–999 reproduce the pinned fits field for field. The run took 3 h 42 min on the development machine; `studies/recovery-r10000/MANIFEST.json` has the commit, command and hashes.
+  - **Result:**
+    - all 11 targeted group B (T = 20) verdicts are below the band (0.932–0.942), 7 of them PASS at R = 1,000;
+    - the six small-T findings are real but not special;
+    - q's profile interval shows the same shortfall at T = 20;
+    - at T = 40 the shortfall is about half a point, for PD only;
+    - near the bounds, the conservative verdicts stay above the band, and six PASS verdicts at the upper edge join them.
+  - **Predictions:** 4 of 7 held (Q2, Q5, Q6, Q7). Q1 (by 0.0002), Q3 (41/PD inside the band) and Q4 (72/ρ at 0.9399, above its range) missed in size, not direction. The empirical-Bayes shrinkage was, if anything, slightly too pessimistic about the flagged six.
+  - **Consequences:**
+    - S-4a is judged against a systematic shortfall at T = 20, not against six findings;
+    - STATE's description of the profile interval now says that at T = 20 its coverage is about 94%.
+    - Whether the pinned reviewed lists should change is a separate decision, not taken here.
+  - **Per-replicate data are committed** as Parquet (`fits_r10000.parquet`, 11.6 MB): each replicate's PD and ρ estimates with their profile interval ends and flags, exact doubles. So every S-13 figure can be recomputed without the 162 MB fits file (owner's suggestion).
+  - **Noted, harmless:** `--save-fits` writes the Fit record's padding bytes, which are uninitialised, so two saved-fits files of identical fits can differ byte for byte. Field-by-field comparison is unaffected, and that is how the provenance check was made.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
