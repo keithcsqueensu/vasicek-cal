@@ -897,6 +897,25 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The amendment, and why:** on the estimator's own validation panels (seed M3BAYVAL, T = 20, n = 100), the registered extent refused 3 of 16 fits: the ρ posterior is wide and skewed towards the box's floor, so ±8 Hessian SEs dropped posterior mass. The extent now follows the posterior SD and the marginal's 5·10⁻⁸ tails (snapped to cell edges, so the mass check and the quantiles agree), and the spacing follows the smaller of the SD and the SE, at 5 points per SD. Recorded as an addendum to `studies/bayes-coverage/PREDICTION.md` before any S-9 run; F1–F5 are unchanged. No recovery panel was used.
   - **Validation:** exact against a normal posterior (equal-tailed ends 0.009 SD, HPD 0.071 SD, both within bounds derived from the rule); the Jeffreys table against scipy's adaptive quad (1.45·10⁻⁹ in log); 16 reference fits replicated by `validation/scipy/grid_posterior.py` (3.0·10⁻⁵ in logit, the rule's decisions exactly); thread-count determinism.
   - **M3 is complete with this step:** the Vasicek-rate MLE (D-164), the method of moments (D-165) and the grid-Bayesian estimator (D-166). Still open, and decided separately: exposing them through the C ABI (a minor version), and the registered studies S-8, S-9, S-15, S-27 and S-28 that run on them.
+## Spike: surface rows cached by (n, d) across replicates, 2026-09-28
+
+- **D-167 (proposed; on the branch `spike-surface-cache`, not merged before the owner's review) — Per-period surface rows depend only on the observation (n, d), the grid and the integrator, so within a scenario each distinct (n, d) is computed once and shared by every replicate, extending D-122 across panels. Bit-for-bit identical results; on the recovery subset the surface work falls 50× and the whole pass runs 2.1× faster.**
+  - **Mechanism:** `engine::calibrate_from_surface` (calibrate's steps after the surface, on a surface supplied by the caller; `calibrate` is now the surface followed by it, unchanged in behaviour). A caller that simulates a scenario's panels first computes each distinct count's row over the grid once (parallel over rows × points) and assembles each replicate's L from copies. The profile, bootstrap and q-interval code read L unchanged.
+  - **Identity (the spike, `tests/studies/surface_cache_spike.cpp`):** on the study subset (9 scenarios × 1,000), every field of all 18,000 fits, cached and uncached, equals `recovery::fit` bit for bit.
+  - **Measured (MSVC 19.51, 24 threads):**
+
+    | | Surface rows | Surface CPU s | Other CPU s (calibrate, profile, bootstrap, q) | Total CPU s | Wall s |
+    |---|---|---|---|---|---|
+    | Uncached | 147,885 | 5,380 | 4,531 (106, 2,180, 1,552, 693) | 9,911 | 447.5 |
+    | Cached | 2,922 | 88 (86 build + 3 assembly) | 4,710 (109, 2,245, 1,643, 714) | 4,799 | 217.3 |
+
+    The surface was 54% of the work and becomes 2%; what remains is per replicate: profile solves (47%), the bootstrap (34%), the q interval (15%). Distinct counts per scenario: 10 (n·PD = 1) to 2,074 (n = 10⁴, PD 5%); the largest cache is 2,074 × 2,501 doubles, 41 MB.
+  - **Projected, from the measured split (estimates, not runs):**
+    - **Full recovery matrix (81 × 1,000):** about 2× faster (the surface share on the subset is representative of the matrix's mix of T and n).
+    - **S-13 full (81 × 10,000):** about 2×: distinct counts grow far more slowly than R, so the surface becomes negligible and the per-replicate profile and bootstrap work sets the time; the index's 12–21 h becomes roughly 6–10 h on CPU.
+    - **S-10 (parametric bootstrap) and S-4b (its Bartlett factor):** the largest gain. Rows depend on (n, d), not on the parameters a panel was drawn from, so one scenario's cache serves every replicate *and* every bootstrap panel. A bootstrap panel's surface drops from about 0.6 CPU s to a copy and a reduction (about a millisecond), so a full-matrix S-10 (81,000 replicates × 999 panels, fits without profiles) goes from months of CPU to roughly a day of CPU, an hour or two of wall time: feasible on CPU, where the index placed it after M4 (GPU). For S-4b the likelihood at θ̂, fixed for a replicate's bootstrap panels, is likewise one integral per distinct count.
+  - **Limits:** the cache needs the grid and integrator fixed within a scenario (true of every study so far), and memory grows with distinct counts × grid points; at n ≥ 10⁵ (S-27) the counts' range widens and a bounded or on-demand cache would be needed. Resampling by W × L is unaffected.
+  - **If adopted:** the recovery harness and the study tools build a scenario cache before fitting; a fast test asserts cached and uncached fits agree bit for bit on a few scenarios.
 
 ## Open
 

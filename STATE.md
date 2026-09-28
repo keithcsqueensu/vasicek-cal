@@ -201,6 +201,10 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    - **M3.3 done (D-166):** the grid-Bayesian estimator (`engine/posterior.hpp`) with flat and Jeffreys priors and the resolution rule (4 points per posterior SD; local refinement or refusal; the registered extent amended before S-9 runs). **M3 is complete.** Open: C ABI exposure (a decision), and the registered runs S-8/S-27/S-28, S-9, S-15.
 3. **The other studies** keep the placement below and are ordered when M3 ends.
 4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+   - **M3.2 done (D-165):** the joint-default-probability method of moments (`engine/moments.hpp`), exact in finite n, W-reweightable; goldens, a scipy script (Owen's T), `docs/methodology/method_of_moments.md`. Validated on its own seed, so S-8's comparison waits for S-8's run. Next: M3.3 grid Bayesian with the resolution rule (D-161).
+3. **Surface-row cache across replicates (D-167, proposed; spike on `spike-surface-cache`):** after M3. Bit-for-bit identical, 50× fewer surface rows and 2.1× faster on the recovery subset; makes S-10 and S-4b feasible on CPU. Adopt in the recovery harness and study tools once reviewed.
+4. **The other studies** keep the placement below and are ordered when M3 ends.
+5. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
    - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;
