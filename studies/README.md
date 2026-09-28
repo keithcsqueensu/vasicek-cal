@@ -134,7 +134,7 @@ not delay M3.
 | S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
-| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | not registered |
+| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | registered (D-160) |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -998,7 +998,7 @@ scales in the order L, M, H.
   the unchanged truth reported beside the originals.
 - **Placement:** the first batch, after S-1 and S-2. It needs S-23's interval for the conditional PD
   and none of M3's estimators.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`severe-period-sensitivity/PREDICTION.md`](severe-period-sensitivity/PREDICTION.md) before any run: K1–K10, from the large-n limit of the model ([`large_n_reference.py`](severe-period-sensitivity/large_n_reference.py), which reads no recovery panel). The estimates are the exact off-grid maxima, not the grid refinement (D-159). **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ## Deferred to M7 (recorded together, not started)
