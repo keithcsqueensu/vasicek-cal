@@ -330,6 +330,16 @@ comment = [
     "Estimates, scipy's optimum vs the engine's, in units of the engine's SE; observed 0.0255, doubled.",
 ]
 
+[TOL_SCIPY_Q_PROFILE_ENDPOINT_S]
+type = "double"
+value = 3e-9
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "S-23: the end points of the 99.9% conditional PD's profile interval on the 162 recovery replay",
+    "panels, scipy (trapezoid integrals, nested bounded Brent, brentq) vs the engine, in logit(q).",
+    "Observed 1.2e-9: both solvers' 1e-9 tolerances. Doubled and rounded up.",
+]
+
 [TOL_PROFILE_ENDPOINT_RESIDUAL_LL]
 type = "double"
 value = 1e-7
@@ -358,6 +368,24 @@ comment = [
     "Profile endpoints across platforms vs regression values, relative. The root is solved to",
     "1e-9 in logit units; a last-digit difference can move Brent's path anywhere inside that, and",
     "in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.",
+]
+
+[TOL_CONDITIONAL_PD_REL]
+type = "double"
+value = 6e-15
+section = "conditional PD, S-23"
+comment = [
+    "q = Phi((Phi^-1(PD) + sqrt(rho) z_0.999) / sqrt(1 - rho)) and logit(q) against mpmath (40 digits),",
+    "relative, at the recovery truths and the box corners. Observed 2.9e-15 (MSVC), doubled and rounded up.",
+]
+
+[TOL_CONDITIONAL_PD_GRADIENT_REL]
+type = "double"
+value = 1e-9
+section = "conditional PD, S-23"
+comment = [
+    "The analytic gradient of logit(q) in the logit coordinates against central differences (step",
+    "1e-5), relative. The differences' own O(h^2) error dominates: observed 4.9e-10, doubled and rounded up.",
 ]
 
 [TOL_RESAMPLE_VS_REFIT_REL]

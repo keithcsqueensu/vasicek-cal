@@ -123,7 +123,7 @@ not delay M3.
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
 | S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | registered (shared jackknife run) |
 | S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
-| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | registered |
+| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | finished (D-156) |
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
 | S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
@@ -503,8 +503,47 @@ refined in each study's `PREDICTION.md`.
   quantile) under the same band and policy.
 - **Cost:** ≈ 1.15 × the baseline (one more profile per replicate): ≈ 8–14 min on the subset,
   ≈ 1.5–2.3 h for the full matrix.
-- **Prediction:** registered in [`studies/derived-quantity-intervals/PREDICTION.md`](derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`derived-quantity-intervals/PREDICTION.md`](derived-quantity-intervals/PREDICTION.md) before any run. It also defines a *box-limited* end point (the inner maximiser on a bound of the box), because q's interval can be held by the ρ floor through the nuisance without q itself reaching its range.
+- **Status:** finished, pinned 2026-09-27 (D-156). Method: `engine/conditional_pd.hpp`; methodology note §6c; the tables are in `docs/methodology/recovery_results.md`.
+- **Result:** profile-likelihood intervals for q are as reliable as those for PD and ρ, and in fact track them in every informative scenario. The other two intervals are not.
+  - **Profile likelihood** (over all replicates): 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING (72 at 0.918, 74 at 0.925, both T = 20; misses mostly below the truth, 80% and 73%). In groups B–D (50 informative scenarios) q's coverage lies within 0.015 of PD's and ρ's in all 50, and 49 are PASS. No scenario came 0.02 or more below the lower of PD and ρ: the pre-registered surprise did not occur.
+  - **Delta-method Wald in logit(q)** (unflagged replicates): 32 PASS, 18 KNOWN FINDING, 31 DEFERRED. 17 are below the band: 11 of 12 at T = 20, 5 of 17 at T = 40, and 1 of 21 at T = 100 (35, n = 10⁴). Across them the misses are 1,373 below the truth and 76 above. The diagnosis is low estimates with narrow intervals, bias and width together:
+    - q̂ is biased low (median q̂/q − 1 from −1% to −11%; mean −0.13 to −0.36 SE), carrying ρ̂'s downward bias;
+    - its delta-method SE moves with the estimate: across replicates the error and the SE correlate at +0.64 to +0.88, so the lowest estimates get the narrowest intervals. The SE is right on average (sd/rms ratio 0.94–1.07) but not where it matters;
+    - so the bias alone does not explain the shortfall: removing the mean bias exactly (an oracle shift) would lift coverage only to 0.916–0.947.
+
+    The shortfall shrinks with T, but a longer history does not reliably remove it. Where n is large the SE is small enough that a 1.4% bias still matters at T = 100. **Scenario 13** is the one exception, the only scenario where the error goes the other way: above the band (0.983) because the delta-method SE overstates the spread there (ratio 0.94).
+  - **Bootstrap percentile of q** (over all replicates): 8 PASS, 73 below the band, none above. Each finding inherits ρ's diagnosis in the same scenario: boundary breakdown in group A (31), no bias or skewness correction elsewhere (42).
+  - **Point estimate:** median q̂/q − 1 is negative in every one of the 81 scenarios; −3% to −11% in group B, −0.7% to −4.5% at T = 100 with n ≥ 1,000.
+  - **Acceptance checks:** every profile interval contains q̂ and every end-point residual is within 10⁻⁷ (worst 9.4·10⁻⁹). The first full-matrix run failed the first check in 11 of 81,000 fits, by 1 ulp at the box's corner; that was fixed before the pinning run (D-156). The scipy cross-check agrees within 1.2·10⁻⁹ in logit(q) on the 162 replay panels, and on every truncation and box-limited flag.
+- **Comparison with the predictions** (scored by [`derived-quantity-intervals/compare.py`](derived-quantity-intervals/compare.py), committed before any result was seen; D-156). 7 held, 4 did not. Every miss is recorded as a miss, including the favourable ones: **the predictions underestimated how well profile intervals perform for q.** P3 and P5 missed because only 2 scenarios fell below the band, not 3–10; P4 missed on two conservative scenarios outside the predicted set; P9 missed on group B's widths (up to 9.7, in scenario 11, where PD is 0.1% and defaults are few), although its second half (the shrinkage from T = 20 to 100, 0.445–0.464 against √(20/100) = 0.45) came out as predicted.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | P1 | Group D: all 21 PASS; at most 1 out of the band | 21 of 21 PASS; out of the band: none | held |
+  | P2 | Group C: at least 14 of 17 PASS; at most 3 below, all among 31, 32, 41, 49, 58, 66, 68, 75 | 17 of 17 PASS; below: none | held |
+  | P3 | Group B: coverage 0.910-0.950 throughout; 2-6 of 12 below; 29, 55, 74 among them | coverage 0.925-0.952; below: 74 | not held |
+  | P4 | Group A: at most 3 below, 72 below or within 0.005 of the lower edge; 8-16 above, all among 0, 1, 3, 4, 6, 9, 12, 15, 18, 21, 27, 30, 33, each box-limited in at least 25% of replicates, mostly at the lower end | below: 72; 72 at 0.918; above: 0, 1, 3, 4, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 54; box-limited condition met | not held |
+  | P5 | Totals: PASS 55-72; above 8-18; below 3-10 | PASS 64; above 15; below 2 | not held |
+  | P6 | Every below-band scenario: more than 2/3 of non-covering intervals entirely below the true q | 72: 0.80; 74: 0.73 | held |
+  | P7 | Groups B-D: q's coverage within [min(PD, rho) - 0.015, max(PD, rho) + 0.015] in at least 40 of 50 | 50 of 50 | held |
+  | P8 | Group B: median(q-hat/q - 1) between -10% and -1% in at least 9 of 12; its magnitude smaller at T = 100 than at T = 20 in at least 80% of cells with neither in group A | 10 of 12 in [-10%, -1%] (range -0.113 to -0.034); smaller at T = 100 in 12 of 12 cells | held |
+  | P9 | Group B: median width ratio (hi/lo) 1.5-5 in every scenario; median log-ratio at T = 100 0.35-0.60 of that at T = 20 in every cell where both are informative | group B ratios 1.69-9.72; T = 100 / T = 20 log-ratios 0.445-0.464 (median 0.452) over 12 cells | not held |
+  | P10 | Wald: among the assessed scenarios, at least as many below the band as the profile, concentrated in B (more than half), misses mostly below the truth | 50 assessed; Wald below 17 (11 in B) vs profile below 1; misses below/above 1373/76 | held |
+  | P11 | Bootstrap: below the band in at least 55 of 81; none above; at most 20 PASS | below 73; above 0; PASS 8 | held |
+
+  - **P4's two unexpected conservative verdicts** fit the same box-limited mechanism as the other 13:
+    - **24** (PD 0.1%, ρ 0.24, T = 100, n = 100; coverage 0.973): the data are nearly uninformative, about 0.1 defaults a period. 95.7% of intervals are box-limited, at both ends: the ρ floor holds the lower end and the ρ cap of 0.5 the upper. PD's own profile coverage, 0.971, is just inside the upper edge, which is why the prediction left it out.
+    - **54** (PD 5%, ρ 0.02, T = 20, n = 100; 0.977): 82.5% of intervals are box-limited, all at the lower end, where the ρ floor holds q's lower end through the nuisance. ρ's own coverage, 0.972, is 0.0007 inside the upper edge.
+  - **Subset (S1, explored first):** held, 8 of 9 predicted verdicts; scenario 29 came in at 0.929, PASS, where below the band was predicted.
+- **Mitigation for intervals on the 99.9% conditional PD:**
+  1. **Use profile-likelihood intervals for q.** *Supported by S-23.* They cover correctly except in 2 scenarios at T = 20, and are conservative where the data are nearly uninformative. This is the recommended method.
+  2. **Do not use delta-method Wald intervals for q.** *Supported by S-23.* The failure is low estimates with narrow intervals (q̂ inherits ρ̂'s downward bias, and its SE shrinks with it): 11 of 12 below the band at T = 20, 5 of 17 at T = 40, and still one at T = 100 with n = 10⁴, so a longer history reduces it without reliably removing it. Moving to the logit(q) scale is no remedy: the interval tested here is already symmetric in logit(q).
+  3. **If a Wald-type interval is unavoidable** (a downstream system that takes only an estimate ± SE), candidate fixes, each still to be tested:
+     - **bias-correct first:** q at the jackknife-corrected ρ̃, then Wald, with the delta-method SE or with the jackknife's own SE. *Pending S-3*, to be registered as two sub-arms in the shared jackknife run. S-23's oracle shift bounds what the centre alone can do (0.916–0.947), so the SE sub-arm is expected to matter.
+     - **parametric bootstrap:** *pending S-10.*
+  4. **Treat short histories explicitly.** At T = 20 even profile intervals can undercover slightly, and S-13 is testing whether that is systematic. Report the history length alongside q's interval, and prefer the upper end of the profile interval when the estimate feeds a stress or capital figure.
+- **Monitoring implication:** compare the production q against the *profile* interval of each fresh estimate. Wald intervals for q sit too low, so a check built on them fails in the costly direction: a production q that understates risk looks consistent with the data (a missed alarm), while a correctly set one is flagged as too high more often than the nominal 5%. Keep the history length beside every interval reported (see mitigation 4).
 
 ## Addendum: synthetic data variants (D-149)
 

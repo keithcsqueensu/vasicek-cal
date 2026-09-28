@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// engine/profile.hpp (M2): profile-likelihood intervals (D-128..D-130).
+// engine/profile.hpp (M2): profile-likelihood intervals (D-128..D-130); engine/conditional_pd.hpp (S-23).
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -12,6 +12,7 @@
 #include "core/objectives/binomial_mixture.hpp"
 #include "core/quadrature/gauss_hermite.hpp"
 #include "engine/calibrate.hpp"
+#include "engine/conditional_pd.hpp"
 #include "engine/profile.hpp"
 #include "tests/harness/vcal_test.hpp"
 #include "tests/tolerances.hpp"
@@ -160,4 +161,149 @@ VCAL_TEST(profile_interval_is_bitwise_identical_for_any_thread_count) {
         VCAL_CHECK(bits_equal(a.prof.hi[k], b.prof.hi[k]));
     }
     VCAL_CHECK(bits_equal(a.prof.loglik_max, b.prof.loglik_max));
+}
+
+// --- the conditional PD at the 99.9% adverse factor level (S-23) -----------------------------------
+
+namespace {
+
+// The dense profile of q, independent of the engine's bracketing: for c = logit^-1(s), golden-section
+// over the whole feasible range of logit(rho), found by a dense scan, with Phi from std::erfc.
+double dense_q_profile(const std::vector<Obs>& p, const vcal::Grid<2>& g, double s) {
+    const Rules r;
+    const double c = 1.0 / (1.0 + std::exp(-s));
+    const double x = vcal::special::probit(c);
+    const auto pd_at = [&](double w) {
+        const double rho = 1.0 / (1.0 + std::exp(-w));
+        return 0.5 * std::erfc(-(std::sqrt(1.0 - rho) * x - std::sqrt(rho) * e::kAdverseZ999) / std::sqrt(2.0));
+    };
+    const double w_lo = g.axis[1].scaled_lo(), w_hi = g.axis[1].scaled_hi();
+    double a = 0.0, b = 0.0;
+    bool any = false;
+    for (int k = 0; k <= 4000; ++k) {
+        const double w = w_lo + (w_hi - w_lo) * k / 4000.0;
+        const double pd = pd_at(w);
+        if (!(pd >= g.axis[0].lo && pd <= g.axis[0].hi)) continue;
+        if (!any) a = w;
+        b = w;
+        any = true;
+    }
+    VCAL_REQUIRE(any);
+    return golden_max(
+        [&](double w) {
+            const double v[2] = {pd_at(w), 1.0 / (1.0 + std::exp(-w))};
+            double sum = 0.0;
+            for (const auto& y : p) sum += Objective{}.log_contrib(y, Objective::theta(v), r.primary);
+            return sum;
+        },
+        a, b);
+}
+
+e::ConditionalPdInterval q_interval(const std::vector<Obs>& p, const vcal::Grid<2>& g, const Fitted& f) {
+    const Rules r;
+    return e::conditional_pd_interval(Objective{}, r.primary, p.data(), static_cast<std::int64_t>(p.size()), g, f.L,
+                                      f.est, f.prof);
+}
+
+}  // namespace
+
+// q against mpmath (40 digits), including the corners of the recovery box; the logit form and
+// the gradient against central differences.
+VCAL_TEST(conditional_pd_matches_mpmath) {
+    struct Case {
+        double pd, rho, q, s;
+    };
+    const Case cases[] = {
+        {0.001, 0.02, 0.0036795217954010484033, -5.6012861742597981117},
+        {0.01, 0.12, 0.090325831326065272963, -2.3096629982791540639},
+        {0.05, 0.24, 0.4402971526712318421, -0.23995616717710972256},
+        {0.0001, 0.001, 0.0001455427998040301266, -8.8348948044874205319},
+        {0.2, 0.5, 0.97128344958463191349, 3.5211447147349791015},
+    };
+    double worst = 0.0, worst_grad = 0.0;
+    for (const auto& k : cases) {
+        worst = std::fmax(worst, std::fabs(e::conditional_pd(k.pd, k.rho) / k.q - 1.0));
+        const auto gr = e::conditional_pd_logit_gradient(k.pd, k.rho);
+        worst = std::fmax(worst, std::fabs(gr.s / k.s - 1.0));
+        const double u[2] = {std::log(k.pd / (1.0 - k.pd)), std::log(k.rho / (1.0 - k.rho))};
+        const double step = 1e-5;
+        for (int a = 0; a < 2; ++a) {
+            const auto s_at = [&](double du) {
+                double v[2] = {u[0], u[1]};
+                v[a] += du;
+                return e::conditional_pd_logit_gradient(1.0 / (1.0 + std::exp(-v[0])), 1.0 / (1.0 + std::exp(-v[1]))).s;
+            };
+            const double fd = (s_at(step) - s_at(-step)) / (2.0 * step);
+            worst_grad = std::fmax(worst_grad, std::fabs(gr.ds_du[a] / fd - 1.0));
+        }
+    }
+    vcal::test::note("q and logit(q) against mpmath: worst relative error " + describe(worst) +
+                     "; gradient against central differences " + describe(worst_grad));
+    VCAL_CHECK(worst <= tol::TOL_CONDITIONAL_PD_REL);
+    VCAL_CHECK(worst_grad <= tol::TOL_CONDITIONAL_PD_GRADIENT_REL);
+}
+
+// Each end of q's interval satisfies P_q(c) = l_max - threshold against the dense profile; the
+// interval contains q-hat and is not box-limited on this panel.
+VCAL_TEST(conditional_pd_interval_endpoints_solve_the_threshold) {
+    const auto p = panel();
+    const auto g = grid();
+    const auto f = fit(p, g);
+    const auto q = q_interval(p, g, f);
+    VCAL_CHECK_EQ(q.flags, 0u);
+    VCAL_CHECK(q.lo < q.estimate && q.estimate < q.hi);
+    double worst = 0.0;
+    for (const double c : {q.lo, q.hi}) {
+        const double s = std::log(c) - std::log1p(-c);
+        worst = std::fmax(worst, std::fabs(dense_q_profile(p, g, s) - (f.prof.loglik_max - e::kProfileThreshold95)));
+    }
+    vcal::test::note("q-hat " + describe(q.estimate) + ", interval [" + describe(q.lo) + ", " + describe(q.hi) +
+                     "]; " + std::to_string(q.evaluations) + " panel evaluations; self-reported residual " +
+                     describe(q.residual_max) + "; against the dense profile " + describe(worst));
+    VCAL_CHECK(worst <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+    VCAL_CHECK(q.residual_max <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+}
+
+// No defaults at all: the lower end is the limit of q in the box, flagged truncated and
+// box-limited, never extrapolated. With the rho axis starting near rho-hat, the lower end is held
+// by that bound through the nuisance: box-limited, but solved, not truncated.
+VCAL_TEST(conditional_pd_interval_at_the_box) {
+    const auto z = std::vector<Obs>(10, Obs{1000, 0});
+    const auto gz = grid();
+    const auto fz = fit(z, gz);
+    const auto qz = q_interval(z, gz, fz);
+    const double q_min = e::conditional_pd(gz.axis[0].lo, gz.axis[1].lo);
+    vcal::test::note("no defaults: q [" + describe(qz.lo) + ", " + describe(qz.hi) + "], flags " +
+                     std::to_string(qz.flags) + "; q at the box's lower corner " + describe(q_min));
+    VCAL_CHECK(qz.flags & e::kIntervalLowerTruncated);
+    VCAL_CHECK(qz.flags & e::kIntervalLowerBoxLimited);
+    VCAL_CHECK(!(qz.flags & e::kIntervalUpperTruncated));
+    VCAL_CHECK_REL(qz.lo, q_min, tol::TOL_CONDITIONAL_PD_REL);
+
+    auto g = grid();
+    g.axis[1].lo = 0.03;
+    const auto p = panel();
+    const auto f = fit(p, g);
+    const auto q = q_interval(p, g, f);
+    vcal::test::note("rho from 0.03: q [" + describe(q.lo) + ", " + describe(q.hi) + "], flags " +
+                     std::to_string(q.flags));
+    VCAL_CHECK(q.flags & e::kIntervalLowerBoxLimited);
+    VCAL_CHECK(!(q.flags & (e::kIntervalLowerTruncated | e::kIntervalUpperTruncated | e::kIntervalNotComputed)));
+    VCAL_CHECK(q.lo < q.estimate && q.estimate < q.hi);
+    VCAL_CHECK(q.residual_max <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+}
+
+// Flat fits get no interval; the interval does not depend on the thread count.
+VCAL_TEST(conditional_pd_interval_not_computed_for_flat_fits_and_thread_independent) {
+    const auto p = panel();
+    auto f = fit(p, grid());
+    Fitted flat = f;
+    flat.est.flags |= e::kFlagFlatSurface;
+    const auto none = q_interval(p, grid(), flat);
+    VCAL_CHECK_EQ(none.flags, e::kIntervalNotComputed);
+    VCAL_CHECK(std::isnan(none.lo) && std::isnan(none.hi));
+    const auto a = q_interval(p, grid(), fit(p, grid(), 1));
+    const auto b = q_interval(p, grid(), fit(p, grid(), 3));
+    VCAL_CHECK(bits_equal(a.lo, b.lo));
+    VCAL_CHECK(bits_equal(a.hi, b.hi));
 }

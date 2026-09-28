@@ -114,6 +114,10 @@ inline constexpr double TOL_SCIPY_SURFACE_LL_REL = 1e-11;
 inline constexpr double TOL_SCIPY_OPTIMUM_LL_ABS = 1e-3;
 // Estimates, scipy's optimum vs the engine's, in units of the engine's SE; observed 0.0255, doubled.
 inline constexpr double TOL_SCIPY_ESTIMATE_SE = 0.06;
+// S-23: the end points of the 99.9% conditional PD's profile interval on the 162 recovery replay
+// panels, scipy (trapezoid integrals, nested bounded Brent, brentq) vs the engine, in logit(q).
+// Observed 1.2e-9: both solvers' 1e-9 tolerances. Doubled and rounded up.
+inline constexpr double TOL_SCIPY_Q_PROFILE_ENDPOINT_S = 3e-9;
 
 // --- profile likelihood, M2 (D-128..D-130) -------------------------------------------------------
 // |P_a(endpoint) - (l_max - c)| in log-likelihood units, against an independent dense profile;
@@ -128,6 +132,14 @@ inline constexpr double TOL_XREF_PROFILE_ENDPOINT_U = 2e-9;
 // 1e-9 in logit units; a last-digit difference can move Brent's path anywhere inside that, and
 // in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.
 inline constexpr double TOL_PROFILE_CROSS_PLATFORM_REL = 1e-8;
+
+// --- conditional PD, S-23 ------------------------------------------------------------------------
+// q = Phi((Phi^-1(PD) + sqrt(rho) z_0.999) / sqrt(1 - rho)) and logit(q) against mpmath (40 digits),
+// relative, at the recovery truths and the box corners. Observed 2.9e-15 (MSVC), doubled and rounded up.
+inline constexpr double TOL_CONDITIONAL_PD_REL = 6e-15;
+// The analytic gradient of logit(q) in the logit coordinates against central differences (step
+// 1e-5), relative. The differences' own O(h^2) error dominates: observed 4.9e-10, doubled and rounded up.
+inline constexpr double TOL_CONDITIONAL_PD_GRADIENT_REL = 1e-9;
 
 // --- resampling, M2b (D-132..D-135) --------------------------------------------------------------
 // A replicate's estimate (W x L) vs calibrate on the explicitly resampled panel, relative. Only

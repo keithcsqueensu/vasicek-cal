@@ -108,6 +108,143 @@ Every out-of-band bootstrap verdict is pinned in `kKnownBootstrapFindings` (test
 
 Worst profile endpoint residual over all 81000 fits: 1.7e-08 in log-likelihood (tolerance 1e-07, asserted on every fit).
 
+## The 99.9% conditional PD (S-23)
+
+q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% adverse factor level. Study, predictions and the comparison with them: S-23 in the [study index](../../studies/) and its [pre-registration](../../studies/derived-quantity-intervals/). Same band and policy as PD and ρ.
+
+- **Profile likelihood, over all replicates:** 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING, 0 DEFERRED, 0 UNREVIEWED.
+- **Delta-method Wald in logit(q), among the unflagged replicates:** 32 PASS, 0 CONSERVATIVE, 18 KNOWN FINDING, 31 DEFERRED, 0 UNREVIEWED.
+- **Bootstrap percentile of q, over all replicates:** 8 PASS, 0 CONSERVATIVE, 73 KNOWN FINDING, 0 DEFERRED, 0 UNREVIEWED.
+- **Acceptance checks:** profile intervals not containing q̂: 0; worst end-point residual 9.4e-09 (tolerance 1e-07, asserted on every fit).
+
+"Box-limited": an end whose inner maximiser lies on a bound of the box, or the limit of q in the box ("truncated"). "Below": intervals entirely below the true q. Width: median of the profile interval's hi / lo.
+
+| scenario | PD | ρ | T | n | q | median q̂/q − 1 | profile cov. | box-limited (lower) | truncated | below / above | width | profile verdict | Wald cov. | Wald verdict | bootstrap cov. | bootstrap verdict |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0 | 0.001 | 0.02 | 20 | 100 | 0.00368 | -0.610 | 0.995 | 100.0% (99.5%) | 42.0% | 0 / 5 | 1398.93 | CONSERVATIVE | — | DEFERRED | 0.846 | KNOWN FINDING |
+| 1 | 0.001 | 0.02 | 20 | 1000 | 0.00368 | -0.412 | 0.990 | 94.6% (94.5%) | 0.0% | 0 / 10 | 20.73 | CONSERVATIVE | 0.983 | DEFERRED | 0.768 | KNOWN FINDING |
+| 2 | 0.001 | 0.02 | 20 | 10000 | 0.00368 | -0.079 | 0.939 | 13.4% (13.4%) | 0.0% | 49 / 12 | 3.64 | PASS | 0.976 | DEFERRED | 0.819 | KNOWN FINDING |
+| 3 | 0.001 | 0.02 | 40 | 100 | 0.00368 | -0.610 | 0.991 | 100.0% (98.4%) | 24.9% | 0 / 9 | 415.30 | CONSERVATIVE | 0.000 | DEFERRED | 0.655 | KNOWN FINDING |
+| 4 | 0.001 | 0.02 | 40 | 1000 | 0.00368 | -0.153 | 0.988 | 87.6% (87.6%) | 0.0% | 2 / 10 | 10.88 | CONSERVATIVE | 0.990 | DEFERRED | 0.864 | KNOWN FINDING |
+| 5 | 0.001 | 0.02 | 40 | 10000 | 0.00368 | -0.027 | 0.958 | 0.8% (0.8%) | 0.0% | 27 / 15 | 2.45 | PASS | 0.946 | PASS | 0.895 | KNOWN FINDING |
+| 6 | 0.001 | 0.02 | 100 | 100 | 0.00368 | -0.557 | 0.983 | 98.9% (96.5%) | 1.3% | 0 / 17 | 85.85 | CONSERVATIVE | 0.312 | DEFERRED | 0.431 | KNOWN FINDING |
+| 7 | 0.001 | 0.02 | 100 | 1000 | 0.00368 | -0.098 | 0.963 | 73.3% (73.3%) | 0.0% | 19 / 18 | 5.60 | PASS | 0.980 | DEFERRED | 0.898 | KNOWN FINDING |
+| 8 | 0.001 | 0.02 | 100 | 10000 | 0.00368 | -0.025 | 0.942 | 0.0% (0.0%) | 0.0% | 44 / 14 | 1.75 | PASS | 0.929 | PASS | 0.914 | KNOWN FINDING |
+| 9 | 0.001 | 0.12 | 20 | 100 | 0.01566 | -0.866 | 0.991 | 100.0% (97.7%) | 44.9% | 0 / 9 | 1393.25 | CONSERVATIVE | — | DEFERRED | 0.200 | KNOWN FINDING |
+| 10 | 0.001 | 0.12 | 20 | 1000 | 0.01566 | -0.226 | 0.936 | 53.2% (38.7%) | 0.5% | 49 / 15 | 40.12 | PASS | 0.999 | DEFERRED | 0.787 | KNOWN FINDING |
+| 11 | 0.001 | 0.12 | 20 | 10000 | 0.01566 | -0.101 | 0.952 | 0.1% (0.1%) | 0.0% | 30 / 18 | 9.72 | PASS | 0.926 | KNOWN FINDING | 0.875 | KNOWN FINDING |
+| 12 | 0.001 | 0.12 | 40 | 100 | 0.01566 | -0.896 | 0.991 | 100.0% (91.7%) | 24.3% | 0 / 9 | 415.30 | CONSERVATIVE | — | DEFERRED | 0.361 | KNOWN FINDING |
+| 13 | 0.001 | 0.12 | 40 | 1000 | 0.01566 | -0.139 | 0.945 | 13.7% (12.4%) | 0.0% | 37 / 18 | 12.83 | PASS | 0.983 | KNOWN FINDING | 0.842 | KNOWN FINDING |
+| 14 | 0.001 | 0.12 | 40 | 10000 | 0.01566 | -0.052 | 0.954 | 0.0% (0.0%) | 0.0% | 36 / 10 | 4.90 | PASS | 0.933 | PASS | 0.894 | KNOWN FINDING |
+| 15 | 0.001 | 0.12 | 100 | 100 | 0.01566 | -0.294 | 0.985 | 95.8% (79.8%) | 2.1% | 0 / 15 | 95.59 | CONSERVATIVE | 0.963 | DEFERRED | 0.677 | KNOWN FINDING |
+| 16 | 0.001 | 0.12 | 100 | 1000 | 0.01566 | -0.038 | 0.957 | 0.5% (0.5%) | 0.0% | 22 / 21 | 4.59 | PASS | 0.957 | PASS | 0.908 | KNOWN FINDING |
+| 17 | 0.001 | 0.12 | 100 | 10000 | 0.01566 | -0.037 | 0.951 | 0.0% (0.0%) | 0.0% | 27 / 22 | 2.75 | PASS | 0.945 | PASS | 0.922 | KNOWN FINDING |
+| 18 | 0.001 | 0.24 | 20 | 100 | 0.03529 | -0.940 | 0.993 | 100.0% (93.4%) | 49.2% | 0 / 7 | 1393.25 | CONSERVATIVE | — | DEFERRED | 0.241 | KNOWN FINDING |
+| 19 | 0.001 | 0.24 | 20 | 1000 | 0.03529 | -0.237 | 0.943 | 76.7% (21.8%) | 3.7% | 42 / 15 | 49.92 | PASS | 0.965 | DEFERRED | 0.770 | KNOWN FINDING |
+| 20 | 0.001 | 0.24 | 20 | 10000 | 0.03529 | -0.169 | 0.945 | 26.9% (0.4%) | 0.1% | 37 / 18 | 20.16 | PASS | 0.905 | DEFERRED | 0.861 | KNOWN FINDING |
+| 21 | 0.001 | 0.24 | 40 | 100 | 0.03529 | -0.781 | 0.991 | 99.9% (80.3%) | 34.2% | 0 / 9 | 495.44 | CONSERVATIVE | 1.000 | DEFERRED | 0.451 | KNOWN FINDING |
+| 22 | 0.001 | 0.24 | 40 | 1000 | 0.03529 | -0.190 | 0.929 | 38.2% (4.2%) | 0.4% | 51 / 20 | 18.91 | PASS | 0.903 | DEFERRED | 0.835 | KNOWN FINDING |
+| 23 | 0.001 | 0.24 | 40 | 10000 | 0.03529 | -0.117 | 0.958 | 6.0% (0.0%) | 0.0% | 30 / 12 | 9.11 | PASS | 0.945 | DEFERRED | 0.900 | KNOWN FINDING |
+| 24 | 0.001 | 0.24 | 100 | 100 | 0.03529 | -0.206 | 0.973 | 95.7% (52.4%) | 2.3% | 8 / 19 | 75.72 | CONSERVATIVE | 1.000 | DEFERRED | 0.777 | KNOWN FINDING |
+| 25 | 0.001 | 0.24 | 100 | 1000 | 0.03529 | -0.045 | 0.951 | 4.3% (0.0%) | 0.0% | 33 / 16 | 6.62 | PASS | 0.944 | PASS | 0.907 | KNOWN FINDING |
+| 26 | 0.001 | 0.24 | 100 | 10000 | 0.03529 | -0.022 | 0.949 | 0.0% (0.0%) | 0.0% | 31 / 20 | 4.10 | PASS | 0.938 | PASS | 0.929 | PASS |
+| 27 | 0.01 | 0.02 | 20 | 100 | 0.02816 | -0.367 | 0.981 | 96.2% (95.8%) | 0.0% | 0 / 19 | 16.34 | CONSERVATIVE | 0.944 | DEFERRED | 0.815 | KNOWN FINDING |
+| 28 | 0.01 | 0.02 | 20 | 1000 | 0.02816 | -0.063 | 0.937 | 30.0% (30.0%) | 0.0% | 51 / 12 | 3.21 | PASS | 0.997 | DEFERRED | 0.834 | KNOWN FINDING |
+| 29 | 0.01 | 0.02 | 20 | 10000 | 0.02816 | -0.046 | 0.929 | 0.0% (0.0%) | 0.0% | 57 / 14 | 2.09 | PASS | 0.887 | KNOWN FINDING | 0.824 | KNOWN FINDING |
+| 30 | 0.01 | 0.02 | 40 | 100 | 0.02816 | -0.176 | 0.983 | 91.6% (91.6%) | 0.0% | 0 / 17 | 9.14 | CONSERVATIVE | 0.947 | DEFERRED | 0.864 | KNOWN FINDING |
+| 31 | 0.01 | 0.02 | 40 | 1000 | 0.02816 | -0.041 | 0.939 | 7.3% (7.3%) | 0.0% | 47 / 14 | 2.24 | PASS | 0.966 | PASS | 0.879 | KNOWN FINDING |
+| 32 | 0.01 | 0.02 | 40 | 10000 | 0.02816 | -0.018 | 0.949 | 0.0% (0.0%) | 0.0% | 31 / 20 | 1.69 | PASS | 0.926 | KNOWN FINDING | 0.900 | KNOWN FINDING |
+| 33 | 0.01 | 0.02 | 100 | 100 | 0.02816 | -0.112 | 0.981 | 87.2% (87.2%) | 0.0% | 1 / 18 | 5.22 | CONSERVATIVE | 0.944 | DEFERRED | 0.894 | KNOWN FINDING |
+| 34 | 0.01 | 0.02 | 100 | 1000 | 0.02816 | -0.022 | 0.946 | 0.0% (0.0%) | 0.0% | 28 / 26 | 1.64 | PASS | 0.949 | PASS | 0.933 | PASS |
+| 35 | 0.01 | 0.02 | 100 | 10000 | 0.02816 | -0.014 | 0.947 | 0.0% (0.0%) | 0.0% | 28 / 25 | 1.39 | PASS | 0.925 | KNOWN FINDING | 0.923 | KNOWN FINDING |
+| 36 | 0.01 | 0.12 | 20 | 100 | 0.09033 | -0.250 | 0.945 | 72.9% (59.1%) | 0.0% | 37 / 18 | 20.73 | PASS | 1.000 | DEFERRED | 0.797 | KNOWN FINDING |
+| 37 | 0.01 | 0.12 | 20 | 1000 | 0.09033 | -0.086 | 0.934 | 0.2% (0.1%) | 0.0% | 50 / 16 | 5.00 | PASS | 0.910 | KNOWN FINDING | 0.838 | KNOWN FINDING |
+| 38 | 0.01 | 0.12 | 20 | 10000 | 0.09033 | -0.113 | 0.942 | 0.0% (0.0%) | 0.0% | 44 / 14 | 4.08 | PASS | 0.922 | KNOWN FINDING | 0.839 | KNOWN FINDING |
+| 39 | 0.01 | 0.12 | 40 | 100 | 0.09033 | -0.119 | 0.955 | 31.4% (30.2%) | 0.0% | 36 / 9 | 8.53 | PASS | 0.998 | DEFERRED | 0.841 | KNOWN FINDING |
+| 40 | 0.01 | 0.12 | 40 | 1000 | 0.09033 | -0.071 | 0.946 | 0.0% (0.0%) | 0.0% | 31 / 23 | 3.12 | PASS | 0.930 | PASS | 0.892 | KNOWN FINDING |
+| 41 | 0.01 | 0.12 | 40 | 10000 | 0.09033 | -0.034 | 0.947 | 0.0% (0.0%) | 0.0% | 33 / 20 | 2.75 | PASS | 0.938 | PASS | 0.900 | KNOWN FINDING |
+| 42 | 0.01 | 0.12 | 100 | 100 | 0.09033 | -0.044 | 0.943 | 2.0% (2.0%) | 0.0% | 32 / 25 | 3.54 | PASS | 0.962 | PASS | 0.897 | KNOWN FINDING |
+| 43 | 0.01 | 0.12 | 100 | 1000 | 0.09033 | -0.035 | 0.941 | 0.0% (0.0%) | 0.0% | 40 / 19 | 2.06 | PASS | 0.934 | PASS | 0.913 | KNOWN FINDING |
+| 44 | 0.01 | 0.12 | 100 | 10000 | 0.09033 | -0.007 | 0.948 | 0.0% (0.0%) | 0.0% | 34 / 18 | 1.90 | PASS | 0.942 | PASS | 0.932 | PASS |
+| 45 | 0.01 | 0.24 | 20 | 100 | 0.1757 | -0.243 | 0.937 | 78.0% (29.3%) | 0.0% | 48 / 15 | 16.74 | PASS | 1.000 | DEFERRED | 0.782 | KNOWN FINDING |
+| 46 | 0.01 | 0.24 | 20 | 1000 | 0.1757 | -0.107 | 0.945 | 19.5% (0.0%) | 0.0% | 34 / 21 | 6.74 | PASS | 0.902 | DEFERRED | 0.866 | KNOWN FINDING |
+| 47 | 0.01 | 0.24 | 20 | 10000 | 0.1757 | -0.088 | 0.928 | 5.6% (0.0%) | 0.0% | 51 / 21 | 5.65 | PASS | 0.915 | KNOWN FINDING | 0.841 | KNOWN FINDING |
+| 48 | 0.01 | 0.24 | 40 | 100 | 0.1757 | -0.102 | 0.947 | 33.3% (4.8%) | 0.0% | 36 / 17 | 7.31 | PASS | 0.949 | DEFERRED | 0.849 | KNOWN FINDING |
+| 49 | 0.01 | 0.24 | 40 | 1000 | 0.1757 | -0.054 | 0.935 | 2.7% (0.0%) | 0.0% | 40 / 25 | 4.04 | PASS | 0.926 | KNOWN FINDING | 0.879 | KNOWN FINDING |
+| 50 | 0.01 | 0.24 | 40 | 10000 | 0.1757 | -0.049 | 0.948 | 0.1% (0.0%) | 0.0% | 36 / 16 | 3.50 | PASS | 0.931 | PASS | 0.900 | KNOWN FINDING |
+| 51 | 0.01 | 0.24 | 100 | 100 | 0.1757 | -0.054 | 0.955 | 2.6% (0.1%) | 0.0% | 27 / 18 | 3.59 | PASS | 0.953 | PASS | 0.899 | KNOWN FINDING |
+| 52 | 0.01 | 0.24 | 100 | 1000 | 0.1757 | -0.021 | 0.945 | 0.0% (0.0%) | 0.0% | 34 / 21 | 2.46 | PASS | 0.932 | PASS | 0.916 | KNOWN FINDING |
+| 53 | 0.01 | 0.24 | 100 | 10000 | 0.1757 | -0.024 | 0.953 | 0.0% (0.0%) | 0.0% | 33 / 14 | 2.23 | PASS | 0.948 | PASS | 0.927 | KNOWN FINDING |
+| 54 | 0.05 | 0.02 | 20 | 100 | 0.1112 | -0.127 | 0.977 | 82.5% (82.5%) | 0.0% | 11 / 12 | 3.89 | CONSERVATIVE | 0.988 | DEFERRED | 0.805 | KNOWN FINDING |
+| 55 | 0.05 | 0.02 | 20 | 1000 | 0.1112 | -0.041 | 0.929 | 1.7% (1.7%) | 0.0% | 59 / 12 | 1.85 | PASS | 0.902 | KNOWN FINDING | 0.831 | KNOWN FINDING |
+| 56 | 0.05 | 0.02 | 20 | 10000 | 0.1112 | -0.034 | 0.947 | 0.0% (0.0%) | 0.0% | 40 / 13 | 1.69 | PASS | 0.908 | KNOWN FINDING | 0.852 | KNOWN FINDING |
+| 57 | 0.05 | 0.02 | 40 | 100 | 0.1112 | -0.058 | 0.963 | 68.5% (68.5%) | 0.0% | 23 / 14 | 2.90 | PASS | 0.983 | DEFERRED | 0.895 | KNOWN FINDING |
+| 58 | 0.05 | 0.02 | 40 | 1000 | 0.1112 | -0.021 | 0.950 | 0.0% (0.0%) | 0.0% | 33 / 17 | 1.55 | PASS | 0.942 | PASS | 0.893 | KNOWN FINDING |
+| 59 | 0.05 | 0.02 | 40 | 10000 | 0.1112 | -0.026 | 0.945 | 0.0% (0.0%) | 0.0% | 37 / 18 | 1.45 | PASS | 0.916 | KNOWN FINDING | 0.894 | KNOWN FINDING |
+| 60 | 0.05 | 0.02 | 100 | 100 | 0.1112 | -0.032 | 0.950 | 32.6% (32.6%) | 0.0% | 30 / 20 | 2.05 | PASS | 0.979 | DEFERRED | 0.920 | KNOWN FINDING |
+| 61 | 0.05 | 0.02 | 100 | 1000 | 0.1112 | -0.007 | 0.954 | 0.0% (0.0%) | 0.0% | 31 / 15 | 1.32 | PASS | 0.940 | PASS | 0.936 | PASS |
+| 62 | 0.05 | 0.02 | 100 | 10000 | 0.1112 | -0.012 | 0.955 | 0.0% (0.0%) | 0.0% | 26 / 19 | 1.26 | PASS | 0.938 | PASS | 0.946 | PASS |
+| 63 | 0.05 | 0.12 | 20 | 100 | 0.2702 | -0.062 | 0.948 | 4.5% (4.0%) | 0.0% | 36 / 16 | 3.59 | PASS | 0.933 | PASS | 0.860 | KNOWN FINDING |
+| 64 | 0.05 | 0.12 | 20 | 1000 | 0.2702 | -0.054 | 0.944 | 0.0% (0.0%) | 0.0% | 42 / 14 | 2.62 | PASS | 0.901 | KNOWN FINDING | 0.848 | KNOWN FINDING |
+| 65 | 0.05 | 0.12 | 20 | 10000 | 0.2702 | -0.059 | 0.946 | 0.0% (0.0%) | 0.0% | 45 / 9 | 2.54 | PASS | 0.912 | KNOWN FINDING | 0.840 | KNOWN FINDING |
+| 66 | 0.05 | 0.12 | 40 | 100 | 0.2702 | -0.037 | 0.941 | 0.0% (0.0%) | 0.0% | 36 / 23 | 2.48 | PASS | 0.944 | PASS | 0.894 | KNOWN FINDING |
+| 67 | 0.05 | 0.12 | 40 | 1000 | 0.2702 | -0.035 | 0.934 | 0.0% (0.0%) | 0.0% | 50 / 16 | 2.00 | PASS | 0.926 | KNOWN FINDING | 0.886 | KNOWN FINDING |
+| 68 | 0.05 | 0.12 | 40 | 10000 | 0.2702 | -0.025 | 0.946 | 0.0% (0.0%) | 0.0% | 42 / 12 | 1.95 | PASS | 0.922 | KNOWN FINDING | 0.872 | KNOWN FINDING |
+| 69 | 0.05 | 0.12 | 100 | 100 | 0.2702 | -0.009 | 0.949 | 0.0% (0.0%) | 0.0% | 30 / 21 | 1.77 | PASS | 0.947 | PASS | 0.933 | PASS |
+| 70 | 0.05 | 0.12 | 100 | 1000 | 0.2702 | -0.015 | 0.941 | 0.0% (0.0%) | 0.0% | 41 / 18 | 1.56 | PASS | 0.931 | PASS | 0.914 | KNOWN FINDING |
+| 71 | 0.05 | 0.12 | 100 | 10000 | 0.2702 | -0.018 | 0.954 | 0.0% (0.0%) | 0.0% | 18 / 28 | 1.53 | PASS | 0.949 | PASS | 0.930 | PASS |
+| 72 | 0.05 | 0.24 | 20 | 100 | 0.4403 | -0.089 | 0.918 | 21.8% (1.0%) | 0.0% | 66 / 16 | 3.49 | KNOWN FINDING | 0.859 | DEFERRED | 0.823 | KNOWN FINDING |
+| 73 | 0.05 | 0.24 | 20 | 1000 | 0.4403 | -0.069 | 0.935 | 5.3% (0.0%) | 0.0% | 50 / 15 | 2.89 | PASS | 0.909 | KNOWN FINDING | 0.853 | KNOWN FINDING |
+| 74 | 0.05 | 0.24 | 20 | 10000 | 0.4403 | -0.057 | 0.925 | 2.9% (0.0%) | 0.0% | 55 / 20 | 2.77 | KNOWN FINDING | 0.904 | KNOWN FINDING | 0.826 | KNOWN FINDING |
+| 75 | 0.05 | 0.24 | 40 | 100 | 0.4403 | -0.038 | 0.940 | 2.5% (0.0%) | 0.0% | 36 / 24 | 2.49 | PASS | 0.934 | PASS | 0.889 | KNOWN FINDING |
+| 76 | 0.05 | 0.24 | 40 | 1000 | 0.4403 | -0.035 | 0.949 | 0.2% (0.0%) | 0.0% | 38 / 13 | 2.15 | PASS | 0.936 | PASS | 0.903 | KNOWN FINDING |
+| 77 | 0.05 | 0.24 | 40 | 10000 | 0.4403 | -0.029 | 0.953 | 0.0% (0.0%) | 0.0% | 35 / 12 | 2.09 | PASS | 0.942 | PASS | 0.899 | KNOWN FINDING |
+| 78 | 0.05 | 0.24 | 100 | 100 | 0.4403 | -0.024 | 0.953 | 0.0% (0.0%) | 0.0% | 25 / 22 | 1.80 | PASS | 0.942 | PASS | 0.920 | KNOWN FINDING |
+| 79 | 0.05 | 0.24 | 100 | 1000 | 0.4403 | -0.013 | 0.957 | 0.0% (0.0%) | 0.0% | 26 / 17 | 1.63 | PASS | 0.949 | PASS | 0.929 | PASS |
+| 80 | 0.05 | 0.24 | 100 | 10000 | 0.4403 | -0.009 | 0.939 | 0.0% (0.0%) | 0.0% | 35 / 26 | 1.60 | PASS | 0.928 | PASS | 0.913 | KNOWN FINDING |
+
+### The 99.9% conditional PD: reviewed findings
+
+| interval | scenario | coverage | verdict | diagnosis |
+|---|---|---|---|---|
+| profile | 0 | 0.995 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 1 | 0.990 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 3 | 0.991 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 4 | 0.988 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 6 | 0.983 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 9 | 0.991 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 12 | 0.991 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 15 | 0.985 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 18 | 0.993 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 21 | 0.991 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 24 | 0.973 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 27 | 0.981 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 30 | 0.983 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 33 | 0.981 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 54 | 0.977 | CONSERVATIVE | conservative: near-uninformative data, many intervals truncated at a bound of the box (wider), so they contain the truth more often than advertised |
+| profile | 72 | 0.918 | KNOWN FINDING | small-T undercoverage of the likelihood-ratio interval; for rho, misses are mostly below the truth (the downward small-T bias of rho-hat) |
+| profile | 74 | 0.925 | KNOWN FINDING | small-T undercoverage of the likelihood-ratio interval; for rho, misses are mostly below the truth (the downward small-T bias of rho-hat) |
+| delta-method Wald | 11 | 0.926 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 29 | 0.887 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 32 | 0.926 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 35 | 0.925 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 37 | 0.910 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 38 | 0.922 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 47 | 0.915 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 49 | 0.926 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 55 | 0.902 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 56 | 0.908 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 59 | 0.916 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 64 | 0.901 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 65 | 0.912 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 67 | 0.926 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 68 | 0.922 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 73 | 0.909 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 74 | 0.904 | KNOWN FINDING | low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the lowest estimates get the narrowest intervals and the misses fall almost all below the truth; removing the mean bias alone would leave coverage at 0.916-0.947 |
+| delta-method Wald | 13 | 0.983 | KNOWN FINDING | overcoverage: the delta-method SE overstates the spread of logit(q-hat) (SE ratio 0.94) |
+
+Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near a bound of the box the bootstrap is inconsistent (Andrews 2000); resampled estimates pile on the bound and intervals collapse; 42 the percentile interval corrects neither the downward bias nor the skew of rho-hat (and at small T the resampling variance is (T-1)/T of the true one). Each takes the diagnosis of ρ's bootstrap finding in the same scenario (else PD's).
+
 ## PD = 0.1%
 
 | ρ | T | n | PD bias | PD RMSE | ρ bias | ρ RMSE | flagged (edge) | Wald cov. PD / ρ | t(T−1) cov. PD / ρ | Wald verdict PD / ρ | profile cov. PD / ρ (all) | profile truncated PD / ρ | profile verdict PD / ρ | bootstrap cov. PD / ρ (all) | bootstrap verdict PD / ρ |

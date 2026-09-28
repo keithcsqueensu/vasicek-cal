@@ -161,12 +161,81 @@ VCAL_TEST(recovery_summary_statistics_on_a_constructed_sample) {
     vcal::test::note("constructed violation detected as expected: " + bad[0]);
 }
 
+// S-23: q's summary on a constructed sample. Five replicates around the true q, with profile intervals
+// covering, entirely below, entirely above, not computed and box-limited at the lower end.
+VCAL_TEST(recovery_q_summary_on_a_constructed_sample) {
+    const rc::Scenario s = rc::scenario(40);
+    const double q = rc::q_truth(s);
+    VCAL_CHECK_REL(q, e::conditional_pd(0.01, 0.12), 0.0);
+    rc::Fit fits[5] = {fit_at(s, 0.0, 0.2, 0), fit_at(s, 0.0, 0.2, 0), fit_at(s, 0.0, 0.2, 0),
+                       fit_at(s, 0.0, 0.2, 0), fit_at(s, 0.0, 0.2, e::kFlagNearBound)};
+    const double lo[5] = {0.9 * q, 0.5 * q, 1.1 * q, kNaN, 0.8 * q};
+    const double hi[5] = {1.2 * q, 0.9 * q, 1.5 * q, kNaN, 1.3 * q};
+    const double hat[5] = {q, 0.7 * q, 1.3 * q, q, 1.4 * q};  // the last lies outside its own interval
+    const std::uint32_t flags[5] = {0u, 0u, 0u, e::kIntervalNotComputed, e::kIntervalLowerBoxLimited};
+    for (int r = 0; r < 5; ++r) {
+        fits[r].q_hat = hat[r];
+        fits[r].q_se_s = 0.1;
+        fits[r].q_prof_lo = lo[r];
+        fits[r].q_prof_hi = hi[r];
+        fits[r].q_prof_flags = flags[r];
+        fits[r].q_boot_lo = lo[r];
+        fits[r].q_boot_hi = hi[r];
+    }
+    const rc::Summary sum = rc::summarise(s, fits, 5);
+    const auto& qs = sum.q;
+    VCAL_CHECK_EQ(qs.profile_covered, 2);
+    VCAL_CHECK_EQ(qs.profile_miss_below, 1);
+    VCAL_CHECK_EQ(qs.profile_miss_above, 1);
+    VCAL_CHECK_EQ(qs.profile_not_computed, 1);
+    VCAL_CHECK_EQ(qs.profile_box_limited, 1);
+    VCAL_CHECK_EQ(qs.profile_box_limited_lo, 1);
+    VCAL_CHECK_EQ(qs.profile_truncated, 0);
+    VCAL_CHECK_EQ(qs.profile_excludes_estimate, 1);
+    VCAL_CHECK_EQ(qs.profile_coverage, 0.4);
+    VCAL_CHECK_EQ(qs.boot_covered, 2);  // NaN ends do not cover
+    VCAL_CHECK_EQ(qs.boot_miss_below, 1);
+    VCAL_CHECK_EQ(qs.boot_miss_above, 1);
+    // Wald on the four unflagged: logit(q_hat) +- 1.96 x 0.1 contains logit(q) only for the first
+    // and the fourth (q_hat = q); 0.7 q lies below, 1.3 q above.
+    VCAL_CHECK_EQ(qs.wald_covered, 2);
+    VCAL_CHECK_EQ(qs.wald_miss_below, 1);
+    VCAL_CHECK_EQ(qs.wald_miss_above, 1);
+    VCAL_CHECK_EQ(qs.wald_coverage, 0.5);
+    // The median of q_hat / q - 1 over all five: {0, -0.3, 0.3, 0, 0.4} -> 0.
+    VCAL_CHECK(std::fabs(qs.median_rel_err) <= 1e-15);
+    // The median log width over the four computed intervals: log(1.2/0.9), log(0.9/0.5), log(1.5/1.1)
+    // and log(1.3/0.8), whose middle two are the third and the fourth.
+    VCAL_CHECK_REL(qs.profile_log_width_median, 0.5 * (std::log(1.5 / 1.1) + std::log(1.3 / 0.8)), 1e-12);
+}
+
+// S-23 acceptance: q's interval contains q_hat. Two replicates whose estimate is the box's corner
+// (PD 1e-4, rho 1e-3), where q_hat is the lower limit of q and the lower end is truncated there;
+// in the first full-matrix run the end was 1 ulp above q_hat (a round trip through logit).
+VCAL_TEST(recovery_q_interval_contains_the_estimate_at_the_corner) {
+    const std::uint32_t cases[2][2] = {{6, 534}, {22, 793}};
+    for (const auto& c : cases) {
+        const rc::Fit f = rc::fit(rc::scenario(c[0]), c[1]);
+        const auto g = rc::grid();
+        vcal::test::note("scenario " + std::to_string(c[0]) + " replicate " + std::to_string(c[1]) + ": estimate (" +
+                         describe(f.value[0]) + ", " + describe(f.value[1]) + "), q_hat " + describe(f.q_hat) +
+                         ", interval [" + describe(f.q_prof_lo) + ", " + describe(f.q_prof_hi) + "], flags " +
+                         std::to_string(f.q_prof_flags));
+        VCAL_CHECK_EQ(f.value[0], g.axis[0].lo);
+        VCAL_CHECK_EQ(f.value[1], g.axis[1].lo);
+        VCAL_CHECK(f.q_prof_flags & e::kIntervalLowerTruncated);
+        VCAL_CHECK_EQ(f.q_prof_lo, f.q_hat);
+        VCAL_CHECK(f.q_prof_lo <= f.q_hat && f.q_hat <= f.q_prof_hi);
+    }
+}
+
 // --- the committed goldens meet the exit criteria ------------------------------------------------
 
 VCAL_TEST(recovery_goldens_meet_the_exit_criteria) {
     // Every output of recovery_harness --write exists and is non-empty.
     for (const std::string& f : {vcal::test::golden_path("recovery/MANIFEST.json"),
                                  vcal::test::golden_path("recovery/replay.csv"),
+                                 vcal::test::golden_path("recovery/replay_panels.csv"),
                                  vcal::test::golden_path("recovery/summary.csv"),
                                  std::string(VCAL_SOURCE_DIR) + "/docs/methodology/recovery_results.md"}) {
         std::error_code ec;
@@ -254,8 +323,54 @@ VCAL_TEST(recovery_goldens_meet_the_exit_criteria) {
                   static_cast<int>(rc::known_bootstrap_finding_count(rc::BootstrapDiagnosis::Conservative)));
     VCAL_CHECK_EQ(bcount[2], static_cast<int>(rc::known_bootstrap_finding_count(rc::BootstrapDiagnosis::BoundaryBreakdown) +
                                               rc::known_bootstrap_finding_count(rc::BootstrapDiagnosis::NoBiasSkewCorrection)));
+    // S-23: q's three verdict families, by the same rules; its acceptance checks on every scenario.
+    int qp[rc::kVerdicts] = {}, qw[rc::kVerdicts] = {}, qb[rc::kVerdicts] = {};
+    for (std::uint32_t id = 0; id < rc::kScenarios; ++id) {
+        const auto& r = t.rows[id];
+        const auto col = [&](const std::string& c) { return r[t.column(c)]; };
+        const auto num = [&](const std::string& c) { return vcal::test::parse_int(col(c)); };
+        const double R = static_cast<double>(rc::kReplicates);
+        double plo = 0.0, phi = 0.0, lo = 0.0, hi = 0.0;
+        rc::coverage_band(static_cast<std::int64_t>(rc::kReplicates), plo, phi);
+        const std::int64_t unflagged = num("unflagged");
+        rc::coverage_band(unflagged, lo, hi);
+        VCAL_CHECK_EQ(num("q_profile_excludes_estimate"), 0);
+        VCAL_CHECK(vcal::test::parse_double(col("q_profile_residual_max_hex")) <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+        VCAL_CHECK_EQ(vcal::test::parse_double(col("q_true_hex")), rc::q_truth(rc::scenario(id)));
+        const double pcov = static_cast<double>(num("q_profile_covered")) / R;
+        const auto* pr = rc::known_q_finding(rc::kKnownQProfileFindings, id);
+        const rc::Verdict pv = rc::profile_verdict(pcov, plo, phi, pr);
+        VCAL_CHECK_EQ(col("q_profile_verdict"), std::string(rc::verdict_text(pv)));
+        ++qp[static_cast<int>(pv)];
+        const double wcov = unflagged > 0 ? static_cast<double>(num("q_wald_covered")) / static_cast<double>(unflagged) : kNaN;
+        const bool wr = rc::known_q_finding(rc::kKnownQWaldFindings, id) != nullptr;
+        const rc::Verdict wv = rc::verdict(static_cast<double>(num("flagged")) / R, unflagged, wcov, lo, hi, wr);
+        VCAL_CHECK_EQ(col("q_wald_verdict"), std::string(rc::verdict_text(wv)));
+        ++qw[static_cast<int>(wv)];
+        const double bcov = static_cast<double>(num("q_boot_covered")) / R;
+        const auto* br = rc::known_q_finding(rc::kKnownQBootstrapFindings, id);
+        const rc::Verdict bv = rc::bootstrap_verdict(bcov, plo, phi, br);
+        VCAL_CHECK_EQ(col("q_boot_verdict"), std::string(rc::verdict_text(bv)));
+        ++qb[static_cast<int>(bv)];
+        const std::string at = " " + std::to_string(id) + "/q";
+        if (pv == rc::Verdict::Unreviewed) unreviewed += at + " (profile coverage " + describe(pcov) + ")";
+        if (wv == rc::Verdict::Unreviewed) unreviewed += at + " (Wald coverage " + describe(wcov) + ")";
+        if (bv == rc::Verdict::Unreviewed) unreviewed += at + " (bootstrap coverage " + describe(bcov) + ")";
+        if (pr && pv == rc::Verdict::Pass) stale += at + " (profile)";
+        if (wr && wv != rc::Verdict::KnownFinding) stale += at + " (Wald)";
+        if (br && bv == rc::Verdict::Pass) stale += at + " (bootstrap)";
+    }
+    const auto line = [](const int* c) {
+        return std::to_string(c[0]) + " PASS, " + std::to_string(c[static_cast<int>(rc::Verdict::Conservative)]) +
+               " CONSERVATIVE, " + std::to_string(c[2]) + " KNOWN FINDING, " + std::to_string(c[1]) + " DEFERRED, " +
+               std::to_string(c[3]) + " UNREVIEWED";
+    };
+    vcal::test::note("q profile: " + line(qp) + "; q Wald: " + line(qw) + "; q bootstrap: " + line(qb));
+    VCAL_CHECK_EQ(qp[static_cast<int>(rc::Verdict::Conservative)] + qp[2], static_cast<int>(rc::kKnownQProfileFindings.size()));
+    VCAL_CHECK_EQ(qw[2], static_cast<int>(rc::kKnownQWaldFindings.size()));
+    VCAL_CHECK_EQ(qb[static_cast<int>(rc::Verdict::Conservative)] + qb[2], static_cast<int>(rc::kKnownQBootstrapFindings.size()));
     if (!unreviewed.empty()) vcal::test::note("unreviewed, outside the band:" + unreviewed);
-    if (!stale.empty()) vcal::test::note("in kKnownFindings but not outside the band:" + stale);
+    if (!stale.empty()) vcal::test::note("in a reviewed list but not outside the band:" + stale);
     VCAL_CHECK(unreviewed.empty());
     VCAL_CHECK(stale.empty());
     VCAL_CHECK_EQ(count[2], static_cast<int>(sizeof rc::kKnownFindings / sizeof rc::kKnownFindings[0]));
@@ -265,6 +380,21 @@ VCAL_TEST(recovery_goldens_meet_the_exit_criteria) {
 }
 
 // --- replay: this platform re-fits the recorded replicates ----------------------------------------
+
+// The panels the scipy cross-check reads (S-23) are the DGP's replay panels, count for count.
+VCAL_TEST(recovery_replay_panels_match_the_dgp) {
+    const auto t = vcal::test::read_golden_csv("recovery/replay_panels.csv");
+    VCAL_REQUIRE(t.rows.size() == static_cast<std::size_t>(rc::kScenarios) * rc::kReplayReplicates);
+    int mismatches = 0;
+    for (const auto& r : t.rows) {
+        const rc::Scenario s = rc::scenario(static_cast<std::uint32_t>(vcal::test::parse_int(r[t.column("scenario")])));
+        const auto d = rc::panel(s, static_cast<std::uint32_t>(vcal::test::parse_int(r[t.column("replicate")])));
+        std::string want;
+        for (std::size_t k = 0; k < d.size(); ++k) want += (k ? " " : "") + std::to_string(d[k]);
+        if (vcal::test::parse_int(r[t.column("n")]) != s.obligors || r[t.column("d")] != want) ++mismatches;
+    }
+    VCAL_CHECK_EQ(mismatches, 0);
+}
 
 VCAL_TEST(recovery_replay) {
     const auto t = vcal::test::read_golden_csv("recovery/replay.csv");
@@ -276,7 +406,7 @@ VCAL_TEST(recovery_replay) {
         const auto rep = static_cast<std::uint32_t>(vcal::test::parse_int(r[t.column("replicate")]));
         got[static_cast<std::size_t>(i)] = rc::fit(rc::scenario(id), rep);
     });
-    double worst = 0.0, worst_se = 0.0, worst_profile = 0.0, worst_boot = 0.0;
+    double worst = 0.0, worst_se = 0.0, worst_profile = 0.0, worst_boot = 0.0, worst_q = 0.0, worst_q_se = 0.0;
     std::string worst_at, worst_se_at;
     int flag_mismatches = 0;
     for (std::size_t i = 0; i < t.rows.size(); ++i) {
@@ -296,6 +426,18 @@ VCAL_TEST(recovery_replay) {
             worst_boot = std::fmax(worst_boot, std::fabs(bends[k] / want - 1.0));
         }
         if (static_cast<std::int64_t>(f.boot_edge) != vcal::test::parse_int(r[t.column("boot_edge")])) ++flag_mismatches;
+        // S-23: q_hat and its SE, q's profile ends and flags, q's bootstrap ends.
+        if (static_cast<std::int64_t>(f.q_prof_flags) != vcal::test::parse_int(r[t.column("q_profile_flags")])) {
+            ++flag_mismatches;
+        }
+        const auto rel_to = [&](double value, const char* c) {
+            const double want = vcal::test::parse_double(r[t.column(c)]);
+            return std::isnan(want) && std::isnan(value) ? 0.0 : std::fabs(value / want - 1.0);
+        };
+        worst_q = std::fmax(worst_q, rel_to(f.q_hat, "q_hat_hex"));
+        worst_q_se = std::fmax(worst_q_se, rel_to(f.q_se_s, "q_se_s_hex"));
+        worst_profile = std::fmax(worst_profile, std::fmax(rel_to(f.q_prof_lo, "q_lo_hex"), rel_to(f.q_prof_hi, "q_hi_hex")));
+        worst_boot = std::fmax(worst_boot, std::fmax(rel_to(f.q_boot_lo, "q_boot_lo_hex"), rel_to(f.q_boot_hi, "q_boot_hi_hex")));
         const double ends[4] = {f.prof_lo[0], f.prof_hi[0], f.prof_lo[1], f.prof_hi[1]};
         const char* end_cols[4] = {"pd_lo_hex", "pd_hi_hex", "rho_lo_hex", "rho_hi_hex"};
         for (int k = 0; k < 4; ++k) {
@@ -321,12 +463,15 @@ VCAL_TEST(recovery_replay) {
     vcal::test::note(std::to_string(t.rows.size()) + " replicates re-fitted: estimates and loglik worst relative "
                      "difference " + describe(worst) + (worst_at.empty() ? "" : " (" + worst_at + ")") + "; SEs " +
                      describe(worst_se) + (worst_se_at.empty() ? "" : " (" + worst_se_at + ")") +
-                     "; profile endpoints " + describe(worst_profile) + "; bootstrap ends " + describe(worst_boot) +
+                     "; q_hat " + describe(worst_q) + ", its SE " + describe(worst_q_se) +
+                     "; profile endpoints (PD, rho, q) " + describe(worst_profile) + "; bootstrap ends " + describe(worst_boot) +
                      "; " + std::to_string(flag_mismatches) +
                      " flag mismatches");
     VCAL_CHECK_EQ(flag_mismatches, 0);
     VCAL_CHECK(worst <= tol::TOL_RECOVERY_REPLAY_REL);
     VCAL_CHECK(worst_se <= tol::TOL_RECOVERY_REPLAY_SE_REL);
+    VCAL_CHECK(worst_q <= tol::TOL_RECOVERY_REPLAY_REL);
+    VCAL_CHECK(worst_q_se <= tol::TOL_RECOVERY_REPLAY_SE_REL);
     VCAL_CHECK(worst_profile <= tol::TOL_PROFILE_CROSS_PLATFORM_REL);
     VCAL_CHECK(worst_boot <= tol::TOL_BOOTSTRAP_CROSS_PLATFORM_REL);
 }

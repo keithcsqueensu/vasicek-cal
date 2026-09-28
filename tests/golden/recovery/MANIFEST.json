@@ -17,5 +17,6 @@
   "t_interval": "Wald with t(T-1) quantiles 19/39/99 df, native comparison (D-131)",
   "bootstrap": "iid bootstrap of periods, B = 999, percentile interval (type 7), seed = recovery seed XOR (scenario << 32 | replicate), resampling key domain (D-132, D-135, D-136)",
   "profile_findings": "20 conservative, 6 undercoverage (reviewed)",
-  "wall_seconds": 4688
+  "conditional_pd": "S-23: q = Phi((Phi^-1(PD) + sqrt(rho) z) / sqrt(1 - rho)), z = Phi^-1(0.999) = 3.0902323061678136; profile interval along q = c (engine/conditional_pd.hpp), delta-method Wald in logit(q), bootstrap percentile of q at the same replicates; reviewed findings: 17 profile, 18 Wald, 73 bootstrap",
+  "wall_seconds": 5165
 }

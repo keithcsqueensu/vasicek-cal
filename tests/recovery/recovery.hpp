@@ -39,8 +39,15 @@
 // Evidence for the diagnoses, per scenario and parameter among unflagged replicates, in the logit
 // coordinate: sd(u_hat) against the root-mean-square Hessian SE. A ratio near 1 means the SEs
 // match the actual spread of the estimates.
+// S-23 adds a third quantity, the 99.9% conditional PD q (engine/conditional_pd.hpp), with three
+// intervals and a verdict family each, under the same band and policy: the profile interval over
+// ALL replicates; the delta-method Wald interval in logit(q), conditional on the same unflagged
+// replicates as PD and rho, DEFERRED at the same flagged fraction; and the bootstrap percentile
+// interval of q at the same B = 999 replicate estimates, over ALL replicates. Pre-registered in
+// studies/derived-quantity-intervals/PREDICTION.md.
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -53,6 +60,7 @@
 #include "core/quadrature/parity.hpp"
 #include "dgp/dgp.hpp"
 #include "engine/calibrate.hpp"
+#include "engine/conditional_pd.hpp"
 #include "engine/profile.hpp"
 #include "resample/bootstrap.hpp"
 #include "resample/weights.hpp"
@@ -119,17 +127,32 @@ struct Fit {
     double boot_hi[2];
     std::uint32_t boot_edge;      // bootstrap replicates on the grid edge
     std::uint32_t boot_excluded;  // bootstrap replicates with non-finite estimates
+    // S-23: the 99.9% conditional PD q.
+    double q_hat;            // q at the estimate
+    double q_se_s;           // delta-method SE of logit(q) (NaN where the Hessian SEs are)
+    double q_prof_lo;        // profile-likelihood 95% interval, natural scale
+    double q_prof_hi;
+    std::uint32_t q_prof_flags;  // engine::kInterval*: truncated, box-limited, not computed
+    double q_prof_residual;  // max |P_q(endpoint) - (l_max - c)| over solved endpoints
+    double q_boot_lo;        // bootstrap percentile interval of q, natural scale
+    double q_boot_hi;
 };
 
-// Simulates and fits one replicate. The fit is serial (the caller parallelises over replicates);
-// results do not depend on the thread count (§6).
-inline Fit fit(const Scenario& s, std::uint32_t replicate) {
+// Replicate r of scenario s: the default counts d_t, n = s.obligors in every period (D-109).
+inline std::vector<std::int64_t> panel(const Scenario& s, std::uint32_t replicate) {
     std::vector<std::int64_t> n(static_cast<std::size_t>(s.periods), s.obligors);
     std::vector<std::int64_t> d(n.size());
     const dgp::PanelSpec spec{kSeed, s.id, replicate, s.pd, s.rho, n.data(), s.periods};
     if (dgp::simulate_panel(spec, d.data(), nullptr) != dgp::Status::Ok) std::abort();
-    std::vector<Objective::Obs> obs(n.size());
-    for (std::size_t t = 0; t < n.size(); ++t) obs[t] = {n[t], d[t]};
+    return d;
+}
+
+// Simulates and fits one replicate. The fit is serial (the caller parallelises over replicates);
+// results do not depend on the thread count (§6).
+inline Fit fit(const Scenario& s, std::uint32_t replicate) {
+    const std::vector<std::int64_t> d = panel(s, replicate);
+    std::vector<Objective::Obs> obs(d.size());
+    for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {s.obligors, d[t]};
     static const auto primary = quadrature::parity_rule();
     static const auto check = quadrature::parity_rule(true);
     std::vector<double> L;
@@ -150,6 +173,27 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate) {
     for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
     const auto b0 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 0);
     const auto b1 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 1);
+    // S-23: q's profile interval, its delta-method SE in logit(q), and q at each bootstrap estimate.
+    const auto qi = engine::conditional_pd_interval(Objective{}, primary, obs.data(), s.periods, g, L, est, prof);
+    const auto qg = engine::conditional_pd_logit_gradient(est.value[0], est.value[1]);
+    double se_u[2];
+    for (int a = 0; a < 2; ++a) {
+        se_u[a] = est.se[a] / grid::dvalue_dscaled(g.axis[a].scale, grid::to_scaled(g.axis[a].scale, est.value[a]));
+    }
+    const double q_var = qg.ds_du[0] * qg.ds_du[0] * se_u[0] * se_u[0] + qg.ds_du[1] * qg.ds_du[1] * se_u[1] * se_u[1] +
+                         2.0 * qg.ds_du[0] * qg.ds_du[1] * est.corr * se_u[0] * se_u[1];
+    std::vector<double> q_reps;
+    q_reps.reserve(reps.size());
+    for (const auto& r : reps) {
+        const double q = std::isfinite(r.value[0]) && std::isfinite(r.value[1])
+                             ? engine::conditional_pd(r.value[0], r.value[1])
+                             : std::nan("");
+        if (std::isfinite(q)) q_reps.push_back(q);
+    }
+    std::sort(q_reps.begin(), q_reps.end());
+    const double nan = std::nan("");
+    const double q_boot_lo = q_reps.empty() ? nan : resample::quantile_type7(q_reps, 0.025);
+    const double q_boot_hi = q_reps.empty() ? nan : resample::quantile_type7(q_reps, 0.975);
     return {{est.value[0], est.value[1]},
             {est.se[0], est.se[1]},
             est.loglik,
@@ -161,7 +205,15 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate) {
             {b0.lo, b1.lo},
             {b0.hi, b1.hi},
             edge,
-            static_cast<std::uint32_t>(b0.excluded > b1.excluded ? b0.excluded : b1.excluded)};
+            static_cast<std::uint32_t>(b0.excluded > b1.excluded ? b0.excluded : b1.excluded),
+            qi.estimate,
+            q_var >= 0.0 ? std::sqrt(q_var) : nan,
+            qi.lo,
+            qi.hi,
+            qi.flags,
+            qi.residual_max,
+            q_boot_lo,
+            q_boot_hi};
 }
 
 inline constexpr std::uint32_t kNoReliableInterval =
@@ -214,13 +266,25 @@ inline const char* verdict_text(Verdict v) {
 // Reviewed out-of-band coverage verdicts (D-124), from the R = 1000 run of 2026-09-26. Each is a
 // property of Wald intervals, not of the engine; the diagnostic ratio sd(u_hat) / rms(se_u) is in
 // recovery_results.md. All are re-assessed with M2's profile-likelihood intervals.
-enum class Diagnosis { SmallTUndercoverage, SkewedOvercoverage };
+// The last two are S-23's, for the delta-method interval of q.
+enum class Diagnosis { SmallTUndercoverage, SkewedOvercoverage, BiasedLowUndercoverage, SeOverstatedOvercoverage };
 
 inline const char* diagnosis_text(Diagnosis d) {
-    return d == Diagnosis::SmallTUndercoverage
-               ? "small-T Wald undercoverage: the Hessian SE understates the spread of the estimates"
-               : "overcoverage of a skewed estimate: the Hessian SE does not understate the spread (SE ratio <= 1), "
-                 "but u_hat is skewed in the logit coordinate, so the symmetric interval is miscalibrated";
+    switch (d) {
+        case Diagnosis::SmallTUndercoverage:
+            return "small-T Wald undercoverage: the Hessian SE understates the spread of the estimates";
+        case Diagnosis::SkewedOvercoverage:
+            return "overcoverage of a skewed estimate: the Hessian SE does not understate the spread (SE ratio <= 1), "
+                   "but u_hat is skewed in the logit coordinate, so the symmetric interval is miscalibrated";
+        case Diagnosis::BiasedLowUndercoverage:
+            return "low estimates with narrow intervals: q-hat is biased low (rho-hat's downward bias carried into "
+                   "q), and its delta-method SE moves with it (error and SE correlate at +0.64 to +0.88), so the "
+                   "lowest estimates get the narrowest intervals and the misses fall almost all below the truth; "
+                   "removing the mean bias alone would leave coverage at 0.916-0.947";
+        case Diagnosis::SeOverstatedOvercoverage:
+            return "overcoverage: the delta-method SE overstates the spread of logit(q-hat) (SE ratio 0.94)";
+    }
+    return "?";
 }
 
 struct KnownFinding {
@@ -388,6 +452,175 @@ inline Verdict bootstrap_verdict(double coverage, double lo, double hi, const Kn
     return Verdict::Unreviewed;
 }
 
+// --- S-23: the 99.9% conditional PD q -------------------------------------------------------------
+
+inline double q_truth(const Scenario& s) { return engine::conditional_pd(s.pd, s.rho); }
+
+// Does the delta-method Wald interval, symmetric in logit(q), contain the true q?
+inline bool q_wald_covers(const Fit& f, double truth) {
+    const double s_hat = grid::to_scaled(AxisScale::Logit, f.q_hat);
+    return std::fabs(s_hat - grid::to_scaled(AxisScale::Logit, truth)) <= kZ975 * f.q_se_s;
+}
+
+// Does q's profile interval contain the true q? One that was not computed does not cover.
+inline bool q_profile_covers(const Fit& f, double truth) {
+    if (f.q_prof_flags & engine::kIntervalNotComputed) return false;
+    return f.q_prof_lo <= truth && truth <= f.q_prof_hi;
+}
+
+inline bool q_bootstrap_covers(const Fit& f, double truth) { return f.q_boot_lo <= truth && truth <= f.q_boot_hi; }
+
+// Reviewed out-of-band verdicts for q (S-23), with param = 2, one list per interval; same rules as
+// the lists for PD and rho, each kind valid only on its own side of the band.
+// Reviewed from the S-23 full-matrix run of 2026-09-27 (studies/README.md, S-23; D-156).
+inline const std::vector<KnownProfileFinding> kKnownQProfileFindings = {
+    // 15 conservative: near-uninformative data, the lower end box-limited in 52-100% of replicates.
+    {0, 2, ProfileDiagnosis::TruncationConservative},  {1, 2, ProfileDiagnosis::TruncationConservative},
+    {3, 2, ProfileDiagnosis::TruncationConservative},  {4, 2, ProfileDiagnosis::TruncationConservative},
+    {6, 2, ProfileDiagnosis::TruncationConservative},  {9, 2, ProfileDiagnosis::TruncationConservative},
+    {12, 2, ProfileDiagnosis::TruncationConservative}, {15, 2, ProfileDiagnosis::TruncationConservative},
+    {18, 2, ProfileDiagnosis::TruncationConservative}, {21, 2, ProfileDiagnosis::TruncationConservative},
+    {24, 2, ProfileDiagnosis::TruncationConservative}, {27, 2, ProfileDiagnosis::TruncationConservative},
+    {30, 2, ProfileDiagnosis::TruncationConservative}, {33, 2, ProfileDiagnosis::TruncationConservative},
+    {54, 2, ProfileDiagnosis::TruncationConservative},
+    // 2 undercovering at T = 20, misses mostly below the truth, as for rho in the same scenarios.
+    {72, 2, ProfileDiagnosis::SmallTUndercoverage}, {74, 2, ProfileDiagnosis::SmallTUndercoverage},
+};
+inline const std::vector<KnownFinding> kKnownQWaldFindings = {
+    {11, 2, Diagnosis::BiasedLowUndercoverage}, {29, 2, Diagnosis::BiasedLowUndercoverage},
+    {32, 2, Diagnosis::BiasedLowUndercoverage}, {35, 2, Diagnosis::BiasedLowUndercoverage},
+    {37, 2, Diagnosis::BiasedLowUndercoverage}, {38, 2, Diagnosis::BiasedLowUndercoverage},
+    {47, 2, Diagnosis::BiasedLowUndercoverage}, {49, 2, Diagnosis::BiasedLowUndercoverage},
+    {55, 2, Diagnosis::BiasedLowUndercoverage}, {56, 2, Diagnosis::BiasedLowUndercoverage},
+    {59, 2, Diagnosis::BiasedLowUndercoverage}, {64, 2, Diagnosis::BiasedLowUndercoverage},
+    {65, 2, Diagnosis::BiasedLowUndercoverage}, {67, 2, Diagnosis::BiasedLowUndercoverage},
+    {68, 2, Diagnosis::BiasedLowUndercoverage}, {73, 2, Diagnosis::BiasedLowUndercoverage},
+    {74, 2, Diagnosis::BiasedLowUndercoverage}, {13, 2, Diagnosis::SeOverstatedOvercoverage},
+};
+// 73 below the band, none above. Each takes the diagnosis of rho's bootstrap finding in the same
+// scenario (else PD's): q inherits them.
+inline const std::vector<KnownBootstrapFinding> kKnownQBootstrapFindings = {
+    {0, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {1, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {2, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {3, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {4, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {5, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {6, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {7, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {8, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {9, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {10, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {11, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {12, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {13, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {14, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {15, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {16, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {17, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {18, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {19, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {20, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {21, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {22, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {23, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {24, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {25, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {27, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {28, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {29, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {30, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {31, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {32, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {33, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {35, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {36, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {37, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {38, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {39, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {40, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {41, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {42, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {43, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {45, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {46, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {47, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {48, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {49, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {50, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {51, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {52, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {53, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {54, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {55, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {56, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {57, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {58, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {59, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {60, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {63, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {64, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {65, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {66, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {67, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {68, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {70, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {72, 2, BootstrapDiagnosis::BoundaryBreakdown},
+    {73, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {74, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {75, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {76, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {77, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {78, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+    {80, 2, BootstrapDiagnosis::NoBiasSkewCorrection},
+};
+
+template <class K>
+const K* known_q_finding(const std::vector<K>& list, std::uint32_t scenario) {
+    for (const auto& k : list) {
+        if (k.scenario == scenario) return &k;
+    }
+    return nullptr;
+}
+
+struct QSummary {
+    double truth;
+    double median_rel_err;  // median(q_hat / q - 1) over all replicates
+    double rmse;            // sqrt(mean((q_hat - q)^2)) over all replicates
+    // Profile-likelihood interval, over ALL replicates.
+    std::int64_t profile_covered;
+    std::int64_t profile_truncated;       // either end at the limit of q in the box
+    std::int64_t profile_box_limited;     // either end box-limited (truncation included)
+    std::int64_t profile_box_limited_lo;  // the lower end box-limited
+    std::int64_t profile_not_computed;    // counted as not covering
+    std::int64_t profile_miss_below;      // intervals entirely below the truth
+    std::int64_t profile_miss_above;
+    std::int64_t profile_excludes_estimate;  // intervals not containing q_hat: an acceptance check, none allowed
+    double profile_log_width_median;         // median log(hi / lo) over computed intervals
+    double profile_residual_max;
+    double profile_coverage;
+    Verdict profile_verdict;
+    // Delta-method Wald in logit(q), among the unflagged replicates (as for PD and rho).
+    std::int64_t wald_covered;
+    std::int64_t wald_miss_below;
+    std::int64_t wald_miss_above;
+    double wald_coverage;
+    Verdict wald_verdict;
+    // Bootstrap percentile, over ALL replicates.
+    std::int64_t boot_covered;
+    std::int64_t boot_miss_below;
+    std::int64_t boot_miss_above;
+    double boot_coverage;
+    Verdict boot_verdict;
+};
+
+inline double median_of(std::vector<double> x) {
+    if (x.empty()) return std::nan("");
+    std::sort(x.begin(), x.end());
+    const std::size_t m = x.size() / 2;
+    return x.size() % 2 == 1 ? x[m] : 0.5 * (x[m - 1] + x[m]);
+}
+
 struct ParamSummary {
     double mean;
     double bias;
@@ -426,6 +659,7 @@ struct Summary {
     double profile_residual_max;              // worst self-reported endpoint residual, log-likelihood units
     double boot_edge_fraction;                // mean fraction of bootstrap replicates on the grid edge
     ParamSummary param[2];
+    QSummary q;  // S-23
 };
 
 // Neumaier-compensated sum in the order given, so summaries do not depend on anything but the fits.
@@ -550,6 +784,54 @@ inline Summary summarise(const Scenario& s, const Fit* fits, std::int64_t R) {
         p.boot_verdict = bootstrap_verdict(p.boot_coverage, out.profile_band_lo, out.profile_band_hi,
                                            known_bootstrap_finding(s.id, a));
     }
+
+    // S-23: q.
+    QSummary& q = out.q;
+    q.truth = q_truth(s);
+    std::vector<double> rel_err, log_width;
+    CompensatedSum q_err2;
+    for (std::int64_t r = 0; r < R; ++r) {
+        const Fit& f = fits[r];
+        rel_err.push_back(f.q_hat / q.truth - 1.0);
+        q_err2.add((f.q_hat - q.truth) * (f.q_hat - q.truth));
+        const std::uint32_t pf = f.q_prof_flags;
+        if (q_profile_covers(f, q.truth)) ++q.profile_covered;
+        if (pf & (engine::kIntervalLowerTruncated | engine::kIntervalUpperTruncated)) ++q.profile_truncated;
+        if (pf & (engine::kIntervalLowerBoxLimited | engine::kIntervalUpperBoxLimited)) ++q.profile_box_limited;
+        if (pf & engine::kIntervalLowerBoxLimited) ++q.profile_box_limited_lo;
+        if (pf & engine::kIntervalNotComputed) {
+            ++q.profile_not_computed;
+        } else {
+            if (f.q_prof_hi < q.truth) ++q.profile_miss_below;
+            if (f.q_prof_lo > q.truth) ++q.profile_miss_above;
+            if (!(f.q_prof_lo <= f.q_hat && f.q_hat <= f.q_prof_hi)) ++q.profile_excludes_estimate;
+            log_width.push_back(std::log(f.q_prof_hi / f.q_prof_lo));
+        }
+        q.profile_residual_max = std::fmax(q.profile_residual_max, f.q_prof_residual);
+        if (q_bootstrap_covers(f, q.truth)) ++q.boot_covered;
+        if (f.q_boot_hi < q.truth) ++q.boot_miss_below;
+        if (f.q_boot_lo > q.truth) ++q.boot_miss_above;
+        if (f.flags & kNoReliableInterval) continue;
+        if (q_wald_covers(f, q.truth)) {
+            ++q.wald_covered;
+        } else {
+            const double s_hat = grid::to_scaled(AxisScale::Logit, f.q_hat);
+            (s_hat < grid::to_scaled(AxisScale::Logit, q.truth) ? q.wald_miss_below : q.wald_miss_above) += 1;
+        }
+    }
+    q.median_rel_err = median_of(rel_err);
+    q.rmse = std::sqrt(q_err2.value() / static_cast<double>(R));
+    q.profile_log_width_median = median_of(log_width);
+    q.profile_coverage = static_cast<double>(q.profile_covered) / static_cast<double>(R);
+    q.profile_verdict = profile_verdict(q.profile_coverage, out.profile_band_lo, out.profile_band_hi,
+                                        known_q_finding(kKnownQProfileFindings, s.id));
+    q.wald_coverage = out.unflagged > 0 ? static_cast<double>(q.wald_covered) / static_cast<double>(out.unflagged)
+                                        : std::nan("");
+    q.wald_verdict = verdict(out.flagged_fraction, out.unflagged, q.wald_coverage, out.band_lo, out.band_hi,
+                             known_q_finding(kKnownQWaldFindings, s.id) != nullptr);
+    q.boot_coverage = static_cast<double>(q.boot_covered) / static_cast<double>(R);
+    q.boot_verdict = bootstrap_verdict(q.boot_coverage, out.profile_band_lo, out.profile_band_hi,
+                                       known_q_finding(kKnownQBootstrapFindings, s.id));
     return out;
 }
 
