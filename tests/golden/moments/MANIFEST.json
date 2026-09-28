@@ -1,0 +1,14 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_moments_goldens.py",
+  "generator_files": {
+    "tools/gen_moments_goldens.py": "eccb7d35675a75167adad93da48a9f2d781fb80a720d5837056b58671849d5ea",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "tests/golden/moments/joint_default.csv": "1edb0868a5620084360d98adbf5b94caaa66dd1f7d7ac44468c15311ebb85c08"
+  },
+  "python_version": "3.14.6"
+}
