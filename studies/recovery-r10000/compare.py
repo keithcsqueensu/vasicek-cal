@@ -27,6 +27,7 @@ A_UPPER_PASS = [(1, "pd"), (7, "rho"), (27, "pd"), (15, "pd"), (24, "pd"), (54, 
 ALL38 = (GROUP_B + [(68, "pd"), (41, "pd"), (31, "rho"), (49, "rho"), (59, "pd"), (72, "rho")] + A_LOWER
          + A_CONSERVATIVE + A_UPPER_PASS)
 PDS, RHOS = (0.001, 0.01, 0.05), (0.02, 0.12, 0.24)
+INTERVAL_NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed (engine/profile.hpp)
 
 
 def coverage(rows, sid, p):
@@ -38,7 +39,7 @@ def rho_misses(parquet_path, scenarios):
     t = pq.read_table(parquet_path, columns=["scenario", "rho_lo", "rho_hi", "rho_profile_flags"]).to_pydict()
     out = {sid: [0, 0] for sid in scenarios}
     for sid, lo, hi, flags in zip(t["scenario"], t["rho_lo"], t["rho_hi"], t["rho_profile_flags"]):
-        if sid not in out or flags & 4:  # not computed: not covering, but in neither direction
+        if sid not in out or flags & INTERVAL_NOT_COMPUTED:  # not covering, but in neither direction
             continue
         truth = RHOS[(sid // 9) % 3]
         out[sid][0] += hi < truth
@@ -51,7 +52,8 @@ def main():
     summary, fits = sys.argv[1], sys.argv[2]
     with open(summary, newline="") as f:
         rows = {int(r["scenario"]): r for r in csv.DictReader(line for line in f if not line.startswith("#"))}
-    assert all(int(r["replicates"]) == R for r in rows.values())
+    if any(int(r["replicates"]) != R for r in rows.values()):
+        sys.exit(f"{summary}: every row must have R = {R} replicates")
     cov = {k: coverage(rows, *k) for k in ALL38}
 
     def below(k):

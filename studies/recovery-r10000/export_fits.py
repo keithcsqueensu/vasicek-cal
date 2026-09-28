@@ -26,7 +26,8 @@ FIT = struct.Struct("<2d2dd I4x 2d2d 2I d 2d2d 2I d d d d I4x d d d")
 
 def main():
     data = Path(sys.argv[1]).read_bytes()
-    assert FIT.size == 200 and len(data) == R * 81 * FIT.size, "expected R = 10,000 x 81 fit records"
+    if FIT.size != 200 or len(data) != R * 81 * FIT.size:
+        sys.exit(f"{sys.argv[1]}: {len(data)} bytes; expected R = {R} x 81 fit records of {FIT.size} bytes")
     cols = {k: [] for k in ("scenario", "replicate", "pd", "rho", "fit_flags", "pd_lo", "pd_hi", "pd_profile_flags",
                             "rho_lo", "rho_hi", "rho_profile_flags")}
     for sid in SCENARIOS:
