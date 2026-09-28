@@ -134,7 +134,7 @@ not delay M3.
 | S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
-| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | registered (D-160) |
+| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -993,13 +993,51 @@ scales in the order L, M, H.
   - M5's what-if recalibration is the same computation offered as a feature.
 - **Cost:** a hypothetical period is one more surface row. Each variant costs a refinement and three
   profiles, not a new surface. Four variants per replicate (1 or 2 periods × 2 severities): about
-  12–20 min on the subset and about 2–3.5 h for the full matrix.
+  12–20 min on the subset and about 2–3.5 h for the full matrix. Measured: 35 min and 6 h 12 min,
+  because the study tool refits each extended panel from a new surface rather than adding a row.
 - **Verdicts it could change:** none; descriptive, with the coverage of the refitted intervals for
   the unchanged truth reported beside the originals.
 - **Placement:** the first batch, after S-1 and S-2. It needs S-23's interval for the conditional PD
   and none of M3's estimators.
-- **Prediction:** registered in [`severe-period-sensitivity/PREDICTION.md`](severe-period-sensitivity/PREDICTION.md) before any run: K1–K10, from the large-n limit of the model ([`large_n_reference.py`](severe-period-sensitivity/large_n_reference.py), which reads no recovery panel). The estimates are the exact off-grid maxima, not the grid refinement (D-159). **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`severe-period-sensitivity/PREDICTION.md`](severe-period-sensitivity/PREDICTION.md) before any run: K1–K10, from the large-n limit of the model ([`large_n_reference.py`](severe-period-sensitivity/large_n_reference.py), which reads no recovery panel). The estimates are the exact off-grid maxima, not the grid refinement (D-159).
+- **Status:** finished 2026-09-28 (D-162). The summary, per-replicate Parquet (28 MB, exact) and provenance are in [`severe-period-sensitivity/`](severe-period-sensitivity/) (`MANIFEST.json`).
+- **Result:** **the size of the jump after a severe year is predictable from T alone, and matches the model's large-n limit almost exactly; what a refit does to the interval is not what a symmetric interval would suggest.**
+  - **The jump in q̂** (medians, SE units of the original panel), groups B–D:
+
+    | Added | T = 20 | T = 40 | T = 100 | Large-n reference, T = 20 / 40 / 100 |
+    |---|---|---|---|---|
+    | 1 × 1-in-100 | 0.64–0.84 | 0.41–0.61 | 0.24–0.40 | 0.81 / 0.59 / 0.38 |
+    | 2 × 1-in-100 | 1.09–1.49 | 0.74–1.11 | 0.45–0.77 | 1.46 / 1.11 / 0.73 |
+    | 1 × 1-in-1,000 | 1.21–1.45 | 0.79–1.12 | 0.53–0.89 | 1.40 / 1.02 / 0.67 |
+    | 2 × 1-in-1,000 | 2.03–2.51 | 1.38–1.95 | 1.00–1.58 | 2.45 / 1.91 / 1.29 |
+
+    Where n·PD ≥ 100 the shift is 0.93–1.02 × the reference for q and 0.93–1.06 × for ρ, in all 72 scenario-variants. In relative terms, one 1-in-100 year raises q̂ by 11–57% at T = 20 and 2–21% at T = 100; two 1-in-1,000 years by 35–248% at T = 20.
+  - **Finite n does not dilute it.** Where n·PD ≤ 10 the shift is 0.61–1.33 × the reference (median 0.98): the original SE grows with the binomial noise as fast as the pull of the added period shrinks.
+  - **The refitted interval moves up rather than widening.** Its lower end rises more than its upper end for ρ in all 50 B–D scenarios under every variant, and for q in most (33–40 of 50, by variant). The added periods make low dispersion implausible, so the lower end is pinned up. Hence:
+    - **Coverage of the unchanged truth:** after one 1-in-100 year it barely moves (−0.020 to +0.034 from the pinned coverage). After one 1-in-1,000 year at T = 20 it falls to 0.81–0.89; after two, to 0.26–0.51 at T = 20, 0.54–0.79 at T = 40 and 0.69–0.88 at T = 100. The symmetric large-n model had predicted 0.72 at T = 20.
+    - **Exceedance of the original interval:** the refitted q̂ lies above the original profile interval's upper end in at most 0.7% of replicates after one 1-in-100 year, at most 6.3% after one 1-in-1,000 year at T = 20, and 28–45% after two 1-in-1,000 years at T = 20; at T = 100 at most 8.3% under any variant.
+  - **Group A:** in 10 of the 31 scenarios one "1-in-100" year *lowers* q̂ (by 1–12%): where n·PD ≤ 1 its median count (0–2 defaults) is milder than the dispersion binomial noise already implies. Three of them (0, 3, 6) were registered (K10).
+  - **Flags:** the extended fits carry a Wald flag more often in B–D, from 328 of 50,000 originals to 482 (1 × 1-in-100) and 2,345 (2 × 1-in-1,000); every q profile interval was computed.
+- **Comparison with the predictions** (scored by [`severe-period-sensitivity/compare.py`](severe-period-sensitivity/compare.py), committed before the full run started): **8 of 10 held.** K5 missed because the predicted effect did not appear (no dilution at small n·PD). K8 missed in its first part only, and in size: after one 1-in-100 year coverage stayed level rather than rising, and in 13 of the 50 it fell by 0.001–0.020. The subset, run first, had shown both tendencies; the predictions were not amended.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | K1 | B-D: median shifts of PD, rho, q positive in every scenario-variant (200 each; SE-unit and relative medians both) | pd: 200 of 200; rho: 200 of 200; q: 200 of 200 | held |
+  | K2 | B-D: q shift (SE) falls with T in every cell outside A, each variant | 12 cells; not falling: none | held |
+  | K3 | B-D: two/one q shift ratio 1.55-2.05 in at least 90 of 100 scenario-severity pairs | 100 of 100 (range 1.60-1.95) | held |
+  | K4 | n*PD >= 100 (18 scenarios): q shift within ±25% of the reference in at least 58 of 72 | 72 of 72 (ratio to reference 0.93-1.02) | held |
+  | K5 | n*PD <= 10 (23 scenarios): q shift below the reference in at least 69 of 92 | 49 of 92 | not held |
+  | K6 | n*PD >= 100 (18 scenarios): rho shift within ±25% of the reference in at least 58 of 72 | 72 of 72 (ratio to reference 0.93-1.06) | held |
+  | K7 | q-hat above the old upper end: 1x1-in-100 at most 5% in every B-D; 2x1-in-1000 at least 40% in at least 8 of 12 B; every D variant at most 10% | 1x1-in-100 over 5%: none; 2x1-in-1000 at 40% or more in B: 8 of 12 (range 0.279-0.446); D over 10%: none | held |
+  | K8 | q coverage: 1x1-in-100 at least pinned in at least 40 of 50; 2x1-in-1000 at least 0.05 below pinned in at least 8 of 12 B, and below pinned in at least 15 of 21 D | 37 of 50; 12 of 12; 21 of 21 | not held |
+  | K9 | T = 20: 1x1-in-1000 raises q-hat by a median of at least 15% in at least 10 of 12 B | 12 of 12 (range +0.189 to +1.167) | held |
+  | K10 | Scenarios 0, 3, 6: q-hat's median relative shift at most 0 under all four variants | 0: -0.046, -0.089, -0.046, -0.089; 3: -0.024, -0.046, -0.024, -0.046; 6: -0.010, -0.019, -0.010, -0.019 | held |
+
+- **Mitigation:** none needed for the estimator; the results are what a correctly specified model does. What needs care is how a refit is read after a severe year (below). The size of the jump is the M5 what-if recalibration's expected output, and it can be quoted from T alone: about 3.7/√T SE per 1-in-100 year and 6.5/√T SE per 1-in-1,000 year.
+- **Monitoring implication:**
+  - **A jump of the expected size is not evidence of a model change.** After one severe year, a rise in q̂ of up to about 3.7/√T SE (1-in-100) or 6.5/√T SE (1-in-1,000) is what the unchanged model produces. Compare the observed jump with this before reading it as a change in risk.
+  - **The new q̂ above the previous interval is a strong signal.** One severe year, even a 1-in-1,000 one, almost never produces it (at most 6.3% at T = 20, 0.4% at T = 100). It takes two 1-in-1,000 years in a 20-year history. A breach therefore warrants a review.
+  - **A refit right after a crisis overstates the long-run q.** Its interval is conditional on the bad years and covers the unchanged truth far less often than 95% (0.81–0.89 after one 1-in-1,000 year at T = 20, a quarter to a half after two). This is the conservative direction for capital, but a later run of ordinary years will then look like improvement. Report the number of severe years in the window beside every refit, and keep the pre-crisis fit alongside the post-crisis one.
 
 ## Deferred to M7 (recorded together, not started)
 

@@ -1,0 +1,29 @@
+{
+  "study": "S-34, sensitivity to severe new periods (D-160, D-162)",
+  "prediction": "studies/severe-period-sensitivity/PREDICTION.md, merged as #20 at 2026-09-28T07:30:51-04:00, before any run",
+  "scoring": "compare.py, committed ef5207f at 2026-09-28T07:33:19-04:00, before the full run started; run as: python compare.py summary.csv",
+  "compiler": "MSVC 1951, cpu-release",
+  "runs": {
+    "subset": {
+      "command": "study_severe_period --replicates 1000 --scenarios 29,37,72,4,68,49,7,43,51 --summary-out summary.csv --replicates-out replicates.csv",
+      "commit": "6b17b0187d1b553dbead74c6fee5c358344b931a (tree clean)",
+      "started": "2026-09-28T07:32:04-04:00",
+      "finished": "2026-09-28T08:06:43-04:00",
+      "wall_seconds": 2079,
+      "note": "exploration; its 45 summary rows equal the full run's for the same scenarios. It showed the shifts tracking the large-n reference and the coverage fall; the predictions were not amended"
+    },
+    "full": {
+      "command": "study_severe_period --replicates 1000 --summary-out summary.csv --replicates-out replicates.csv",
+      "commit": "6b17b0187d1b553dbead74c6fee5c358344b931a (the same binary; the scorer commit ef5207f adds only compare.py)",
+      "started": "2026-09-28T08:07:23-04:00",
+      "finished": "2026-09-28T14:19:43-04:00",
+      "wall_seconds": 22339,
+      "consistency": "the original panels' q profile coverage equals the pinned recovery summary in all 81 scenarios"
+    }
+  },
+  "files": {
+    "summary.csv": "sha256 6c2265641948be5de972225e0a0e9eef78230595c72ac88be039555599f160c8",
+    "replicates.parquet": "sha256 33ef4f4927399ed724fe42dcfd9a5a818a794ee1ff3d2755fadb858a62182c9c; from replicates.csv (not committed, 104 MB, sha256 16072cf9ef8c6de72b144e0ce65a7500dd28d49683014135c5299c0dc8b7501c) by export_replicates.py (pyarrow 25.0.1, zstd 19); all 7,695,000 cells equal",
+    "large_n_reference.py": "the model-only reference behind the predictions, committed with them"
+  }
+}
