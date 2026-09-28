@@ -103,9 +103,9 @@ not delay M3.
 |---|---|---|---|---|
 | S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
 | S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | finished (D-304) |
-| S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | registered (shared jackknife run) |
+| S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
 | S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | not registered |
-| S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | registered (shared jackknife run) |
+| S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
 | S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | not registered |
@@ -121,7 +121,7 @@ not delay M3.
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
 | S-19 | `z-extraction` | Z_t extraction, E[Z_t given d_t], as a standard output | M7 (deferred) | deferred; not started |
 | S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
-| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | registered (shared jackknife run) |
+| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | finished (D-159) |
 | S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
 | S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | finished (D-156) |
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
@@ -255,8 +255,50 @@ refined in each study's `PREDICTION.md`.
 - **Judged against:** the ρ small-T profile findings (29, 55, 72, 74) and the ρ PASS verdicts it
   could break.
 - **Cost:** about the subset baseline (≈ 7–12 min); pinning ≈ 1.3–2 h.
-- **Prediction:** registered, with S-5 and S-21, in [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J1–J6 for S-3) before any run, with addenda for the q Wald arms (J15–J18) and, after the subset exploration, a polished arm on the subset (J19–J23). **Result:** not run. **Mitigation:** backlog item since D-131.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered, with S-5 and S-21, in [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) before any run: J1–J6 for S-3; J15–J18, a bias-corrected Wald interval for q, in its first addendum; J19–J23, a polished arm on the subset, in its second, merged before that arm ran.
+- **Status:** finished 2026-09-28 (D-159). The summaries, per-replicate Parquet and provenance are in [`jackknife-bias-rho/`](jackknife-bias-rho/) (`MANIFEST.json`); the reviewed labels are kept apart in `reviewed.csv` (D-155), checked by `unit_study_jackknife`.
+- **Result:** the jackknife removes ρ̂'s small-T bias, and **computed from exact delete-one refits it costs almost nothing** in RMSE or coverage. Computed from the grid refinement, as registered, it costs a great deal of coverage, and that cost is the grid's, not the jackknife's.
+  - **Registered arm** (delete-one estimates from the 3 × 3 grid refinement; full matrix): the bias shrinks in 43 of the 50 informative scenarios. But the RMSE rises in all 12 of group B and by more than 3% in all 21 of group D, and the shifted interval's coverage moves by up to 0.143 from the parity profile's: 24 ρ profile PASS verdicts leave the band, all below. There are two patterns, and both come from the same source:
+    - **ρ = 0.02** (13 scenarios in B–D): coverage 0.80–0.91, 0.04–0.14 below parity, and RMSE 1.3–6.2 × ρ̂'s. The refined delete-one estimates are off by up to 0.97 SE (0.27 SE where the refinement is accepted; S-21's J14), and ρ̃ = T·ρ̂ − (T − 1)·mean ρ̂₍₋ₜ₎ multiplies that error by T − 1. ρ̃ also falls to the box's floor, in up to 5% of replicates.
+    - **ρ ≥ 0.12:** within 0.018 of parity at T = 20 and 40, but 0.009–0.117 below it at T = 100, where the factor T − 1 is largest, mostly from gaps of only 0.02–0.06 SE (0.38 SE at scenario 26, where some delete-one refinements are rejected).
+    - **Group A:** ρ̃ is set to the floor in at least 5% of replicates in 23 of the 31; 16 shifted intervals fall below the band and 5 stay above it.
+  - **Polished arm** (exact delete-one maxima; the 9 subset scenarios): in all 6 informative ones the shifted interval is within 0.008 of parity. At 29 it is 0.935 (registered 0.873, parity 0.927); at 51, 0.952 (registered 0.925, parity 0.953); at 43, 0.946 (0.930, 0.944). ρ̃'s bias is within ±0.0011 of zero, where ρ̂'s is −0.0011 to −0.0061, at an RMSE 0–5% above ρ̂'s. **So the registered arm's losses at T = 100 with ρ ≥ 0.12 were resolution as well, not the jackknife's own variance.** Group A keeps its losses: 4 and 7 stay 0.066 and 0.069 below parity, because setting ρ̃ to the floor is an effect of the box, not of resolution.
+  - **What that means for J2, J3 and J5:** their mechanism (a small bias removed at a small cost in variance, with coverage barely moving) is what the polished arm shows. They missed because the registered estimator was not the one the mechanism described. They stand as not held; the polished arm explains the misses and does not rescore them.
+- **q, a bias-corrected Wald interval (J15–J18, J23; S-23's mitigation 3):** neither sub-arm rescues the Wald interval for q.
+  - **(a), q̃ with the delta-method SE:** above S-23's Wald coverage in 10 of its 17 below-band scenarios, in the band in 2. Polishing lifts it (29: 0.906, against 0.849 registered and 0.887 for S-23's Wald) but not into the band at T = 20.
+  - **(b), q̃ with the jackknife SE:** covers at least as well as (a) in only 6 of the 17, and is in the band in none. It is never above the band.
+  - **Diagnosis** ([`jackknife-bias-rho/diagnose.py`](jackknife-bias-rho/diagnose.py), written after the results). Outside ρ = 0.02, a symmetric interval q̃ ± 1.96 × (the error's standard deviation) covers 0.944–0.957: the corrected centre is nearly unbiased and nearly symmetric (skewness −0.22 to +0.02). Adding each SE's defects one at a time:
+    - **SE_Δ:** slightly small on average (coverage 0.929–0.951 at its root-mean-square size), noisy (0.917–0.940 with its own values shuffled across replicates) and tied to the error (0.906–0.936 as it is; correlation +0.63 to +0.88);
+    - **SE_J:** the right size on average (0.940–0.968), but twice as noisy (coefficient of variation 0.20–0.30 against SE_Δ's 0.10–0.15). The noise alone costs 2–4.5 points (0.907–0.928), because coverage is concave in the SE near 1.96: the replicates where the SE happens to be small lose more than those where it is large gain. Its link to the error is weaker (correlation +0.27 to +0.50; J17 held) and costs little.
+    - **At ρ = 0.02** the corrected centre's error is 1.3–2.9 × wider than either SE, and skewed (up to +2.8), as the amplified refinement gaps would make it.
+
+    In one line: **bias correction plus Wald fails for q because a symmetric interval needs a steady SE of the right size, and neither the delta-method SE (slightly small, and tied to the error) nor the jackknife SE (right on average but noisy) is one. Profile intervals need no SE.**
+- **Comparison with the predictions** (scored by [`jackknife-bias-rho/compare.py`](jackknife-bias-rho/compare.py), committed before any result of the full run existed; D-159). Of S-3's J1–J6, J1 and J4 held; of the polished arm's J19–J23, 4 of 5 held; of the q sub-arms' J15–J18, J17 held. J20 missed favourably: polishing changed 43 and 51 by more than predicted, because the registered losses there were resolution too.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | J1 | \|bias(ρ̃)\| < \|bias(ρ̂)\| in at least 40 of 50 (B-D) | 43 of 50 | held |
+  | J2 | RMSE(ρ̃) > RMSE(ρ̂) in at least 9 of 12 (B); within ±3% in at least 15 of 21 (D) | B: 12 of 12; D: 0 of 21 | not held |
+  | J3 | B-D: shifted coverage within 0.015 of parity in every scenario, higher in at least 30 of 50 | largest \|difference\| 0.143 (26 beyond 0.015); higher in 9 | not held |
+  | J4 | At most 2 of the ρ small-T findings (29, 55, 74, 72) move into the band | moved: 74 | held |
+  | J5 | At most 2 B-D ρ profile PASS verdicts leave the band with the shift | 24: 56, 5, 13, 31, 32, 49, 58, 59, 8, 16, 17, 25, 26, 34, 35, 42, 44, 51, 52, 53, 61, 62, 71, 80 | not held |
+  | J6 | ρ̃ clamped in at least 5% of replicates in at least 10 of 31 (A); under 1% in every C and D | A: 23 of 31; C/D at 1% or more: 5, 13, 31, 32, 58, 59, 8, 26, 34, 35, 61, 62 | not held |
+  | J19 | 29: polished shifted coverage at least 0.91; ρ̃_p's RMSE at least 20% below the registered ρ̃'s | 0.935; RMSE 0.0070 vs 0.0099 | held |
+  | J20 | 37, 68, 49, 43, 51: polished and registered shifted coverages within 0.01 | 37: +0.004; 68: +0.007; 49: +0.008; 43: +0.016; 51: +0.027 | not held |
+  | J21 | 4, 7: polished shifted coverage still at least 0.03 below parity | 4: -0.066; 7: -0.069 | held |
+  | J22 | At least 5 of the 6 informative: polished shifted coverage within 0.015 of parity | 6 of 6 (29: +0.008; 37: -0.004; 68: -0.003; 49: +0.000; 43: +0.002; 51: -0.001) | held |
+  | J15 | (a) above S-23's Wald in at least 14 of 17; (a) in the band in 5-12 of them | above in 10; in the band in 2 | not held |
+  | J16 | (b) covers at least as well as (a) in at least 14 of the 17; in the band at least as often | (b) ≥ (a) in 6; in the band: (b) 0, (a) 2 | not held |
+  | J17 | error-SE correlation lower for SE_J than SE_Δ in at least 12 of the 17 | 17 of 17 | held |
+  | J18 | of S-23's 32 Wald PASS at most 3 leave under (a) and at most 3 under (b); (b) above the band in at most 5 of 50 | (a) 11; (b) 16; (b) above 0 | not held |
+  | J23 | q (a): polished at least registered - 0.005 in each of the 6, higher at 29 | 29: 0.906 vs 0.849; 37: 0.924 vs 0.916; 68: 0.933 vs 0.924; 49: 0.934 vs 0.929; 43: 0.932 vs 0.928; 51: 0.964 vs 0.944 | held |
+
+- **Mitigation:**
+  1. **Jackknife bias correction requires exact delete-one refits.** A `native` option must maximise each delete-one panel off the grid (T profile maximisations: seconds for one production fit), since ρ̃ multiplies the grid refinement's error by T − 1. *Supported by S-3's polished arm* on 6 informative scenarios; the full matrix was not polished.
+  2. **Bias correction is a point-estimate adjustment, not an interval method.** Even exact, shifting the profile interval to ρ̃ gains nothing in coverage (within 0.008 of parity). Report ρ̃ beside ρ̂ where the small-T bias matters, and keep the profile interval around the MLE.
+  3. **Not near a bound:** in group A, ρ̃ is set to the floor often, and the shifted interval undercovers by about 0.07 even when exact. Do not apply it where the profile interval is box-limited.
+  4. **q:** bias correction plus Wald is not a remedy (above). S-23's mitigation 3 is updated accordingly.
+- **Monitoring implication:** ρ̃ is a useful check on ρ̂ only when computed from exact delete-one fits: a large gap between them flags small-T bias or an influential period (S-21). From the grid refinement it mostly measures the grid. Intervals and thresholds stay on the profile likelihood.
 
 ### S-4 Bartlett-corrected profile threshold (`bartlett-profile`)
 
@@ -282,8 +324,29 @@ refined in each study's `PREDICTION.md`.
 - **Experiment:** a `native` option. z₀ comes from the existing B = 999 replicates; the
   acceleration from the jackknife (as S-3). Report BCa next to percentile, pairwise.
 - **Cost:** about the subset baseline; pinning ≈ 1.3–2 h.
-- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J7–J10 for S-5) before any run. **Result:** not run. **Mitigation:** backlog item since D-137.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J7–J10 for S-5) before any run.
+- **Status:** finished 2026-09-28, with S-3 and S-21 (D-159); data in [`jackknife-bias-rho/`](jackknife-bias-rho/).
+- **Result:** **for ρ, BCa is a clear improvement on the percentile interval; for PD it changes nothing.**
+  - **ρ:** BCa covers better than the percentile interval in all 50 informative scenarios, by 0.043–0.069 at T = 20, 0.012–0.053 at T = 40 and 0.001–0.031 at T = 100. In the band: 20 of 21 at T = 100 (percentile: 6), 8 of 17 at T = 40 (none), 1 of 12 at T = 20 (none). Group B stays below the band (0.861–0.930).
+  - **PD:** BCa minus percentile has a median of +0.006, +0.003 and 0.000 at T = 20, 40 and 100. In the band: 26 of 50, the same number as the percentile interval.
+  - **Group A (boundary breakdown, 57 verdicts):** 48 stay below the band, as predicted, although BCa is not computed in at least 2% of replicates in only 7 scenarios, not 10.
+  - **Totals over 162:** 97 below the band (percentile: 125), none above.
+  - **Why PD gains nothing:** z₀ and a correct the interval's location and skew; PD's percentile interval is short on width. A percentile interval for a mean of T periods is too narrow twice over: it uses the normal quantile where Student's t applies, and resampling T periods gives a variance (T − 1)/T of the truth. That alone predicts coverage of 0.929, 0.940 and 0.946 at T = 20, 40 and 100. PD's percentile coverage averages 0.901, 0.924 and 0.935 (BCa: 0.905, 0.925, 0.934), so width accounts for about half the shortfall at T = 20, and BCa for none of it. The rest is not diagnosed here. For ρ the shortfall is largely median bias and skew (D-137), which is what BCa corrects.
+- **Comparison with the predictions:** J7 and J10 held; J8 and J9 did not. J8's miss is an effect that did not appear (BCa does not improve PD at all); J9's is in size.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | J7 | ρ B-D: BCa > percentile in at least 45 of 50; BCa below in at least 8 of 12 (B); at least 14 of 21 PASS (D) | 50 of 50; B below 11; D PASS 20 | held |
+  | J8 | PD B-D: BCa in the band in at least 35 of 50 | 26 of 50 | not held |
+  | J9 | Of the 57 boundary-breakdown verdicts at least 45 stay below; BCa not computed in at least 2% of replicates in at least 10 scenarios | 48 stay below; not computed at 2% or more in 7 scenarios | not held |
+  | J10 | Totals over 162: BCa below 60-100; above at most 5 | below 97; above 0 | held |
+
+- **Mitigation:**
+  1. **Profile-likelihood intervals first.** They cover everywhere except about one point short at T = 20 (S-13).
+  2. **If a bootstrap interval for ρ is needed, use BCa, never the percentile interval.** *Supported by S-5.* At T = 20 even BCa undercovers (0.86–0.93).
+  3. **For PD, BCa is no remedy.** A correction of width (a studentised or parametric bootstrap, S-10; an iterated bootstrap, S-12) is the candidate, untested.
+  4. **Near a bound, no bootstrap interval:** BCa does not repair the boundary breakdown.
+- **Monitoring implication:** a bootstrap band for ρ should be BCa. For PD, do not build monitoring bands on the iid bootstrap at T ≤ 40: they are 2–5 points short of nominal, in either form.
 
 ### S-6 Pluto–Tasche most-prudent upper bounds (`pluto-tasche`)
 
@@ -441,7 +504,6 @@ refined in each study's `PREDICTION.md`.
 - **Monitoring implication:** at T = 20 a nominal 95% profile interval is about a 94% interval.
   A monitoring threshold built on it at T ≈ 20 should either widen it (S-4) or state its
   coverage as about 94%. Long histories (T ≥ 100) show no such shortfall.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-14 Backtest power (`backtest-power`)
 
@@ -515,8 +577,24 @@ refined in each study's `PREDICTION.md`.
 - **Cost:** ≈ 10–15 min on the subset including the fits; ≈ 3–5 min on top of an S-3/S-5 run
   (leave-two-out at T = 100 costs about five iid bootstraps). Full matrix ≈ 1.5–2.5 h. The exact
   refits add ≈ 10 min.
-- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J11–J14 for S-21) before any run. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in the shared run's [`jackknife-bias-rho/PREDICTION.md`](jackknife-bias-rho/PREDICTION.md) (J11–J14 for S-21) before any run.
+- **Status:** finished 2026-09-28, with S-3 and S-5 (D-159); data in [`jackknife-bias-rho/`](jackknife-bias-rho/).
+- **Result:**
+  - **Size:** in groups B–D the median of the largest leave-one-out change in ρ̂ is 0.53–0.69 SE at T = 20, 0.49–0.61 at T = 40 and 0.40–0.55 at T = 100, falling with T in every cell; its 90th percentile is 0.99–1.11, 0.79–1.21 and 0.62–0.98. For PD̂ the medians are 0.56–0.61, 0.46–0.58 and 0.33–0.55.
+  - **Pairs:** the largest leave-two-out change is 1.65–1.87 times the largest leave-one-out change (median).
+  - **Which period:** **the most influential period is often not the one with the most extreme factor.** It is in 25–80% of replicates, and under 60% in 33 of the 50 scenarios. The share rises with the expected defaults per period, n·PD: its median is 0.34 at n·PD ≤ 5, 0.45 at 10, 0.60 at 50–100 and 0.75 at 500. With few defaults a period's count is a noisy reading of its factor, so the realised count and the period's place relative to the fit decide which period moves ρ̂, not Z_t.
+  - **Resolution:** the refined delete-one estimates differ from the exact maxima by up to 0.97 SE (scenario 35) and by 0.27 SE where the refinement is accepted; 18 scenarios reach 0.05 SE, mostly at ρ = 0.02. Against influences of 0.4–0.7 SE that is small outside ρ = 0.02 (gaps of at most 0.06 SE), but S-3 multiplies it by T − 1.
+- **Comparison with the predictions:** J11 and J13 held; J12 and J14 did not, both in size.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | J11 | B-D median largest \|Δρ\| in range by T (0.45-0.85, 0.4-0.75, 0.3-0.65) in every scenario, falling with T in every cell outside A | outside range: none; cells not falling (by T = 20 scenario): none | held |
+  | J12 | B-D: the most influential period has the most extreme Z in at least 60% of replicates, every scenario | range 0.25-0.80; below 60%: 33 | not held |
+  | J13 | B-D: median leave-two/leave-one ratio 1.3-1.9 in every scenario | range 1.65-1.87 | held |
+  | J14 | Refined vs exact delete-one estimates under 0.05 SE in every checked replicate outside A | largest 0.968 SE (scenario 35); over unflagged delete-one fits 0.267; scenarios at 0.05 or more: 18 | not held |
+
+- **Mitigation:** compute influence from the data, with exact delete-one refits where ρ is small; do not infer it from the factor or from the default rate alone.
+- **Monitoring implication:** "the crisis year drives ρ̂" is a hypothesis to check, not an assumption: with a few defaults a period, the period with the most extreme factor is the most influential in only about a third of histories. Report each period's leave-one-out influence beside ρ̂. At T = 20, a largest influence above about 1.1 SE lies beyond the 90th percentile of what a correctly specified model produces, and is worth a review.
 
 ### S-22 Box sensitivity (`box-sensitivity`)
 
@@ -597,8 +675,10 @@ refined in each study's `PREDICTION.md`.
   1. **Use profile-likelihood intervals for q.** *Supported by S-23.* They cover correctly except in 2 scenarios at T = 20, and are conservative where the data are nearly uninformative. This is the recommended method.
   2. **Do not use delta-method Wald intervals for q.** *Supported by S-23.* The failure is low estimates with narrow intervals (q̂ inherits ρ̂'s downward bias, and its SE shrinks with it): 11 of 12 below the band at T = 20, 5 of 17 at T = 40, and still one at T = 100 with n = 10⁴, so a longer history reduces it without reliably removing it. Moving to the logit(q) scale is no remedy: the interval tested here is already symmetric in logit(q).
   3. **If a Wald-type interval is unavoidable** (a downstream system that takes only an estimate ± SE), candidate fixes, each still to be tested:
-     - **bias-correct first:** q at the jackknife-corrected ρ̃, then Wald, with the delta-method SE or with the jackknife's own SE. *Pending S-3*: registered as two sub-arms (J15–J18, an addendum to the shared jackknife run's prediction, merged before that run). S-23's oracle shift bounds what the centre alone can do (0.916–0.947), so the SE sub-arm is expected to matter.
-     - **parametric bootstrap:** *pending S-10.*
+     - **bias-correct first:** *tested and failed* (S-3's q sub-arms, D-159). Neither the delta-method SE nor the jackknife SE rescues it, even with exact delete-one fits: a symmetric interval needs a steady SE of the right size, and the delta-method SE is slightly small and tied to the error, the jackknife SE right on average but noisy.
+     - **parametric bootstrap:** *pending S-10*, the one alternative still untested.
+
+     Profile-likelihood intervals are therefore the only supported method for q.
   4. **Treat short histories explicitly.** At T = 20 even profile intervals can undercover slightly, and S-13 is testing whether that is systematic. Report the history length alongside q's interval, and prefer the upper end of the profile interval when the estimate feeds a stress or capital figure.
 - **Monitoring implication:** compare the production q against the *profile* interval of each fresh estimate. Wald intervals for q sit too low, so a check built on them fails in the costly direction: a production q that understates risk looks consistent with the data (a missed alarm), while a correctly set one is flagged as too high more often than the nominal 5%. Keep the history length beside every interval reported (see mitigation 4).
 

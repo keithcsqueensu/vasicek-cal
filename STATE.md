@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159)
 
 ## Current status
 
@@ -131,7 +131,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
   - **Coverage study** (full matrix, iid, B = 999; predictions committed before the run): 37 PASS and 125 below the band, all pinned.
     - Boundary breakdown near bounds; no bias or skewness correction elsewhere; ρ undercovers at every T.
     - **Conclusion:** profile-likelihood intervals are the recommended method for inference; bootstrap percentile intervals are not recommended for ρ.
-    - Moving-block coverage moves to M6; BCa stays on the backlog.
+    - Moving-block coverage moves to M6; BCa was studied in S-5 (D-159): for ρ it beats the percentile interval.
 - **M2c (C ABI v0.1): done** (D-138–D-144). M2 is complete.
   - `include/vcal/vcal.h`, plain C99, and `abi/`, the shared library `vcal`.
   - **Functions:** calibrate (with profile intervals), surface, resample (six W sources, percentile intervals, the implied W), DGP simulate, grid helpers, build info, errors and the context.
@@ -190,7 +190,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
 1. **First batch of studies (D-151), in this order, before M3:**
    1. S-23 (done, D-156): profile-likelihood intervals for the 99.9% conditional PD;
    2. S-13 targeted (done, D-158): at T = 20 the profile interval undercovers by about one point, systematically (coverage about 0.94 at R = 10,000); the six findings are real but not special;
-   3. the shared jackknife run: S-3, S-5, S-21 (registered, D-155);
+   3. the shared jackknife run (done, D-159): BCa beats the percentile interval for ρ (20 of 21 in the band at T = 100) but not for PD; jackknife bias correction removes ρ̂'s bias only with exact delete-one refits, and is a point-estimate adjustment, not an interval method; bias correction plus Wald does not rescue q; the most influential period is often not the one with the most extreme factor (S-3, S-5, S-21);
    4. S-1 (done, D-301) and S-2 (done, D-304);
    5. S-34: sensitivity to severe new periods (D-152).
 
@@ -199,8 +199,8 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
 3. **The other studies** keep the placement below and are ordered when M3 ends.
 4. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
-   - a bias-corrected ρ̂, the small-sample bias benchmark: now study S-3 (jackknife);
-   - BCa bootstrap intervals (they will not fix the boundary breakdown near a bound): now study S-5;
+   - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
+   - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;
    - the stationary bootstrap and a data-driven block length (Politis–White); moving-block coverage is studied in M6 with AR(1) data.
 
 ## Milestones

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // resample/ (M2b): weight matrices, replicate estimates from W x L, percentile intervals
-// (D-132..D-135).
+// (D-132..D-135); jackknife bias correction, BCa and leave-two-out weights (S-3, S-5, S-21; D-155).
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -14,6 +14,7 @@
 #include "dgp/philox.hpp"
 #include "engine/calibrate.hpp"
 #include "resample/bootstrap.hpp"
+#include "resample/jackknife.hpp"
 #include "resample/weights.hpp"
 #include "tests/harness/golden.hpp"
 #include "tests/harness/vcal_test.hpp"
@@ -240,4 +241,82 @@ VCAL_TEST(percentile_interval_is_type_7) {
     VCAL_CHECK_REL(ci.hi, 9.1, 1e-15);
     VCAL_CHECK_EQ(ci.used, 10);
     VCAL_CHECK_EQ(ci.excluded, 1);
+}
+
+// --- the shared jackknife run (S-3, S-5, S-21; D-155) -----------------------------------------------
+
+// Leave-two-out rows: every pair once, in lexicographic order, with both periods deleted.
+VCAL_TEST(delete_two_weights_cover_every_pair_once) {
+    const std::int64_t T = 5;
+    const auto w = rs::delete_two_weights(T);
+    VCAL_REQUIRE(static_cast<std::int64_t>(w.size()) == T * (T - 1) / 2 * T);
+    std::int64_t row = 0;
+    for (std::int64_t s = 0; s < T; ++s) {
+        for (std::int64_t t = s + 1; t < T; ++t, ++row) {
+            for (std::int64_t u = 0; u < T; ++u) {
+                VCAL_CHECK_EQ(w[static_cast<std::size_t>(row * T + u)], (u == s || u == t) ? 0.0 : 1.0);
+            }
+        }
+    }
+}
+
+// Quenouille's correction turns the plug-in variance (divisor T) into the unbiased one (divisor
+// T - 1) exactly: the textbook identity, up to rounding.
+VCAL_TEST(jackknife_bias_correction_of_the_plug_in_variance) {
+    const std::vector<double> x = {0.3, 1.7, 2.2, 2.9, 3.4, 3.8, 4.1, 5.0, 6.6, 9.3};
+    const auto T = static_cast<std::int64_t>(x.size());
+    const auto plug_in = [&](std::int64_t skip) {
+        double m = 0.0, n = 0.0;
+        for (std::int64_t i = 0; i < T; ++i) {
+            if (i != skip) { m += x[static_cast<std::size_t>(i)]; n += 1.0; }
+        }
+        m /= n;
+        double v = 0.0;
+        for (std::int64_t i = 0; i < T; ++i) {
+            if (i != skip) v += (x[static_cast<std::size_t>(i)] - m) * (x[static_cast<std::size_t>(i)] - m);
+        }
+        return v / n;
+    };
+    std::vector<double> minus(static_cast<std::size_t>(T));
+    for (std::int64_t t = 0; t < T; ++t) minus[static_cast<std::size_t>(t)] = plug_in(t);
+    const double corrected = rs::jackknife_bias_corrected(plug_in(-1), minus.data(), T);
+    const double unbiased = plug_in(-1) * static_cast<double>(T) / static_cast<double>(T - 1);
+    vcal::test::note("corrected " + describe(corrected) + ", unbiased " + describe(unbiased));
+    VCAL_CHECK_REL(corrected, unbiased, tol::TOL_RESAMPLE_JACKKNIFE_REL);
+}
+
+// BCa against scipy/numpy on a small case (norm.ppf, norm.cdf, numpy.quantile's default type 7):
+// z0 = -0.2533471031357997, a = -0.059709802247422554, ends 0.3318271240904089 and 6.928724371446333.
+VCAL_TEST(bca_interval_matches_scipy) {
+    const std::vector<double> x = {9.3, 0.3, 1.7, 2.2, 2.9, std::nan(""), 3.4, 3.8, 4.1, 5.0, 6.6};
+    const std::vector<double> jack = {3.1, 3.3, 3.45, 3.6, 4.2};
+    const auto ci = rs::bca_interval(x.data(), static_cast<std::int64_t>(x.size()), 3.0, jack.data(), 5);
+    VCAL_REQUIRE(ci.computed);
+    const double want[4] = {-0.2533471031357997, -0.059709802247422554, 0.3318271240904089, 6.928724371446333};
+    const double got[4] = {ci.z0, ci.acceleration, ci.lo, ci.hi};
+    double worst = 0.0;
+    for (int k = 0; k < 4; ++k) worst = std::fmax(worst, std::fabs(got[k] / want[k] - 1.0));
+    vcal::test::note("BCa against scipy: worst relative difference " + describe(worst));
+    VCAL_CHECK(worst <= tol::TOL_RESAMPLE_JACKKNIFE_REL);
+    // With z0 = 0 and a = 0 BCa is the percentile interval.
+    const std::vector<double> sym = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0};
+    const std::vector<double> flat = {1.0, 2.0, 3.0};  // symmetric: a = 0
+    const auto p = rs::bca_interval(sym.data(), 9, 5.0, flat.data(), 3);
+    VCAL_REQUIRE(p.computed);
+    VCAL_CHECK_EQ(p.z0, 0.0);
+    VCAL_CHECK_EQ(p.acceleration, 0.0);
+    std::vector<double> sorted = sym;
+    VCAL_CHECK_REL(p.lo, rs::quantile_type7(sorted, 0.025), tol::TOL_RESAMPLE_JACKKNIFE_REL);
+    VCAL_CHECK_REL(p.hi, rs::quantile_type7(sorted, 0.975), tol::TOL_RESAMPLE_JACKKNIFE_REL);
+}
+
+// Not computed: every replicate above the estimate (z0 infinite), or no jackknife spread.
+VCAL_TEST(bca_interval_not_computed_at_a_boundary) {
+    const std::vector<double> above = {2.0, 3.0, 4.0};
+    const std::vector<double> jack = {1.0, 2.0, 3.0};
+    const auto a = rs::bca_interval(above.data(), 3, 1.0, jack.data(), 3);
+    VCAL_CHECK(!a.computed && std::isnan(a.lo) && std::isnan(a.hi));
+    const std::vector<double> same = {2.0, 2.0, 2.0};
+    const auto b = rs::bca_interval(above.data(), 3, 3.0, same.data(), 3);
+    VCAL_CHECK(!b.computed);
 }

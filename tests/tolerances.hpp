@@ -153,6 +153,9 @@ inline constexpr double TOL_ZSIGN_SE_REL = 2e-9;
 // Observed 0 (iid and moving block, 8 replicates each); a bound, not zero, since agreement is not
 // guaranteed by construction.
 inline constexpr double TOL_RESAMPLE_VS_REFIT_REL = 1e-12;
+// The jackknife bias correction (the plug-in variance becomes the unbiased one) and BCa (z0, a and
+// both ends) against scipy/numpy on small cases, relative. Observed 5.4e-16; doubled and rounded up.
+inline constexpr double TOL_RESAMPLE_JACKKNIFE_REL = 2e-15;
 // Bootstrap percentile-interval ends of the recovery replay across platforms, relative. Each end
 // interpolates two replicate estimates; a last-digit difference can reorder near-equal ones or move
 // a replicate's refinement. Observed on Linux (GCC 11/14, Clang 18): 8.8e-12, doubled and rounded up.
