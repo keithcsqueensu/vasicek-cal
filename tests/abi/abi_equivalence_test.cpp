@@ -6,12 +6,16 @@
 // the conventions a C caller sees; this one covers the numbers.
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "backends/cpu/cpu_backend.hpp"
 #include "core/quadrature/parity.hpp"
 #include "dgp/dgp.hpp"
+#include "core/objectives/vasicek_rate.hpp"
 #include "engine/calibrate.hpp"
+#include "engine/moments.hpp"
+#include "engine/posterior.hpp"
 #include "engine/profile.hpp"
 #include "resample/bootstrap.hpp"
 #include "resample/weights.hpp"
@@ -321,4 +325,203 @@ VCAL_TEST(abi_dgp_equals_the_engine) {
     VCAL_CHECK(d == d_engine);
     VCAL_CHECK(bits_equal(z, z_engine));
     VCAL_CHECK_EQ(d[1], std::int64_t{0});  // a period with no obligors has no defaults
+}
+
+// ---- ABI 0.3: the M3 estimators (D-169) ----------------------------------------------------------
+
+namespace {
+
+namespace ob = vcal::objectives;
+using RateRefuse = ob::VasicekRate<vcal::PrecisionF64, ob::ZeroRates::Refuse>;
+using RateCensor = ob::VasicekRate<vcal::PrecisionF64, ob::ZeroRates::Censor>;
+using RateSubstitute = ob::VasicekRate<vcal::PrecisionF64, ob::ZeroRates::Substitute>;
+
+struct NativeContext {
+    NativeContext() {
+        auto o = sized<vcal_context_options>();
+        o.profile = VCAL_PROFILE_NATIVE;
+        VCAL_REQUIRE(vcal_context_create(&o, &ctx) == VCAL_OK);
+    }
+    ~NativeContext() { vcal_context_destroy(ctx); }
+    NativeContext(const NativeContext&) = delete;
+    NativeContext& operator=(const NativeContext&) = delete;
+    vcal_context* ctx = nullptr;
+};
+
+template <class O>
+void check_rate_fit(const std::vector<ob::RateObs>& obs, const vcal_estimate& a, const vcal_profile_intervals& ap) {
+    const vcal::Grid<2> g = vcal::recovery::grid();
+    const auto primary = vcal::quadrature::parity_rule();
+    const auto check = vcal::quadrature::parity_rule(true);
+    const auto T = static_cast<std::int64_t>(obs.size());
+    std::vector<double> L;
+    e::Estimate2 est{};
+    VCAL_REQUIRE(e::calibrate(vcal::backends::CpuBackend{}, O{}, primary, check, obs.data(), T, g, L, est) == e::Status::Ok);
+    const auto prof = e::profile_intervals(O{}, primary, obs.data(), T, g, L, est);
+    VCAL_CHECK_EQ(a.flags, est.flags);
+    VCAL_CHECK(bits_equal(a.pd, est.value[0]) && bits_equal(a.rho, est.value[1]));
+    VCAL_CHECK(bits_equal(a.se_pd, est.se[0]) && bits_equal(a.se_rho, est.se[1]) && bits_equal(a.loglik, est.loglik));
+    VCAL_CHECK(bits_equal(ap.pd_lo, prof.lo[0]) && bits_equal(ap.pd_hi, prof.hi[0]));
+    VCAL_CHECK(bits_equal(ap.rho_lo, prof.lo[1]) && bits_equal(ap.rho_hi, prof.hi[1]));
+    VCAL_CHECK(bits_equal(ap.pd_at_max, prof.max_at[0]) && bits_equal(ap.rho_at_max, prof.max_at[1]));
+}
+
+}  // namespace
+
+// The rate MLE on count data and on a rate series, each treatment, equals the engine bit for bit.
+VCAL_TEST(abi_rate_mle_equals_the_engine) {
+    const vcal_grid grid = default_grid();
+    // Count data without zeros (scenario 41: PD 1%, rho 0.12, T = 40, n = 10^4): parity refuses nothing.
+    {
+        const Context c;
+        const Panel p(41, 0);
+        std::vector<ob::RateObs> obs;
+        for (const auto& y : p.obs) obs.push_back(ob::rate_obs(y.n, y.d));
+        VCAL_REQUIRE(ob::zero_rate_periods(obs.data(), static_cast<std::int64_t>(obs.size())).empty());
+        auto a = sized<vcal_estimate>();
+        auto ap = sized<vcal_profile_intervals>();
+        VCAL_REQUIRE(vcal_calibrate_rate(c.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_REFUSE, &a, &ap) == VCAL_OK);
+        check_rate_fit<RateRefuse>(obs, a, ap);
+        VCAL_CHECK(a.quad_check_max == 0.0 && a.quad_check_flagged == 0);
+    }
+    // Count data with zero-default periods (scenario 30: PD 1%, rho 0.02, T = 40, n = 100), native.
+    const NativeContext c;
+    const Panel p(30, 0);
+    std::vector<ob::RateObs> obs;
+    for (const auto& y : p.obs) obs.push_back(ob::rate_obs(y.n, y.d));
+    VCAL_REQUIRE(!ob::zero_rate_periods(obs.data(), static_cast<std::int64_t>(obs.size())).empty());
+    {
+        auto a = sized<vcal_estimate>();
+        auto ap = sized<vcal_profile_intervals>();
+        VCAL_REQUIRE(vcal_calibrate_rate(c.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_CENSOR, &a, &ap) == VCAL_OK);
+        check_rate_fit<RateCensor>(obs, a, ap);
+    }
+    {
+        auto a = sized<vcal_estimate>();
+        auto ap = sized<vcal_profile_intervals>();
+        VCAL_REQUIRE(vcal_calibrate_rate(c.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_SUBSTITUTE, &a, &ap) == VCAL_OK);
+        check_rate_fit<RateSubstitute>(obs, a, ap);
+    }
+    {
+        auto a = sized<vcal_estimate>();
+        auto ap = sized<vcal_profile_intervals>();
+        VCAL_REQUIRE(vcal_calibrate_rate(c.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_DROP, &a, &ap) == VCAL_OK);
+        check_rate_fit<RateRefuse>(ob::drop_zero_rate_periods(obs.data(), static_cast<std::int64_t>(obs.size())), a, ap);
+    }
+    // The same data as a rate series with its detection limits.
+    {
+        std::vector<double> r, lim;
+        for (const auto& y : obs) {
+            r.push_back(y.rate);
+            lim.push_back(y.detect);
+        }
+        auto rs = sized<vcal_rate_series>();
+        rs.n_periods = static_cast<std::int64_t>(r.size());
+        rs.rates = r.data();
+        rs.detection_limits = lim.data();
+        auto a = sized<vcal_estimate>();
+        auto ap = sized<vcal_profile_intervals>();
+        VCAL_REQUIRE(vcal_calibrate_rate(c.ctx, nullptr, &rs, &grid, VCAL_ZERO_RATES_CENSOR, &a, &ap) == VCAL_OK);
+        check_rate_fit<RateCensor>(obs, a, ap);
+    }
+}
+
+// Parity refuses zero rates and names the periods; native treatments need a native context; a
+// series with zero rates needs its detection limits.
+VCAL_TEST(abi_rate_mle_refusals) {
+    const vcal_grid grid = default_grid();
+    const Panel p(30, 0);
+    const Context parity;
+    auto a = sized<vcal_estimate>();
+    VCAL_CHECK(vcal_calibrate_rate(parity.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_REFUSE, &a, nullptr) ==
+               VCAL_E_INVALID_ARGUMENT);
+    char msg[512];
+    VCAL_REQUIRE(vcal_last_error(msg, sizeof msg, nullptr) == VCAL_OK);
+    VCAL_CHECK(std::strstr(msg, "refused (D-044): periods ") != nullptr);
+    VCAL_CHECK(vcal_calibrate_rate(parity.ctx, &p.abi, nullptr, &grid, VCAL_ZERO_RATES_CENSOR, &a, nullptr) ==
+               VCAL_E_INVALID_ARGUMENT);
+    VCAL_REQUIRE(vcal_last_error(msg, sizeof msg, nullptr) == VCAL_OK);
+    VCAL_CHECK(std::strstr(msg, "VCAL_PROFILE_NATIVE") != nullptr);
+    const NativeContext native;
+    VCAL_CHECK(vcal_calibrate_rate(native.ctx, &p.abi, nullptr, &grid, 7, &a, nullptr) == VCAL_E_INVALID_ARGUMENT);
+    VCAL_CHECK(vcal_calibrate_rate(native.ctx, nullptr, nullptr, &grid, VCAL_ZERO_RATES_CENSOR, &a, nullptr) ==
+               VCAL_E_INVALID_ARGUMENT);
+    const double r[3] = {0.01, 0.0, 0.02};
+    auto rs = sized<vcal_rate_series>();
+    rs.n_periods = 3;
+    rs.rates = r;
+    VCAL_CHECK(vcal_calibrate_rate(native.ctx, nullptr, &rs, &grid, VCAL_ZERO_RATES_CENSOR, &a, nullptr) ==
+               VCAL_E_INVALID_ARGUMENT);  // a zero rate without detection limits
+}
+
+// The method of moments, counts and rates, equals the engine bit for bit.
+VCAL_TEST(abi_moments_equal_the_engine) {
+    const Context c;
+    const vcal_grid grid = default_grid();
+    const vcal::Grid<2> g = vcal::recovery::grid();
+    const auto integrator = vcal::quadrature::parity_rule();
+    for (const auto scenario : {40u, 0u, 30u}) {
+        const Panel p(scenario, 0);
+        const auto m = e::mom_from_counts(integrator, p.obs.data(), p.periods(), g.axis[0].lo, g.axis[0].hi, g.axis[1].lo,
+                                          g.axis[1].hi);
+        auto a = sized<vcal_moments_estimate>();
+        VCAL_REQUIRE(vcal_calibrate_moments(c.ctx, &p.abi, nullptr, &grid, &a) == VCAL_OK);
+        VCAL_CHECK_EQ(a.flags, m.flags);
+        VCAL_CHECK(bits_equal(a.pd, m.pd) && bits_equal(a.rho, m.rho) && bits_equal(a.pd2, m.pd2));
+        std::vector<double> r;
+        for (const auto& y : p.obs) r.push_back(static_cast<double>(y.d) / static_cast<double>(y.n));
+        const auto mr = e::mom_from_rates(integrator, r.data(), p.periods(), g.axis[0].lo, g.axis[0].hi, g.axis[1].lo,
+                                          g.axis[1].hi);
+        auto rs = sized<vcal_rate_series>();
+        rs.n_periods = p.periods();
+        rs.rates = r.data();
+        VCAL_REQUIRE(vcal_calibrate_moments(c.ctx, nullptr, &rs, &grid, &a) == VCAL_OK);
+        VCAL_CHECK_EQ(a.flags, mr.flags);
+        VCAL_CHECK(bits_equal(a.pd, mr.pd) && bits_equal(a.rho, mr.rho) && bits_equal(a.pd2, mr.pd2));
+    }
+}
+
+// The grid posterior, both priors, equals the engine bit for bit; the Jeffreys table is reused
+// within a context; unequal n with Jeffreys is unsupported.
+VCAL_TEST(abi_posterior_equals_the_engine) {
+    const Context c;
+    const vcal_grid grid = default_grid();
+    const vcal::Grid<2> g = vcal::recovery::grid();
+    const auto primary = vcal::quadrature::parity_rule();
+    const auto check = vcal::quadrature::parity_rule(true);
+    const Panel p(37, 0);  // PD 1%, rho 0.12, T = 20, n = 1000
+    std::vector<double> L;
+    e::Estimate2 est{};
+    VCAL_REQUIRE(e::calibrate(vcal::backends::CpuBackend{}, Objective{}, primary, check, p.obs.data(), p.periods(), g, L,
+                              est) == e::Status::Ok);
+    double se_u[2];
+    for (int a = 0; a < 2; ++a) {
+        se_u[a] = est.se[a] / vcal::grid::dvalue_dscaled(g.axis[a].scale, vcal::grid::to_scaled(g.axis[a].scale, est.value[a]));
+    }
+    const auto jt = e::jeffreys_table(vcal::backends::CpuBackend{}, Objective{}, primary, p.n[0], g);
+    for (const auto prior : {VCAL_PRIOR_FLAT, VCAL_PRIOR_JEFFREYS}) {
+        const auto r = e::grid_posterior(vcal::backends::CpuBackend{}, Objective{}, primary, p.obs.data(), p.periods(), g, L,
+                                         prior == VCAL_PRIOR_FLAT ? e::Prior::Flat : e::Prior::Jeffreys, &jt, se_u);
+        for (int call = 0; call < 2; ++call) {  // the second Jeffreys call uses the context's cached table
+            auto a = sized<vcal_posterior>();
+            VCAL_REQUIRE(vcal_calibrate_posterior(c.ctx, &p.abi, &grid, prior, &a) == VCAL_OK);
+            VCAL_CHECK_EQ(a.flags, r.flags);
+            VCAL_CHECK_EQ(a.refinements, r.refinements);
+            VCAL_CHECK(bits_equal(a.pd_et_lo, r.et_lo[0]) && bits_equal(a.pd_et_hi, r.et_hi[0]));
+            VCAL_CHECK(bits_equal(a.pd_hpd_lo, r.hpd_lo[0]) && bits_equal(a.pd_hpd_hi, r.hpd_hi[0]));
+            VCAL_CHECK(bits_equal(a.rho_et_lo, r.et_lo[1]) && bits_equal(a.rho_et_hi, r.et_hi[1]));
+            VCAL_CHECK(bits_equal(a.rho_hpd_lo, r.hpd_lo[1]) && bits_equal(a.rho_hpd_hi, r.hpd_hi[1]));
+            VCAL_CHECK(bits_equal(a.pd_mean_logit, r.mean[0]) && bits_equal(a.rho_sd_logit, r.sd[1]));
+        }
+    }
+    std::vector<std::int64_t> n = p.n, d = p.d;
+    n[0] += 1;
+    auto uneq = sized<vcal_panel>();
+    uneq.n_periods = p.periods();
+    uneq.n_obligors = n.data();
+    uneq.n_defaults = d.data();
+    auto a = sized<vcal_posterior>();
+    VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &uneq, &grid, VCAL_PRIOR_JEFFREYS, &a) == VCAL_E_UNSUPPORTED);
+    VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &uneq, &grid, VCAL_PRIOR_FLAT, &a) == VCAL_OK);
+    VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &p.abi, &grid, 5, &a) == VCAL_E_INVALID_ARGUMENT);
 }

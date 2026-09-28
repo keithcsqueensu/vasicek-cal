@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  *
- * vasicek-cal C ABI, version 0.2 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302).
+ * vasicek-cal C ABI, version 0.3 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
+ * 0.3 adds the M3 estimators and the native profile, D-169).
  * The only public header.
  *
  * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
@@ -37,9 +38,11 @@
  * - Platforms: 64-bit only (the layouts are checked there).
  * - Threads: a context must not be used by two threads at the same time; distinct contexts
  *   are independent. Results are bitwise identical for any n_threads.
- * - Scope: one model in v0, the one-factor binomial-mixture MLE under the `parity` profile
- *   (docs/methodology/binomial_mixture_mle.md), on the CPU backend. Later objectives, profiles
- *   and backends arrive as appended fields or new functions.
+ * - Scope: the one-factor Vasicek model on the CPU backend: the binomial-mixture MLE
+ *   (docs/methodology/binomial_mixture_mle.md) and, from 0.3, the Vasicek-rate MLE, the method of
+ *   moments and the grid-Bayesian estimator (docs/methodology/vasicek_rate_mle.md,
+ *   method_of_moments.md, grid_bayesian.md). Later objectives, profiles and backends arrive as
+ *   appended fields or new functions.
  */
 #ifndef VCAL_VCAL_H
 #define VCAL_VCAL_H
@@ -71,7 +74,7 @@ extern "C" {
 #endif
 
 #define VCAL_ABI_VERSION_MAJOR 0
-#define VCAL_ABI_VERSION_MINOR 2
+#define VCAL_ABI_VERSION_MINOR 3
 #define VCAL_ABI_VERSION ((VCAL_ABI_VERSION_MAJOR << 16) | VCAL_ABI_VERSION_MINOR)
 
 /* ---- status codes ------------------------------------------------------------------------- */
@@ -90,7 +93,11 @@ enum {
 
 /* ---- enumerations (int32_t fields) -------------------------------------------------------- */
 
-enum { VCAL_PROFILE_PARITY = 0 }; /* textbook, scipy-replicable (D-035) */
+enum {
+    VCAL_PROFILE_PARITY = 0, /* textbook, scipy-replicable (D-035) */
+    VCAL_PROFILE_NATIVE = 1  /* parity plus labelled enhancements; ABI 0.3 (D-169): the rate MLE's
+                                zero-rate treatments other than refusal (D-044) */
+};
 
 enum { VCAL_SCALE_LINEAR = 0, VCAL_SCALE_LOG = 1, VCAL_SCALE_LOGIT = 2, VCAL_SCALE_PROBIT = 3 };
 
@@ -224,6 +231,88 @@ VCAL_API vcal_status VCAL_CALL vcal_calibrate(vcal_context* context, const vcal_
  * L[t * K + k] = l_t at grid point k. For cell-by-cell comparison with an independent script. */
 VCAL_API vcal_status VCAL_CALL vcal_surface(vcal_context* context, const vcal_panel* panel, const vcal_grid* grid,
                                             double* surface, int64_t capacity, int64_t* required);
+
+/* ---- the M3 estimators (ABI 0.3, D-169) ----------------------------------------------------- */
+
+/* A series of observed default rates, for the Vasicek-rate MLE and the method of moments. */
+typedef struct vcal_rate_series {
+    uint32_t struct_size;
+    uint32_t reserved;
+    int64_t n_periods;
+    const double* rates;            /* n_periods values in [0, 1] */
+    const double* detection_limits; /* n_periods values in (0, 1/2), the rate below which a 0 was
+                                       observed (count data: 1/(2n)); may be NULL when no rate is 0
+                                       or 1, or with VCAL_ZERO_RATES_REFUSE or _DROP */
+} vcal_rate_series;
+
+/* What the Vasicek-rate MLE does with a rate of exactly 0 or 1, which has no density (D-044,
+ * D-164). Explicit options only: which to prefer is study S-28's question, and no default is
+ * recommended until it reports. VCAL_ZERO_RATES_REFUSE is the parity behaviour; the others are
+ * native enhancements and need a VCAL_PROFILE_NATIVE context. */
+enum {
+    VCAL_ZERO_RATES_REFUSE = 0,     /* no estimate; vcal_last_error names the periods */
+    VCAL_ZERO_RATES_CENSOR = 1,     /* censored likelihood: P(rate <= detection limit), the Vasicek CDF */
+    VCAL_ZERO_RATES_SUBSTITUTE = 2, /* continuity correction, a data edit: the rate taken as the limit */
+    VCAL_ZERO_RATES_DROP = 3        /* a data edit: such periods removed (at least 3 must remain) */
+};
+
+/* The Vasicek-rate MLE (docs/methodology/vasicek_rate_mle.md) on the grid, as vcal_calibrate:
+ * pass exactly one of counts (rates d/n, detection limits 1/(2n)) and rates. estimate's
+ * quadrature-check fields are 0 (the likelihood is closed form). profile may be NULL. */
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_rate(vcal_context* context, const vcal_panel* counts,
+                                                   const vcal_rate_series* rates, const vcal_grid* grid,
+                                                   int32_t zero_rates, vcal_estimate* estimate,
+                                                   vcal_profile_intervals* profile);
+
+enum {
+    VCAL_MOMENTS_REFUSED = 1u << 0,        /* no defaults (or a zero mean rate): no estimate */
+    VCAL_MOMENTS_RHO_AT_FLOOR = 1u << 1,   /* the joint default probability is at or below the floor's */
+    VCAL_MOMENTS_RHO_AT_CAP = 1u << 2,     /* at or above the cap's */
+    VCAL_MOMENTS_PD_OUTSIDE_BOX = 1u << 3  /* PD outside the grid's PD range; rho still solved */
+};
+
+typedef struct vcal_moments_estimate {
+    uint32_t struct_size;
+    uint32_t flags;  /* VCAL_MOMENTS_* */
+    double pd;
+    double rho;      /* NaN when refused */
+    double pd2;      /* the joint default probability matched */
+} vcal_moments_estimate;
+
+/* The method of moments, joint-default-probability form (docs/methodology/method_of_moments.md):
+ * exact in finite n for counts, the moment form for rates. Pass exactly one of counts and rates;
+ * the grid supplies only the PD and rho ranges. */
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_moments(vcal_context* context, const vcal_panel* counts,
+                                                      const vcal_rate_series* rates, const vcal_grid* grid,
+                                                      vcal_moments_estimate* estimate);
+
+enum { VCAL_PRIOR_FLAT = 0, VCAL_PRIOR_JEFFREYS = 1 };
+
+enum {
+    VCAL_POSTERIOR_REFINED = 1u << 0,             /* the grid failed the resolution rule; a local grid was used */
+    VCAL_POSTERIOR_REFUSED = 1u << 1,             /* the rule could not be met: no intervals */
+    VCAL_POSTERIOR_MASS_OUTSIDE_LOCAL = 1u << 2,  /* refused: a local grid would have dropped posterior mass */
+    VCAL_POSTERIOR_NUMERIC = 1u << 3              /* no finite posterior mass */
+};
+
+typedef struct vcal_posterior {
+    uint32_t struct_size;
+    uint32_t flags;        /* VCAL_POSTERIOR_* */
+    int32_t refinements;   /* local grids used */
+    int32_t reserved;
+    double pd_et_lo, pd_et_hi, pd_hpd_lo, pd_hpd_hi;      /* 95% equal-tailed and HPD, natural scale */
+    double rho_et_lo, rho_et_hi, rho_hpd_lo, rho_hpd_hi;
+    double pd_mean_logit, rho_mean_logit;                 /* posterior means and SDs in logit units */
+    double pd_sd_logit, rho_sd_logit;
+} vcal_posterior;
+
+/* The grid-Bayesian estimator (docs/methodology/grid_bayesian.md) for a count panel: flat
+ * (natural scale) or Jeffreys prior, the resolution rule of at least 4 grid points per posterior
+ * SD with local refinement, equal-tailed and HPD intervals. The Jeffreys prior needs the same n in
+ * every period; its table is computed once per (n, grid) and kept in the context. */
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, const vcal_panel* panel,
+                                                        const vcal_grid* grid, int32_t prior,
+                                                        vcal_posterior* posterior);
 
 /* ---- resampling --------------------------------------------------------------------------- */
 

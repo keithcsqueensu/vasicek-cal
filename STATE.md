@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168)
+Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169)
 
 ## Current status
 
@@ -200,7 +200,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    - **M3.2 done (D-165):** the joint-default-probability method of moments (`engine/moments.hpp`), exact in finite n, W-reweightable; goldens, a scipy script (Owen's T), `docs/methodology/method_of_moments.md`. Validated on its own seed, so S-8's comparison waits for S-8's run.
    - **M3.3 done (D-166):** the grid-Bayesian estimator (`engine/posterior.hpp`) with flat and Jeffreys priors and the resolution rule (4 points per posterior SD; local refinement or refusal; the registered extent amended before S-9 runs). **M3 is complete.** Open: C ABI exposure (a decision), and the registered runs S-8/S-27/S-28, S-9, S-15.
 3. **Surface-row cache across panels (D-167):** approved; adopted in the recovery harness and study tools, keyed on everything that determines a row, filled on demand.
-4. **C ABI 0.3 (D-168):** the three M3 estimators; the rate MLE's zero-default treatments as explicit options, no recommended default until S-28.
+4. **C ABI 0.3 (done, D-169):** `vcal_calibrate_rate`, `vcal_calibrate_moments`, `vcal_calibrate_posterior` and the native profile; the zero-default treatments are explicit options, no recommended default until S-28.
 5. **The M3 folded studies:** S-8/S-27/S-28 (one pass), S-9, S-15, with the cache.
 6. **S-10 and S-4b on the CPU** (D-168; were after M4).
 7. **Consolidation:** tag v0.2; README updated with the study results.

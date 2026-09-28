@@ -496,7 +496,7 @@ D-138–D-144) is summarised below.
   - Results are bitwise identical for any thread count.
   - A context must not be used by two threads at once; distinct contexts are independent.
 
-**Functions (v0.1)**
+**Functions (v0.1; v0.3 adds the M3 estimators, D-169)**
 
 | Function | What it does |
 |---|---|
@@ -508,6 +508,9 @@ D-138–D-144) is summarised below.
 | `vcal_resample` | Replicate estimates from W × L (§5.2) for the iid and moving-block bootstrap, jackknife, walk-forward, a supplied index matrix or a supplied weight matrix, with type-7 percentile intervals |
 | `vcal_resample_weights` | The W a scheme implies, so any replicate can be rebuilt elsewhere |
 | `vcal_dgp_simulate` | One synthetic panel, bitwise identical on every platform (D-052–D-057) |
+| `vcal_calibrate_rate` (0.3) | The Vasicek-rate MLE on count data or a rate series, with profile intervals; zero rates by an explicit `VCAL_ZERO_RATES_*` option: refuse (parity, D-044) or, in a `VCAL_PROFILE_NATIVE` context, censor, substitute or drop. No default is recommended until S-28 reports |
+| `vcal_calibrate_moments` (0.3) | The joint-default-probability method of moments, counts or rates |
+| `vcal_calibrate_posterior` (0.3) | The grid posterior, flat or Jeffreys prior, with the resolution rule; equal-tailed and HPD intervals. Jeffreys tables are kept in the context per (n, grid) |
 
 **Deliberately absent from v0.** These arrive as appended fields or new functions, under the
 same conventions:
