@@ -101,12 +101,53 @@ labelled slow).
   | V4 | **Bias:** ρ̂'s mean error is negative in at least 25 of the 27 cells |
   | V5 | **Flags:** in every cell at most 1% of fits carry a Wald flag |
 
-## 5. Results
+## 5. Results (the pinning run, R = 1,000)
 
-To be filled in from the pinning run.
+Run 2026-09-28 on the code of the predictions commit plus the summary's extra flag columns (MSVC 19.51, 15 s); the
+predictions above were committed at 15:44:40 in "M3: the Vasicek-rate objective, its goldens, and recovery predictions before the run" (its hash changes with rebases onto main), before the run at 15:45. The summary is
+`tests/golden/vasicek_rate/recovery_summary.csv`, reviewed by `unit_vasicek_rate`.
+
+- **The estimator recovers its own model.** ρ̂ is biased low in all 27 cells, by −0.0001 to −0.0141
+  (largest at ρ = 0.24, T = 20), as the (T − 1)/T factor predicts; PD̂'s bias is within ±2·10⁻⁴.
+- **Coverage:** 78 of the 81 profile verdicts (PD, ρ and q in 27 cells) are in the band. The three
+  below it are 29/PD (0.921), 68/PD (0.919) and 74/q (0.927), and they are not new: each cell's
+  panels are the n → ∞ limit of the binomial recovery scenario with the same number, built from the
+  same factor draws, and those binomial verdicts are pinned small-T findings (29/PD and 68/PD, M2;
+  74's q, S-23), which S-13 put at about 0.94 at R = 10,000 (D-158). The rate model reproduces the
+  dips on the same draws, so they belong to the draws at small T, not to the binomial likelihood.
+- **Flags:** Wald flags only at ρ = 0.24, T = 20 (1.8–2.2% of fits), all near-bound: ρ̂ within two
+  SEs of the box's cap of 0.5, a χ² tail of v̂. No grid-edge or flat fits, and every profile
+  interval was computed.
+- **The closed form** agrees with the polished maximum within 1.6·10⁻⁷ in logit units over all
+  27,000 fits.
+
+| # | Prediction | Result | Held |
+|---|---|---|---|
+| V1 | Polished maximum within `TOL_VASICEK_RATE_POLISH_U` (then 2·10⁻⁷) of the closed form | worst 1.6·10⁻⁷ | held |
+| V2 | T = 40 and 100: at least 50 of 54 verdicts in the band | 53 of 54 (68/PD below) | held |
+| V3 | T = 20: at least 24 of 27 verdicts in 0.925–0.955, at least 18 below 0.95 | 26 of 27 in range (29/PD 0.921 outside); 23 below 0.95 | held |
+| V4 | ρ̂'s mean error negative in at least 25 of 27 cells | 27 of 27 | held |
+| V5 | At most 1% of fits flagged in every cell | 1.8–2.2% at ρ = 0.24, T = 20 (near the ρ cap) | not held |
+
+`TOL_VASICEK_RATE_POLISH_U` was then set to 4·10⁻⁷, twice the recovery's observed maximum, as the
+register's rule asks; V1 is scored against the value it was registered with.
 
 ## 6. Replicating with scipy
 
-`validation/scipy/vasicek_rate_mle.py` reproduces the fit with ordinary tools (scipy.stats.norm and
-scipy.optimize), on the committed rate panels of the recovery summary's first replicates, and
-compares with the engine.
+`validation/scipy/vasicek_rate_mle.py` reproduces the fit with ordinary tools (`scipy.stats.norm`
+and `scipy.optimize`) on the 63 panels of `tests/golden/vasicek_rate/replay.csv`: replicates 0 and 1
+of every recovery cell, and nine count panels with zero-default periods (PD 1%, n = 100) under the
+censored likelihood. On its own it finds the maximum by nested bounded Brent in logit coordinates
+(and the closed form for rate panels), and solves each PD and ρ profile end point by `brentq` on the
+profile. Agreement with the engine: estimates within 1.8·10⁻⁷ in logit units, the maximum
+log-likelihood within 3.4·10⁻¹³, end points within 2.3·10⁻¹⁰ (`TOL_SCIPY_RATE_*`). It runs in the
+CI job "validation (scipy)".
+
+## 7. What is not here yet
+
+- **The C ABI** exposes only the binomial-mixture MLE (ABI v0). Exposing the rate objective and its
+  zero-rate treatments needs an ABI minor version and is decided separately.
+- **Resampling:** the rate objective's surface is an ordinary L, so the W × L resampling of M2b
+  applies unchanged; its bootstrap intervals are not validated here.
+- **Which zero-rate treatment to prefer, and when the rate MLE is close enough to the binomial one,**
+  are studies S-28 and S-27 (registered, D-161).

@@ -166,3 +166,44 @@ VCAL_TEST(vasicek_rate_grid_fit_matches_the_closed_form) {
     vcal::test::note("worst polished-vs-closed-form distance in logit units: " + sci(worst_u) +
                      "; worst log-likelihood shortfall: " + sci(worst_ll));
 }
+
+// The committed recovery summary (rate_recovery_harness, R = 1,000; docs/methodology/vasicek_rate_mle.md
+// section 5): every profile coverage in the band except the reviewed findings, which share their
+// factor draws with the binomial recovery's small-T findings (29/PD, 68/PD; 74's q, S-23), and the
+// closed form within tolerance everywhere. A verdict that moves needs a new review.
+VCAL_TEST(vasicek_rate_recovery_summary_verdicts) {
+    const auto g = vcal::test::read_golden_csv("vasicek_rate/recovery_summary.csv");
+    VCAL_REQUIRE(g.rows.size() == 27u);
+    struct Reviewed {
+        const char* scenario;
+        const char* column;
+    };
+    // The same factor draws as binomial scenarios 29, 68 and 74 (the n -> infinity limit of those
+    // panels), whose profile verdicts are pinned small-T findings; S-13 put them at about 0.94 at
+    // R = 10,000 (D-158). The rate model reproduces the dips on the same draws.
+    const Reviewed reviewed[] = {{"29", "pd_class"}, {"68", "pd_class"}, {"74", "q_class"}};
+    std::string unreviewed;
+    int out_of_band = 0;
+    for (const auto& r : g.rows) {
+        for (const char* col : {"pd_class", "rho_class", "q_class"}) {
+            const std::string c = r[g.column(col)];
+            bool listed = false;
+            for (const auto& v : reviewed) listed = listed || (r[g.column("z_source_scenario")] == v.scenario && std::string(col) == v.column);
+            if (c != "PASS") {
+                ++out_of_band;
+                if (!(listed && c == "BELOW")) unreviewed += " " + r[g.column("z_source_scenario")] + "/" + col + " " + c;
+            } else if (listed) {
+                unreviewed += " " + r[g.column("z_source_scenario")] + "/" + col + " now PASS";
+            }
+        }
+        VCAL_CHECK(hex(r[g.column("closed_form_gap_max_hex")]) <= tol::TOL_VASICEK_RATE_POLISH_U);
+        VCAL_CHECK(hex(r[g.column("residual_max_hex")]) <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+        VCAL_CHECK_EQ(vcal::test::parse_int(r[g.column("not_computed")]), 0);
+        // Every Wald flag is near-bound (the rho cap at T = 20, rho = 0.24): no edge or flat fits.
+        VCAL_CHECK_EQ(vcal::test::parse_int(r[g.column("flagged_edge")]), 0);
+        VCAL_CHECK_EQ(vcal::test::parse_int(r[g.column("flagged_flat")]), 0);
+    }
+    if (!unreviewed.empty()) vcal::test::note("unreviewed:" + unreviewed);
+    VCAL_CHECK(unreviewed.empty());
+    VCAL_CHECK_EQ(out_of_band, 3);
+}
