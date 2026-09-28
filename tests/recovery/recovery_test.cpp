@@ -11,6 +11,7 @@
 //   - replay replicates 0..kReplayReplicates-1 of every scenario (slow; Release only) against the
 //     committed replay values, at the replay tolerances (a D-107 comparison of its own).
 #include <cmath>
+#include <cstring>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
@@ -474,4 +475,26 @@ VCAL_TEST(recovery_replay) {
     VCAL_CHECK(worst_q_se <= tol::TOL_RECOVERY_REPLAY_SE_REL);
     VCAL_CHECK(worst_profile <= tol::TOL_PROFILE_CROSS_PLATFORM_REL);
     VCAL_CHECK(worst_boot <= tol::TOL_BOOTSTRAP_CROSS_PLATFORM_REL);
+}
+
+// A fit with only some arms (a study asking for what it scores) computes those arms exactly as a
+// full fit does, and leaves the others NaN and flagged not computed.
+VCAL_TEST(recovery_fit_arms_compute_only_what_is_requested) {
+    const auto s = rc::scenario(37);
+    const rc::Fit all = rc::fit(s, 3);
+    const auto same = [](double x, double y) { return std::memcmp(&x, &y, sizeof x) == 0; };
+    const rc::Fit prof = rc::fit(s, 3, nullptr, rc::kArmProfile);
+    VCAL_CHECK(same(prof.prof_lo[0], all.prof_lo[0]) && same(prof.prof_hi[1], all.prof_hi[1]));
+    VCAL_CHECK(prof.prof_flags[0] == all.prof_flags[0] && prof.prof_flags[1] == all.prof_flags[1]);
+    VCAL_CHECK(std::isnan(prof.boot_lo[0]) && std::isnan(prof.q_prof_lo) && std::isnan(prof.q_se_s));
+    VCAL_CHECK(prof.q_prof_flags == vcal::engine::kIntervalNotComputed);
+    const rc::Fit boot = rc::fit(s, 3, nullptr, rc::kArmBootstrap);
+    VCAL_CHECK(same(boot.boot_lo[0], all.boot_lo[0]) && same(boot.boot_hi[1], all.boot_hi[1]));
+    VCAL_CHECK(boot.boot_edge == all.boot_edge);
+    VCAL_CHECK(std::isnan(boot.prof_lo[0]) && boot.prof_flags[0] == vcal::engine::kIntervalNotComputed);
+    VCAL_CHECK(std::isnan(boot.q_boot_lo));
+    const rc::Fit pq = rc::fit(s, 3, nullptr, rc::kArmProfile | rc::kArmQ);
+    VCAL_CHECK(same(pq.q_prof_lo, all.q_prof_lo) && same(pq.q_prof_hi, all.q_prof_hi) && same(pq.q_se_s, all.q_se_s));
+    VCAL_CHECK(std::isnan(pq.q_boot_lo) && std::isnan(pq.boot_lo[1]));
+    VCAL_CHECK(same(pq.value[0], all.value[0]) && same(pq.se[1], all.se[1]));  // the estimate is always there
 }
