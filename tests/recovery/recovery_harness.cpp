@@ -669,7 +669,8 @@ int main(int argc, char** argv) {
             }
         } else {
             std::fprintf(stderr, "usage: recovery_harness [--replicates R] [--write | --check] [--scenarios ID,...] "
-                                 "[--save-fits FILE | --load-fits FILE]\n");
+                                 "[--save-fits FILE | --load-fits FILE] [--summary-out FILE] [--results-md FILE] "
+                                 "[--replay-dir DIR]\n");
             return 2;
         }
     }
@@ -683,7 +684,8 @@ int main(int argc, char** argv) {
     }
     const bool subset = !ids.empty();
     if (subset && (write || check || !replay_dir.empty() || !results_md.empty())) {
-        std::fprintf(stderr, "--scenarios cannot be combined with --write or --check: goldens cover every scenario\n");
+        std::fprintf(stderr, "--scenarios cannot be combined with --write, --check, --replay-dir or --results-md: "
+                             "those cover every scenario\n");
         return 2;
     }
     if (!subset) {
