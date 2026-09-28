@@ -152,6 +152,14 @@ vcal_target_defaults(study_z_sign_invariance)
 add_test(NAME study_z_sign_invariance COMMAND study_z_sign_invariance)
 set_tests_properties(study_z_sign_invariance PROPERTIES LABELS slow)
 
+# The shared jackknife run (S-3, S-5, S-21; D-155): a study tool, with a smoke test on two
+# replicates of one scenario (the pinning run is the tool itself, at R = 1,000).
+add_executable(study_jackknife_run studies/jackknife_run.cpp)
+target_link_libraries(study_jackknife_run PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_jackknife_run)
+add_test(NAME study_jackknife_run_smoke COMMAND study_jackknife_run --replicates 2 --scenarios 29)
+set_tests_properties(study_jackknife_run_smoke PROPERTIES LABELS slow)
+
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
 # pedantic errors (C11 on MSVC, which has no C99 mode), so anything C++-only in the header breaks
