@@ -167,6 +167,31 @@ The conclusion for users: profile-likelihood intervals are the recommended metho
 bootstrap percentile intervals are not recommended for ρ. BCa is a backlog `native` option, and
 would not fix group A.
 
+## The 99.9% conditional PD (S-23, D-156)
+
+- **Quantity:** q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% adverse factor level,
+  with its true value computed from each scenario's PD and ρ.
+- **Three intervals per replicate,** with the same band and policy as PD and ρ:
+  - the profile-likelihood interval along q = c (methodology note §6c), over all replicates;
+  - the delta-method Wald interval in logit(q), on the unflagged replicates, DEFERRED at the same
+    flagged fraction;
+  - the bootstrap percentile interval of q at the same B = 999 replicate estimates, over all
+    replicates.
+- **Acceptance checks on every fit:** the profile interval contains q̂, and every solved end meets
+  the end-point residual tolerance.
+- **Predictions** were committed before the run
+  ([`PREDICTION.md`](../../studies/derived-quantity-intervals/PREDICTION.md)).
+- **Outcome:**
+  - profile: 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING. In every informative scenario q's
+    coverage is within 0.015 of PD's and ρ's.
+  - delta-method Wald: 32 PASS, 18 KNOWN FINDING, 31 DEFERRED. The findings come from q̂'s low
+    bias, not from the SE.
+  - bootstrap: 8 PASS, 73 KNOWN FINDING.
+
+  The tables are in [recovery_results.md](recovery_results.md); the comparison with the
+  predictions and the mitigation list are in the study's entry in
+  [`studies/README.md`](../../studies/README.md).
+
 ## Results (Wald, M1.8)
 
 The full tables are in [recovery_results.md](recovery_results.md).
@@ -214,8 +239,8 @@ This refits all 81,000 replicates and rewrites:
 - `tests/golden/recovery/MANIFEST.json`, the provenance;
 - `docs/methodology/recovery_results.md`.
 
-It then checks that every file exists and is non-empty. The run takes about 48 minutes on 24
-threads, and results do not depend on the thread count. `recovery_harness --replicates 50`
+It then checks that every file exists and is non-empty. The run takes about 90 minutes on 24
+threads (5,165 s for the S-23 pinning run, which added q's profile interval), and results do not depend on the thread count. `recovery_harness --replicates 50`
 prints a quick summary without writing anything. `--scenarios 29,37,72,4,68,49,7,43,51` restricts
 a run to the study subset (D-150), and `--replay-dir DIR` writes the two replay files to DIR from
 any run over every scenario.

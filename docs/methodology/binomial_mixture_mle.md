@@ -266,6 +266,19 @@ intervals are: on the grid edge, near a bound, or on a flat surface.
 with type-7 quantiles. Percentile intervals are invariant under monotone transformations, so
 this is the same as taking them in logit(q).
 
+**Recovery results (S-23, D-156).** Over the 81 recovery scenarios × 1,000 replicates:
+
+- **Profile interval for q:** as reliable as those for PD and ρ. In every informative scenario its
+  coverage is within 0.015 of theirs. Two scenarios at T = 20 are below the band. 15 are above it,
+  where the data are nearly uninformative and the ends are held by the box.
+- **Delta-method Wald interval:** undercovers in 17 of the 50 assessed scenarios, and not only at
+  T = 20. Its SE is right, but q̂ is biased low (median q̂/q − 1 between −1% and −11%), because
+  ρ̂'s small-sample bias carries into q.
+- **Bootstrap percentile interval:** undercovers in 73 of 81 scenarios, for the reasons found for ρ.
+
+Use the profile interval for q. The study's entry in `studies/README.md` lists the mitigations and
+the monitoring implication.
+
 A second scipy script (section 8) solves the profile end points on its own and checks the
 engine's.
 
