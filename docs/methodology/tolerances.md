@@ -205,6 +205,18 @@ directly in the quantity that defines it: log-likelihood.
 | `TOL_XREF_PROFILE_ENDPOINT_U` | 2e-9 logit units | 1.5e-10 | Endpoints, core vs ref, on three M1.7 panels (typical, near the lower ρ bound, near the upper), with truncation required to agree | The two engines use unrelated methods. Core brackets from the grid and solves with Brent; ref maximises by golden-section over the whole range and finds the crossing by bisection. The value combines their solver tolerances (1e-9 and 1e-10) with margin. | `unit_xref: xref_profile_intervals_core_vs_ref` (Release only, label `slow`) |
 | `TOL_PROFILE_CROSS_PLATFORM_REL` | 1e-8 | 0 (Windows); 1.4e-14 (Linux GCC 14, Clang 18), 2.6e-14 (GCC 11), CI; 2.2e-13 on the recovery replay (CI) | Endpoints across platforms vs the regression values (`xref/core_estimates.csv`) and the recovery replay | A last-digit libm difference can move Brent's path anywhere within its 1e-9 logit tolerance. In logit coordinates a shift du moves v by at most v·du, so the bound is 10× the solver tolerance. In practice Brent's path has not diverged: the observed spread is libm-level. Truncation flags are compared exactly. | `unit_xref: xref_core_estimates_match_regression_values`, `unit_recovery: recovery_replay` |
 
+
+## Vasicek-rate objective (M3)
+
+The log-likelihood of an observed default rate under the Vasicek rate distribution is closed form
+(`core/objectives/vasicek_rate.hpp`; methodology in `docs/methodology/vasicek_rate_mle.md`). Its
+goldens are mpmath values at 50 digits, evaluated at the binary64 inputs
+(`tools/gen_vasicek_rate_goldens.py`, `tests/golden/vasicek_rate/`).
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_VASICEK_RATE_LOGLIK_EPS` | 6 | 2.88 (GCC 16, UCRT) | abs(l_t − mpmath) / (ε × the size of l_t's terms): the log density over rates 1e-8 to 1 − 1e-6 and the box's PD and ρ, and the censored and substituted boundary terms at n = 100 and 10⁶ | The terms (½ log ρ, x²/2, and u²/(2ρ) with u = √(1 − ρ)x − c) are added in double, and u can cancel, so the error is relative to the terms' size, not to l_t. Observed, doubled, rounded up. | `unit_vasicek_rate: vasicek_rate_log_density_matches_mpmath`, `vasicek_rate_boundary_treatments_match_mpmath` |
+| `TOL_VASICEK_RATE_POLISH_U` | 2e-7 | 5.4e-8 | The profile code's polished maximum against the closed-form MLE, in logit units | Brent's 1e-9 tolerance on the profile's value moves a flat maximum's position by about its square root. The log-likelihood at the polished maximum is within 3.4e-13 of the closed form's, under `TOL_PROFILE_ENDPOINT_RESIDUAL_LL`. Observed, doubled, rounded up. | `unit_vasicek_rate: vasicek_rate_grid_fit_matches_the_closed_form` |
 ## Conditional PD (S-23)
 
 The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and

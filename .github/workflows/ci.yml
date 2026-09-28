@@ -166,6 +166,7 @@ jobs:
           .venv/bin/python tools/gen_special_tables.py --check
           .venv/bin/python tools/gen_quadrature_tables.py --check
           .venv/bin/python tools/gen_dgp_tables.py --check
+          .venv/bin/python tools/gen_vasicek_rate_goldens.py --check
           .venv/bin/python tools/gen_tolerances.py --check
 
   # D-032, D-126: the plain scipy replication of the binomial-mixture MLE, run against the engine's

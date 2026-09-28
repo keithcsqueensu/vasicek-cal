@@ -160,4 +160,14 @@ inline constexpr double TOL_RESAMPLE_JACKKNIFE_REL = 2e-15;
 // interpolates two replicate estimates; a last-digit difference can reorder near-equal ones or move
 // a replicate's refinement. Observed on Linux (GCC 11/14, Clang 18): 8.8e-12, doubled and rounded up.
 inline constexpr double TOL_BOOTSTRAP_CROSS_PLATFORM_REL = 2e-11;
+
+// --- Vasicek-rate objective, M3 ------------------------------------------------------------------
+// |l_t - mpmath| / (eps x the size of l_t's terms), for the log density and the censored and
+// substituted boundary terms (tests/golden/vasicek_rate). Observed 2.88 (GCC 16, UCRT); doubled
+// and rounded up.
+inline constexpr double TOL_VASICEK_RATE_LOGLIK_EPS = 6;
+// The profile code's polished maximum against the closed-form MLE, in logit units, on rate panels
+// from the recovery DGP's factors. Observed 5.4e-8: Brent's 1e-9 tolerance on a flat maximum moves
+// the argmax by about its square root. Doubled and rounded up.
+inline constexpr double TOL_VASICEK_RATE_POLISH_U = 2e-7;
 }  // namespace vcal::tol

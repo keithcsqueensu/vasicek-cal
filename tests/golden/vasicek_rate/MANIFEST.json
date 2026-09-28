@@ -1,0 +1,15 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_vasicek_rate_goldens.py",
+  "generator_files": {
+    "tools/gen_vasicek_rate_goldens.py": "9e9f77659826b78aa08294cd5467bba75d224f30bc333f3ee6c0aaa93baf704d",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "tests/golden/vasicek_rate/boundary.csv": "307244f44808c51d740f473ca2b7aacaf7fadbd6263699b8e7acd0af83d6dce7",
+    "tests/golden/vasicek_rate/log_density.csv": "e183c90452a56707f076ff1b5de8b42b788c05eefebc4f9714932489492f0069"
+  },
+  "python_version": "3.14.6"
+}
