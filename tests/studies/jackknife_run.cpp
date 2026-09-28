@@ -23,6 +23,10 @@
 // (D-155). Results do not depend on the thread count.
 //
 //   study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE]
+//                       [--polished]
+//
+// --polished adds the arm of the addendum of 2026-09-28: S-3's corrected rho and shifted interval,
+// and the q Wald sub-arms, from exact off-grid maxima (one profile per delete-one panel; costly).
 //
 // --replicates-out writes one CSV row per (scenario, replicate) with every JkFit field, doubles
 // to 17 significant digits (exact round trip), for conversion to a committed Parquet file.
@@ -68,11 +72,16 @@ struct JkFit {
     std::int8_t extreme_z_is_top;   // most influential period for rho == most extreme |Z_t|
     double refit_gap;               // J14: max_t |refined - polished| of rho in SE units (NaN if unchecked)
     double refit_gap_clean;         // the same over delete-one fits without flags (refinement accepted)
+    // The polished arm (addendum, 2026-09-28; --polished only): the same S-3 and q quantities from
+    // the exact off-grid maxima of the full and delete-one panels instead of the grid refinement.
+    bool polished;
+    double rho_tilde_p;
+    std::int8_t shifted_p_cover, qa_p_cover, qa_p_below, qb_p_cover, qb_p_below;
 };
 
 double clamp(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate) {
+JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
     using Objective = rc::Objective;
     const std::int64_t T = s.periods;
     std::vector<std::int64_t> n(static_cast<std::size_t>(T), s.obligors), d(static_cast<std::size_t>(T));
@@ -235,6 +244,63 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate) {
         out.refit_gap = gap;
         out.refit_gap_clean = gap_clean;
     }
+    // The polished arm: each delete-one panel's exact maximum, from the profile code on that panel
+    // (its per-period surfaces are L without row t), and the full panel's from prof.max_at.
+    out.polished = polished;
+    if (polished) {
+        out.shifted_p_cover = out.qa_p_cover = out.qb_p_cover = -1;
+        const std::int64_t K = g.size();
+        std::vector<double> rho_p(static_cast<std::size_t>(T)), pd_p(static_cast<std::size_t>(T)), Ls;
+        std::vector<Objective::Obs> sub;
+        bool ok = std::isfinite(prof.max_at[0]) && std::isfinite(prof.max_at[1]);
+        for (std::int64_t t = 0; t < T && ok; ++t) {
+            sub.clear();
+            Ls.clear();
+            for (std::int64_t u = 0; u < T; ++u) {
+                if (u == t) continue;
+                sub.push_back(obs[static_cast<std::size_t>(u)]);
+                Ls.insert(Ls.end(), L.begin() + u * K, L.begin() + (u + 1) * K);
+            }
+            const auto& e = jk[static_cast<std::size_t>(t)];
+            engine::Estimate2 et{};
+            et.value[0] = e.value[0];
+            et.value[1] = e.value[1];
+            et.flags = e.flags & (engine::kFlagFlatSurface | engine::kFlagNumeric);
+            et.loglik = -std::numeric_limits<double>::infinity();  // the polish finds the maximum itself
+            const auto pt = engine::profile_intervals(Objective{}, primary, sub.data(), T - 1, g, Ls, et);
+            ok = std::isfinite(pt.max_at[0]) && std::isfinite(pt.max_at[1]);
+            pd_p[static_cast<std::size_t>(t)] = pt.max_at[0];
+            rho_p[static_cast<std::size_t>(t)] = pt.max_at[1];
+        }
+        if (ok) {
+            const double raw_p = resample::jackknife_bias_corrected(prof.max_at[1], rho_p.data(), T);
+            out.rho_tilde_p = clamp(raw_p, g.axis[1].lo, g.axis[1].hi);
+            if (prof_ok) {
+                const double shift = logit(out.rho_tilde_p) - logit(prof.max_at[1]);
+                const double lo = (prof.flags[1] & engine::kIntervalLowerTruncated) ? prof.lo[1] : inv_logit(logit(prof.lo[1]) + shift);
+                const double hi = (prof.flags[1] & engine::kIntervalUpperTruncated) ? prof.hi[1] : inv_logit(logit(prof.hi[1]) + shift);
+                out.shifted_p_cover = lo <= s.rho && s.rho <= hi;
+            }
+            const double err = logit(engine::conditional_pd(prof.max_at[0], out.rho_tilde_p)) - s_true;
+            double mean = 0.0;
+            std::vector<double> sm(static_cast<std::size_t>(T));
+            for (std::int64_t t = 0; t < T; ++t) {
+                sm[static_cast<std::size_t>(t)] = logit(engine::conditional_pd(pd_p[static_cast<std::size_t>(t)],
+                                                                               rho_p[static_cast<std::size_t>(t)]));
+                mean += sm[static_cast<std::size_t>(t)];
+            }
+            mean /= static_cast<double>(T);
+            double ss = 0.0;
+            for (const double v : sm) ss += (v - mean) * (v - mean);
+            const double se_jack_p = std::sqrt(static_cast<double>(T - 1) / static_cast<double>(T) * ss);
+            if (unflagged) {
+                out.qa_p_cover = std::fabs(err) <= rc::kZ975 * out.se_delta;
+                out.qa_p_below = !out.qa_p_cover && err < 0.0;
+                out.qb_p_cover = std::fabs(err) <= rc::kZ975 * se_jack_p;
+                out.qb_p_below = !out.qb_p_cover && err < 0.0;
+            }
+        }
+    }
     return out;
 }
 
@@ -281,9 +347,12 @@ int main(int argc, char** argv) {
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string summary_out, replicates_out;
+    bool polished = false;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
+        } else if (std::strcmp(argv[i], "--polished") == 0) {
+            polished = true;
         } else if (std::strcmp(argv[i], "--replicates-out") == 0 && i + 1 < argc) {
             replicates_out = argv[++i];
         } else if (std::strcmp(argv[i], "--summary-out") == 0 && i + 1 < argc) {
@@ -301,7 +370,7 @@ int main(int argc, char** argv) {
             }
         } else {
             std::fprintf(stderr, "usage: study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] "
-                                 "[--replicates-out FILE]\n");
+                                 "[--replicates-out FILE] [--polished]\n");
             return 2;
         }
     }
@@ -317,7 +386,7 @@ int main(int argc, char** argv) {
         backends::CpuBackend{}.parallel_for(static_cast<std::int64_t>(r1 - r0) * per, [&](std::int64_t j) {
             const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / per);
             const std::size_t k = static_cast<std::size_t>(j % per);
-            fits[static_cast<std::size_t>(r) * ids.size() + k] = jk_fit(rc::scenario(ids[k]), r);
+            fits[static_cast<std::size_t>(r) * ids.size() + k] = jk_fit(rc::scenario(ids[k]), r, polished);
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
@@ -336,7 +405,8 @@ int main(int argc, char** argv) {
         "qa_covered,qa_below,qa_class,qb_covered,qb_below,qb_class,qb_covered_all,corr_err_se_delta_hex,"
         "corr_err_se_jack_hex,infl_rho_median_hex,infl_rho_p90_hex,infl_pd_median_hex,extreme_z_top,extreme_z_assessed,"
         "pair_ratio_median_hex,refit_gap_max_hex,refit_gap_clean_max_hex,shifted_coverage,rho_bca_coverage,pd_bca_coverage,qa_coverage,"
-        "qb_coverage\n";
+        "qb_coverage,rho_tilde_p_bias_hex,rho_tilde_p_rmse_hex,shifted_p_covered,shifted_p_class,qa_p_covered,qa_p_below,"
+        "qa_p_class,qb_p_covered,qb_p_below,qb_p_class\n";
     for (std::size_t k = 0; k < ids.size(); ++k) {
         const rc::Scenario s = rc::scenario(ids[k]);
         std::int64_t unflagged = 0, clamped = 0, par = 0, sh = 0, gained = 0, lost = 0;
@@ -345,6 +415,8 @@ int main(int argc, char** argv) {
         rc::CompensatedSum b_hat, b_tilde, e_hat, e_tilde;
         std::vector<double> infl_rho, infl_pd, ratio, err, sd, sj;
         double refit = 0.0, refit_clean = 0.0;
+        rc::CompensatedSum b_p, e_p;
+        std::int64_t sh_p = 0, qa_p = 0, qa_p_below = 0, qb_p = 0, qb_p_below = 0;
         for (std::uint32_t r = 0; r < R; ++r) {
             const JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
             b_hat.add(f.rho - s.rho);
@@ -363,6 +435,17 @@ int main(int argc, char** argv) {
                 pct[a] += f.pct_cover[a] == 1;
             }
             qb_all += f.qb_cover_all == 1;
+            if (f.polished && std::isfinite(f.rho_tilde_p)) {
+                b_p.add(f.rho_tilde_p - s.rho);
+                e_p.add((f.rho_tilde_p - s.rho) * (f.rho_tilde_p - s.rho));
+            }
+            sh_p += f.polished && f.shifted_p_cover == 1;
+            if (f.polished && f.qa_p_cover >= 0) {
+                qa_p += f.qa_p_cover;
+                qa_p_below += f.qa_p_below;
+                qb_p += f.qb_p_cover;
+                qb_p_below += f.qb_p_below;
+            }
             if (f.qa_cover < 0) continue;
             ++unflagged;
             qa += f.qa_cover;
@@ -411,6 +494,23 @@ int main(int argc, char** argv) {
                       static_cast<long long>(top), static_cast<long long>(assessed), to_hex(median(ratio)).c_str(),
                       to_hex(refit).c_str(), to_hex(refit_clean).c_str(), sh_cov, bca_cov[1], bca_cov[0], qa_cov, qb_cov);
         csv += line;
+        csv.pop_back();  // the row continues with the polished arm's columns
+        const double shp_cov = polished ? static_cast<double>(sh_p) / Rd : kNaN;
+        const double qap_cov = polished && !deferred ? static_cast<double>(qa_p) / static_cast<double>(unflagged) : kNaN;
+        const double qbp_cov = polished && !deferred ? static_cast<double>(qb_p) / static_cast<double>(unflagged) : kNaN;
+        std::snprintf(line, sizeof line, ",%s,%s,%lld,%s,%lld,%lld,%s,%lld,%lld,%s\n",
+                      to_hex(polished ? b_p.value() / Rd : kNaN).c_str(),
+                      to_hex(polished ? std::sqrt(e_p.value() / Rd) : kNaN).c_str(), static_cast<long long>(sh_p),
+                      polished ? band_class(shp_cov, band_lo, band_hi) : "-", static_cast<long long>(qa_p),
+                      static_cast<long long>(qa_p_below), polished ? band_class(qap_cov, m_lo, m_hi) : "-",
+                      static_cast<long long>(qb_p), static_cast<long long>(qb_p_below),
+                      polished ? band_class(qbp_cov, m_lo, m_hi) : "-");
+        csv += line;
+        if (polished) {
+            std::printf("   polished: rho-tilde bias %+.4f rmse %.4f | shifted %.3f %s | q Wald a %.3f %s b %.3f %s\n",
+                        b_p.value() / Rd, std::sqrt(e_p.value() / Rd), shp_cov, band_class(shp_cov, band_lo, band_hi),
+                        qap_cov, band_class(qap_cov, m_lo, m_hi), qbp_cov, band_class(qbp_cov, m_lo, m_hi));
+        }
         std::printf("%2u T %-3lld n %-5lld | rho bias %+.4f -> %+.4f rmse %.4f -> %.4f clamp %lld | profile %.3f -> "
                     "shifted %.3f %s | BCa PD %.3f %s rho %.3f %s (pct %.3f %.3f) | q Wald a %.3f %s b %.3f %s | "
                     "infl rho %.2f pair ratio %.2f top=extreme %.2f | refit gap %.3g (unflagged %.3g)\n",
@@ -430,19 +530,22 @@ int main(int argc, char** argv) {
         out << "scenario,replicate,pd,rho,rho_tilde,q_err_a,flags,clamped,parity_rho_cover,shifted_rho_cover,"
                "pd_bca_cover,pd_bca_below,rho_bca_cover,rho_bca_below,pd_pct_cover,rho_pct_cover,qa_cover,qa_below,"
                "qb_cover,qb_below,qb_cover_all,se_delta,se_jack,infl_rho,infl_pd,infl_pair_rho,extreme_z_is_top,"
-               "refit_gap,refit_gap_clean\n";
+               "refit_gap,refit_gap_clean,rho_tilde_p,shifted_p_cover,qa_p_cover,qa_p_below,qb_p_cover,qb_p_below\n";
         char line[1024];
         for (std::size_t k = 0; k < ids.size(); ++k) {
             for (std::uint32_t r = 0; r < R; ++r) {
                 const JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
                 std::snprintf(line, sizeof line,
                               "%u,%u,%.17g,%.17g,%.17g,%.17g,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,"
-                              "%.17g,%.17g,%.17g,%d,%.17g,%.17g\n",
+                              "%.17g,%.17g,%.17g,%d,%.17g,%.17g,%.17g,%d,%d,%d,%d,%d\n",
                               ids[k], r, f.pd, f.rho, f.rho_tilde, f.q_true_err_a, f.flags, f.clamped ? 1 : 0,
                               f.parity_rho_cover, f.shifted_rho_cover, f.bca_cover[0], f.bca_below[0], f.bca_cover[1],
                               f.bca_below[1], f.pct_cover[0], f.pct_cover[1], f.qa_cover, f.qa_below, f.qb_cover,
                               f.qb_below, f.qb_cover_all, f.se_delta, f.se_jack, f.infl_rho, f.infl_pd, f.infl_pair_rho,
-                              f.extreme_z_is_top, f.refit_gap, f.refit_gap_clean);
+                              f.extreme_z_is_top, f.refit_gap, f.refit_gap_clean, f.polished ? f.rho_tilde_p : kNaN,
+                              f.polished ? f.shifted_p_cover : -1, f.polished ? f.qa_p_cover : -1,
+                              f.polished ? f.qa_p_below : -1, f.polished ? f.qb_p_cover : -1,
+                              f.polished ? f.qb_p_below : -1);
                 out << line;
             }
         }
