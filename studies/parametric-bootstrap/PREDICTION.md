@@ -114,3 +114,27 @@ misses in size is not held. The rows are computed by a script committed before t
 exist. The results update the interval comparison in `studies/README.md` (profile, Jeffreys,
 BCa, and the two parametric intervals, with coverage and width side by side) and give the recommendation
 for which interval to use when; with a D-entry and a `MANIFEST.json`.
+
+## Addendum, 2026-09-29: how the run and its scoring are computed, fixed before the subset run
+
+Appended before the subset run; no prediction, threshold or definition above changes. It fixes what
+the text leaves open, and is implemented in `study_parametric_bootstrap`
+(`tests/studies/parametric_bootstrap.cpp`) and [`compare.py`](compare.py), committed with it.
+
+- **Engine additions for the run** (tested before it): `engine::profile_lr_statistic` returns W at
+  given values from the same polished maximum and inner maximisation as the profile intervals (W = 2c
+  at the solved ends to 2.3e-9); `engine::analytic_se_scaled` is the analytic-observed-information SE
+  (it agrees with calibrate's D-119 SE to 6.5e-5 relative, `TOL_ANALYTIC_SE_VS_CENTRAL_REL`).
+- **Checks before scoring:** the Jeffreys interval on replicates 0–49 must equal S-9's rows bit for
+  bit, and the recomputed profile ends S-9's rows; either failing stops the scoring. W0 ≤ c against the
+  profile interval's coverage is counted and reported.
+- **Pooling:** "pooled" coverage is over all replicates of the group's scenarios; K3 and H4 pool groups
+  C and D together (38 scenarios), per method and parameter.
+- **S-4a** covers when W0 ≤ c·k_a, k_a the mean of the scenario's finite W0; **S-4b** when W0 ≤ c·k_b.
+  Their widths use replicates 0–199, where the corrected intervals are solved; a width ratio is the
+  median of the method's logit widths over the median of the profile's on the same replicates.
+- **The subset run** (the study subset of D-150, 9 scenarios × 1,000) is scored with the same script;
+  every figure is printed with its denominators, and "held" reads "subset" when a prediction's
+  registered denominator is incomplete. It is reported as such, not as the study's result.
+- **Disclosure:** the tool was smoke-run on 2 replicates of scenarios 29 and 43 to check the code and the
+  scoring pipeline (the checks passed); those rows are not results.

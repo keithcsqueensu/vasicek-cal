@@ -221,6 +221,14 @@ vcal_target_defaults(study_bayes_sbc)
 add_test(NAME study_bayes_sbc_smoke COMMAND study_bayes_sbc --draws 3)
 set_tests_properties(study_bayes_sbc_smoke PROPERTIES LABELS slow)
 
+# S-10 and S-4 (studies/parametric-bootstrap, studies/bartlett-profile): the parametric bootstrap, the
+# profile LR statistic at the truth and S-4b's factor from the same bootstrap panels.
+add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
+target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_parametric_bootstrap)
+add_test(NAME study_parametric_bootstrap_smoke COMMAND study_parametric_bootstrap --replicates 2 --scenarios 29)
+set_tests_properties(study_parametric_bootstrap_smoke PROPERTIES LABELS slow)
+
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
 # pedantic errors (C11 on MSVC, which has no C99 mode), so anything C++-only in the header breaks
