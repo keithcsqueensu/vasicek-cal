@@ -77,6 +77,8 @@ struct JkFit {
     bool polished;
     double rho_tilde_p;
     std::int8_t shifted_p_cover, qa_p_cover, qa_p_below, qb_p_cover, qb_p_below;
+    // S-5's BCa interval ends in logit (NaN where not computed), for interval-width comparisons.
+    double bca_lo_u[2], bca_hi_u[2];
 };
 
 double clamp(double v, double lo, double hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -153,6 +155,8 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
         for (std::int64_t t = 0; t < T; ++t) u_jk[static_cast<std::size_t>(t)] = logit(jk[static_cast<std::size_t>(t)].value[a]);
         const auto bca = resample::bca_interval(u_boot.data(), static_cast<std::int64_t>(u_boot.size()), logit(est.value[a]),
                                                 u_jk.data(), T);
+        out.bca_lo_u[a] = bca.computed ? bca.lo : kNaN;
+        out.bca_hi_u[a] = bca.computed ? bca.hi : kNaN;
         if (bca.computed) {
             const double lo = inv_logit(bca.lo), hi = inv_logit(bca.hi);
             out.bca_cover[a] = lo <= truth[a] && truth[a] <= hi;
@@ -532,14 +536,15 @@ int main(int argc, char** argv) {
         out << "scenario,replicate,pd,rho,rho_tilde,q_err_a,flags,clamped,parity_rho_cover,shifted_rho_cover,"
                "pd_bca_cover,pd_bca_below,rho_bca_cover,rho_bca_below,pd_pct_cover,rho_pct_cover,qa_cover,qa_below,"
                "qb_cover,qb_below,qb_cover_all,se_delta,se_jack,infl_rho,infl_pd,infl_pair_rho,extreme_z_is_top,"
-               "refit_gap,refit_gap_clean,rho_tilde_p,shifted_p_cover,qa_p_cover,qa_p_below,qb_p_cover,qb_p_below\n";
+               "refit_gap,refit_gap_clean,rho_tilde_p,shifted_p_cover,qa_p_cover,qa_p_below,qb_p_cover,qb_p_below,"
+               "pd_bca_lo_u,pd_bca_hi_u,rho_bca_lo_u,rho_bca_hi_u\n";
         char line[1024];
         for (std::size_t k = 0; k < ids.size(); ++k) {
             for (std::uint32_t r = 0; r < R; ++r) {
                 const JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
                 std::snprintf(line, sizeof line,
                               "%u,%u,%.17g,%.17g,%.17g,%.17g,%u,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.17g,%.17g,"
-                              "%.17g,%.17g,%.17g,%d,%.17g,%.17g,%.17g,%d,%d,%d,%d,%d\n",
+                              "%.17g,%.17g,%.17g,%d,%.17g,%.17g,%.17g,%d,%d,%d,%d,%d,%.17g,%.17g,%.17g,%.17g\n",
                               ids[k], r, f.pd, f.rho, f.rho_tilde, f.q_true_err_a, f.flags, f.clamped ? 1 : 0,
                               f.parity_rho_cover, f.shifted_rho_cover, f.bca_cover[0], f.bca_below[0], f.bca_cover[1],
                               f.bca_below[1], f.pct_cover[0], f.pct_cover[1], f.qa_cover, f.qa_below, f.qb_cover,
@@ -547,7 +552,8 @@ int main(int argc, char** argv) {
                               f.extreme_z_is_top, f.refit_gap, f.refit_gap_clean, f.polished ? f.rho_tilde_p : kNaN,
                               f.polished ? f.shifted_p_cover : -1, f.polished ? f.qa_p_cover : -1,
                               f.polished ? f.qa_p_below : -1, f.polished ? f.qb_p_cover : -1,
-                              f.polished ? f.qb_p_below : -1);
+                              f.polished ? f.qb_p_below : -1, f.bca_lo_u[0], f.bca_hi_u[0], f.bca_lo_u[1],
+                              f.bca_hi_u[1]);
                 out << line;
             }
         }
