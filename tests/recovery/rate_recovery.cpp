@@ -17,8 +17,8 @@
 // tests/golden/vasicek_rate/recovery_summary.csv.
 //
 // Without --write it compares with that summary: counts and classes exactly, doubles to
-// TOL_PROFILE_CROSS_PLATFORM_REL (the engine's libm calls may differ in the last bits across
-// platforms, as for recovery_replay).
+// TOL_RATE_POLISHED_CROSS_PLATFORM in their natural scale (the estimates are polished maxima, located
+// to about 1e-7 in logit, and a platform's libm can move the search inside that; see compare()).
 //
 // --replay-out FILE writes the panels and the engine's results that validation/scipy/vasicek_rate_mle.py
 // replicates: replicates 0 and 1 of every cell (refuse; rates from the DGP), and replicate 0 of the
@@ -165,8 +165,20 @@ std::vector<std::vector<std::string>> split_csv(const std::string& text) {
     return out;
 }
 
-// Compares the summary with the committed one: every non-hex field exactly, every *_hex double to
-// TOL_PROFILE_CROSS_PLATFORM_REL. Returns the number of fields that differ.
+std::size_t col(const std::vector<std::string>& header, const char* name) {
+    for (std::size_t j = 0; j < header.size(); ++j) {
+        if (header[j] == name) return j;
+    }
+    std::abort();
+}
+
+// Compares the summary with the committed one: every non-hex field exactly (counts, classes), every
+// *_hex double to TOL_RATE_POLISHED_CROSS_PLATFORM in its natural scale. The estimates are the profile
+// code's polished maxima, located by Brent only to about 1e-7 in logit (D-164), and a platform's libm
+// can move Brent's path inside that; a logit shift du moves an estimate v by at most v du. So the PD
+// and rho statistics are compared absolutely in units of the true PD and rho, q's median relative
+// error and the closed-form gap (logit units) and the endpoint residual absolutely. Returns the number
+// of fields that differ.
 int compare(const std::string& got_text, const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     std::stringstream buf;
@@ -188,9 +200,13 @@ int compare(const std::string& got_text, const std::string& path) {
             bool ok = a == b;
             if (is_hex && !ok) {
                 const double x = vcal::test::parse_double(a), y = vcal::test::parse_double(b);
-                const double rel = std::fabs(y - x) / std::fmax(std::fabs(x), 1e-300);
-                worst = std::fmax(worst, rel);
-                ok = rel <= tol::TOL_PROFILE_CROSS_PLATFORM_REL;
+                const std::string& h = header[j];
+                const double scale = h.rfind("pd_", 0) == 0    ? vcal::test::parse_double(want[i][col(header, "pd")])
+                                     : h.rfind("rho_", 0) == 0 ? vcal::test::parse_double(want[i][col(header, "rho")])
+                                                               : 1.0;
+                const double d = std::fabs(y - x) / scale;
+                worst = std::fmax(worst, d);
+                ok = d <= tol::TOL_RATE_POLISHED_CROSS_PLATFORM;
             }
             if (!ok) {
                 std::fprintf(stderr, "row %zu %s: %s, committed %s\n", i, header[j].c_str(), b.c_str(), a.c_str());
@@ -198,7 +214,7 @@ int compare(const std::string& got_text, const std::string& path) {
             }
         }
     }
-    std::printf("worst relative difference in the doubles: %.3g\n", worst);
+    std::printf("worst scaled difference in the doubles: %.3g\n", worst);
     return bad;
 }
 

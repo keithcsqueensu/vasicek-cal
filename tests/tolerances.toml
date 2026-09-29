@@ -372,6 +372,18 @@ comment = [
     "in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.",
 ]
 
+[TOL_RATE_POLISHED_CROSS_PLATFORM]
+type = "double"
+value = 1e-7
+section = "profile likelihood, M2 (D-128..D-130)"
+comment = [
+    "The rate MLE's recovery summary across platforms (rate_recovery_harness), in natural scale: the",
+    "PD and rho bias and RMSE in units of the true PD and rho, q's median relative error, the",
+    "closed-form gap (logit) and the endpoint residual absolutely. The estimates are polished maxima,",
+    "located by Brent to about 1e-7 in logit (D-164); libm can move Brent's path inside that. Observed",
+    "4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.",
+]
+
 [TOL_PROFILE_SOLVER_AGREEMENT_U]
 type = "double"
 value = 4e-9

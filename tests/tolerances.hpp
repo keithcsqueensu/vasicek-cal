@@ -134,6 +134,12 @@ inline constexpr double TOL_XREF_PROFILE_ENDPOINT_U = 2e-9;
 // 1e-9 in logit units; a last-digit difference can move Brent's path anywhere inside that, and
 // in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.
 inline constexpr double TOL_PROFILE_CROSS_PLATFORM_REL = 1e-8;
+// The rate MLE's recovery summary across platforms (rate_recovery_harness), in natural scale: the
+// PD and rho bias and RMSE in units of the true PD and rho, q's median relative error, the
+// closed-form gap (logit) and the endpoint residual absolutely. The estimates are polished maxima,
+// located by Brent to about 1e-7 in logit (D-164); libm can move Brent's path inside that. Observed
+// 4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.
+inline constexpr double TOL_RATE_POLISHED_CROSS_PLATFORM = 1e-7;
 // Profile endpoints, safeguarded Newton vs nested Brent (D-170), in scaled units. Each solves the
 // same equation to 1e-9, so they may differ by 2e-9; doubled. Observed 5.1e-10 over the test panels.
 // The polished maxima differ by up to 2.0e-9 (Brent stops 1e-9 inside a bound, Newton evaluates
