@@ -20,6 +20,15 @@
       "finished": "2026-09-28T07:12:26-04:00",
       "wall_seconds": 7290,
       "consistency": "its registered-arm columns equal the full run's for the same 9 scenarios, all 45 columns"
+    },
+    "bca_ends": {
+      "command": "study_jackknife_run --replicates 1000 --summary-out summary.csv --replicates-out replicates.csv",
+      "commit": "582895c (the full run's commit) with only the BCa ends added to --replicates-out (four columns; D-176)",
+      "started": "2026-09-29T07:32:00-04:00",
+      "finished": "2026-09-29T10:57:42-04:00",
+      "wall_seconds": 12342,
+      "check": "every BCa coverage flag of the 81,000 replicates equals replicates.parquet (export_bca_ends.py refuses otherwise); the summary is byte-identical to summary.csv",
+      "output": "bca_ends.parquet (export_bca_ends.py), for studies/interval_comparison.py"
     }
   },
   "files": {
