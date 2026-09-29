@@ -521,6 +521,145 @@ Point1 newton_root(const G& g, double in, double out, Point1 at, double tol) {
 
 }  // namespace profile_detail
 
+namespace profile_detail {
+
+// The Newton profile's machinery, shared by profile_intervals_newton and profile_lr_statistic: the
+// panel's distinct observations, the summed grid surface (which brackets every inner maximum), the
+// inner maximisation P_a(u) with its warm start, and the polished maximum. Moved here unchanged from
+// profile_intervals_newton, which makes exactly the same calls in the same order.
+template <class Objective, class Integrator>
+class NewtonProfile {
+public:
+    NewtonProfile(const Objective& objective, const Integrator& primary, const typename Objective::Obs* obs,
+                  std::int64_t periods, const Grid<2>& grid, const std::vector<double>& L)
+        : objective_(objective), primary_(primary), obs_(obs), grid_(grid), S_(summed_surface(grid, L, periods)) {
+        distinct_observations(obs, periods, first_, count_);
+        ax[0] = &grid.axis[0];
+        ax[1] = &grid.axis[1];
+    }
+
+    PanelDerivs derivs(double u0, double u1) {
+        ++evaluations;
+        return panel_derivs(objective_, primary_, obs_, first_, count_, ax, u0, u1);
+    }
+
+    double surface(int a, std::int32_t i, std::int32_t j) const {
+        const std::int32_t idx[2] = {a == 0 ? i : j, a == 0 ? j : i};
+        return S_[static_cast<std::size_t>(grid_.flatten(idx))];
+    }
+    std::int32_t grid_argmax_b(int a, std::int32_t i) const {
+        const int b = 1 - a;
+        std::int32_t best = 0;
+        for (std::int32_t j = 1; j < ax[b]->n; ++j) {
+            if (surface(a, i, j) > surface(a, i, best)) best = j;
+        }
+        return best;
+    }
+    double grid_profile(int a, std::int32_t i) const { return surface(a, i, grid_argmax_b(a, i)); }
+    std::int32_t clamp_index(int a, double pos) const {
+        const double lim = static_cast<double>(ax[a]->n - 1);
+        return static_cast<std::int32_t>(pos < 0.0 ? 0.0 : pos > lim ? lim : pos);
+    }
+
+    // P_a(u): maximise over the nuisance u_b. Returns P_a with its envelope derivatives, the
+    // maximiser w and dw/du.
+    Point1 inner(int a, double u) {
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        const double edge_tol = 1e3 * kProfileMaxTol;
+        const int b = 1 - a;
+        const double pos = (u - ax[a]->scaled_lo()) / ax[a]->step();
+        const std::int32_t j0 = grid_argmax_b(a, clamp_index(a, std::floor(pos)));
+        const std::int32_t j1 = grid_argmax_b(a, clamp_index(a, std::ceil(pos)));
+        const double hb = ax[b]->step(), blo = ax[b]->scaled_lo(), bhi = ax[b]->scaled_hi();
+        double lo = std::fmax(blo, ax[b]->scaled_at(j0 < j1 ? j0 : j1) - 2.0 * hb);
+        double hi = std::fmin(bhi, ax[b]->scaled_at(j0 < j1 ? j1 : j0) + 2.0 * hb);
+        double w0 = 0.5 * (ax[b]->scaled_at(j0) + ax[b]->scaled_at(j1));
+        if (std::isfinite(last[a].w) && std::isfinite(last[a].dwdu)) w0 = last[a].w + last[a].dwdu * (u - last[a].x);
+        // newton_max returns its last or its best evaluation; keep the full derivatives of both.
+        PanelDerivs at_last{}, at_best{};
+        double w_last = nan, w_best = nan;
+        const auto f = [&](double w) {
+            at_last = a == 0 ? derivs(u, w) : derivs(w, u);
+            w_last = w;
+            if (!(at_last.l <= at_best.l) || std::isnan(w_best)) {
+                at_best = at_last;
+                w_best = w;
+            }
+            return Point1{w, at_last.l, at_last.g[b], at_last.h[b], 0.0, 0.0};
+        };
+        Point1 m{};
+        PanelDerivs at_m{};
+        for (int widen = 0; widen < 64; ++widen) {
+            w_best = nan;
+            m = newton_max(f, lo, hi, w0, kProfileMaxTol);
+            at_m = m.x == w_last ? at_last : at_best;
+            if (!std::isfinite(m.f)) break;
+            const bool at_lo = m.x - lo <= edge_tol && lo > blo;
+            const bool at_hi = hi - m.x <= edge_tol && hi < bhi;
+            if (!at_lo && !at_hi) break;
+            if (at_lo) lo = std::fmax(blo, lo - 2.0 * hb);
+            if (at_hi) hi = std::fmin(bhi, hi + 2.0 * hb);
+            w0 = m.x;
+        }
+        const double hab = at_m.h[2], hbb = at_m.h[b], haa = at_m.h[a];
+        const bool curved = hbb < 0.0;
+        Point1 r{u, m.f, at_m.g[a], curved ? haa - hab * hab / hbb : haa, m.x, curved ? -hab / hbb : 0.0};
+        if (std::isfinite(r.f)) last[a] = r;
+        return r;
+    }
+
+    // The polished maximum: Newton on the PD profile around the estimate, bracket +-2 grid steps,
+    // widened while the maximum sits on an edge that is not a bound of the box. Leaves last[0] at it.
+    Point1 polish(const Estimate2& est) {
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        const double edge_tol = 1e3 * kProfileMaxTol;
+        const double u_hat[2] = {grid::to_scaled(ax[0]->scale, est.value[0]), grid::to_scaled(ax[1]->scale, est.value[1])};
+        double lo0 = std::fmax(ax[0]->scaled_lo(), u_hat[0] - 2.0 * ax[0]->step());
+        double hi0 = std::fmin(ax[0]->scaled_hi(), u_hat[0] + 2.0 * ax[0]->step());
+        last[0] = Point1{u_hat[0], nan, nan, nan, u_hat[1], 0.0};
+        Point1 top{};
+        double x0 = u_hat[0];
+        for (int widen = 0; widen < 64; ++widen) {
+            top = newton_max([&](double u) { return inner(0, u); }, lo0, hi0, x0, kProfileMaxTol);
+            if (!std::isfinite(top.f)) break;
+            const bool at_lo = top.x - lo0 <= edge_tol && lo0 > ax[0]->scaled_lo();
+            const bool at_hi = hi0 - top.x <= edge_tol && hi0 < ax[0]->scaled_hi();
+            if (!at_lo && !at_hi) break;
+            if (at_lo) lo0 = std::fmax(ax[0]->scaled_lo(), lo0 - 2.0 * ax[0]->step());
+            if (at_hi) hi0 = std::fmin(ax[0]->scaled_hi(), hi0 + 2.0 * ax[0]->step());
+            x0 = top.x;
+        }
+        return top;
+    }
+
+    // The warm start for axis 1 at the maximum: rho's profile is maximised over PD, whose maximiser
+    // moves with u_1 at the slope -l_01 / l_00.
+    void start_axis1(const double (&u_max)[2]) {
+        const double nan = std::numeric_limits<double>::quiet_NaN();
+        const auto at = derivs(u_max[0], u_max[1]);
+        last[1] = Point1{u_max[1], nan, nan, nan, u_max[0], at.h[0] < 0.0 ? -at.h[2] / at.h[0] : 0.0};
+    }
+
+    const Axis* ax[2];
+    Point1 last[2] = {{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
+                      {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()}};
+    std::int64_t evaluations = 0;
+
+private:
+    const Objective& objective_;
+    const Integrator& primary_;
+    const typename Objective::Obs* obs_;
+    const Grid<2>& grid_;
+    std::vector<double> S_;
+    std::vector<std::int64_t> first_, count_;
+};
+
+}  // namespace profile_detail
+
 // profile_intervals with analytic derivatives (D-170): the same intervals, defined by what is
 // computed, solved by safeguarded Newton instead of nested Brent. The grid supplies every bracket
 // (as in the Brent version); only the steps inside a bracket differ.
@@ -549,103 +688,15 @@ ProfileIntervals2 profile_intervals_newton(const Objective& objective, const Int
         out.flags[0] = out.flags[1] = kIntervalNotComputed;
         return out;
     }
+    profile_detail::NewtonProfile<Objective, Integrator> np(objective, primary, obs, periods, grid, L);
+    const Axis* const (&ax)[2] = np.ax;
 
-    std::vector<std::int64_t> first, count;
-    profile_detail::distinct_observations(obs, periods, first, count);
-    const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
-    const auto derivs = [&](double u0, double u1) {
-        ++out.evaluations;
-        return profile_detail::panel_derivs(objective, primary, obs, first, count, ax, u0, u1);
-    };
-
-    const std::vector<double> S = profile_detail::summed_surface(grid, L, periods);
-    const auto surface = [&](int a, std::int32_t i, std::int32_t j) {
-        const std::int32_t idx[2] = {a == 0 ? i : j, a == 0 ? j : i};
-        return S[static_cast<std::size_t>(grid.flatten(idx))];
-    };
-    const auto grid_argmax_b = [&](int a, std::int32_t i) {
-        const int b = 1 - a;
-        std::int32_t best = 0;
-        for (std::int32_t j = 1; j < ax[b]->n; ++j) {
-            if (surface(a, i, j) > surface(a, i, best)) best = j;
-        }
-        return best;
-    };
-    const auto grid_profile = [&](int a, std::int32_t i) { return surface(a, i, grid_argmax_b(a, i)); };
-    const auto clamp_index = [&](int a, double pos) {
-        const double lim = static_cast<double>(ax[a]->n - 1);
-        return static_cast<std::int32_t>(pos < 0.0 ? 0.0 : pos > lim ? lim : pos);
-    };
-    const double edge_tol = 1e3 * kProfileMaxTol;
-
-    // Warm start of the inner maximisation along each axis: the last inner maximum and its slope.
-    Point1 last[2] = {{nan, nan, nan, nan, nan, nan}, {nan, nan, nan, nan, nan, nan}};
-
-    // P_a(u): maximise over the nuisance u_b. Returns P_a with its envelope derivatives, the
-    // maximiser w and dw/du.
-    const auto inner = [&](int a, double u) {
-        const int b = 1 - a;
-        const double pos = (u - ax[a]->scaled_lo()) / ax[a]->step();
-        const std::int32_t j0 = grid_argmax_b(a, clamp_index(a, std::floor(pos)));
-        const std::int32_t j1 = grid_argmax_b(a, clamp_index(a, std::ceil(pos)));
-        const double hb = ax[b]->step(), blo = ax[b]->scaled_lo(), bhi = ax[b]->scaled_hi();
-        double lo = std::fmax(blo, ax[b]->scaled_at(j0 < j1 ? j0 : j1) - 2.0 * hb);
-        double hi = std::fmin(bhi, ax[b]->scaled_at(j0 < j1 ? j1 : j0) + 2.0 * hb);
-        double w0 = 0.5 * (ax[b]->scaled_at(j0) + ax[b]->scaled_at(j1));
-        if (std::isfinite(last[a].w) && std::isfinite(last[a].dwdu)) w0 = last[a].w + last[a].dwdu * (u - last[a].x);
-        // newton_max returns its last or its best evaluation; keep the full derivatives of both.
-        profile_detail::PanelDerivs at_last{}, at_best{};
-        double w_last = nan, w_best = nan;
-        const auto f = [&](double w) {
-            at_last = a == 0 ? derivs(u, w) : derivs(w, u);
-            w_last = w;
-            if (!(at_last.l <= at_best.l) || std::isnan(w_best)) {
-                at_best = at_last;
-                w_best = w;
-            }
-            return Point1{w, at_last.l, at_last.g[b], at_last.h[b], 0.0, 0.0};
-        };
-        Point1 m{};
-        profile_detail::PanelDerivs at_m{};
-        for (int widen = 0; widen < 64; ++widen) {
-            w_best = nan;
-            m = profile_detail::newton_max(f, lo, hi, w0, kProfileMaxTol);
-            at_m = m.x == w_last ? at_last : at_best;
-            if (!std::isfinite(m.f)) break;
-            const bool at_lo = m.x - lo <= edge_tol && lo > blo;
-            const bool at_hi = hi - m.x <= edge_tol && hi < bhi;
-            if (!at_lo && !at_hi) break;
-            if (at_lo) lo = std::fmax(blo, lo - 2.0 * hb);
-            if (at_hi) hi = std::fmin(bhi, hi + 2.0 * hb);
-            w0 = m.x;
-        }
-        const double hab = at_m.h[2], hbb = at_m.h[b], haa = at_m.h[a];
-        const bool curved = hbb < 0.0;
-        Point1 r{u, m.f, at_m.g[a], curved ? haa - hab * hab / hbb : haa, m.x, curved ? -hab / hbb : 0.0};
-        if (std::isfinite(r.f)) last[a] = r;
-        return r;
-    };
-
-    // 1. The polished maximum: Newton on the PD profile around the estimate.
-    const double u_hat[2] = {grid::to_scaled(ax[0]->scale, est.value[0]), grid::to_scaled(ax[1]->scale, est.value[1])};
-    double lo0 = std::fmax(ax[0]->scaled_lo(), u_hat[0] - 2.0 * ax[0]->step());
-    double hi0 = std::fmin(ax[0]->scaled_hi(), u_hat[0] + 2.0 * ax[0]->step());
-    last[0] = Point1{u_hat[0], nan, nan, nan, u_hat[1], 0.0};
-    Point1 top{};
-    double x0 = u_hat[0];
-    for (int widen = 0; widen < 64; ++widen) {
-        top = profile_detail::newton_max([&](double u) { return inner(0, u); }, lo0, hi0, x0, kProfileMaxTol);
-        if (!std::isfinite(top.f)) break;
-        const bool at_lo = top.x - lo0 <= edge_tol && lo0 > ax[0]->scaled_lo();
-        const bool at_hi = hi0 - top.x <= edge_tol && hi0 < ax[0]->scaled_hi();
-        if (!at_lo && !at_hi) break;
-        if (at_lo) lo0 = std::fmax(ax[0]->scaled_lo(), lo0 - 2.0 * ax[0]->step());
-        if (at_hi) hi0 = std::fmin(ax[0]->scaled_hi(), hi0 + 2.0 * ax[0]->step());
-        x0 = top.x;
-    }
+    // 1. The polished maximum.
+    const Point1 top = np.polish(est);
     const double l_max = std::fmax(top.f, est.loglik);
     if (!std::isfinite(l_max) || !std::isfinite(top.f)) {
         out.flags[0] = out.flags[1] = kIntervalNotComputed;
+        out.evaluations = np.evaluations;
         return out;
     }
     const double u_max[2] = {top.x, top.w};
@@ -653,25 +704,19 @@ ProfileIntervals2 profile_intervals_newton(const Objective& objective, const Int
     out.max_at[0] = grid::from_scaled(ax[0]->scale, u_max[0]);
     out.max_at[1] = grid::from_scaled(ax[1]->scale, u_max[1]);
     const double level = l_max - threshold;
-
-    // The warm start for axis 1 at the maximum: rho's profile is maximised over PD, whose
-    // maximiser moves with u_1 at the slope -l_01 / l_00.
-    {
-        const auto at = derivs(u_max[0], u_max[1]);
-        last[1] = Point1{u_max[1], nan, nan, nan, u_max[0], at.h[0] < 0.0 ? -at.h[2] / at.h[0] : 0.0};
-    }
+    np.start_axis1(u_max);
     const Point1 start0 = top;
-    const Point1 start1 = last[1];
+    const Point1 start1 = np.last[1];
 
     // 2. Each parameter, each side.
     for (int a = 0; a < 2; ++a) {
         const auto g = [&](double u) {
-            Point1 p = inner(a, u);
+            Point1 p = np.inner(a, u);
             p.f -= level;
             return p;
         };
         for (const int side : {-1, +1}) {
-            last[a] = a == 0 ? start0 : start1;  // each side walks out from the maximum
+            np.last[a] = a == 0 ? start0 : start1;  // each side walks out from the maximum
             const double bound = side < 0 ? ax[a]->scaled_lo() : ax[a]->scaled_hi();
             const double pos = (u_max[a] - ax[a]->scaled_lo()) / ax[a]->step();
             std::int32_t i = side < 0 ? static_cast<std::int32_t>(std::ceil(pos)) - 1
@@ -683,7 +728,7 @@ ProfileIntervals2 profile_intervals_newton(const Objective& objective, const Int
             double residual = 0.0;
             for (; i >= 0 && i < ax[a]->n; i += side) {
                 const double u = ax[a]->scaled_at(i);
-                if (grid_profile(a, i) >= level) {  // a lower bound on P_a(u): inside, no work needed
+                if (np.grid_profile(a, i) >= level) {  // a lower bound on P_a(u): inside, no work needed
                     inside = u;
                     continue;
                 }
@@ -716,6 +761,52 @@ ProfileIntervals2 profile_intervals_newton(const Objective& objective, const Int
             if (truncated) out.flags[a] |= side < 0 ? kIntervalLowerTruncated : kIntervalUpperTruncated;
         }
     }
+    out.evaluations = np.evaluations;
+    return out;
+}
+
+
+// The profile likelihood-ratio statistic at given values (S-4): W_a = 2 (l_max - P_a(v_a)) for each
+// parameter a, with l_max the polished maximum and P_a the profile log-likelihood, both computed
+// exactly as profile_intervals_newton computes them (the same NewtonProfile). The profile interval at
+// threshold c/2 contains v_a exactly when W_a <= c, up to the solvers' tolerances. NaN where the
+// profile is not computed (a flat or numeric fit) or v_a is outside the box.
+struct ProfileLr {
+    double loglik_max;
+    double max_at[2];
+    double w[2];
+    std::int64_t evaluations;
+};
+
+template <class Objective, class Integrator>
+ProfileLr profile_lr_statistic(const Objective& objective, const Integrator& primary,
+                               const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& grid,
+                               const std::vector<double>& L, const Estimate2& est, const double (&at)[2]) {
+    static_assert(profile_detail::has_contrib_derivs<Objective, Integrator>::value,
+                  "vcal: profile_lr_statistic needs the objective's analytic derivatives (D-170)");
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    ProfileLr out{nan, {nan, nan}, {nan, nan}, 0};
+    if ((est.flags & (kFlagFlatSurface | kFlagNumeric)) || !std::isfinite(est.value[0]) || !std::isfinite(est.value[1])) {
+        return out;
+    }
+    profile_detail::NewtonProfile<Objective, Integrator> np(objective, primary, obs, periods, grid, L);
+    const profile_detail::Point1 top = np.polish(est);
+    const double l_max = std::fmax(top.f, est.loglik);
+    out.evaluations = np.evaluations;
+    if (!std::isfinite(l_max) || !std::isfinite(top.f)) return out;
+    const double u_max[2] = {top.x, top.w};
+    out.loglik_max = l_max;
+    out.max_at[0] = grid::from_scaled(np.ax[0]->scale, u_max[0]);
+    out.max_at[1] = grid::from_scaled(np.ax[1]->scale, u_max[1]);
+    np.start_axis1(u_max);
+    const profile_detail::Point1 start[2] = {top, np.last[1]};
+    for (int a = 0; a < 2; ++a) {
+        if (!(at[a] >= grid.axis[a].lo && at[a] <= grid.axis[a].hi)) continue;
+        np.last[a] = start[a];
+        const profile_detail::Point1 p = np.inner(a, grid::to_scaled(np.ax[a]->scale, at[a]));
+        if (std::isfinite(p.f)) out.w[a] = 2.0 * (l_max - p.f);
+    }
+    out.evaluations = np.evaluations;
     return out;
 }
 
