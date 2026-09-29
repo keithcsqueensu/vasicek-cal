@@ -170,14 +170,29 @@ maximised over ρ, is within c = 1.92073 of the maximum. The same holds for ρ, 
 c is half the 95% point of χ² with one degree of freedom. The interval needs no standard error,
 follows the likelihood's actual shape, and is the right interval near a bound.
 
-1. **The maximum** ℓ_max is found off the grid by Brent's method, as a nested maximisation. Each
-   value of the PD profile is itself a maximisation over ρ.
+What is computed defines the interval, not how it is solved (D-170): ℓ_max is the maximum of
+the log-likelihood, and an end is a point where the profile equals ℓ_max − c, to within a reported
+residual (bounded by 10⁻⁷ in log-likelihood; see the tolerance register). Any solver meeting that
+is valid, and a replication may use Brent's method throughout.
+
+1. **The maximum** ℓ_max is found off the grid as a nested maximisation: each value of the PD
+   profile is itself a maximisation over ρ, bracketed from the grid.
 2. **Each end:**
    - Walk outwards from the maximum along the grid. Grid values of the profile can only
      underestimate it, so a grid point above the threshold is inside the interval.
    - At the first grid point below the threshold, evaluate the profile exactly.
-   - Solve profile = ℓ_max − c by Brent's root finder, to 10⁻⁹ in logit coordinates. The residual
-     in log-likelihood is reported: at most 2·10⁻⁹ in the tests, against a threshold of 1.92.
+   - Solve profile = ℓ_max − c inside that bracket, to 10⁻⁹ in logit coordinates. The residual
+     in log-likelihood is reported: at most about 4·10⁻⁹ in the tests, against a threshold of 1.92.
+
+**The engine's solver** is safeguarded Newton. The log-likelihood's score and Hessian come from the
+same quadrature nodes as its value: with g the log-integrand, ∂ log I/∂θ = E[g_θ] and
+∂² log I/∂θ² = E[g_θθ + g_θ g_θᵀ] − E[g_θ] E[g_θ]ᵀ, expectations under the normalised integrand, so
+one pass over the nodes gives all three. The profile's slope at the inner maximum is ∂ℓ/∂u_a
+(envelope theorem) and its curvature ℓ_aa − ℓ_ab²/ℓ_bb. Each Newton step must land inside the
+bracket, and be an ascent step when maximising; otherwise the step bisects the bracket. A search
+that ends on a bound of the box evaluates the bound itself. This needs about 20 times fewer
+likelihood evaluations than nested Brent, which the engine keeps for objectives without analytic
+derivatives. The two agree to 4·10⁻⁹ in logit coordinates.
 3. **A bound of the box:** if the profile is still above the threshold at the bound, the end is
    the bound itself, flagged truncated. It is never extrapolated. At small ρ, or with very few
    defaults, the lower ρ end is routinely the bound.
@@ -242,15 +257,19 @@ log-likelihood P_q(c), the maximum of ℓ(PD, ρ) over the box subject to q(PD, 
 so P_q(c) is a maximisation over ρ alone, over the values of ρ for which PD_c(ρ) lies in the box.
 
 1. **Inner maximum.** A guide comes first: the grid's surface, interpolated at points of the curve
-   (eight per grid step of ρ). It chooses a bracket, and Brent's method then maximises the
-   likelihood itself over logit ρ. The bracket widens until the maximum is interior or on a bound.
+   (eight per grid step of ρ). It chooses a bracket, and the likelihood itself is then maximised
+   over logit ρ (safeguarded Newton in the engine, along the curve by the chain rule; Brent's
+   method is equally valid). The bracket widens until the maximum is interior or on a bound.
    A bound is an end of the ρ axis, or a point where PD_c(ρ) reaches an end of the PD axis.
 2. **Each end.** q is not a grid axis, so the end is bracketed by walking outwards from the
    maximum in logit(q), one PD grid step at a time. Points where the guide is above the
    threshold are passed over. The bracket's own ends are always evaluated exactly, since the
-   guide is not a bound. Brent's root finder then solves P_q(c) = ℓ_max − 1.92073 to 10⁻⁹ in
-   logit(q), and the residual is reported: at most 8.8·10⁻¹¹ in the unit test, and asserted
-   below 10⁻⁷ on every recovery fit.
+   guide is not a bound. A root finder then solves P_q(c) = ℓ_max − 1.92073 to 10⁻⁹ in logit(q)
+   (the engine: Newton with the envelope slope ∂ℓ/∂PD · φ(y) √(1 − ρ) · dx/ds, bisecting when a
+   step leaves the bracket or fails to halve the residual; it stops only when the root is
+   bracketed to 10⁻⁹, since at an end held by a moving bound of the box the envelope slope is
+   wrong), and the residual is reported: under 10⁻¹⁰ in the unit test, and asserted below 10⁻⁷
+   on every recovery fit.
 3. **The box.** q attainable in the box runs from 1.455·10⁻⁴ (PD = 10⁻⁴, ρ = 10⁻³) to 0.9713
    (PD = 0.2, ρ = 0.5). An interval that is still above the threshold there ends at that limit,
    flagged *truncated*, and is never extrapolated. An end whose inner maximiser lies on a bound

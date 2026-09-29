@@ -116,7 +116,8 @@ inline constexpr double TOL_SCIPY_OPTIMUM_LL_ABS = 1e-3;
 inline constexpr double TOL_SCIPY_ESTIMATE_SE = 0.06;
 // S-23: the end points of the 99.9% conditional PD's profile interval on the 162 recovery replay
 // panels, scipy (trapezoid integrals, nested bounded Brent, brentq) vs the engine, in logit(q).
-// Observed 1.2e-9: both solvers' 1e-9 tolerances. Doubled and rounded up.
+// Observed 1.2e-9: both solvers' 1e-9 tolerances. Doubled and rounded up. With the engine's
+// Newton solves (D-170), which stop only once the root is bracketed, 2.4e-10.
 inline constexpr double TOL_SCIPY_Q_PROFILE_ENDPOINT_S = 3e-9;
 
 // --- profile likelihood, M2 (D-128..D-130) -------------------------------------------------------
@@ -124,6 +125,7 @@ inline constexpr double TOL_SCIPY_Q_PROFILE_ENDPOINT_S = 3e-9;
 // also bounds the polished maximum l_max against a dense nested maximisation. Asserted on every fit
 // of the recovery harness. Observed 2.1e-9 on the M1.4 test panel, 1.7e-8 worst over the 81,000
 // recovery fits (steeper profiles at n = 1e4): the 1e-9 root tolerance in u times the slope.
+// With the Newton solves (D-170): 1.73e-8 (PD, rho) and 9.1e-9 (q) over the 81,000 fits.
 inline constexpr double TOL_PROFILE_ENDPOINT_RESIDUAL_LL = 1e-7;
 // Profile-interval endpoints, core vs ref, in logit units: the two solvers' tolerances (core 1e-9,
 // ref 1e-10) with margin. Observed 1.5e-10.
@@ -132,6 +134,21 @@ inline constexpr double TOL_XREF_PROFILE_ENDPOINT_U = 2e-9;
 // 1e-9 in logit units; a last-digit difference can move Brent's path anywhere inside that, and
 // in logit coordinates a shift du changes v by at most v du, so 10x the solver tolerance.
 inline constexpr double TOL_PROFILE_CROSS_PLATFORM_REL = 1e-8;
+// Profile endpoints, safeguarded Newton vs nested Brent (D-170), in scaled units. Each solves the
+// same equation to 1e-9, so they may differ by 2e-9; doubled. Observed 5.1e-10 over the test panels.
+// The polished maxima differ by up to 2.0e-9 (Brent stops 1e-9 inside a bound, Newton evaluates
+// the bound), bounded by TOL_PROFILE_ENDPOINT_RESIDUAL_LL.
+inline constexpr double TOL_PROFILE_SOLVER_AGREEMENT_U = 4e-9;
+// The binomial objective's analytic score and Hessian (posterior moments on the quadrature's own
+// nodes, D-170) against Richardson-extrapolated central differences in logit coordinates, each
+// axis's step 0.02 / sqrt(max(1, |l_aa|)), relative to max(1, |analytic|): golden mixture cases and
+// near-bound cases with n <= 1e5. Observed 5.4e-10 (score), 1.6e-9 (Hessian). Worst x 4, rounded up.
+// A formula error of 1e-5 relative would fail by 1000x.
+inline constexpr double TOL_SCORE_HESSIAN_FD_REL = 1e-8;
+// As TOL_SCORE_HESSIAN_FD_REL, for the golden cases with n > 1e5 (n = 1e6), where the differences'
+// rounding sets the floor: |l| ~ 1e5 and the steps are small. Observed 5.6e-9 (score), 1.8e-8
+// (Hessian). Worst x 4, rounded up.
+inline constexpr double TOL_SCORE_HESSIAN_FD_REL_LARGE_N = 1e-7;
 
 // --- conditional PD, S-23 ------------------------------------------------------------------------
 // q = Phi((Phi^-1(PD) + sqrt(rho) z_0.999) / sqrt(1 - rho)) and logit(q) against mpmath (40 digits),

@@ -562,14 +562,22 @@ seed ──► Philox4x32-10(key = seed ⊕ "RSMPBOOT", counter = (scheme, b, j/
           jackknife:       W = 1·1ᵀ − I            (B = T)
           walk-forward:    W[b, t] = 1{t ∈ window_b}
           custom:          caller-supplied W, or a B × m period-index matrix → counts (D-134)
-W [B × T] ──► reduce_weighted, fused & tiled over (b, k):
-                s = Σ_t W[b,t]·L[t,k]   (ascending t, compensated summation)
+W [B × T] ──► distinct rows (D-172): R [D × K], the panel's distinct rows in ascending observation
+              order ((n, d) for the binomial objective); M [B × D], M[b,j] = Σ_{t in row j} W[b,t]
+          ──► bounded argmax (D-172), per b: tile bounds Σ_j M[b,j]·max_{k∈tile} R[j,k] (weights ≥ 0),
+              tiles in descending bound order, each evaluated in full, until the next bound is
+              strictly below the best value: exactly the full grid's argmax. Falls back to, and is
+              checked against, reduce_weighted, fused & tiled over (b, k):
+                s = Σ_j M[b,j]·R[j,k]   (ascending j, compensated summation)
                 ArgMax.push(k, s); tile states merged in fixed order
           ──► per-b refinement pass ──► B × vcal_replicates ──► percentile intervals (type 7, D-135)
 ```
 
 Cost: the quadrature (expensive) runs `T·K` times total, independent of `B`. The fused
-reduction is `O(B·T·K)` multiply-adds with `O(T·K + B·T)` memory; `B·K` is never stored.
+reduction is `O(B·D·K)` multiply-adds with `O(D·K + B·D)` memory, D ≤ T the number of distinct
+observations (16 on average against T = 53 over the recovery subset); `B·K` is never stored.
+The order over rows is defined by the observations, so a replicate's estimate does not depend on
+how the panel's periods are laid out; against a sum over periods it differs only by rounding.
 Validity: this is exact for objectives additive over periods; see (D-042, D-043) for the AR(1)
 factor and method-of-moments cases where it isn't a pure `W × L`.
 

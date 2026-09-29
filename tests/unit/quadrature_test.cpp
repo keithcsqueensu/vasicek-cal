@@ -4,12 +4,16 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <limits>
 #include <string>
 #include <vector>
 
 #include "core/model/binomial_mixture.hpp"
 #include "core/model/vasicek.hpp"
+#include "core/objectives/binomial_mixture.hpp"
+#include "core/grid.hpp"
 #include "core/quadrature/composite_legendre.hpp"
 #include "core/quadrature/parity.hpp"
 #include "core/quadrature/gauss_hermite.hpp"
@@ -406,4 +410,116 @@ VCAL_TEST(composite_legendre_convergence_by_k_and_m) {
         }
         vcal::test::note(line + "   (worst eps: rho <= 0.5 / rho > 0.5)");
     }
+}
+
+// --- score and Hessian by posterior moments (D-170) ----------------------------------------
+
+namespace {
+
+// l, its gradient and Hessian in logit coordinates (u, w) = (logit PD, logit rho), by the chain
+// rule from the objective's natural-scale derivatives: the coordinates the profile solves use.
+struct LogitDerivs {
+    double l, g[2], h[3];  // h = (uu, ww, uw)
+};
+
+LogitDerivs logit_derivs(const vcal::objectives::BinomialMixture<vcal::PrecisionF64>& obj, const q::SplitRule<vcal::PrecisionF64>& rule,
+                         std::int64_t n, std::int64_t d, double u, double w) {
+    namespace g = vcal::grid;
+    const auto L = vcal::AxisScale::Logit;
+    const double v[2] = {g::from_scaled(L, u), g::from_scaled(L, w)};
+    const double j1[2] = {g::dvalue_dscaled(L, u), g::dvalue_dscaled(L, w)};
+    const double j2[2] = {g::d2value_dscaled2(L, u), g::d2value_dscaled2(L, w)};
+    double gr[2], he[3];
+    LogitDerivs r{};
+    r.l = obj.log_contrib_derivs({n, d}, {v[0], v[1]}, rule, gr, he);
+    r.g[0] = gr[0] * j1[0];
+    r.g[1] = gr[1] * j1[1];
+    r.h[0] = he[0] * j1[0] * j1[0] + gr[0] * j2[0];
+    r.h[1] = he[1] * j1[1] * j1[1] + gr[1] * j2[1];
+    r.h[2] = he[2] * j1[0] * j1[1];
+    return r;
+}
+
+}  // namespace
+
+// The analytic score and Hessian against Richardson-extrapolated central differences in logit
+// coordinates, each axis's step scaled to its curvature (so sharp and flat likelihoods are resolved
+// alike), over
+// the golden mixture cases (zero-default and all-default periods among them) and near-bound
+// estimates on the recovery grid's box. The gradient is checked against differences of the
+// value, the Hessian against differences of the gradient. The value is log_contrib's bit for bit.
+VCAL_TEST(binomial_score_hessian_match_finite_differences) {
+    namespace g = vcal::grid;
+    const vcal::objectives::BinomialMixture<vcal::PrecisionF64> obj{};
+    const auto rule = q::parity_rule();
+    struct Case {
+        double pd, rho;
+        std::int64_t n, d;
+    };
+    std::vector<Case> cases;
+    for (const auto& c : mixture_cases()) cases.push_back({c.pd, c.rho, c.n, c.d});
+    for (const double pd : {1.0001e-4, 0.19999}) {
+        for (const double rho : {1.0001e-3, 0.49999}) {
+            for (const std::int64_t n : {50, 1000, 10000}) {
+                for (const std::int64_t d : {std::int64_t{0}, std::int64_t{1}, n / 20, n / 4}) cases.push_back({pd, rho, n, d});
+            }
+        }
+    }
+    const double h = 0.02;  // relative to the curvature's scale: 0.05 and 0.01 were measured too
+    // Worst relative errors, tier 0 for n <= 1e5 and tier 1 above.
+    double worst_g[2] = {0.0, 0.0}, worst_h[2] = {0.0, 0.0}, worst_bits = 0.0;
+    std::string where_g[2], where_h[2];
+    for (const auto& c : cases) {
+        const double u = g::to_scaled(vcal::AxisScale::Logit, c.pd), w = g::to_scaled(vcal::AxisScale::Logit, c.rho);
+        const LogitDerivs a = logit_derivs(obj, rule, c.n, c.d, u, w);
+        const double plain = obj.log_contrib(
+            {c.n, c.d}, {g::from_scaled(vcal::AxisScale::Logit, u), g::from_scaled(vcal::AxisScale::Logit, w)}, rule);
+        if (std::memcmp(&plain, &a.l, sizeof plain) != 0) worst_bits = 1.0;
+        if (!std::isfinite(a.l)) continue;
+        // Central differences at h and h/2, Richardson-extrapolated: truncation error O(h^4).
+        // Steps scaled to each axis's curvature, so the differences resolve sharp (large-n)
+        // likelihoods as well as flat ones: s_a = h / sqrt(max(1, |l_aa|)).
+        const double step0 = h / std::sqrt(std::fmax(1.0, std::fabs(a.h[0])));
+        const double step1 = h / std::sqrt(std::fmax(1.0, std::fabs(a.h[1])));
+        const auto diff = [&](double scale, double (&dg)[2], double (&dh)[3]) {
+            const double s0 = scale * step0, s1 = scale * step1;
+            const LogitDerivs up = logit_derivs(obj, rule, c.n, c.d, u + s0, w);
+            const LogitDerivs um = logit_derivs(obj, rule, c.n, c.d, u - s0, w);
+            const LogitDerivs wp = logit_derivs(obj, rule, c.n, c.d, u, w + s1);
+            const LogitDerivs wm = logit_derivs(obj, rule, c.n, c.d, u, w - s1);
+            dg[0] = (up.l - um.l) / (2 * s0);
+            dg[1] = (wp.l - wm.l) / (2 * s1);
+            dh[0] = (up.g[0] - um.g[0]) / (2 * s0);
+            dh[1] = (wp.g[1] - wm.g[1]) / (2 * s1);
+            dh[2] = (wp.g[0] - wm.g[0]) / (2 * s1);
+        };
+        double g1[2], h1[3], g2[2], h2[3];
+        diff(1.0, g1, h1);
+        diff(0.5, g2, h2);
+        double fd_g[2], fd_h[3];
+        for (int i = 0; i < 2; ++i) fd_g[i] = (4.0 * g2[i] - g1[i]) / 3.0;
+        for (int i = 0; i < 3; ++i) fd_h[i] = (4.0 * h2[i] - h1[i]) / 3.0;
+        const std::string tag = "pd " + std::to_string(c.pd) + " rho " + std::to_string(c.rho) + " n " + std::to_string(c.n) +
+                                " d " + std::to_string(c.d);
+        const int tier = c.n <= 100000 ? 0 : 1;
+        for (int i = 0; i < 2; ++i) {
+            const double e = std::fabs(a.g[i] - fd_g[i]) / std::fmax(1.0, std::fabs(a.g[i]));
+            if (!(e <= worst_g[tier])) { worst_g[tier] = e; where_g[tier] = tag + " g" + std::to_string(i); }
+        }
+        for (int i = 0; i < 3; ++i) {
+            const double e = std::fabs(a.h[i] - fd_h[i]) / std::fmax(1.0, std::fabs(a.h[i]));
+            if (!(e <= worst_h[tier])) { worst_h[tier] = e; where_h[tier] = tag + " h" + std::to_string(i); }
+        }
+    }
+    for (int tier = 0; tier < 2; ++tier) {
+        char buf[128];
+        std::snprintf(buf, sizeof buf, "%s: worst relative score error %.3g at ", tier == 0 ? "n <= 1e5" : "n > 1e5",
+                      worst_g[tier]);
+        std::string msg = buf + where_g[tier];
+        std::snprintf(buf, sizeof buf, "; Hessian %.3g at ", worst_h[tier]);
+        vcal::test::note(msg + buf + where_h[tier]);
+    }
+    VCAL_CHECK(worst_bits == 0.0);
+    VCAL_CHECK(worst_g[0] <= tol::TOL_SCORE_HESSIAN_FD_REL && worst_h[0] <= tol::TOL_SCORE_HESSIAN_FD_REL);
+    VCAL_CHECK(worst_g[1] <= tol::TOL_SCORE_HESSIAN_FD_REL_LARGE_N && worst_h[1] <= tol::TOL_SCORE_HESSIAN_FD_REL_LARGE_N);
 }

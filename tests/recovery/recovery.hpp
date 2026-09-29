@@ -147,10 +147,24 @@ inline std::vector<std::int64_t> panel(const Scenario& s, std::uint32_t replicat
     return d;
 }
 
+// The interval arms a fit computes beyond the estimate (whose Wald and t intervals are free): a
+// study requests only what it scores. Arms not requested are NaN, with their interval flags
+// engine::kIntervalNotComputed, never a stale value. The q interval needs the profile. The recovery
+// harness requests every arm.
+enum Arms : std::uint32_t {
+    kArmProfile = 1u << 0,    // PD and rho profile-likelihood intervals
+    kArmBootstrap = 1u << 1,  // iid bootstrap percentile intervals (and q's bootstrap ends with kArmQ)
+    kArmQ = 1u << 2,          // S-23: q's profile interval and its delta-method SE (needs kArmProfile)
+    kArmAll = kArmProfile | kArmBootstrap | kArmQ,
+};
+
 // Simulates and fits one replicate. The fit is serial (the caller parallelises over replicates);
 // results do not depend on the thread count (§6). With a row cache (D-167) the surface's rows come from
-// it, shared across replicates and scenarios; the result is identical bit for bit.
-inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCache* cache = nullptr) {
+// it, shared across replicates and scenarios; the result is identical bit for bit. Each requested arm
+// is computed exactly as with kArmAll.
+inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCache* cache = nullptr,
+               std::uint32_t arms = kArmAll) {
+    if ((arms & kArmQ) && !(arms & kArmProfile)) std::abort();  // q's interval is built on the profile
     const std::vector<std::int64_t> d = panel(s, replicate);
     std::vector<Objective::Obs> obs(d.size());
     for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {s.obligors, d[t]};
@@ -164,19 +178,27 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCac
                                          : engine::calibrate(backends::CpuBackend{1}, Objective{}, primary, check,
                                                              obs.data(), s.periods, g, L, est);
     if (status != engine::Status::Ok) std::abort();
-    const auto prof = engine::profile_intervals(Objective{}, primary, obs.data(), s.periods, g, L, est);
-    const auto idx = resample::bootstrap_indices(bootstrap_seed(s.id, replicate), resample::Scheme::IidBootstrap,
-                                                 kBootstrapReplicates, s.periods);
-    const auto W = resample::weights_from_indices(idx.data(), kBootstrapReplicates, s.periods, s.periods);
-    std::vector<resample::Replicate2> reps(kBootstrapReplicates);
-    resample::replicate_estimates(backends::CpuBackend{1}, g, L.data(), s.periods, W.data(), kBootstrapReplicates,
-                                  reps.data());
+    const double nan = std::nan("");
+    engine::ProfileIntervals2 prof{{nan, nan}, {nan, nan}, {engine::kIntervalNotComputed, engine::kIntervalNotComputed},
+                                   nan, {nan, nan}, nan, 0};
+    if (arms & kArmProfile) prof = engine::profile_intervals(Objective{}, primary, obs.data(), s.periods, g, L, est);
+    std::vector<resample::Replicate2> reps;
     std::uint32_t edge = 0;
-    for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
-    const auto b0 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 0);
-    const auto b1 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 1);
+    resample::PercentileInterval b0{nan, nan, 0, 0}, b1{nan, nan, 0, 0};
+    if (arms & kArmBootstrap) {
+        const auto idx = resample::bootstrap_indices(bootstrap_seed(s.id, replicate), resample::Scheme::IidBootstrap,
+                                                     kBootstrapReplicates, s.periods);
+        const auto W = resample::weights_from_indices(idx.data(), kBootstrapReplicates, s.periods, s.periods);
+        reps.resize(kBootstrapReplicates);
+        resample::replicate_estimates_compact(backends::CpuBackend{1}, g, obs.data(), L.data(), s.periods, W.data(),
+                                              kBootstrapReplicates, reps.data());
+        for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
+        b0 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 0);
+        b1 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 1);
+    }
     // S-23: q's profile interval, its delta-method SE in logit(q), and q at each bootstrap estimate.
-    const auto qi = engine::conditional_pd_interval(Objective{}, primary, obs.data(), s.periods, g, L, est, prof);
+    engine::ConditionalPdInterval qi{nan, nan, nan, engine::kIntervalNotComputed, nan, 0};
+    if (arms & kArmQ) qi = engine::conditional_pd_interval(Objective{}, primary, obs.data(), s.periods, g, L, est, prof);
     const auto qg = engine::conditional_pd_logit_gradient(est.value[0], est.value[1]);
     double se_u[2];
     for (int a = 0; a < 2; ++a) {
@@ -193,7 +215,7 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCac
         if (std::isfinite(q)) q_reps.push_back(q);
     }
     std::sort(q_reps.begin(), q_reps.end());
-    const double nan = std::nan("");
+    if (!(arms & kArmQ)) q_reps.clear();  // q's bootstrap ends belong to the q arm
     const double q_boot_lo = q_reps.empty() ? nan : resample::quantile_type7(q_reps, 0.025);
     const double q_boot_hi = q_reps.empty() ? nan : resample::quantile_type7(q_reps, 0.975);
     return {{est.value[0], est.value[1]},
@@ -209,7 +231,7 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCac
             edge,
             static_cast<std::uint32_t>(b0.excluded > b1.excluded ? b0.excluded : b1.excluded),
             qi.estimate,
-            q_var >= 0.0 ? std::sqrt(q_var) : nan,
+            (arms & kArmQ) && q_var >= 0.0 ? std::sqrt(q_var) : nan,
             qi.lo,
             qi.hi,
             qi.flags,

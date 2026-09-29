@@ -51,6 +51,9 @@ VCAL_HD double from_scaled(AxisScale s, double u) {
     return u;
 }
 
+// d2v/du2 at scaled coordinate u (the profile solves' chain rule, D-170).
+VCAL_HD double d2value_dscaled2(AxisScale s, double u);
+
 // dv/du at scaled coordinate u.
 VCAL_HD double dvalue_dscaled(AxisScale s, double u) {
     switch (s) {
@@ -63,6 +66,19 @@ VCAL_HD double dvalue_dscaled(AxisScale s, double u) {
         case AxisScale::Linear: break;
     }
     return 1.0;
+}
+
+VCAL_HD double d2value_dscaled2(AxisScale s, double u) {
+    switch (s) {
+        case AxisScale::Log: return std::exp(u);
+        case AxisScale::Logit: {
+            const double v = from_scaled(s, u);
+            return v * (1.0 - v) * (1.0 - 2.0 * v);
+        }
+        case AxisScale::Probit: return -u * std::exp(-0.5 * u * u) * special::constants::kInvSqrt2Pi;
+        case AxisScale::Linear: break;
+    }
+    return 0.0;
 }
 
 }  // namespace grid

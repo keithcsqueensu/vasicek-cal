@@ -115,7 +115,7 @@ q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% 
 - **Profile likelihood, over all replicates:** 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING, 0 DEFERRED, 0 UNREVIEWED.
 - **Delta-method Wald in logit(q), among the unflagged replicates:** 32 PASS, 0 CONSERVATIVE, 18 KNOWN FINDING, 31 DEFERRED, 0 UNREVIEWED.
 - **Bootstrap percentile of q, over all replicates:** 8 PASS, 0 CONSERVATIVE, 73 KNOWN FINDING, 0 DEFERRED, 0 UNREVIEWED.
-- **Acceptance checks:** profile intervals not containing q̂: 0; worst end-point residual 9.4e-09 (tolerance 1e-07, asserted on every fit).
+- **Acceptance checks:** profile intervals not containing q̂: 0; worst end-point residual 9.1e-09 (tolerance 1e-07, asserted on every fit).
 
 "Box-limited": an end whose inner maximiser lies on a bound of the box, or the limit of q in the box ("truncated"). "Below": intervals entirely below the true q. Width: median of the profile interval's hi / lo.
 

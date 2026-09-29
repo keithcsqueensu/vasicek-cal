@@ -249,7 +249,8 @@ VCAL_TEST(abi_resample_equals_the_engine_for_every_scheme) {
         VCAL_CHECK(bits_equal(W, k.W));
 
         std::vector<rs::Replicate2> expect(static_cast<std::size_t>(B));
-        rs::replicate_estimates(vcal::backends::CpuBackend{}, g, L.data(), T, k.W.data(), B, expect.data());
+        rs::replicate_estimates_compact(vcal::backends::CpuBackend{}, g, p.obs.data(), L.data(), T, k.W.data(), B,
+                                        expect.data());
         const double level = k.spec.level == 0.0 ? 0.95 : k.spec.level;
         const auto i0 = rs::percentile_interval(expect.data(), B, 0, level);
         const auto i1 = rs::percentile_interval(expect.data(), B, 1, level);

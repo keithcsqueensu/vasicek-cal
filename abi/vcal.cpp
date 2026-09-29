@@ -862,7 +862,7 @@ VCAL_API vcal_status VCAL_CALL vcal_resample(vcal_context* context, const vcal_p
         const double* W = weights_of(r, w_owned);
         const std::vector<double> L = surface(c, obs, g);
         std::vector<rs::Replicate2> reps(static_cast<std::size_t>(B));
-        rs::replicate_estimates(backend(c), g, L.data(), T, W, B, reps.data());
+        rs::replicate_estimates_compact(backend(c), g, obs.data(), L.data(), T, W, B, reps.data());
 
         vcal_percentile_intervals iv{};
         if (intervals != nullptr) {

@@ -50,6 +50,63 @@ VCAL_HD BinomialLogIntegrand make_binomial_log_integrand(const Vasicek1F& m, std
     return {m, static_cast<double>(d), static_cast<double>(n - d)};
 }
 
+// Parameter derivatives of the log-integrand, for the score and Hessian of log I (D-170). With
+// theta = (PD, rho), log I = log of the integral of exp(g) phi, and E the expectation under
+// exp(g) phi / I (the nodes are fixed in z, so differentiation passes under the integral):
+//     d log I / d theta_i          = E[g_i]
+//     d2 log I / d theta_i d theta_j = E[g_ij + g_i g_j] - E[g_i] E[g_j].
+// g depends on theta only through x = (c - sqrt(rho) z) / sqrt(1 - rho), c = Phi^-1(PD), so with
+// a = sqrt(rho), b = sqrt(1 - rho) and lambda the inverse Mills ratio:
+//     g_x  = d lambda(x) - s lambda(-x),   g_xx = d lambda'(x) + s lambda'(-x)
+//     x_PD = c'/b, x_PD,PD = c''/b, where c' = 1/phi(c), c'' = c c'^2
+//     x_rho = -z/(2ab) + x/(2b^2),  x_PD,rho = c'/(2b^3)
+//     x_rho,rho = z(1 - 2rho)/(4a^3 b^3) + x_rho/(2b^2) + x/(2b^4)
+//     g_i = g_x x_i,  g_ij = g_xx x_i x_j + g_x x_ij.
+// operator() writes the five node functions whose expectations give the score and Hessian:
+// (g_PD, g_rho, g_PD,PD + g_PD^2, g_rho,rho + g_rho^2, g_PD,rho + g_PD g_rho).
+struct BinomialLogIntegrandDerivs {
+    double c, a, b, rho;
+    double c1, c2;  // dc/dPD, d2c/dPD2
+    double defaults, survivors;
+
+    VCAL_HD void operator()(double z, double (&f)[5]) const {
+        const double x = (c - a * z) / b;
+        double gx = 0.0, gxx = 0.0;
+        if (defaults > 0.0) {
+            const double lam = special::inverse_mills(x);
+            gx += defaults * lam;
+            gxx += defaults * (-lam * (x + lam));
+        }
+        if (survivors > 0.0) {
+            const double lam = special::inverse_mills(-x);
+            gx -= survivors * lam;
+            gxx += survivors * (-lam * (lam - x));
+        }
+        const double b2 = b * b;
+        const double x1 = c1 / b;
+        const double x2 = -z / (2.0 * a * b) + x / (2.0 * b2);
+        const double x11 = c2 / b;
+        const double x12 = c1 / (2.0 * b2 * b);
+        const double ab = a * b;
+        const double x22 = z * (1.0 - 2.0 * rho) / (4.0 * ab * ab * ab) + x2 / (2.0 * b2) + x / (2.0 * b2 * b2);
+        const double g1 = gx * x1, g2 = gx * x2;
+        f[0] = g1;
+        f[1] = g2;
+        f[2] = gxx * x1 * x1 + gx * x11 + g1 * g1;
+        f[3] = gxx * x2 * x2 + gx * x22 + g2 * g2;
+        f[4] = gxx * x1 * x2 + gx * x12 + g1 * g2;
+    }
+};
+
+// Requires 0 < pd < 1 and 0 < rho < 1 (as make_vasicek1f); otherwise the fields are NaN.
+VCAL_HD BinomialLogIntegrandDerivs make_binomial_log_integrand_derivs(double pd, double rho, std::int64_t n,
+                                                                       std::int64_t d) {
+    const Vasicek1F m = make_vasicek1f(pd, rho);
+    const double c1 = 1.0 / (special::constants::kInvSqrt2Pi * std::exp(-0.5 * m.c * m.c));
+    return {m.c, m.sqrt_rho, m.sqrt_one_minus_rho, rho, c1, m.c * c1 * c1, static_cast<double>(d),
+            static_cast<double>(n - d)};
+}
+
 namespace detail {
 
 // lambda'(t) = -lambda(t)(t + lambda(t)), clamped to its true range [-1, 0]: for t << 0 the sum

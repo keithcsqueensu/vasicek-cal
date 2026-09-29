@@ -18,7 +18,7 @@
 // Reports surface rows computed, and per phase the CPU time summed over replicates (each fit is
 // serial) and the wall-clock time of the whole pass.
 //
-//   surface_cache_spike [--replicates R] [--scenarios ID,...]
+//   surface_cache_spike [--replicates R] [--scenarios ID,...] [--profile]
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -30,6 +30,7 @@
 #include <string>
 #include <vector>
 
+#include "core/reducers/argmax.hpp"
 #include "engine/surface_cache.hpp"
 #include "tests/recovery/recovery.hpp"
 
@@ -42,16 +43,25 @@ using Objective = rc::Objective;
 
 struct Phases {
     double surface = 0, calibrate = 0, profile = 0, bootstrap = 0, q = 0;
+    double reduce = 0;                                    // --profile: the bootstrap's ArgMax reduction alone
+    std::int64_t profile_evals = 0, q_evals = 0, distinct = 0, periods = 0;  // --profile counters
     Phases& operator+=(const Phases& o) {
         surface += o.surface;
         calibrate += o.calibrate;
         profile += o.profile;
         bootstrap += o.bootstrap;
         q += o.q;
+        reduce += o.reduce;
+        profile_evals += o.profile_evals;
+        q_evals += o.q_evals;
+        distinct += o.distinct;
+        periods += o.periods;
         return *this;
     }
     double total() const { return surface + calibrate + profile + bootstrap + q; }
 };
+
+bool g_profile = false;  // --profile: extra timings and counters (repeats the reduction once)
 
 double since(Clock::time_point& t0) {
     const auto t1 = Clock::now();
@@ -87,17 +97,34 @@ rc::Fit fit_timed(const rc::Scenario& s, std::uint32_t replicate, const std::vec
     ph.calibrate += since(t0);
     const auto prof = engine::profile_intervals(Objective{}, primary, obs.data(), T, g, L, est);
     ph.profile += since(t0);
+    ph.profile_evals += prof.evaluations;
+    ph.periods += T;
+    ph.distinct += static_cast<std::int64_t>(std::set<std::int64_t>(d.begin(), d.end()).size());
     const auto idx = resample::bootstrap_indices(rc::bootstrap_seed(s.id, replicate), resample::Scheme::IidBootstrap,
                                                  rc::kBootstrapReplicates, T);
     const auto W = resample::weights_from_indices(idx.data(), rc::kBootstrapReplicates, T, T);
     std::vector<resample::Replicate2> reps(rc::kBootstrapReplicates);
-    resample::replicate_estimates(serial, g, L.data(), T, W.data(), rc::kBootstrapReplicates, reps.data());
+    if (g_profile) {  // the reduction alone, timed apart (the result is discarded; replicate_estimates repeats it)
+        auto tr = Clock::now();
+        // As the engine runs it: over the panel's distinct rows, bounded argmax (D-172), compaction included.
+        const auto c = resample::compact_by_observation(obs.data(), T, L.data(), K, W.data(), rc::kBootstrapReplicates);
+        std::vector<reducers::ArgMax::State> best(rc::kBootstrapReplicates);
+        if (!resample::detail::argmax_bounded(serial, g, c.rows.data(), c.distinct, c.weights.data(),
+                                              rc::kBootstrapReplicates, best.data())) {
+            engine::reduce_weighted(serial, reducers::ArgMax{}, c.rows.data(), c.distinct, K, c.weights.data(),
+                                    rc::kBootstrapReplicates, best.data());
+        }
+        ph.reduce += since(tr);
+        t0 = Clock::now();
+    }
+    resample::replicate_estimates_compact(serial, g, obs.data(), L.data(), T, W.data(), rc::kBootstrapReplicates, reps.data());
     std::uint32_t edge = 0;
     for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
     const auto b0 = resample::percentile_interval(reps.data(), rc::kBootstrapReplicates, 0);
     const auto b1 = resample::percentile_interval(reps.data(), rc::kBootstrapReplicates, 1);
     ph.bootstrap += since(t0);
     const auto qi = engine::conditional_pd_interval(Objective{}, primary, obs.data(), T, g, L, est, prof);
+    ph.q_evals += qi.evaluations;
     const auto qg = engine::conditional_pd_logit_gradient(est.value[0], est.value[1]);
     double se_u[2];
     for (int a = 0; a < 2; ++a) {
@@ -163,6 +190,8 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
+        } else if (std::strcmp(argv[i], "--profile") == 0) {
+            g_profile = true;
         } else if (std::strcmp(argv[i], "--scenarios") == 0 && i + 1 < argc) {
             ids.clear();
             for (const char* c = argv[++i]; *c != '\0';) {
@@ -171,7 +200,7 @@ int main(int argc, char** argv) {
                 c = *end == ',' ? end + 1 : end;
             }
         } else {
-            std::fprintf(stderr, "usage: surface_cache_spike [--replicates R] [--scenarios ID,...]\n");
+            std::fprintf(stderr, "usage: surface_cache_spike [--replicates R] [--scenarios ID,...] [--profile]\n");
             return 2;
         }
     }
@@ -246,6 +275,20 @@ int main(int argc, char** argv) {
     std::printf("  cached total %.2fx the uncached (its surface phase includes filling the cache)\n",
                 ca_total.total() / un_total.total());
     std::printf("wall clock, all threads: uncached %.1f s; cached %.1f s\n", un_wall, ca_wall);
+    if (g_profile) {
+        const double fits = static_cast<double>(ids.size()) * R;
+        std::printf("profile (cached arm): %.0f panel log-likelihood evaluations per fit in the PD and rho profiles, "
+                    "%.1f us each; %.0f in the q interval, %.1f us each\n",
+                    static_cast<double>(ca_total.profile_evals) / fits, 1e6 * ca_total.profile / static_cast<double>(ca_total.profile_evals),
+                    static_cast<double>(ca_total.q_evals) / fits, 1e6 * ca_total.q / static_cast<double>(ca_total.q_evals));
+        std::printf("  periods per panel %.1f, distinct observations per panel %.1f (an evaluation integrates each "
+                    "distinct one: %.2f us per integral)\n",
+                    static_cast<double>(ca_total.periods) / fits, static_cast<double>(ca_total.distinct) / fits,
+                    1e6 * ca_total.profile / static_cast<double>(ca_total.profile_evals) /
+                        (static_cast<double>(ca_total.distinct) / fits));
+        std::printf("  bootstrap: the ArgMax reduction %.1f s of %.1f s (the rest: per-replicate refinement, percentiles)\n",
+                    ca_total.reduce, ca_total.bootstrap);
+    }
     std::printf("fits compared with recovery::fit: %lld, differing: %lld\n", static_cast<long long>(compared),
                 static_cast<long long>(mismatches));
     return mismatches == 0 ? 0 : 1;
