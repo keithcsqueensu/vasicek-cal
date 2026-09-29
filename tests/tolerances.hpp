@@ -140,6 +140,11 @@ inline constexpr double TOL_PROFILE_CROSS_PLATFORM_REL = 1e-8;
 // located by Brent to about 1e-7 in logit (D-164); libm can move Brent's path inside that. Observed
 // 4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.
 inline constexpr double TOL_RATE_POLISHED_CROSS_PLATFORM = 1e-7;
+// analytic_se_scaled (the analytic observed information, D-170's derivatives; S-10's studentised
+// interval) against calibrate's SE (D-119: the observed information by central differences, step
+// 0.15 SE), relative, logit units, at the refined estimate. The difference is the central
+// differences' truncation error, O(step^2). Observed 6.5e-5, tripled, rounded up.
+inline constexpr double TOL_ANALYTIC_SE_VS_CENTRAL_REL = 2e-4;
 // Profile endpoints, safeguarded Newton vs nested Brent (D-170), in scaled units. Each solves the
 // same equation to 1e-9, so they may differ by 2e-9; doubled. Observed 5.1e-10 over the test panels.
 // The polished maxima differ by up to 2.0e-9 (Brent stops 1e-9 inside a bound, Newton evaluates

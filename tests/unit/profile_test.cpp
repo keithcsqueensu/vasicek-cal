@@ -373,3 +373,82 @@ VCAL_TEST(profile_newton_matches_nested_brent) {
     VCAL_CHECK(worst_q <= tol::TOL_PROFILE_SOLVER_AGREEMENT_U);
     VCAL_CHECK(worst_l <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
 }
+
+// Panels for the LR-statistic and SE tests: the M1.4 panel, a large-n panel and a nearly constant one.
+std::vector<std::vector<Obs>> lr_panels() {
+    std::vector<std::vector<Obs>> panels{panel()};
+    {
+        std::vector<Obs> p;
+        const std::int64_t d[] = {41, 55, 38, 120, 62, 47, 90, 51, 33, 70, 58, 44, 101, 66, 49};
+        for (const auto x : d) p.push_back({10000, x});
+        panels.push_back(p);
+    }
+    {
+        std::vector<Obs> p;
+        const std::int64_t d[] = {3, 9, 0, 14, 6, 2, 11, 5, 1, 8, 20, 4, 7, 2, 13, 6, 3, 9, 1, 5, 10, 4, 7, 12, 2};
+        for (const auto x : d) p.push_back({800, x});
+        panels.push_back(p);
+    }
+    return panels;
+}
+
+// profile_lr_statistic (S-4) computes l_max and P_a as the intervals do: the same polished maximum
+// bit for bit, W = 0 at it, and W = 2c at every solved interval end, to the endpoint residual (the
+// end solves P_a = l_max - c to TOL_PROFILE_ENDPOINT_RESIDUAL_LL, and W doubles that).
+VCAL_TEST(profile_lr_statistic_is_the_threshold_at_the_interval_ends) {
+    const Rules r;
+    const auto g = grid();
+    double worst = 0.0;
+    int ends = 0;
+    for (const auto& p : lr_panels()) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        e::Estimate2 est{};
+        std::vector<double> L;
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        const auto prof = e::profile_intervals_newton(Objective{}, r.primary, p.data(), T, g, L, est);
+        const double at_max[2] = {prof.max_at[0], prof.max_at[1]};
+        const auto m = e::profile_lr_statistic(Objective{}, r.primary, p.data(), T, g, L, est, at_max);
+        VCAL_CHECK(bits_equal(m.loglik_max, prof.loglik_max));
+        VCAL_CHECK(bits_equal(m.max_at[0], prof.max_at[0]) && bits_equal(m.max_at[1], prof.max_at[1]));
+        for (int a = 0; a < 2; ++a) worst = std::fmax(worst, std::fabs(m.w[a]));
+        for (int a = 0; a < 2; ++a) {
+            const std::uint32_t trunc[2] = {e::kIntervalLowerTruncated, e::kIntervalUpperTruncated};
+            for (int side = 0; side < 2; ++side) {
+                if (prof.flags[a] & (trunc[side] | e::kIntervalNotComputed)) continue;
+                double at[2] = {prof.max_at[0], prof.max_at[1]};
+                at[a] = side == 0 ? prof.lo[a] : prof.hi[a];
+                const auto w = e::profile_lr_statistic(Objective{}, r.primary, p.data(), T, g, L, est, at);
+                worst = std::fmax(worst, std::fabs(w.w[a] - 2.0 * e::kProfileThreshold95));
+                ++ends;
+            }
+        }
+    }
+    vcal::test::note("|W - 2c| at " + std::to_string(ends) + " solved ends and |W| at the maxima: worst " + describe(worst));
+    VCAL_CHECK(ends >= 8);
+    VCAL_CHECK(worst <= 2.0 * tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+}
+
+// analytic_se_scaled (S-10's studentised interval) against calibrate's SE (D-119: the observed
+// information by central differences), both in logit units at the refined estimate: the same
+// quantity by two methods, relative agreement to TOL_ANALYTIC_SE_VS_CENTRAL_REL.
+VCAL_TEST(analytic_se_agrees_with_the_central_difference_se) {
+    const Rules r;
+    const auto g = grid();
+    double worst = 0.0;
+    for (const auto& p : lr_panels()) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        e::Estimate2 est{};
+        std::vector<double> L;
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        const double v[2] = {est.value[0], est.value[1]};
+        const auto se = e::analytic_se_scaled(Objective{}, r.primary, p.data(), T, g, v);
+        VCAL_REQUIRE(se.ok);
+        for (int a = 0; a < 2; ++a) {
+            const auto s = g.axis[a].scale;
+            const double central = est.se[a] / vcal::grid::dvalue_dscaled(s, vcal::grid::to_scaled(s, est.value[a]));
+            worst = std::fmax(worst, std::fabs(se.se_u[a] / central - 1.0));
+        }
+    }
+    vcal::test::note("analytic vs central-difference SE, worst relative difference " + describe(worst));
+    VCAL_CHECK(worst <= tol::TOL_ANALYTIC_SE_VS_CENTRAL_REL);
+}

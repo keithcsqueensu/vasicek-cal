@@ -810,6 +810,34 @@ ProfileLr profile_lr_statistic(const Objective& objective, const Integrator& pri
     return out;
 }
 
+// Standard errors in the axes' scaled coordinates from the analytic observed information (S-10's
+// studentised interval): H the analytic Hessian of the panel log-likelihood at v (D-170's
+// posterior-moment derivatives, chained to the scaled axes), se_u[a] the square root of the a-th
+// diagonal entry of (-H)^-1. Not the SE calibrate reports, which is the observed information by
+// central differences (D-119). ok is false, and the SEs NaN, where -H is not positive definite.
+struct AnalyticSe {
+    double se_u[2];
+    bool ok;
+};
+
+template <class Objective, class Integrator>
+AnalyticSe analytic_se_scaled(const Objective& objective, const Integrator& primary,
+                              const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& grid,
+                              const double (&v)[2]) {
+    static_assert(profile_detail::has_contrib_derivs<Objective, Integrator>::value,
+                  "vcal: analytic_se_scaled needs the objective's analytic derivatives (D-170)");
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    std::vector<std::int64_t> first, count;
+    profile_detail::distinct_observations(obs, periods, first, count);
+    const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
+    const auto d = profile_detail::panel_derivs(objective, primary, obs, first, count, ax,
+                                                grid::to_scaled(ax[0]->scale, v[0]), grid::to_scaled(ax[1]->scale, v[1]));
+    const double h00 = d.h[0], h11 = d.h[1], h01 = d.h[2];
+    const double det = h00 * h11 - h01 * h01;  // det(-H) = det(H) for 2 x 2
+    if (!(h00 < 0.0 && h11 < 0.0 && det > 0.0) || !std::isfinite(det)) return {{nan, nan}, false};
+    return {{std::sqrt(-h11 / det), std::sqrt(-h00 / det)}, true};
+}
+
 // The profile-likelihood intervals: by safeguarded Newton when the objective gives analytic
 // derivatives (D-170), otherwise by nested Brent. Both solve the same equations to the same
 // tolerances; TOL_PROFILE_ENDPOINT_RESIDUAL_LL bounds either.

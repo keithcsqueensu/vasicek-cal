@@ -384,6 +384,17 @@ comment = [
     "4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.",
 ]
 
+[TOL_ANALYTIC_SE_VS_CENTRAL_REL]
+type = "double"
+value = 2e-4
+section = "profile likelihood, M2 (D-128..D-130)"
+comment = [
+    "analytic_se_scaled (the analytic observed information, D-170's derivatives; S-10's studentised",
+    "interval) against calibrate's SE (D-119: the observed information by central differences, step",
+    "0.15 SE), relative, logit units, at the refined estimate. The difference is the central",
+    "differences' truncation error, O(step^2). Observed 6.5e-5, tripled, rounded up.",
+]
+
 [TOL_PROFILE_SOLVER_AGREEMENT_U]
 type = "double"
 value = 4e-9
