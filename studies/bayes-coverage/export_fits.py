@@ -29,7 +29,11 @@ def column_type(name):
 def main():
     src, dst = sys.argv[1], sys.argv[2]
     header = open(src, encoding="ascii").readline().strip().split(",")
-    table = pacsv.read_csv(src, convert_options=pacsv.ConvertOptions(column_types={c: column_type(c) for c in header}))
+    # No null values: "nan" (a refused or unavailable value) must stay a NaN double, as the run wrote it,
+    # not become a null (pyarrow's default null spellings include "nan").
+    opts = pacsv.ConvertOptions(column_types={c: column_type(c) for c in header}, null_values=[],
+                                strings_can_be_null=False)
+    table = pacsv.read_csv(src, convert_options=opts)
     table = table.sort_by([("scenario", "ascending"), ("replicate", "ascending")])
     pq.write_table(table, dst, compression="zstd", compression_level=19)
     print(f"{table.num_rows} rows x {table.num_columns} columns written to {dst}")
