@@ -199,6 +199,14 @@ vcal_target_defaults(study_severe_period)
 add_test(NAME study_severe_period_smoke COMMAND study_severe_period --replicates 2 --scenarios 29)
 set_tests_properties(study_severe_period_smoke PROPERTIES LABELS slow)
 
+# The estimator-comparison pass (S-8, S-27, S-28; studies/mle-vs-mom/PREDICTION.md): every panel fitted by
+# the binomial MLE, the method of moments and the Vasicek-rate MLE under each zero-default treatment.
+add_executable(study_estimator_pass studies/estimator_pass.cpp)
+target_link_libraries(study_estimator_pass PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_estimator_pass)
+add_test(NAME study_estimator_pass_smoke COMMAND study_estimator_pass --replicates 2 --scenarios 29,4,90)
+set_tests_properties(study_estimator_pass_smoke PROPERTIES LABELS slow)
+
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
 # pedantic errors (C11 on MSVC, which has no C99 mode), so anything C++-only in the header breaks
