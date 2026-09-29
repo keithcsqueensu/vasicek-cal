@@ -114,15 +114,34 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
         if (!Objective::rho_identified(obs, periods)) out.flags |= kFlagRhoNotIdentified;
     }
 
-    const auto theta = Objective::theta(out.value);
-    std::vector<double> l_primary(static_cast<std::size_t>(periods));
+    // P-14 (D-178): each distinct observation is integrated once per evaluation point, and every
+    // per-period quantity is then taken from it in period order, so the sums below run over the same
+    // values in the same order as when every period was integrated: bitwise identical. first[t] is the
+    // earliest period with t's observation (as evaluate_surface does, D-122).
+    std::vector<std::int64_t> first(static_cast<std::size_t>(periods));
     for (std::int64_t t = 0; t < periods; ++t) {
-        const double a = objective.log_contrib(obs[t], theta, primary);
-        const double b = objective.log_contrib(obs[t], theta, check);
+        std::int64_t u = 0;
+        while (!(obs[u] == obs[t])) ++u;
+        first[static_cast<std::size_t>(t)] = u;
+    }
+    const auto theta = Objective::theta(out.value);
+    std::vector<double> l_primary(static_cast<std::size_t>(periods)), l_check(static_cast<std::size_t>(periods));
+    for (std::int64_t t = 0; t < periods; ++t) {
+        const std::int64_t u = first[static_cast<std::size_t>(t)];
+        if (u == t) {
+            l_primary[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, primary);
+            l_check[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, check);
+        } else {
+            l_primary[static_cast<std::size_t>(t)] = l_primary[static_cast<std::size_t>(u)];
+            l_check[static_cast<std::size_t>(t)] = l_check[static_cast<std::size_t>(u)];
+        }
+    }
+    for (std::int64_t t = 0; t < periods; ++t) {
+        const double a = l_primary[static_cast<std::size_t>(t)];
+        const double b = l_check[static_cast<std::size_t>(t)];
         const double diff = std::fabs(a - b);
         const double threshold = std::fmax(kQuadratureCheckFlagAbs, kQuadratureCheckRoundingUlps * DBL_EPSILON *
                                                                           Objective::rounding_scale(obs[t], a));
-        l_primary[static_cast<std::size_t>(t)] = a;
         out.quad_check_max = std::fmax(out.quad_check_max, diff);
         out.quad_check_total += diff;
         if (!(diff <= threshold)) ++out.quad_check_flagged;  // NaN counts as flagged
@@ -139,7 +158,11 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
             const double v[2] = {grid::from_scaled(grid.axis[0].scale, r.scaled[0] + d0),
                                  grid::from_scaled(grid.axis[1].scale, r.scaled[1] + d1)};
             const auto th = Objective::theta(v);
-            for (std::int64_t t = 0; t < periods; ++t) lt[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], th, primary);
+            for (std::int64_t t = 0; t < periods; ++t) {
+                const std::int64_t u = first[static_cast<std::size_t>(t)];
+                lt[static_cast<std::size_t>(t)] =
+                    u == t ? objective.log_contrib(obs[t], th, primary) : lt[static_cast<std::size_t>(u)];
+            }
             return weighted_sum(lt.data(), periods, 1, ones.data(), 0);
         };
         const double f0 = out.loglik;

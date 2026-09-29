@@ -412,3 +412,60 @@ VCAL_TEST(surface_evaluates_repeated_observations_once_and_bitwise_identically) 
     }
     vcal::test::note(std::to_string(distinct) + " distinct observations over " + std::to_string(T) + " periods");
 }
+
+namespace {
+
+// The binomial objective with a tag on each observation, counting its integrations. With every tag 0,
+// repeated observations are equal and calibrate integrates each distinct one once (P-14); with the
+// period as the tag every period is distinct, which is calibrate before P-14: every period integrated,
+// the same values.
+struct Tagged {
+    struct Obs {
+        Objective::Obs y;
+        std::int64_t tag;
+        friend bool operator==(const Obs& a, const Obs& b) { return a.y == b.y && a.tag == b.tag; }
+    };
+    using Theta = Objective::Theta;
+    static constexpr int n_params = 2;
+    static Theta theta(const double (&v)[2]) { return Objective::theta(v); }
+    static const char* panel_error(const Obs* obs, std::int64_t periods) {
+        std::vector<Objective::Obs> y;
+        for (std::int64_t t = 0; t < periods; ++t) y.push_back(obs[t].y);
+        return Objective::panel_error(y.data(), periods);
+    }
+    static double rounding_scale(const Obs& o, double l) { return Objective::rounding_scale(o.y, l); }
+    template <class I>
+    double log_contrib(const Obs& o, const Theta& th, const I& integrator) const {
+        ++*calls;
+        return Objective{}.log_contrib(o.y, th, integrator);
+    }
+    std::int64_t* calls;
+};
+
+}  // namespace
+
+// P-14 (D-178): calibrate's quadrature check and D-119 Hessian integrate each distinct observation once,
+// and the estimate (value, SE, correlation, log-likelihood, quadrature-check statistics, flags) is bit for
+// bit the one integrating every period gives.
+VCAL_TEST(calibrate_integrates_each_distinct_observation_once_bitwise_identically) {
+    const auto p = panel();
+    const auto g = coarse_grid();
+    const Rules r;
+    const auto T = static_cast<std::int64_t>(p.size());
+    std::vector<Tagged::Obs> same(p.size()), each(p.size());
+    for (std::size_t t = 0; t < p.size(); ++t) {
+        same[t] = {p[t], 0};
+        each[t] = {p[t], static_cast<std::int64_t>(t)};
+    }
+    std::int64_t calls_same = 0, calls_each = 0;
+    e::Estimate2 a{}, b{};
+    std::vector<double> La, Lb;
+    VCAL_REQUIRE(e::calibrate(Backend{1}, Tagged{&calls_same}, r.primary, r.check, same.data(), T, g, La, a) ==
+                 e::Status::Ok);
+    VCAL_REQUIRE(e::calibrate(Backend{1}, Tagged{&calls_each}, r.primary, r.check, each.data(), T, g, Lb, b) ==
+                 e::Status::Ok);
+    VCAL_CHECK(same_estimate(a, b));
+    VCAL_CHECK(calls_same < calls_each);
+    vcal::test::note("integrations: " + std::to_string(calls_same) + " (distinct) vs " + std::to_string(calls_each) +
+                     " (every period)");
+}
