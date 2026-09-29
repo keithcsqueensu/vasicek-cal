@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176)
+Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177)
 
 ## Current status
 
@@ -185,8 +185,42 @@ Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction regis
     - a priority order (Next steps).
 - **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
 
+## Performance
+
+A track separate from the studies (D-177). P-items change how results are computed, never what is
+computed; each has a decision entry, a benchmark in `perf/`, and an identity or tolerance test.
+Anything that changes results gets a golden refresh with a coverage-flip check, one commit per item.
+P-items are not studies: S-16 (FP32 search) and S-17 (GPU scaling) stay studies.
+
+| ID | Item | Status | Decision | Changes results? | Benchmark; test |
+|---|---|---|---|---|---|
+| P-1 | Surface rows cached by (n, d) across panels | done | D-167 | no (bit for bit) | `study_surface_cache_spike`; `unit_surface_cache: cached_surfaces_equal_evaluate_surface_bit_for_bit`, `recovery_fits_through_the_cache_are_identical` |
+| P-2 | Profile and q solves by safeguarded Newton with analytic derivatives | done | D-170 | within solver tolerance (ends moved ≤ 8.8e-9 in logit; 0 coverage flips over 81,000 fits; goldens refreshed) | `study_surface_cache_spike --profile`; `unit_profile: profile_newton_matches_nested_brent` (`TOL_PROFILE_SOLVER_AGREEMENT_U`) |
+| P-3 | Study fits compute only the interval arms they score | done | D-171 | no (each arm bit for bit) | `study_surface_cache_spike --profile`; `recovery_test: recovery_fit_arms_compute_only_what_is_requested` |
+| P-4 | Bootstrap reduction over distinct rows with multiplicities, in (n, d) order | done | D-172 | within rounding (bootstrap ends ≤ 2.2e-11 in logit; 0 flips; goldens refreshed) | `study_surface_cache_spike --profile`; `resample_test: compact_replicates_match_the_period_reduction_to_rounding` (`TOL_RESAMPLE_VS_REFIT_REL`), `compact_replicates_do_not_depend_on_period_order_or_threads` |
+| P-5 | Coarse-to-fine (bounded) argmax, full-grid fallback | done | D-172 | no (equal to the full grid's argmax by construction; 9.47M rows checked) | `study_argmax_check` (slow CTest, R = 40, every CI run with slow tests); `resample_test: bounded_argmax_equals_the_full_grid_on_hard_panels`, `bounded_argmax_guard_falls_back_to_the_full_grid` |
+| P-6 | SIMD reduction across grid points | planned | to be recorded | no: one lane per grid point, each lane's operations in the scalar order, so bitwise identical | to be added in `perf/`; bit-for-bit identity against the scalar reduction |
+| P-7 | SIMD special functions (log Φ, Φ⁻¹, erfcx) | later | to be recorded | bitwise only with FMA contraction controlled (D-048); otherwise within a stated tolerance | to be added in `perf/`; ULP tests against the mpmath goldens |
+| P-8 | GPU backend | M4 | D-168 (M4 after M6) | within a stated tolerance (the GPU must match the CPU within tolerance) | S-17 measures it across architectures; CPU/GPU agreement tests |
+
 ## Next steps
 
+**Priority order (owner, 2026-09-29):**
+
+1. **The S-10/S-4 run** (registered, D-176): the tool, the scoring script before the subset run, the
+   subset, then the full matrix. P-items first only if the subset's timing says so.
+2. **The remaining P-items** (P-6, then P-7; P-8 with M4).
+3. **The rate MLE as a first-class estimator:** an analytic score and Hessian and Newton solves; interval
+   coverage; an n·PD adequacy flag from S-27; rate-vs-count disagreement as a data diagnostic; its own
+   data-sufficiency table.
+4. **`docs/methodology/estimator_selection.md`:** a comparison matrix, tiers with reasons, and a
+   selection rule fixed in advance. The skeleton now, filled as results report.
+5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, as a documented output in adverse/benign terms
+   (pulled forward from M7; another project will consume it).
+6. **Consolidation:** tag v0.2; the README with the study results.
+7. **M6** (multi-grade, misspecification, data instability); M4 (GPU) later (D-168).
+
+**Done so far (the record):**
 1. **First batch of studies (D-151), in this order, before M3:**
    1. S-23 (done, D-156): profile-likelihood intervals for the 99.9% conditional PD;
    2. S-13 targeted (done, D-158): at T = 20 the profile interval undercovers by about one point, systematically (coverage about 0.94 at R = 10,000); the six findings are real but not special;
@@ -202,11 +236,9 @@ Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction regis
 3. **Surface-row cache across panels (D-167):** approved; adopted in the recovery harness and study tools, keyed on everything that determines a row, filled on demand.
 4. **C ABI 0.3 (done, D-169):** `vcal_calibrate_rate`, `vcal_calibrate_moments`, `vcal_calibrate_posterior` and the native profile; the zero-default treatments are explicit options, no recommended default until S-28.
 4a. **Performance before the M3 studies (owner, 2026-09-28):** profile and q solves by safeguarded Newton with analytic derivatives (done, D-170; goldens refreshed, 0 coverage flips over 81,000 fits); study fits compute only the arms they score (done, D-171); the bootstrap reduction over distinct rows in (n, d) order (done, D-172; 0 flips, bootstrap 3.2x faster); a bounded argmax equal to the full grid's (done, D-172; 9.47M rows verified, goldens unchanged). Together: the recovery subset 6.7x less CPU, the full matrix 319 s wall.
-5. **The M3 folded studies:** S-8/S-27/S-28 (one pass; **finished, D-174**: 11 of 13 held, E12 and E13 missed; the censored rate MLE matches the binomial MLE from n·PD ≈ 500–1,000; with counts use the binomial MLE, with rates the censored likelihood), S-9, S-15 (**finished, D-175**: S-9 3 of 5 held, S-15 4 of 5; with the rule, the Jeffreys equal-tailed interval is the best-calibrated tested, no ρ verdict below the band; SBC calibrated everywhere). **The M3 folded studies are complete.**
-6. **S-10 and S-4b on the CPU** (D-168; were after M4): **registered (D-176)**, one run, a three-way comparison against the profile and Jeffreys intervals. Interval recommendation (D-176): Jeffreys equal-tailed with the resolution rule where small-T accuracy matters; profile remains valid; T = 20 about a point short under either; no BCa or percentile bootstrap.
-7. **Consolidation:** tag v0.2; README updated with the study results.
-8. **M6** (multi-grade, misspecification, data instability), then the other studies by their placement below; **M4** (GPU) becomes a later performance milestone (D-168).
-9. Backlog (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+5. **The M3 folded studies:** S-8/S-27/S-28 (one pass; **finished, D-174**: 11 of 13 held, E12 and E13 missed; the censored rate MLE matches the binomial MLE from n·PD ≈ 500–1,000; with counts use the binomial MLE, with rates the censored likelihood), S-9, S-15 (**finished, D-175**: S-9 3 of 5 held, S-15 4 of 5; with the rule, the Jeffreys equal-tailed interval is the best-calibrated tested, no ρ verdict below the band; SBC calibrated everywhere). **The M3 folded studies are complete.****Backlog** (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
+
+**Backlog** (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
    - a Bartlett-type correction of the profile threshold: now study S-4;
    - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
    - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;
