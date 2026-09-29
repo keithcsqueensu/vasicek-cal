@@ -40,6 +40,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -342,22 +343,6 @@ void unpack(const std::vector<std::uint8_t>& bytes, std::uint32_t id, Row* rows,
     std::memcpy(rows, bytes.data() + sizeof h, sizeof(Row) * R);
 }
 
-template <class F>
-void run_pool(std::size_t jobs, unsigned threads, F&& f) {
-    std::atomic<std::size_t> next{0};
-    std::vector<std::thread> pool;
-    for (unsigned t = 0; t < threads; ++t) {
-        pool.emplace_back([&] {
-            for (;;) {
-                const std::size_t j = next.fetch_add(1);
-                if (j >= jobs) return;
-                f(j);
-            }
-        });
-    }
-    for (auto& t : pool) t.join();
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -432,11 +417,16 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Scenario by scenario: pass 1 (every replicate), S-4a's in-sample factor, pass 2 (the S-4 widths
-    // on replicates 0-199), then the scenario's checkpoint.
+    // One shared queue over the scenarios not yet checkpointed (overlapping scenarios, D-179): pass-1 fits
+    // in scenario order; when a scenario's last fit finishes, the finishing thread computes S-4a's
+    // in-sample factor (summed over the replicates in order, as before) and releases the scenario's
+    // pass-2 jobs (the S-4 widths on replicates 0-199), which workers take before new fits; when its last
+    // width job finishes, that thread writes the scenario's checkpoint. Each row is written by exactly one
+    // job and does not depend on the order, so the rows equal a scenario-by-scenario run's.
     std::vector<Row> rows(ids.size() * R);
     const std::uint32_t RW = std::min(R, kWidthReplicates);
-    std::uint32_t written = 0, resumed = 0;
+    std::uint32_t resumed = 0;
+    std::vector<char> pending(ids.size(), 0);
     for (std::size_t k = 0; k < ids.size(); ++k) {
         const rc::Scenario s = rc::scenario(ids[k]);
         const std::string unit = "scenario_" + std::to_string(s.id);
@@ -449,31 +439,90 @@ int main(int argc, char** argv) {
             }
             ++resumed;
             std::fprintf(stderr, "scenario %u: from the checkpoint\n", s.id);
-            continue;
+        } else {
+            pending[k] = 1;
         }
-        run_pool(R, threads, [&](std::size_t r) { rows[k * R + r] = fit_one(ctx, s, static_cast<std::uint32_t>(r)); });
-        double ka[2];
-        for (int a = 0; a < 2; ++a) {
-            double sum = 0.0;
-            std::int64_t m = 0;
-            for (std::uint32_t r = 0; r < R; ++r) {
-                const double w = rows[k * R + r].w0[a];
-                if (std::isfinite(w)) {
-                    sum += w;
-                    ++m;
-                }
-            }
-            ka[a] = m > 0 ? sum / static_cast<double>(m) : kNaN;
-        }
-        run_pool(RW, threads, [&](std::size_t r) { widths(ctx, s, static_cast<std::uint32_t>(r), ka, rows[k * R + r]); });
-        ck->save(unit, pack(s.id, &rows[k * R], R));
-        std::fprintf(stderr, "scenario %u done (%zu/%zu), %.0f s\n", s.id, k + 1, ids.size(), elapsed());
+    }
+    std::vector<std::pair<std::size_t, std::uint32_t>> fit_jobs;
+    for (std::size_t k = 0; k < ids.size(); ++k) {
+        for (std::uint32_t r = 0; pending[k] && r < R; ++r) fit_jobs.emplace_back(k, r);
+    }
+    std::mutex m;
+    std::deque<std::pair<std::size_t, std::uint32_t>> width_jobs;
+    std::vector<std::uint32_t> fits_left(ids.size(), R), widths_left(ids.size(), RW);
+    std::vector<std::array<double, 2>> ka(ids.size());
+    std::size_t next_fit = 0, scenarios_left = 0, written = 0;
+    for (const char x : pending) scenarios_left += x ? 1u : 0u;
+    auto finish_scenario = [&](std::size_t k) {  // called with m unlocked, once per scenario
+        const rc::Scenario s = rc::scenario(ids[k]);
+        ck->save("scenario_" + std::to_string(s.id), pack(s.id, &rows[k * R], R));
+        const std::lock_guard<std::mutex> lock(m);
+        --scenarios_left;
+        std::fprintf(stderr, "scenario %u done (%zu left), %.0f s\n", s.id, scenarios_left, elapsed());
         if (stop_after > 0 && ++written == stop_after) {
-            std::fprintf(stderr, "stopping after %u scenarios (--stop-after-scenarios)\n", written);
+            std::fprintf(stderr, "stopping after %zu scenarios (--stop-after-scenarios)\n", written);
             std::fflush(stderr);
             std::_Exit(3);
         }
-    }
+    };
+    auto worker = [&] {
+        for (;;) {
+            std::pair<std::size_t, std::uint32_t> job;
+            bool width = false;
+            {
+                std::unique_lock<std::mutex> lock(m);
+                if (!width_jobs.empty()) {
+                    job = width_jobs.front();
+                    width_jobs.pop_front();
+                    width = true;
+                } else if (next_fit < fit_jobs.size()) {
+                    job = fit_jobs[next_fit++];
+                } else if (scenarios_left == 0) {
+                    return;
+                } else {
+                    lock.unlock();  // work is in flight elsewhere; pass-2 jobs may still be released
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                    continue;
+                }
+            }
+            const auto [k, r] = job;
+            const rc::Scenario s = rc::scenario(ids[k]);
+            if (!width) {
+                rows[k * R + r] = fit_one(ctx, s, r);
+                std::unique_lock<std::mutex> lock(m);
+                if (--fits_left[k] == 0) {
+                    for (int a = 0; a < 2; ++a) {
+                        double sum = 0.0;
+                        std::int64_t cnt = 0;
+                        for (std::uint32_t q = 0; q < R; ++q) {
+                            const double w = rows[k * R + q].w0[a];
+                            if (std::isfinite(w)) {
+                                sum += w;
+                                ++cnt;
+                            }
+                        }
+                        ka[k][a] = cnt > 0 ? sum / static_cast<double>(cnt) : kNaN;
+                    }
+                    for (std::uint32_t q = 0; q < RW; ++q) width_jobs.emplace_back(k, q);
+                    if (RW == 0) {
+                        lock.unlock();
+                        finish_scenario(k);
+                    }
+                }
+            } else {
+                const double kk[2] = {ka[k][0], ka[k][1]};
+                widths(ctx, s, r, kk, rows[k * R + r]);
+                std::unique_lock<std::mutex> lock(m);
+                if (--widths_left[k] == 0) {
+                    lock.unlock();
+                    finish_scenario(k);
+                }
+            }
+        }
+    };
+    std::vector<std::thread> pool;
+    for (unsigned t = 0; t < threads; ++t) pool.emplace_back(worker);
+    for (auto& t : pool) t.join();
     if (resumed > 0) std::printf("resumed: %u of %zu scenarios from %s\n", resumed, ids.size(), checkpoint_dir.c_str());
     std::printf("%u replicates x %zu scenarios in %.0f s (%u threads; %zu cached surface rows)\n", R, ids.size(),
                 elapsed(), threads, ctx.cache.size());
