@@ -272,7 +272,7 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
         }
         row.wstar_finite[a] = fin;
         const bool on_bound = !(est.value[a] > g.axis[a].lo && est.value[a] < g.axis[a].hi);
-        const bool too_few = static_cast<double>(kBartlettPanels - fin) > kLeftOutMax * kBartlettPanels;
+        const bool too_few = static_cast<double>(kBartlettPanels) - static_cast<double>(fin) > kLeftOutMax * kBartlettPanels;
         row.kb_fallback[a] = on_bound || too_few || fin == 0;
         row.kb[a] = row.kb_fallback[a] ? 1.0 : sum / fin;
         row.s4a_lo[a] = row.s4a_hi[a] = row.s4b_lo[a] = row.s4b_hi[a] = kNaN;
@@ -401,7 +401,7 @@ int main(int argc, char** argv) {
                     ++m;
                 }
             }
-            ka[k][a] = m > 0 ? sum / static_cast<double>(m) : kNaN;
+            ka[k][static_cast<std::size_t>(a)] = m > 0 ? sum / static_cast<double>(m) : kNaN;
         }
     }
     const std::uint32_t RW = std::min(R, kWidthReplicates);
