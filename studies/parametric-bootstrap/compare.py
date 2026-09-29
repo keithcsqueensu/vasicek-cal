@@ -264,6 +264,23 @@ def score(sc):
           f"({min(wr, default=float('nan')):.3f}-{max(wr, default=float('nan')):.3f}) | {verdict(k >= 10, fullB)} |")
 
 
+def quadrature_report(sc):
+    """P-16 (D-180): the quadrature check on the original fits and on the sampled bootstrap fits (b % 20 == 0)."""
+    if "boot_quad_checked" not in next(iter(sc.values())).rows[0]:
+        print("quadrature check: not recorded by this run (before P-16)")
+        return
+    print("\nquadrature check (P-16): original fits all checked; bootstrap fits b = 0, 20, ..., 980 (5.0%)")
+    print("| scenario | original fits flagged | bootstrap fits checked | flagged |\n|---|---|---|---|")
+    tot = [0, 0, 0, 0]
+    for s in sc.values():
+        orig = sum(r["quad_flagged"] > 0 for r in s.rows)
+        chk = sum(r["boot_quad_checked"] for r in s.rows)
+        flg = sum(r["boot_quad_flagged"] for r in s.rows)
+        print(f"| {s.id} | {orig} of {s.R} | {chk} | {flg} |")
+        tot = [tot[0] + orig, tot[1] + s.R, tot[2] + chk, tot[3] + flg]
+    print(f"| all | {tot[0]} of {tot[1]} | {tot[2]} | {tot[3]} |")
+
+
 def write_summary(sc, path):
     methods = ("profile", "jeffreys", "pct", "stud", "s4a", "s4b")
     with open(path, "w", newline="") as f:
@@ -295,6 +312,7 @@ def main():
     print(f"check: W0 <= c against the profile interval's coverage, {mism} of {2 * len(rows)} replicates disagree")
     fb = sum(r[f"kb_fallback_{p}"] for r in rows for p in PARAMS)
     print(f"S-4b factor fell back to 1 in {fb} of {2 * len(rows)} (parameter, replicate) pairs")
+    quadrature_report(sc)
     score(sc)
     if a.summary_out:
         write_summary(sc, a.summary_out)

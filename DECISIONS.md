@@ -1009,6 +1009,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Tests:** `study_parametric_bootstrap_resume` (slow): an uninterrupted run; the same run with a checkpoint, stopped abruptly after its first scenario (`--stop-after-scenarios`, exit as a kill would); resumed, its CSV byte-identical to the uninterrupted one; and a different configuration pointed at the same directory, refused. Once by hand with a real kill (`taskkill /F` while the third scenario ran, after two units were on disk): the resumed CSV's hash equals the uninterrupted run's.
   - **Open, part 2:** pinning runs writing goldens directly, with reviewed verdict labels kept in a separate file, so that no second `--write` pass is needed (the recovery harness's pinning flow). Not needed to protect the S-10/S-4 run, so it follows it.
 
+## P-16: a sampled, reported quadrature check on bootstrap fits, 2026-09-29
+
+- **D-180 (owner) — Bootstrap fits run calibrate's quadrature check on a deterministic sample, and the flagged counts are reported, rather than the check being skipped or its flag left unread.**
+  - **Why (owner):** the check's result on a bootstrap fit was never read, which is the real problem, not its cost. Parametric-bootstrap panels are drawn from the fitted model, so some are zero-default or high-ρ panels, exactly where the quadrature rule is weakest. Skipping the check would make a quadrature error on such a panel permanently invisible; sampling it and printing the result turns an unread flag into evidence.
+  - **What:** `calibrate_from_surface` gains `quadrature_check` (default true). With false, the check rule's integrals are skipped; `quad_check_flagged` is `kQuadratureNotChecked` (−1) and the check's max and total are NaN, so an unchecked fit cannot read as checked and clean; every other field is bit for bit the checked fit's (`calibrate_without_the_quadrature_check_is_otherwise_identical`). `study_parametric_bootstrap` always checks the original fit and checks bootstrap fits b = 0, 20, ..., 980 (50 of 999, 5.0%); the rule is in its documentation and its checkpoint configuration (`quad_check_every=20`); each row reports the bootstrap fits checked and flagged and the original fit's flagged count, and `compare.py` prints them per scenario.
+  - **Verified:** on scenarios 51 and 29 × 100 replicates, the rows are byte-identical to the tool before P-16 on every shared column (the three new columns are appended).
+  - **Measured, and smaller than first estimated:** the calibrate phase fell 11% for scenario 51 (176 → 156 CPU s) and 5% for scenario 29, a few per cent of the run. The check integrates each distinct observation once against the Hessian's eight, so it was never the quarter to a third first estimated; the time lever is P-15. P-16 is kept for what it reports.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
