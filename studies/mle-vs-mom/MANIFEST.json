@@ -1,0 +1,19 @@
+{
+  "study": "The estimator-comparison pass: S-8 (MoM against the binomial MLE), S-27 (the large-portfolio approximation), S-28 (zero-default treatments) (D-161, D-174)",
+  "prediction": "studies/mle-vs-mom/PREDICTION.md (registered in #22 before M3, D-161; scoring addendum 2026-09-28 committed in 65e8420 before the full run)",
+  "generated_by": "study_estimator_pass --out rows.csv (135 scenarios x 1,000 replicates, 24 threads)",
+  "tool_commit": "65e84208b434926a215dd253dcaa2339a4229a29",
+  "compiler": "MSVC 1951, Release",
+  "started": "2026-09-28T22:28:11-04:00",
+  "finished": "2026-09-28T23:58:48-04:00",
+  "wall_seconds": 5437,
+  "panels": "scenarios 0-80: the recovery panels (seed M18RECOV, replicates 0-999); scenarios 81-134: the registered n = 10^5 and 10^6 extension, id 81 + 2 (9 i_PD + 3 i_rho + i_T) + (i_n - 3), same seed and DGP",
+  "files": {
+    "fits.parquet": "sha256 e096b35f18411cc8ebfcc51610fe7d783948b6c597f0881725bb1342051be484; export_fits.py (pyarrow 25.0.1, zstd 19) from rows.csv, every double exact",
+    "summary.csv": "sha256 b0d7feea80774ff082bde0274038122ff528b41fd6cc4b3a230ace60990788b6; compare.py --summary-out",
+    "reviewed.csv": "sha256 80fbf2a6167e15d3e0fcc0f6b9871c16513a9fde3ae70057ff179fad17d4fe6d; review.py (after the run)",
+    "rows.csv (not committed, 62 MB)": "sha256 50a432dfdfacf520a31a84e2d8506dabf9095781c6da5d9cfcbe732e24050fd2"
+  },
+  "scoring": "compare.py (committed before the run) on fits.parquet; export_fits.py's null handling was fixed after the run (\"nan\" had become a null, which stopped compare.py at E8); the rows and the scoring code are unchanged",
+  "result": "11 of 13 predictions held; E12 (censored: 41 of 54, 76%) and E13 (23 of 30, 77%) did not"
+}

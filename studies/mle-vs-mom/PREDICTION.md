@@ -204,3 +204,37 @@ but misses in size is recorded as not held, with the size of the miss. The rows 
 script committed before the full run's results exist. Results, the comparison, a mitigation and a
 monitoring implication go in `studies/README.md` (the S-8, S-27 and S-28 entries) and in a D-entry,
 with a `MANIFEST.json`. The pinned binomial verdicts are unchanged.
+
+## Addendum, 2026-09-28: how the rows are computed, fixed before the full run
+
+Appended before the full run (135 × 1,000). No prediction, threshold or estimator definition
+changes; this fixes readings the text above leaves open, so the scoring cannot be chosen after the
+results are seen. They are implemented in [`compare.py`](compare.py), committed with this addendum.
+
+- **The tool:** `study_estimator_pass` (`tests/studies/estimator_pass.cpp`) fits every panel with
+  every estimator and writes one row per (scenario, replicate); [`export_fits.py`](export_fits.py)
+  converts the rows to `fits.parquet`, and `compare.py` scores E1–E13 from that file alone (plus the
+  D-136 groups from `tests/golden/recovery/summary.csv`).
+- **Estimates:** the binomial MLE is `recovery::fit` with the profile arm, the pinned fit. The rate
+  MLE's estimate is the polished maximum of the profile code (`max_at`), as in D-164's recovery
+  run. A panel with no period at d = 0 or d = n gets one rate fit, shared by the four treatments,
+  which are the same likelihood there. An engine error in a rate fit counts as not estimated and
+  is reported (there were none in the subset run).
+- **Which replicates:** an estimator's bias, RMSE and mean relative error of PD̂ are over the
+  replicates it estimates. A rate-MLE coverage is over the replicates the treatment estimates, an
+  interval not computed counting as a miss (D-131), and its band uses that count. S-27's pairwise
+  statistics are over the replicates both estimators estimate, and the SE unit is the root mean
+  square of the binomial Hessian SE of ρ over those replicates where it is finite.
+- **References at full precision:** P₀, the refusal share q and the S-27 bias in SE units are
+  computed with `model_reference.py`'s own functions, not read from the rounded tables above (a
+  printed 0.05 can fall on either side of E8's threshold). E3 uses the registered large-n ratio
+  table as printed (a Monte Carlo value; the ±25% band dwarfs its rounding).
+- **Scope:** E9 covers the 81 scenarios with n ≤ 10⁴, as registered. E10–E13 are conditioned on P₀
+  or on the reference bias, not on n, so they range over all 135 scenarios meeting the condition.
+  E12 holds only if it holds for each of drop, censored and substituted separately.
+- **Disclosures:** the study subset (the 9 scenarios and their 18 counterparts at n = 10⁵ and 10⁶,
+  1,000 replicates each) was run once with the tool before this addendum, to check the code and
+  its cost. Its rows were checked only for engine errors and non-finite values, and were not
+  scored; the tool's own printout (per scenario, how many replicates each treatment estimated) was
+  seen. M3.1's scipy replay had already fitted nine recovery count
+  panels (replicate 0 of the PD 1%, n = 100 scenarios) under the censored rate likelihood (D-165).
