@@ -106,11 +106,14 @@ rc::Fit fit_timed(const rc::Scenario& s, std::uint32_t replicate, const std::vec
     std::vector<resample::Replicate2> reps(rc::kBootstrapReplicates);
     if (g_profile) {  // the reduction alone, timed apart (the result is discarded; replicate_estimates repeats it)
         auto tr = Clock::now();
-        // As the engine runs it: over the panel's distinct rows (D-172), compaction included.
+        // As the engine runs it: over the panel's distinct rows, bounded argmax (D-172), compaction included.
         const auto c = resample::compact_by_observation(obs.data(), T, L.data(), K, W.data(), rc::kBootstrapReplicates);
         std::vector<reducers::ArgMax::State> best(rc::kBootstrapReplicates);
-        engine::reduce_weighted(serial, reducers::ArgMax{}, c.rows.data(), c.distinct, K, c.weights.data(),
-                                rc::kBootstrapReplicates, best.data());
+        if (!resample::detail::argmax_bounded(serial, g, c.rows.data(), c.distinct, c.weights.data(),
+                                              rc::kBootstrapReplicates, best.data())) {
+            engine::reduce_weighted(serial, reducers::ArgMax{}, c.rows.data(), c.distinct, K, c.weights.data(),
+                                    rc::kBootstrapReplicates, best.data());
+        }
         ph.reduce += since(tr);
         t0 = Clock::now();
     }

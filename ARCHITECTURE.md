@@ -564,7 +564,10 @@ seed ──► Philox4x32-10(key = seed ⊕ "RSMPBOOT", counter = (scheme, b, j/
           custom:          caller-supplied W, or a B × m period-index matrix → counts (D-134)
 W [B × T] ──► distinct rows (D-172): R [D × K], the panel's distinct rows in ascending observation
               order ((n, d) for the binomial objective); M [B × D], M[b,j] = Σ_{t in row j} W[b,t]
-          ──► reduce_weighted, fused & tiled over (b, k):
+          ──► bounded argmax (D-172), per b: tile bounds Σ_j M[b,j]·max_{k∈tile} R[j,k] (weights ≥ 0),
+              tiles in descending bound order, each evaluated in full, until the next bound is
+              strictly below the best value: exactly the full grid's argmax. Falls back to, and is
+              checked against, reduce_weighted, fused & tiled over (b, k):
                 s = Σ_j M[b,j]·R[j,k]   (ascending j, compensated summation)
                 ArgMax.push(k, s); tile states merged in fixed order
           ──► per-b refinement pass ──► B × vcal_replicates ──► percentile intervals (type 7, D-135)
