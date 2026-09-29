@@ -993,6 +993,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Rejected:** sequential stopping of Monte Carlo runs. It changes a study's statistical design (the replicate count would depend on the results) and would need its own pre-registration logic; it is not a performance item.
   - **Priority order:** (1) the S-10/S-4 run, with P-items first only if its subset timing says so; (2) the remaining P-items; (3) the rate MLE as a first-class estimator (analytic derivatives and Newton, interval coverage, an n·PD adequacy flag from S-27, rate-vs-count disagreement as a data diagnostic, its own data-sufficiency table); (4) `docs/methodology/estimator_selection.md`, skeleton now, filled as results report, with its selection rule fixed in advance; (5) Z_t extraction with uncertainty, pulled forward from M7 for another project; (6) consolidation (v0.2); (7) M6.
 
+## P-14: calibrate's checks per distinct observation, 2026-09-29
+
+- **D-178 (owner) — P-14: calibrate's quadrature check and D-119 Hessian integrate each distinct observation once; bitwise identical, and verified on the parametric-bootstrap path before the S-10/S-4 full run.**
+  - **Why:** the S-10 subset's profile put 81% of the CPU in calibrate after the argmax, on the 999 bootstrap panels per replicate: the quadrature check at the estimate (primary and check rules) and the eight central-difference Hessian points each integrated every period, where the surface (D-122) and the profile (D-170) already integrate each distinct observation once.
+  - **What:** each distinct observation is integrated once per evaluation point; every per-period value is then taken from it in period order, so every maximum and sum runs over the same values in the same order.
+  - **Verification (owner's conditions):** `calibrate_integrates_each_distinct_observation_once_bitwise_identically` (15,372 integrations against 25,620, the estimate equal field by field bit for bit); the recovery replays and the ABI equivalence unchanged; and on the bootstrap path, scenarios 51 (T = 100, n = 100) and 29 (T = 20, n = 10⁴) rerun through `study_parametric_bootstrap` with P-14: all 2,000 rows byte-identical to the rows written before it.
+  - **Measured:** scenario 51's calibrate phase 30,062 → 2,780 CPU s (10.8×); scenario 29 unchanged (its observations are nearly all distinct). The S-10/S-4 full run projects to about 5 h instead of 13 h.
+  - **P-15, recorded for after the run (owner):** calibrate's SEs from the analytic Hessian instead of D-119's central differences would remove the eight extra integrations per fit for every study, but it moves the SEs by up to 6.5e-5 relative, so it changes D-119 and needs a golden refresh with a flip check.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
