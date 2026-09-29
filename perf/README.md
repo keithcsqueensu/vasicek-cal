@@ -24,4 +24,5 @@ questions (S-16 FP32 search, S-17 GPU scaling) stay studies, registered in `stud
 | P-1 to P-5 | `study_surface_cache_spike --profile` (`tests/studies/surface_cache_spike.cpp`; kept there, where it was built, D-167) | per-phase CPU seconds on the recovery subset (surface, calibrate, profile, q interval, bootstrap reduction vs refinement), evaluations per fit, cached and uncached, and that every fit equals `recovery::fit` bit for bit |
 | P-5 | `study_argmax_check` (`tests/studies/argmax_check.cpp`; slow CTest at R = 40) | bounded against full-grid argmax, every bootstrap and jackknife row of the subset |
 
-New benchmarks for P-6 onward go in this directory.
+New benchmarks for P-6 onward go in this directory. P-9 starts with a measurement, not a build: the
+repeat rate of identical panels per scenario on the recovery subset and the saving it projects.

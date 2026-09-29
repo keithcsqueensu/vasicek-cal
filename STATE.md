@@ -202,6 +202,19 @@ P-items are not studies: S-16 (FP32 search) and S-17 (GPU scaling) stay studies.
 | P-6 | SIMD reduction across grid points | planned | to be recorded | no: one lane per grid point, each lane's operations in the scalar order, so bitwise identical | to be added in `perf/`; bit-for-bit identity against the scalar reduction |
 | P-7 | SIMD special functions (log Φ, Φ⁻¹, erfcx) | later | to be recorded | bitwise only with FMA contraction controlled (D-048); otherwise within a stated tolerance | to be added in `perf/`; ULP tests against the mpmath goldens |
 | P-8 | GPU backend | M4 | D-168 (M4 after M6) | within a stated tolerance (the GPU must match the CPU within tolerance) | S-17 measures it across architectures; CPU/GPU agreement tests |
+| P-9 | Memoise identical panels: complete fits keyed by the sorted default-count vector with n and the full configuration, so identical replicate panels are fitted once | measure first | to be recorded | no (bitwise identical) | first: the repeat rate per scenario on the recovery subset and the projected saving, reported before anything is built |
+| P-10 | Dynamic scheduling across threads (small chunks handed out as threads free up), for CPUs mixing fast and slow cores | planned (second) | to be recorded | no (bitwise identical by construction) | a test running the same work under different schedules and thread counts, outputs compared bit for bit |
+| P-11 | Checkpoint and resume for long runs: each completed scenario written as it finishes; on restart the run's configuration and code-version hash is validated and completed scenarios are skipped. Pinning runs write goldens directly, reviewed verdict labels kept in a separate file, so no second `--write` pass is needed | planned (first) | to be recorded | no (a resumed run's output identical to an uninterrupted one) | a subset run killed midway and resumed, its output compared byte for byte with an uninterrupted run |
+| P-12 | Warm-started search for bootstrap replicates: a neighbourhood of the original estimate first, the full grid if the best point is on the neighbourhood's edge | planned, not now | to be recorded | no (the same bit-for-bit verification as P-5) | as P-5 |
+| P-13 | Link-time and profile-guided optimisation for local study builds (optionally `-march=native`; never for CI or release builds) | planned, not now | to be recorded | no (verified: study outputs unchanged) | the study outputs compared with a standard build's |
+
+**Rejected:** sequential stopping of Monte Carlo runs (stopping a run early once a verdict looks
+settled). It changes a study's statistical design (the number of replicates would depend on the
+results), so it would need its own pre-registration logic; not a performance item.
+
+**Order for P-9 to P-11:** P-11 first, then P-10, then P-9 after its measurement, fitted around the
+S-10/S-4 work: if the S-10 decision point says to run as is, P-11 and P-10 come before the full run,
+since they protect and speed exactly that run. One PR per item.
 
 ## Next steps
 
@@ -209,7 +222,7 @@ P-items are not studies: S-16 (FP32 search) and S-17 (GPU scaling) stay studies.
 
 1. **The S-10/S-4 run** (registered, D-176): the tool, the scoring script before the subset run, the
    subset, then the full matrix. P-items first only if the subset's timing says so.
-2. **The remaining P-items** (P-6, then P-7; P-8 with M4).
+2. **The remaining P-items:** P-11, P-10 and P-9 (after its measurement), before the S-10/S-4 full run if its decision point says to run as is; then P-6 and P-7; P-12 and P-13 planned, not now; P-8 with M4.
 3. **The rate MLE as a first-class estimator:** an analytic score and Hessian and Newton solves; interval
    coverage; an n·PD adequacy flag from S-27; rate-vs-count disagreement as a data diagnostic; its own
    data-sufficiency table.
