@@ -501,7 +501,7 @@ int main(int argc, char** argv) {
                                 ++cnt;
                             }
                         }
-                        ka[k][a] = cnt > 0 ? sum / static_cast<double>(cnt) : kNaN;
+                        ka[k][static_cast<std::size_t>(a)] = cnt > 0 ? sum / static_cast<double>(cnt) : kNaN;
                     }
                     for (std::uint32_t q = 0; q < RW; ++q) width_jobs.emplace_back(k, q);
                     if (RW == 0) {
