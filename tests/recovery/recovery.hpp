@@ -190,8 +190,8 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCac
                                                      kBootstrapReplicates, s.periods);
         const auto W = resample::weights_from_indices(idx.data(), kBootstrapReplicates, s.periods, s.periods);
         reps.resize(kBootstrapReplicates);
-        resample::replicate_estimates(backends::CpuBackend{1}, g, L.data(), s.periods, W.data(), kBootstrapReplicates,
-                                      reps.data());
+        resample::replicate_estimates_compact(backends::CpuBackend{1}, g, obs.data(), L.data(), s.periods, W.data(),
+                                              kBootstrapReplicates, reps.data());
         for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
         b0 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 0);
         b1 = resample::percentile_interval(reps.data(), kBootstrapReplicates, 1);

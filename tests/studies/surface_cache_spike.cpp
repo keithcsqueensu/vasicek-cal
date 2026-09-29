@@ -106,12 +106,15 @@ rc::Fit fit_timed(const rc::Scenario& s, std::uint32_t replicate, const std::vec
     std::vector<resample::Replicate2> reps(rc::kBootstrapReplicates);
     if (g_profile) {  // the reduction alone, timed apart (the result is discarded; replicate_estimates repeats it)
         auto tr = Clock::now();
+        // As the engine runs it: over the panel's distinct rows (D-172), compaction included.
+        const auto c = resample::compact_by_observation(obs.data(), T, L.data(), K, W.data(), rc::kBootstrapReplicates);
         std::vector<reducers::ArgMax::State> best(rc::kBootstrapReplicates);
-        engine::reduce_weighted(serial, reducers::ArgMax{}, L.data(), T, K, W.data(), rc::kBootstrapReplicates, best.data());
+        engine::reduce_weighted(serial, reducers::ArgMax{}, c.rows.data(), c.distinct, K, c.weights.data(),
+                                rc::kBootstrapReplicates, best.data());
         ph.reduce += since(tr);
         t0 = Clock::now();
     }
-    resample::replicate_estimates(serial, g, L.data(), T, W.data(), rc::kBootstrapReplicates, reps.data());
+    resample::replicate_estimates_compact(serial, g, obs.data(), L.data(), T, W.data(), rc::kBootstrapReplicates, reps.data());
     std::uint32_t edge = 0;
     for (const auto& r : reps) edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
     const auto b0 = resample::percentile_interval(reps.data(), rc::kBootstrapReplicates, 0);

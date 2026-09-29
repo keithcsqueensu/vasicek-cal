@@ -109,15 +109,15 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
                                                  rc::kBootstrapReplicates, T);
     const auto W = resample::weights_from_indices(idx.data(), rc::kBootstrapReplicates, T, T);
     std::vector<resample::Replicate2> boot(rc::kBootstrapReplicates);
-    resample::replicate_estimates(serial, g, L.data(), T, W.data(), rc::kBootstrapReplicates, boot.data());
+    resample::replicate_estimates_compact(serial, g, obs.data(), L.data(), T, W.data(), rc::kBootstrapReplicates, boot.data());
     // Delete-one and delete-two estimates.
     const auto J1 = resample::jackknife_weights(T);
     std::vector<resample::Replicate2> jk(static_cast<std::size_t>(T));
-    resample::replicate_estimates(serial, g, L.data(), T, J1.data(), T, jk.data());
+    resample::replicate_estimates_compact(serial, g, obs.data(), L.data(), T, J1.data(), T, jk.data());
     const auto J2 = resample::delete_two_weights(T);
     const std::int64_t pairs = T * (T - 1) / 2;
     std::vector<resample::Replicate2> jk2(static_cast<std::size_t>(pairs));
-    resample::replicate_estimates(serial, g, L.data(), T, J2.data(), pairs, jk2.data());
+    resample::replicate_estimates_compact(serial, g, obs.data(), L.data(), T, J2.data(), pairs, jk2.data());
 
     JkFit out{};
     out.pd = est.value[0];

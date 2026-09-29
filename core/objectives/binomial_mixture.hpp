@@ -41,6 +41,10 @@ struct BinomialMixture {
         std::int64_t n;
         std::int64_t d;
         friend VCAL_HD constexpr bool operator==(const Obs& a, const Obs& b) { return a.n == b.n && a.d == b.d; }
+        // (n, d) lexicographic: the order of a panel's distinct rows in the bootstrap reduction (D-172).
+        friend VCAL_HD constexpr bool operator<(const Obs& a, const Obs& b) {
+            return a.n < b.n || (a.n == b.n && a.d < b.d);
+        }
     };
     struct Theta {
         double pd;

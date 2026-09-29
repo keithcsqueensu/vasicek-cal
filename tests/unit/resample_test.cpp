@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // resample/ (M2b): weight matrices, replicate estimates from W x L, percentile intervals
 // (D-132..D-135); jackknife bias correction, BCa and leave-two-out weights (S-3, S-5, S-21; D-155).
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -319,4 +320,61 @@ VCAL_TEST(bca_interval_not_computed_at_a_boundary) {
     const std::vector<double> same = {2.0, 2.0, 2.0};
     const auto b = rs::bca_interval(above.data(), 3, 3.0, same.data(), 3);
     VCAL_CHECK(!b.computed);
+}
+
+// D-172: the reduction over distinct rows in (n, d) order. Its order is defined by the
+// observations, not by the panel's layout: reversing the periods (and W's columns with them)
+// gives the same replicates bit for bit, for any thread count.
+VCAL_TEST(compact_replicates_do_not_depend_on_period_order_or_threads) {
+    const auto p = panel();
+    std::vector<double> L;
+    (void)calibrate(p, L);
+    const auto g = grid();
+    const std::int64_t T = static_cast<std::int64_t>(p.size()), K = g.size();
+    constexpr std::uint32_t B = 64;
+    const auto idx = rs::bootstrap_indices(kSeed, rs::Scheme::IidBootstrap, B, T);
+    const auto W = rs::weights_from_indices(idx.data(), B, T, T);
+    std::vector<rs::Replicate2> ref(B);
+    rs::replicate_estimates_compact(Backend{1}, g, p.data(), L.data(), T, W.data(), B, ref.data());
+    std::vector<Obs> rp(p.rbegin(), p.rend());
+    std::vector<double> rL(L.size()), rW(W.size());
+    for (std::int64_t t = 0; t < T; ++t) {
+        std::copy(L.begin() + (T - 1 - t) * K, L.begin() + (T - t) * K, rL.begin() + t * K);
+        for (std::uint32_t b = 0; b < B; ++b) rW[static_cast<std::size_t>(b * T + t)] = W[static_cast<std::size_t>(b * T + T - 1 - t)];
+    }
+    for (const int threads : {1, 3, 0}) {
+        std::vector<rs::Replicate2> out(B), rev(B);
+        rs::replicate_estimates_compact(Backend{threads}, g, p.data(), L.data(), T, W.data(), B, out.data());
+        rs::replicate_estimates_compact(Backend{threads}, g, rp.data(), rL.data(), T, rW.data(), B, rev.data());
+        bool same = true;
+        for (std::uint32_t b = 0; b < B; ++b) same = same && same_replicate(out[b], ref[b]) && same_replicate(rev[b], ref[b]);
+        VCAL_CHECK(same);
+    }
+}
+
+// The distinct-row reduction changes the sums only by rounding: fewer and reordered terms. Against
+// the reduction over periods, the same argmax and estimates within TOL_RESAMPLE_VS_REFIT_REL.
+VCAL_TEST(compact_replicates_match_the_period_reduction_to_rounding) {
+    const auto p = panel();
+    std::vector<double> L;
+    (void)calibrate(p, L);
+    const auto g = grid();
+    const std::int64_t T = static_cast<std::int64_t>(p.size());
+    constexpr std::uint32_t B = 256;
+    const auto idx = rs::bootstrap_indices(kSeed, rs::Scheme::IidBootstrap, B, T);
+    const auto W = rs::weights_from_indices(idx.data(), B, T, T);
+    std::vector<rs::Replicate2> plain(B), compact(B);
+    rs::replicate_estimates(Backend{}, g, L.data(), T, W.data(), B, plain.data());
+    rs::replicate_estimates_compact(Backend{}, g, p.data(), L.data(), T, W.data(), B, compact.data());
+    double worst = 0.0;
+    std::int64_t bitwise = 0;
+    for (std::uint32_t b = 0; b < B; ++b) {
+        VCAL_CHECK_EQ(compact[b].grid_index, plain[b].grid_index);
+        VCAL_CHECK_EQ(compact[b].flags, plain[b].flags);
+        for (int a = 0; a < 2; ++a) worst = std::fmax(worst, std::fabs(compact[b].value[a] / plain[b].value[a] - 1.0));
+        bitwise += same_replicate(compact[b], plain[b]) ? 1 : 0;
+    }
+    vcal::test::note("worst relative difference " + describe(worst) + "; bit-identical replicates " +
+                     std::to_string(bitwise) + " of " + std::to_string(B));
+    VCAL_CHECK(worst <= tol::TOL_RESAMPLE_VS_REFIT_REL);
 }

@@ -251,7 +251,7 @@ FitOut fit(const Panel& p) {
                                                  resample::Scheme::IidBootstrap, B, T);
     const auto W = resample::weights_from_indices(idx.data(), B, T, T);
     o.reps.resize(static_cast<std::size_t>(B));
-    resample::replicate_estimates(backends::CpuBackend{1}, g, o.L.data(), T, W.data(), B, o.reps.data());
+    resample::replicate_estimates_compact(backends::CpuBackend{1}, g, p.obs.data(), o.L.data(), T, W.data(), B, o.reps.data());
     for (const auto& r : o.reps) o.boot_edge += (r.flags & engine::kFlagGridEdge) ? 1u : 0u;
     o.boot[0] = resample::percentile_interval(o.reps.data(), B, 0);
     o.boot[1] = resample::percentile_interval(o.reps.data(), B, 1);
