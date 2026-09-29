@@ -144,6 +144,7 @@ struct PosteriorResult {
     std::uint32_t flags;
     int refinements;          // local grids used
     Grid<2> grid;             // the grid the result is on
+    Marginal marginal[2];     // the final marginals (cell-uniform), for marginal_cdf
 };
 
 namespace posterior_detail {
@@ -298,14 +299,19 @@ inline void hpd(const Marginal& mg, double level, double& lo, double& hi) {
 
 }  // namespace posterior_detail
 
+// The marginal posterior CDF at u (logit coordinate) under the cell-uniform convention: continuous
+// and piecewise linear, 0 below the first cell and 1 above the last (S-15's rank statistic).
+inline double marginal_cdf(const Marginal& mg, double u) { return posterior_detail::cdf_at(mg, u); }
+
 // The grid posterior of a panel. L is the panel's T x K surface on `parity` (from calibrate); se_u,
 // when non-null, is the MLE's Hessian SE in u per axis (seeds the local grid's SD). jt is required
-// for Prior::Jeffreys.
+// for Prior::Jeffreys. resolution_rule = false switches the rule off: the result is the posterior
+// on `parity` as it stands, never refined or refused (S-9's and S-15's diagnostic arm).
 template <class Backend, class Objective, class Integrator>
 PosteriorResult grid_posterior(const Backend& backend, const Objective& objective, const Integrator& integrator,
                                const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& parity,
                                const std::vector<double>& L, Prior prior, const JeffreysTable* jt,
-                               const double* se_u = nullptr) {
+                               const double* se_u = nullptr, bool resolution_rule = true) {
     namespace pd = posterior_detail;
     PosteriorResult out{};
     out.grid = parity;
@@ -324,8 +330,8 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
     for (int a = 0; a < 2; ++a) pd::moments(mg[a], out.mean[a], out.sd[a]);
     std::vector<double> Lloc;
     for (;;) {
-        const bool ok = out.sd[0] >= kPosteriorPointsPerSd * g.axis[0].step() &&
-                        out.sd[1] >= kPosteriorPointsPerSd * g.axis[1].step();
+        const bool ok = !resolution_rule || (out.sd[0] >= kPosteriorPointsPerSd * g.axis[0].step() &&
+                                             out.sd[1] >= kPosteriorPointsPerSd * g.axis[1].step());
         if (ok) break;
         if (out.refinements == kPosteriorMaxRefinements) {
             out.flags |= kPosteriorRefused;
@@ -393,6 +399,8 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
         out.flags |= kPosteriorRefined;
     }
     out.grid = g;
+    out.marginal[0] = mg[0];
+    out.marginal[1] = mg[1];
     const double tail = 0.5 * (1.0 - kPosteriorLevel);
     for (int a = 0; a < 2; ++a) {
         const AxisScale s = g.axis[a].scale;

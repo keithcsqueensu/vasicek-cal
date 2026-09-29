@@ -1,0 +1,16 @@
+{
+  "study": "S-15: simulation-based calibration of the grid-Bayesian estimator (D-161, D-166, D-173, D-175)",
+  "prediction": "studies/bayes-sbc/PREDICTION.md (registered in #22, D-161; addendum 2026-09-28 committed before the run, fixing the parameter draws' random stream)",
+  "generated_by": "study_bayes_sbc --out rows.csv (3 settings, N = 1,000 draws; flat prior in each, Jeffreys at (1,000, 20); 24 threads)",
+  "tool_commit": "22df784cf4cae3a30aacc0c3d843823e5b3c47d5 (2a8f388 after the rebases onto main)",
+  "compiler": "MSVC 1951, Release",
+  "started": "2026-09-29T04:05:20-04:00",
+  "finished": "2026-09-29T04:15:43-04:00",
+  "wall_seconds": 623,
+  "files": {
+    "draws.parquet": "sha256 a0b3af51720c4d81a815412049f12e607fde36b386a42036f26b87cfd00215fb; export_draws.py (pyarrow 25.0.1, zstd 19)",
+    "rows.csv (not committed)": "sha256 0fe7b0aff9c728fced174804f6c5506faaa396c351a17cafd3c32a768d551614"
+  },
+  "scoring": "compare.py (committed before the run) on draws.parquet",
+  "result": "4 of 5 predictions held (G1, G2, G4, G5); G3 did not"
+}

@@ -235,6 +235,10 @@ inline constexpr double TOL_SCIPY_MOM_MOMENT_REL = 4e-15;
 inline constexpr double TOL_SCIPY_MOM_RHO_U = 5e-11;
 
 // --- grid Bayesian, M3 ---------------------------------------------------------------------------
+// marginal_cdf (S-15's rank statistic) at the equal-tailed ends against 0.025 and 0.975, and at the
+// top against 1: the cell-uniform CDF and its quantile are inverse maps, so only rounding separates
+// them (a partial cell's linear interpolation and a sum of masses). Observed 3.3e-15, tripled, rounded.
+inline constexpr double TOL_POSTERIOR_CDF_ROUNDTRIP_ABS = 1e-14;
 // Equal-tailed interval ends (and the mean and SD) of the grid posterior against an exactly normal
 // posterior in logit units, in posterior SDs, with the resolution rule (4 points per SD; local grids
 // at 5). For a normal posterior, cell-uniform marginals at 4 points per SD put the ends within 0.01 SD
