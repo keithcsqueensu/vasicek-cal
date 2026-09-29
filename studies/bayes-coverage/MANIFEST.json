@@ -1,0 +1,18 @@
+{
+  "study": "S-9: frequentist coverage of the grid-Bayesian credible intervals (D-161, D-166, D-173, D-175)",
+  "prediction": "studies/bayes-coverage/PREDICTION.md (registered in #22, D-161; M3.3 addendum, D-166; scoring addendum 2026-09-28 committed before the run)",
+  "generated_by": "study_bayes_coverage --out rows.csv (81 recovery scenarios x 1,000 replicates, 4 arms, 24 threads)",
+  "tool_commit": "22df784cf4cae3a30aacc0c3d843823e5b3c47d5 (a7ca3dd after the rebase onto main; author date 2026-09-28T22:52:19-04:00, unchanged)",
+  "compiler": "MSVC 1951, Release",
+  "started": "2026-09-28T23:59:10-04:00",
+  "finished": "2026-09-29T04:05:20-04:00",
+  "wall_seconds": 14768,
+  "files": {
+    "fits.parquet": "sha256 bdc607d765e3ce63a48680f96aa67b4f9404c3ba0bc4354795bdd712f3415b8c; export_fits.py (pyarrow 25.0.1, zstd 19), every double exact",
+    "summary.csv": "sha256 ced85c7c07fe20a037fa76f457e82c89a3ffa3da936155d36affcd2957fecde8; compare.py --summary-out",
+    "reviewed.csv": "sha256 dfaf02edff86ce42547c731e80ed1769616d6f27bf3ed9fffbc27258903e52c3; review.py (after the run)",
+    "rows.csv (not committed, 68 MB)": "sha256 88c57950ddee8c5bc6e20335abd19a42c538099bfbf71c9c53375d32b6d8ee74"
+  },
+  "scoring": "compare.py (committed before the run) on fits.parquet; export_fits.py's NaN handling was fixed (8b017cd, 00:00:07) while the run was in progress, before any result was seen",
+  "result": "3 of 5 predictions held (F2, F3, F5); F1 and F4 did not"
+}

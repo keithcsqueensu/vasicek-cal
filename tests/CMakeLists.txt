@@ -206,6 +206,7 @@ target_link_libraries(study_estimator_pass PRIVATE vcal_test_harness vcal::resam
 vcal_target_defaults(study_estimator_pass)
 add_test(NAME study_estimator_pass_smoke COMMAND study_estimator_pass --replicates 2 --scenarios 29,4,90)
 set_tests_properties(study_estimator_pass_smoke PROPERTIES LABELS slow)
+
 # S-9 (studies/bayes-coverage/PREDICTION.md): the grid posterior on every recovery panel, four arms.
 add_executable(study_bayes_coverage studies/bayes_coverage.cpp)
 target_link_libraries(study_bayes_coverage PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)

@@ -109,13 +109,13 @@ not delay M3.
 | S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
-| S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | registered (D-161) |
+| S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | on the CPU after the M3 folded studies, full matrix (D-168) | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
 | S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
 | S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
 | S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
-| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | registered (D-161) |
+| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | finished (D-175) |
 | S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
 | S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
 | S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
@@ -406,8 +406,29 @@ refined in each study's `PREDICTION.md`.
   resolution matters for a discretised posterior, so S-7 informs the grid.
 - **Cost:** about the fit cost (≈ 5 min subset, ≈ 1 h full matrix), plus the Jeffreys prior once
   per n.
-- **Prediction:** registered in [`bayes-coverage/PREDICTION.md`](bayes-coverage/PREDICTION.md) before any run: F1–F5. The parity grid is too coarse for a grid posterior where the estimator's spread is under half a spacing (PD in 8 scenarios of groups B–D), so the estimator carries a resolution rule, at least 4 grid points per posterior SD on each axis, refining locally or refusing; the parity grid without the rule runs beside it as a diagnostic. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`bayes-coverage/PREDICTION.md`](bayes-coverage/PREDICTION.md) before any run: F1–F5. The parity grid is too coarse for a grid posterior where the estimator's spread is under half a spacing (PD in 8 scenarios of groups B–D), so the estimator carries a resolution rule, at least 4 grid points per posterior SD on each axis, refining locally or refusing; the parity grid without the rule runs beside it as a diagnostic. A scoring addendum (and the rule switch, D-173) was committed before the run.
+- **Status:** finished 2026-09-29 (D-175): 81 scenarios × 1,000 replicates, four arms each (flat or Jeffreys, rule on or off; `study_bayes_coverage`, 14,768 s). Per-replicate interval ends in [`bayes-coverage/fits.parquet`](bayes-coverage/fits.parquet), verdicts in [`bayes-coverage/summary.csv`](bayes-coverage/summary.csv).
+- **Result:** **with the resolution rule, the Jeffreys equal-tailed interval is the best-calibrated interval tested for this model, profile likelihood included.**
+  - **Jeffreys, equal-tailed:** PD 79 PASS, 2 below (29 and 68, where the pinned profile interval is below too); ρ 64 PASS, 17 above, **none below**, the 17 all in group A (near-uninformative data). In groups B–D it is within 0.015 of the profile coverage in 99 of 100 verdicts (largest 0.017). The profile interval has 4 ρ verdicts below the band; this interval has none.
+  - **Flat, equal-tailed:** PD 75 PASS, 6 below; ρ 68 PASS, 7 below, 6 above. Every below-band verdict is at PD 0.1% or ρ = 0.02 with the misses above the truth: the flat prior's mass drags the interval up where the data are thin.
+  - **HPD** is narrower than equal-tailed for ρ in all 50 B–D scenarios under both priors, and covers within 0.02 of it in 45 (flat) and 49 (Jeffreys) of 50, but it undercovers ρ more often (flat: 22 below, across groups A–D; Jeffreys: 7), almost always with the interval above the truth: ρ's posterior has a long lower tail in logit, and the shortest set drops it.
+  - **The rule** refined 92% of fits (all of groups B–D, at most two local grids) and refused none of the 162,000 posteriors; the posterior was never numerically undefined.
+  - **Without the rule** (the diagnostic arm) the parity grid overcovers PD where n·PD is large (58, 59, 61, 62: 0.980–0.995), as predicted, but at PD 1%, T = 100 (34, 35) it undercovers instead (0.915–0.931), the misses above the truth: lumping the mass on a coarse grid moves the interval as well as widening it.
+  - **Review:** the 87 out-of-band verdicts of the estimator are labelled in [`bayes-coverage/reviewed.csv`](bayes-coverage/reviewed.csv) by [`review.py`](bayes-coverage/review.py), after the run: conservative (group A, above) 39, prior pulls up 36, shared with the profile 8, small T 3, and 1 unexplained (49, flat HPD ρ, 82% of misses above the truth against the rule's 90%).
+- **Comparison with the predictions** (scored by [`bayes-coverage/compare.py`](bayes-coverage/compare.py), committed before the run): three held, two did not.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | F1 | rule off: equal-tailed PD above the band in ≥ 6 of the 8 coarse scenarios, both priors | 4 of 8 under each prior (58, 59, 61, 62); 34 and 35 *below* | **no** |
+  | F2 | B–D: the rule refines in ≥ 95% of replicates, refuses ≤ 0.1% everywhere | refined 100%, refused 0 (both priors) | yes |
+  | F3 | B–D: Jeffreys equal-tailed within 0.015 of the profile in ≥ 80 of 100 | 99 of 100; largest 0.017 | yes |
+  | F4 | group B: flat equal-tailed ρ coverage ≥ Jeffreys' in ≥ 9 of 12 | 6 of 12 | **no** |
+  | F5 | B–D: HPD narrower for ρ in ≥ 45 of 50, coverages within 0.02 in ≥ 40 | narrower 50 and 50; within 0.02: 45 (flat), 49 (Jeffreys) | yes |
+
+  - **F1's miss:** the mechanism was half right. Where the posterior is much narrower than a cell (PD 5%, n = 10⁴) the grid overcovers; where it is about a cell wide the grid's lumping also shifts the interval, and coverage falls instead. The rule fixes both.
+  - **F4's miss:** the premise, that the flat prior's pull towards larger ρ offsets ρ̂'s small-T bias, did not hold. At T = 20 Jeffreys covers ρ at 0.934–0.952 (all 12 PASS), flat at 0.917–0.958 (10 PASS). The flat prior's pull helps where ρ is high and hurts where it is low; Jeffreys is steadier.
+- **Mitigation:** for a Bayesian interval on PD or ρ, **use the Jeffreys prior with equal-tailed intervals and the resolution rule** (the estimator's default behaviour; the rule should never be switched off except as a diagnostic). Do not use the flat prior where the data are thin (PD near 0.1% or ρ near the floor), and prefer equal-tailed to HPD for ρ.
+- **Monitoring implication:** a Jeffreys equal-tailed credible interval can stand in for the profile interval in a monitoring check (it agrees within 0.015 in coverage across groups B–D and did not undercover ρ); a flat-prior interval should not be used at low PD, where it sits too high.
 
 ## Subset now, full matrix after M4 (new data per replicate)
 
@@ -549,8 +570,23 @@ refined in each study's `PREDICTION.md`.
   (n, T) settings. Ties on a discrete grid need a stated tie-breaking rule.
 - **Cost:** thousands of calibrate-only fits: minutes on CPU.
 - **Placement (D-151):** folded into M3 with the grid-Bayesian estimator and S-9; it needs no GPU.
-- **Prediction:** registered in [`bayes-sbc/PREDICTION.md`](bayes-sbc/PREDICTION.md) before any run: G1–G5, with the rank statistic made continuous by S-9's cell-uniform convention, so no tie-breaking rule is needed. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`bayes-sbc/PREDICTION.md`](bayes-sbc/PREDICTION.md) before any run: G1–G5, with the rank statistic made continuous by S-9's cell-uniform convention, so no tie-breaking rule is needed. An addendum committed before the run fixes the parameter draws' random stream.
+- **Status:** finished 2026-09-29 (D-175): 4,000 draws (N = 1,000 per setting and prior; `study_bayes_sbc`, 623 s). Per-draw ranks in [`bayes-sbc/draws.parquet`](bayes-sbc/draws.parquet).
+- **Result:** **the grid-Bayesian estimator is calibrated in every setting tested**, with the rule and, unexpectedly, without it. With the rule: χ² p-values 0.11–0.83 and tail shares 0.044–0.069 for PD and ρ in all four setting-prior pairs, no refusals (98–100% of draws refined). Without the rule the parity grid was calibrated too, except the Jeffreys PD histogram at (1,000, 20) (p = 0.009, tail share 0.049): no hump appeared at (1,000, 100).
+- **Comparison with the predictions** (scored by [`bayes-sbc/compare.py`](bayes-sbc/compare.py), committed before the run): four held, one did not.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | G1 | (1,000, 20), rule, flat: p ≥ 0.01, tail 0.027–0.073, PD and ρ | PD p 0.35, tail 0.069; ρ p 0.83, tail 0.053 | yes |
+  | G2 | (1,000, 20), rule, Jeffreys: the same | PD p 0.11, tail 0.054; ρ p 0.24, tail 0.044 | yes |
+  | G3 | (1,000, 100), rule off: tail share below 0.027, PD and ρ (a hump) | PD 0.050, ρ 0.043 | **no** |
+  | G4 | (1,000, 100), rule: p ≥ 0.01, tail 0.027–0.073 | PD p 0.78, tail 0.057; ρ p 0.13, tail 0.060 | yes |
+  | G5 | (10⁴, 40), rule off: ρ tail share between the other two settings' | 0.048, between 0.043 and 0.049 | yes |
+
+  - **G3's miss:** the predicted failure of the coarse grid did not occur. Spreading a point's mass over its cell adds variance h²/12 (h the spacing), so a posterior SD of s becomes √(s² + h²/12): at s = 0.8h, about 7% wider, too little to raise a hump in 1,000 ranks. A hump needs a posterior several times narrower than a cell, which S-9 found only at PD 5%, n = 10⁴; the flat prior's draws at n = 1,000 rarely produce one. The mechanism was right, its size overestimated.
+  - **G5 held only by the letter:** the three tail shares (0.043, 0.048, 0.049) are within Monte Carlo noise of each other and of 0.05, so the ordering carries no information.
+- **Mitigation:** none needed: the estimator is calibrated. The rule remains necessary where the posterior is much narrower than a cell (S-9's large n·PD scenarios), which these settings rarely reached.
+- **Monitoring implication:** posterior quantiles from the grid-Bayesian estimator can be read as calibrated probabilities (for example, the posterior probability that PD exceeds a threshold), under the model and prior, at these sample sizes.
 
 ### S-16 FP32 search, FP64 finalisation (`fp32-search`)
 
