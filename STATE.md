@@ -220,6 +220,17 @@ since they protect and speed exactly that run. One PR per item.
 
 ## Next steps
 
+**S-10/S-4 decision point (2026-09-29).** The study subset (9 scenarios × 1,000, B = 999; the tool and
+scoring script committed first, fcd7e13) took 5,217 s wall on 24 threads (124,109 CPU s). Scaled to the
+81 scenarios the full run projects to **about 13 h**. The phase split: calibrate's work after the argmax on
+the 999 bootstrap panels per replicate (the quadrature check at the estimate and the D-119 central-difference
+Hessian, each integrating every period rather than every distinct observation) 81%; S-4b's W* 9%; panel
+simulation 6%; the analytic SE 3%; surface assembly 1%; profile, W0, Jeffreys and the S-4 widths under 1%
+each. **Recommendation:** not run as is; first P-14 (above; bitwise identical,
+aimed at the 81% phase: at the subset's 16.4 distinct observations per 53.3 periods it cuts that phase about
+3.2×, most where T = 100 and n is small, projecting the full run to about 5–6 h), then P-11 (checkpoint
+and resume) to protect the run; P-10 and P-9 after. The run's tool already hands out replicates dynamically. **Decision (owner):** P-14, then P-11, then the full run overnight; also the owner's item 1 (overlapping scenarios, with P-11) and a sampled, reported quadrature check on bootstrap fits (P-16) instead of skipping it. P-14 is done (D-178): byte-identical rows on the bootstrap path, and the full run projects to about 5 h.
+
 **Priority order (owner, 2026-09-29):**
 
 1. **The S-10/S-4 run** (registered, D-176): the tool, the scoring script before the subset run, the
