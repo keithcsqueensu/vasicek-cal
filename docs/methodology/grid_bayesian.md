@@ -52,6 +52,10 @@ grid, the per-period log-likelihoods evaluated at its points:
   local grid would need more than 2,001 points on an axis, or if more than 10⁻⁶ of the current grid's
   mass lies outside the next grid.
 
+The rule can be switched off (`resolution_rule = false`, D-173): the posterior is then the parity
+grid's as it stands, never refined or refused. That is not the estimator; it is the diagnostic arm
+S-9 and S-15 registered, to show what the rule removes.
+
 ## 4. Intervals
 
 95% intervals per parameter, on the natural scale: **equal-tailed**, the marginal CDF's 2.5% and 97.5%
@@ -63,6 +67,8 @@ cannot move it: candidates within 10⁻⁹ (relative) of the shortest count as s
 the one centred closest to the marginal's median is taken. On an exactly normal posterior the equal-tailed ends are within 0.009 SD
 and the HPD ends within 0.071 SD of the exact ones (the HPD of a step density can sit up to half a cell
 from the smooth HPD while its width is right).
+The marginal CDF itself, continuous and piecewise linear under the cell-uniform convention, is
+`marginal_cdf` (D-173): S-15's rank statistic, the posterior CDF at the true value.
 
 ## 5. Validation in this step
 

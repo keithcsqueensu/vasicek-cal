@@ -583,6 +583,16 @@ comment = [
     "E[p^2]; Brent), in logit units, on 108 reference panels. Observed 1.6e-11; doubled, rounded up.",
 ]
 
+[TOL_POSTERIOR_CDF_ROUNDTRIP_ABS]
+type = "double"
+value = 1e-14
+section = "grid Bayesian, M3"
+comment = [
+    "marginal_cdf (S-15's rank statistic) at the equal-tailed ends against 0.025 and 0.975, and at the",
+    "top against 1: the cell-uniform CDF and its quantile are inverse maps, so only rounding separates",
+    "them (a partial cell's linear interpolation and a sum of masses). Observed 3.3e-15, tripled, rounded.",
+]
+
 [TOL_POSTERIOR_ET_END_SD]
 type = "double"
 value = 0.01

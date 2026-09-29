@@ -952,6 +952,13 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **The goldens:** unchanged. `recovery_harness --check` (81 × 1,000) reproduces the committed summary exactly (same platform: 0 mismatches), in 319 s wall.
     - **Measured:** the recovery subset (9 × 1,000, cached, MSVC 19.51): the bootstrap 569 → 117 CPU s (4.9×; the reduction itself 111 s), total 1,219 → 717 (1.7×), wall 131 → 38 s; all 18,000 fits equal `recovery::fit` bit for bit. **D-170 to D-172 together,** against D-167's cached run: 4,799 → 717 CPU s (6.7×), wall 217 → 38 s; the full matrix 2,266 → 319 s wall (5,165 s pinned before the cache). What remains is spread evenly: profile 206 s, q 184 s, bootstrap 117 s, calibrate 104 s, surface 105 s.
 
+## The grid-Bayesian studies' tools: the rule switch and the rank statistic, 2026-09-28
+
+- **D-173 — `grid_posterior` can switch the resolution rule off and returns its final marginals, with `marginal_cdf` as S-15's rank statistic; the estimator itself is unchanged.**
+  - **What:** a trailing `resolution_rule = true` parameter; `false` returns the posterior on the given grid as it stands, never refined or refused (S-9's and S-15's registered diagnostic arm, "the parity grid with the rule switched off"). `PosteriorResult` keeps the two final marginals, and `marginal_cdf(marginal, u)` exposes the cell-uniform CDF the quantiles already inverted (S-15's rank statistic).
+  - **Why in the engine, not in the study tools:** both arms then run the same code, and the switch is testable. The study tools call only public functions.
+  - **Checks:** the committed reference posteriors reproduce with a worst difference of 0; `posterior_without_the_rule_stays_on_the_parity_grid` shows a posterior far narrower than a cell staying on the parity grid, with an equal-tailed PD interval 0.95 of a cell wide, against 0.30 of a cell (3.92 σ) with the rule; `marginal_cdf` returns 0.025 and 0.975 at the equal-tailed ends within `TOL_POSTERIOR_CDF_ROUNDTRIP_ABS` (1e-14; observed 3.3e-15).
+  - **Tools:** `study_bayes_coverage` (S-9) and `study_bayes_sbc` (S-15), each with a scoring script and an addendum to its registration committed before its run.
 ## The estimator-comparison pass: S-8, S-27, S-28, 2026-09-29
 
 - **D-174 — S-8, S-27 and S-28 are finished: 11 of 13 predictions held. MoM loses efficiency for ρ as predicted; the censored rate MLE matches the binomial MLE from n·PD ≈ 500–1,000; no zero-default treatment makes the rate MLE a substitute for the binomial MLE on counts, and censoring is the least bad. E12 and E13 missed.**

@@ -67,13 +67,13 @@ struct NormalInU {
 };
 
 e::PosteriorResult posterior_of(const NormalInU& obj, const Backend& backend = Backend{1},
-                                const double* se_u = nullptr) {
+                                const double* se_u = nullptr, bool rule = true) {
     const auto integrator = vcal::quadrature::parity_rule();
     const auto g = box_grid();
     const NormalInU::Obs obs[1] = {{0}};
     std::vector<double> L(static_cast<std::size_t>(g.size()));
     e::evaluate_surface(backend, obj, integrator, obs, 1, g, L.data());
-    return e::grid_posterior(backend, obj, integrator, obs, 1, g, L, e::Prior::Flat, nullptr, se_u);
+    return e::grid_posterior(backend, obj, integrator, obs, 1, g, L, e::Prior::Flat, nullptr, se_u, rule);
 }
 
 double logit(double v) { return std::log(v) - std::log1p(-v); }
@@ -154,6 +154,39 @@ VCAL_TEST(posterior_local_grid_keeps_a_skewed_or_bimodal_posterior) {
     VCAL_CHECK(r.flags & e::kPosteriorRefined);
     // Each mode holds half the mass: the equal-tailed PD interval spans both.
     VCAL_CHECK(logit(r.et_lo[0]) < obj.mu[0] && logit(r.et_hi[0]) > obj.mu[0] + 3.0);
+}
+
+// The rule switched off (S-9's and S-15's diagnostic arm): a posterior far narrower than a parity
+// cell stays on the parity grid, neither refined nor refused, and its mass sits in about one cell, so
+// the equal-tailed interval is about a cell wide. marginal_cdf is the inverse of the interval's
+// quantiles: 0.025 and 0.975 at its ends, on either grid.
+VCAL_TEST(posterior_without_the_rule_stays_on_the_parity_grid) {
+    NormalInU obj{{logit(0.01), logit(0.12)}, {0.01, 0.01}};
+    const auto off = posterior_of(obj, Backend{1}, nullptr, false);
+    VCAL_CHECK_EQ(off.flags, 0u);
+    VCAL_CHECK_EQ(off.refinements, 0);
+    VCAL_CHECK(off.grid.axis[0].n == 61 && off.grid.axis[1].n == 41);
+    const auto on = posterior_of(obj);
+    VCAL_CHECK(on.flags & e::kPosteriorRefined);
+    const double step = box_grid().axis[0].step();
+    VCAL_CHECK(logit(off.et_hi[0]) - logit(off.et_lo[0]) > 0.5 * step);
+    // Refined: 2 x 1.959964 sigma, to the normal case's own tolerance.
+    VCAL_CHECK(std::fabs(logit(on.et_hi[0]) - logit(on.et_lo[0]) - 2.0 * 1.959963984540054 * obj.sigma[0]) <
+               2.0 * tol::TOL_POSTERIOR_ET_END_SD * obj.sigma[0]);
+    std::printf("rule off: PD interval %.3f parity spacings; rule on: %.3f\n",
+                (logit(off.et_hi[0]) - logit(off.et_lo[0])) / step, (logit(on.et_hi[0]) - logit(on.et_lo[0])) / step);
+    double worst = 0.0;
+    for (const auto* r : {&off, &on}) {
+        for (int a = 0; a < 2; ++a) {
+            const double lo = e::marginal_cdf(r->marginal[a], logit(r->et_lo[a]));
+            const double hi = e::marginal_cdf(r->marginal[a], logit(r->et_hi[a]));
+            const double top = e::marginal_cdf(r->marginal[a], 1e9);
+            worst = std::fmax(worst, std::fmax(std::fabs(lo - 0.025), std::fmax(std::fabs(hi - 0.975), std::fabs(top - 1.0))));
+            VCAL_CHECK(e::marginal_cdf(r->marginal[a], -1e9) == 0.0);
+        }
+    }
+    std::printf("marginal_cdf round trip: worst %.3g\n", worst);
+    VCAL_CHECK(worst <= tol::TOL_POSTERIOR_CDF_ROUNDTRIP_ABS);
 }
 
 // A posterior narrower than three local grids can resolve (sigma 1e-7 in u): refused, not reported.

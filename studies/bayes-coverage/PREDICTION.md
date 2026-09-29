@@ -117,3 +117,28 @@ reason unrelated to the question. As implemented (`engine/posterior.hpp`, D-166)
   as registered; it can lie up to half a cell from the smooth HPD (`TOL_POSTERIOR_HPD_END_SD`).
 
 The rule itself (at least 4 grid points per posterior SD on each axis) is unchanged.
+
+## Addendum, 2026-09-28: how the run and its scoring are computed, fixed before the run
+
+Appended before any S-9 run on the recovery panels. No prediction, threshold or estimator definition
+changes; this fixes what the text leaves open, so the scoring cannot be chosen after the results are
+seen. It is implemented in [`compare.py`](compare.py), committed with this addendum.
+
+- **The tool:** `study_bayes_coverage` (`tests/studies/bayes_coverage.cpp`) fits each panel as the
+  recovery harness does (calibrate on the parity grid through the row cache; the pinned profile
+  intervals) and computes `engine::grid_posterior` in four arms: flat or Jeffreys, with the rule or
+  without it. The Jeffreys table is computed once per n on the parity grid. One row per (scenario,
+  replicate); [`export_fits.py`](export_fits.py) writes `fits.parquet`, and `compare.py` scores F1–F5
+  from that file and the D-136 groups.
+- **The diagnostic arm:** `grid_posterior` gained `resolution_rule = false`, which returns the
+  posterior on the parity grid as it stands, never refined or refused (D-173). With the rule on, the
+  estimator is unchanged: its reference results reproduce with a worst difference of 0.
+- **Coverage and verdicts:** over all replicates; a refused fit or one without a finite posterior
+  does not cover (D-131). The band is 0.95 ± 3.29·√(0.95·0.05/1,000). The profile coverage in F3 is
+  the pinned one.
+- **F2** is scored for each prior: refinement pooled over the B–D replicates, refusals per B–D
+  scenario (at most 1 of 1,000). Held if both priors hold. **F5** is scored for each prior, with the
+  median logit width over the replicates that have an interval; held if both priors hold.
+- **Disclosure:** the tool was run on 4 replicates of scenarios 1, 29, 43 and 68 and 2 of 1, 8 and 29,
+  to check the code and time it (about 5 CPU seconds per panel with the rule, both priors); those
+  rows were not scored.

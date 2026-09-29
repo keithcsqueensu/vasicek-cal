@@ -62,3 +62,25 @@ prior the parameters are drawn from, the posterior CDF at the true value is unif
 Each prediction gets a row: prediction, result, held or not. The rows are computed by a script
 committed before the run's results exist. Results, the comparison, a mitigation and a monitoring
 implication go in `studies/README.md` (the S-15 entry) and in a D-entry, with a `MANIFEST.json`.
+
+## Addendum, 2026-09-28: how the run and its scoring are computed, fixed before the run
+
+Appended before the run. No prediction or threshold changes; this fixes what the text leaves open.
+It is implemented in `study_bayes_sbc` (`tests/studies/bayes_sbc.cpp`) and [`compare.py`](compare.py),
+committed with this addendum.
+
+- **The draw's random stream** (the text fixes the panel's stream, not the parameters'): Philox4x32-10
+  keyed by the seed "S15SBCDR" (0x5331355342434452), counter (setting, draw, prior, block), words to
+  doubles as the DGP does. Block 0's words 0–1 pick the cell by inverting the prior's cumulative cell
+  masses in grid order; block 0's words 2–3 and block 1's words 0–1 place the point uniformly in the
+  cell on the PD and ρ axes. The prior's cell masses are the posterior code's own (`masses` with a zero
+  log-likelihood), so the draws follow the grid's cell-uniform prior exactly. The flat and Jeffreys
+  draws at (1,000, 20) share the panel stream (scenario 1000 + setting, replicate = draw), with
+  different parameters.
+- **The rank:** `engine::marginal_cdf` on the final marginal (new, D-173), at the true value in logit.
+  A draw the estimator refuses has no rank: it is left out of that arm's histogram and tail share,
+  and refusals are reported. The diagnostic arm is `grid_posterior` with `resolution_rule = false`.
+- **Scoring:** the 20-bin χ² test has 19 degrees of freedom. The tail-share range 0.027–0.073 is
+  inclusive; "below 0.027" is strict. G5 uses the flat prior (the only prior run at (10⁴, 40) and
+  (1,000, 100)) and holds when (10⁴, 40) lies strictly between the other two, in either order.
+- **Disclosure:** the tool was run on 4 draws per setting and prior to check the code; not scored.
