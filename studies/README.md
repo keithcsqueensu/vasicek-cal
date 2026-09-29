@@ -108,7 +108,7 @@ not delay M3.
 | S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
 | S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
 | S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
-| S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | registered (D-161) |
+| S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
 | S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | registered (D-161) |
 | S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | on the CPU after the M3 folded studies, full matrix (D-168) | not registered |
 | S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
@@ -127,8 +127,8 @@ not delay M3.
 | S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
 | S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
-| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | registered (D-161) |
-| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | registered (D-161) |
+| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | finished (D-174) |
+| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | finished (D-174) |
 | S-29 | `scale-version-change` | How much crosswalk error before ρ̂ inflation is material? | now (two-grade part); M6 (full) | not registered |
 | S-30 | `grade-granularity` | Which number of grades K minimises error, given T and scale stability? | now (per-bucket part); M6 (shared ρ) | not registered |
 | S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
@@ -383,8 +383,20 @@ refined in each study's `PREDICTION.md`.
   with the MLE.
 - **Cost:** minutes for MoM itself; ≈ 1 h if the MLE is refitted for pairing rather than read from
   the goldens.
-- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E1–E5, in the estimator-comparison pass's shared file, with S-27 and S-28 (D-150). The estimators are defined there, for M3 to implement. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E1–E5, in the estimator-comparison pass's shared file, with S-27 and S-28 (D-150). The estimators are defined there, for M3 to implement; a scoring addendum was committed before the full run.
+- **Status:** finished 2026-09-29 (D-174), in the estimator-comparison pass: every panel of the 135 scenarios × 1,000 replicates fitted by every estimator (`study_estimator_pass`, 5,437 s); per-replicate rows in [`mle-vs-mom/fits.parquet`](mle-vs-mom/fits.parquet), per-scenario statistics in [`mle-vs-mom/summary.csv`](mle-vs-mom/summary.csv).
+- **Result:** **MoM loses efficiency for ρ as the model predicted, and costs nothing for PD.** In groups B–D its RMSE for ρ is 0.94–2.04 times the MLE's, above 1 in 48 of 50 scenarios, and rises with ρ in all 12 (PD, T, n) cells. At n = 10⁴ it lands within 25% of the large-n reference in 23 of 24 (the exception, 26 at PD 0.1%, ρ = 0.24, T = 100, is 1.90 against 2.68: at n·PD = 10 the binomial noise costs the MLE too). MoM's ρ̂ is biased further down than the MLE's in 44 of 50. For PD the two are the same estimator to first order: RMSE ratio 0.96–1.07 in all 50. The two ratios not above 1 are 31 (ρ = 0.02, 0.999) and 13 (PD 0.1%, ρ 0.12, T = 40, n = 1,000; 0.94); the six scenarios where MoM's ρ̂ is not further down are all at ρ = 0.02, where both estimators sit near the box's floor.
+- **Comparison with the predictions** (scored by [`mle-vs-mom/compare.py`](mle-vs-mom/compare.py), committed before the full run): all five held.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | E1 | RMSE(MoM)/RMSE(MLE) for ρ > 1 in ≥ 45 of 50 B–D | 48 of 50; ratios 0.94–2.04 | yes |
+  | E2 | the ratio rises ρ 0.02 → 0.12 → 0.24 in ≥ 80% of cells | 12 of 12 | yes |
+  | E3 | at n = 10⁴, within ±25% of the large-n reference in ≥ 75% | 23 of 24 | yes |
+  | E4 | MoM's ρ̂ more negative in mean error in ≥ 40 of 50 | 44 of 50 | yes |
+  | E5 | PD RMSE ratio 0.95–1.15 in ≥ 45 of 50 | 50 of 50; 0.960–1.069 | yes |
+- **Mitigation:** none needed for PD. For ρ, **use the MLE**; MoM is a quick closed-form cross-check, not a substitute, and its shortfall grows with ρ, with lower PD and with T (a longer history helps MoM less than it helps the MLE).
+- **Monitoring implication:** a MoM ρ̂ below the MLE's is expected, more so at high ρ, so a MoM-vs-MLE gap in that direction is not by itself a sign of misspecification; a MoM ρ̂ *above* the MLE's by more than its spread is.
 
 ### S-9 Frequentist coverage of grid-Bayesian credible intervals (`bayes-coverage`)
 
@@ -766,8 +778,26 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** the Vasicek-rate MLE is closed form (seconds). The binomial fits at the new n, without
   bootstrap, ≈ 1.5–2 h for the full matrix and ≈ 10–20 min for the subset's 18 new scenarios; for
   n ≤ 10⁴ the goldens are reused.
-- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E6–E8, in the estimator-comparison pass's shared file (D-150), with "indistinguishable" defined there. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E6–E8, in the estimator-comparison pass's shared file (D-150), with "indistinguishable" defined there.
+- **Status:** finished 2026-09-29 (D-174), in the S-8 pass (see S-8 for the files). The rate MLE is the censored treatment, as registered.
+- **Result:** **the rate MLE matches the binomial MLE once n·PD reaches about 500–1,000, and not before.** Where it differs, its ρ̂ is biased up (binomial noise in d/n read as factor variance) in all 61 scenarios where the reference predicts at least 0.5 SE. The rule of thumb, as the smallest n from which every larger n is indistinguishable (mean ρ̂ within 0.1 binomial SE, ρ coverage within 0.0227):
+
+  | PD | ρ = 0.02 | ρ = 0.12 | ρ = 0.24 |
+  |---|---|---|---|
+  | 0.1% | 10⁶ | 10⁶ | 10⁶ at T ≤ 40; not reached at T = 100 |
+  | 1% | 10⁵ (10⁶ at T = 100) | 10⁵ | 10⁵ |
+  | 5% | 10⁴ (10⁵ at T ≥ 40) | 10⁴ | 10⁴ |
+
+  The model's delta-method reference sorted the cells correctly: "indistinguishable" agreed with "reference below 0.1 SE" in all 86 unambiguous cells. The one n = 10⁶ scenario that is distinguishable, 98 (PD 0.1%, ρ 0.24, T = 100), has a reference of 0.125 SE and a measured difference of 0.157 SE: on the boundary, where the reference placed it.
+- **Comparison with the predictions:** all three held.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | E6 | n = 10⁶: indistinguishable in ≥ 24 of 27 | 26 of 27 | yes |
+  | E7 | rate ρ̂ above binomial where the reference is ≥ 0.5 SE | 61 of 61 | yes |
+  | E8 | "indistinguishable" agrees with "reference < 0.1" in ≥ 80% of unambiguous cells | 86 of 86 | yes |
+- **Mitigation:** use the binomial MLE on counts whenever counts exist; it is exact at every n, and with the surface cache n = 10⁶ is affordable. Use the rate MLE only where n·PD is above about 1,000 (and T and ρ are not both large), or where only rates exist, and then expect ρ̂ to be biased up by about the reference (`model_reference.py s27`).
+- **Monitoring implication:** a rate-based ρ̂ above a count-based one on the same portfolio is expected at small n·PD, and its size is predictable from the reference; only a gap beyond it points at something else.
 
 ### S-28 Zero-default treatments for rate-based estimators (`zero-default-rates`)
 
@@ -782,8 +812,35 @@ kind as S-11 and report both targets (D-150).
 - **Verdicts it could change:** none of the binomial verdicts; it adds the rate-based estimators'
   verdicts for each treatment.
 - **Cost:** closed-form likelihoods: minutes for the full matrix.
-- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E9–E13, in the estimator-comparison pass's shared file (D-150): refuse, drop, a censored likelihood (the Vasicek CDF below the detection limit 1/(2n)) and substitution (a continuity correction, half a default); E9 is an implementation check. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`mle-vs-mom/PREDICTION.md`](mle-vs-mom/PREDICTION.md) before any run: E9–E13, in the estimator-comparison pass's shared file (D-150): refuse, drop, a censored likelihood (the Vasicek CDF below the detection limit 1/(2n)) and substitution (a continuity correction, half a default); E9 is an implementation check.
+- **Status:** finished 2026-09-29 (D-174), in the S-8 pass (see S-8 for the files). Disclosure: M3.1's scipy replay had fitted nine of these panels under the censored likelihood before the run (D-165).
+- **Result:** **no zero-default treatment makes the rate MLE a substitute for the binomial MLE on counts; censoring is the least bad.**
+  - **Refuse (parity)** refuses exactly as the model says (E9: 81 of 81 within the Monte Carlo band of 1 − (1 − P₀)^T). At n ≤ 10⁴ it estimates in 37.5% of panels on average, and never in 36 of 81 scenarios. Where it does estimate at moderate P₀, it has selected the panels with no zero period, the low-dispersion ones, so its ρ̂ is biased down there (refusal selection).
+  - **Drop** biases PD̂ up wherever zeros are common: +26% to +1,246% in all 27 scenarios with P₀ ≥ 0.2. It keeps the worse periods.
+  - **Censored** is much less biased for PD than drop (less biased in 42 of 45 scenarios with P₀ ≥ 0.05; median +15% against drop's +65%), but still biased up where zeros dominate, and it cannot remove the binomial noise in the non-zero periods, so ρ̂ stays biased up where S-27's reference is large.
+  - **Substituted** is close to censored for PD (slightly better at PD 0.1%, n ≥ 1,000) but distorts ρ: piling every zero period on 1/(2n) removes the low tail of the rates, so ρ̂ is biased *down* wherever zeros are common: its ρ coverage is below 0.1 in 27 scenarios and exactly 0 in 13. In those 13 the censored likelihood covers at 0.94–0.997 in 7 and 0.62–0.81 in 3 (15, 16, 51); in the other 3 (6, 33, 60: ρ = 0.02, n = 100, T = 100) censored, substituted and drop all fail (coverage 0 to 0.25).
+  - **Coverage:** outside the band in 325 of the 1,026 rate-MLE verdicts (four treatments, PD and ρ; refuse only where it estimates). Each is labelled in [`mle-vs-mom/reviewed.csv`](mle-vs-mom/reviewed.csv) by [`review.py`](mle-vs-mom/review.py), after the run: binomial noise read as factor variance 108, low tail lost (drop, substitute) 63, narrow without bias 44, drop keeps the worse periods 38, substituted rate off 29, a small-T finding shared with the binomial on the same panels 23, refusal selection 4, conservative 11, and 5 unexplained (four within a point of a rule's 10% threshold with their neighbours' sign: 22, 53 twice, 69; and 18, censored PD at P₀ = 0.93).
+- **Comparison with the predictions:** three held, two did not.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | E9 | refusal share within the Monte Carlo band of 1 − (1 − P₀)^T in ≥ 79 of 81 (a bug check) | 81 of 81 | yes |
+  | E10 | P₀ ≥ 0.2: drop's PD̂ biased up more than 10% in every scenario | 27 of 27; +26% to +1,246% | yes |
+  | E11 | P₀ ≥ 0.05: censored less PD bias than drop in ≥ 90% | 42 of 45 (93%) | yes |
+  | E12 | reference ≥ 1 SE: ρ coverage below the band in ≥ 80%, each of drop, censored, substituted | drop 44 of 51 (86%); censored 41 of 54 (**76%**); substituted 48 of 54 (89%) | **no** |
+  | E13 | P₀ ≥ 0.2: censored less PD bias than substituted in ≥ 80% | 23 of 30 (**77%**) | **no** |
+
+  - **E12's miss** is the registration's own caveat come true. At PD 0.1% the delta-method reference is huge (up to 1,249 SE) and wrong: most periods have no defaults, the censored likelihood learns only that their rates were low, and ρ̂ moves 0–0.7 binomial SE, not hundreds. So 13 censored scenarios that the reference put in the "rate model is wrong" set cover ρ adequately (0.93–0.997), nearly all at PD 0.1%. Drop and substitution fail there, but by a mechanism the registration did not predict: they shrink the variance (the low tail lost) and bias ρ̂ down, not up.
+  - **E13's miss:** at PD 0.1% and n = 1,000 or 10⁴ (10, 13, 16, 19, 20, 22, 25) substitution's PD̂ is slightly less biased than censoring's (e.g. +14% against +25% in 19). The registration expected substitution's fixed rate to move PD̂ further; where n·PD is near 1, censoring's own upward pull is as large.
+- **Method of moments on rates** (reported without predictions): at n = 100 its ρ RMSE is a median 1.33 times MoM on counts (up to 5.5), because the rate's second moment carries the binomial variance that the count form d(d − 1)/(n(n − 1)) removes; the two agree from n = 10⁴. With zero periods dropped its PD̂ is biased up as drop's is (median +99% at n = 100).
+- **Mitigation:**
+  1. **With counts, use the binomial MLE.** It handles zero-default periods exactly; every rate-based treatment is biased somewhere in this matrix.
+  2. **With rates only, prefer the censored likelihood** (`VCAL_ZERO_RATES_CENSOR`): least biased for PD, and the treatment whose ρ coverage holds in the most sparse cells. Expect ρ̂ biased up by S-27's reference where n·PD is small, and state the detection limit used.
+  3. **Do not drop zero periods.** It is the worst treatment for PD and biases ρ̂ down; it stays available only as an explicit data edit.
+  4. **Substitution** is not recommended: similar to censoring for PD, worse for ρ.
+
+  Parity keeps refusing. As D-169 provided, the recommendation is documentation (the native treatments stay explicit options) and needs no ABI change.
+- **Monitoring implication:** for rate-based models, report the zero-default treatment and the share of zero periods beside every estimate. With drop or substitution a low ρ̂ may be an artefact of the treatment, and with drop so may a high PD̂.
 
 ## Theme: data and population instability (S-29 to S-33; D-150)
 
