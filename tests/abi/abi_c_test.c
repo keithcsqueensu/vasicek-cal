@@ -19,6 +19,10 @@
 
 #include "vcal/vcal.h"
 
+#ifndef TOL_RESAMPLE_VS_REFIT_REL
+#error "TOL_RESAMPLE_VS_REFIT_REL is passed in by tests/CMakeLists.txt from tests/tolerances.hpp"
+#endif
+
 /* ---- layouts: sizeof is the sum of the fields, and nothing trails the last one ---- */
 
 #define VCAL_LAYOUT(type, last, size)                                                        \
@@ -448,7 +452,9 @@ static void test_calibrate_resample(vcal_context* ctx) {
         }
     }
 
-    /* Supplied indices 0..T-1 are the original panel: the replicate is the estimate. */
+    /* Supplied indices 0..T-1 are the original panel: the replicate is the estimate, to
+     * rounding. A replicate sums over the panel's distinct rows in (n, d) order (D-172), the
+     * estimate over its periods, so the last bits may differ (TOL_RESAMPLE_VS_REFIT_REL). */
     {
         vcal_resample_spec s = make_spec(VCAL_RESAMPLE_INDICES);
         vcal_replicates reps;
@@ -464,7 +470,10 @@ static void test_calibrate_resample(vcal_context* ctx) {
         reps.pd = &pd;
         reps.rho = &rho;
         CHECK_STATUS(vcal_resample(ctx, &panel, &grid, &s, &reps, NULL, NULL), VCAL_OK);
-        CHECK(bits_equal(pd, est.pd) && bits_equal(rho, est.rho));
+        CHECK(fabs(pd - est.pd) <= TOL_RESAMPLE_VS_REFIT_REL * fabs(est.pd) &&
+              fabs(rho - est.rho) <= TOL_RESAMPLE_VS_REFIT_REL * fabs(est.rho));
+        printf("identity replicate vs estimate, relative: pd %.2g, rho %.2g\n", fabs(pd - est.pd) / est.pd,
+               fabs(rho - est.rho) / est.rho);
         idx[5] = T;
         CHECK_STATUS(vcal_resample(ctx, &panel, &grid, &s, &reps, NULL, NULL), VCAL_E_INVALID_ARGUMENT);
     }

@@ -222,6 +222,15 @@ endfunction()
 add_executable(abi_c_test abi/abi_c_test.c)
 target_link_libraries(abi_c_test PRIVATE vcal::vcal)
 vcal_c_target_defaults(abi_c_test 11)
+# C cannot include tests/tolerances.hpp, so the one tolerance abi_c_test uses is read from it and
+# passed in: the register stays the single source of the value.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/tolerances.hpp" _tol_line REGEX "TOL_RESAMPLE_VS_REFIT_REL = ")
+string(REGEX REPLACE ".*TOL_RESAMPLE_VS_REFIT_REL = ([0-9.eE+-]+).*" "\\1" _tol_value "${_tol_line}")
+if(NOT _tol_value MATCHES "^[0-9.eE+-]+$")
+    message(FATAL_ERROR "abi_c_test: could not read TOL_RESAMPLE_VS_REFIT_REL from tolerances.hpp")
+endif()
+target_compile_definitions(abi_c_test PRIVATE "TOL_RESAMPLE_VS_REFIT_REL=${_tol_value}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tolerances.hpp")
 add_test(NAME abi_c COMMAND abi_c_test "${CMAKE_CURRENT_SOURCE_DIR}/golden/dgp/reference_panels.csv")
 
 add_library(abi_c99_header_check OBJECT abi/c99_header_check.c)
