@@ -44,6 +44,11 @@ namespace vcal::engine {
 inline constexpr double kQuadratureCheckFlagAbs = 1e-10;
 inline constexpr double kQuadratureCheckRoundingUlps = 64.0;
 
+// quad_check_flagged when calibrate_from_surface ran with quadrature_check = false (P-16, D-180): the
+// check was not run on this fit, as a study may choose for a deterministic sample of bootstrap fits.
+// quad_check_max and quad_check_total are then NaN. Every other field is bit for bit the checked fit's.
+inline constexpr std::int64_t kQuadratureNotChecked = -1;
+
 // D-119: Hessian step as a fraction of the stencil SE, and the near-bound distance in SEs.
 inline constexpr double kHessianStepFraction = 0.15;
 inline constexpr double kNearBoundSe = 2.0;
@@ -82,7 +87,8 @@ template <class Backend, class Objective, class Integrator>
 Status calibrate_from_surface(const Backend& backend, const Objective& objective, const Integrator& primary,
                               const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
                               const Grid<2>& grid, const std::vector<double>& L, Estimate2& out,
-                              double hessian_step_fraction = kHessianStepFraction) {
+                              double hessian_step_fraction = kHessianStepFraction,
+                              bool quadrature_check = true) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
@@ -130,13 +136,13 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
         const std::int64_t u = first[static_cast<std::size_t>(t)];
         if (u == t) {
             l_primary[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, primary);
-            l_check[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, check);
+            if (quadrature_check) l_check[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, check);
         } else {
             l_primary[static_cast<std::size_t>(t)] = l_primary[static_cast<std::size_t>(u)];
             l_check[static_cast<std::size_t>(t)] = l_check[static_cast<std::size_t>(u)];
         }
     }
-    for (std::int64_t t = 0; t < periods; ++t) {
+    for (std::int64_t t = 0; quadrature_check && t < periods; ++t) {
         const double a = l_primary[static_cast<std::size_t>(t)];
         const double b = l_check[static_cast<std::size_t>(t)];
         const double diff = std::fabs(a - b);
@@ -148,6 +154,10 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
     }
     out.loglik = weighted_sum(l_primary.data(), periods, 1, ones.data(), 0);
     if (out.quad_check_flagged > 0) out.flags |= kFlagQuadratureUnconverged;
+    if (!quadrature_check) {  // P-16: not checked, which must not read as checked and clean
+        out.quad_check_max = out.quad_check_total = std::nan("");
+        out.quad_check_flagged = kQuadratureNotChecked;
+    }
 
     // D-119: observed information at the estimate from the objective itself.
     if (!(out.flags & (kFlagGridEdge | kFlagFlatSurface))) {

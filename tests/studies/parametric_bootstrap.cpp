@@ -18,6 +18,10 @@
 //     theta-hat_a is on the box's bound or more than 10% of the W*_b are not finite. For replicates
 //     0-199 a second pass solves the corrected intervals (threshold c k / 2) with S-4a's in-sample factor
 //     (the scenario's mean W0) and with k_b, for widths.
+// The quadrature check (P-16, D-180): the original panel's fit is always checked; a bootstrap fit is
+// checked when its index b is a multiple of 20 (b = 0, 20, ..., 980: 50 of the 999, 5.0%), a deterministic
+// sample. Each row reports how many bootstrap fits were checked and how many of those were flagged,
+// and whether the original fit was flagged; compare.py prints them per scenario.
 // Nothing is scored here: studies/parametric-bootstrap/compare.py scores K1-K5 and H1-H6 from the rows.
 //
 //   study_parametric_bootstrap [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N]
@@ -71,6 +75,7 @@ inline constexpr std::uint32_t kBartlettPanels = 199;              // S-4b: the 
 inline constexpr std::uint32_t kJeffreysCheck = 50;                // replicates 0-49
 inline constexpr std::uint32_t kWidthReplicates = 200;             // S-4 corrected intervals solved
 inline constexpr double kLeftOutMax = 0.10;
+inline constexpr std::uint32_t kQuadCheckEvery = 20;              // P-16: bootstrap fits b % 20 == 0 checked
 inline constexpr double kC = 2.0 * e::kProfileThreshold95;         // chi2_1 0.95 quantile
 
 double logit(double v) { return std::log(v) - std::log1p(-v); }
@@ -122,6 +127,8 @@ struct Row {
     std::int32_t kb_fallback[2], wstar_finite[2];
     double s4a_lo[2], s4a_hi[2], s4b_lo[2], s4b_hi[2];
     std::uint32_t s4a_flags[2], s4b_flags[2];
+    std::int32_t boot_quad_checked, boot_quad_flagged;  // P-16: the sampled bootstrap fits
+    std::int32_t quad_flagged;                          // the original fit's flagged periods
     double seconds[kPhases];
 };
 
@@ -132,7 +139,7 @@ struct Context {
 
 // The recovery fit's calibrate_cached, split in its two calls so the phases can be timed; identical.
 e::Estimate2 fit_panel(Context& ctx, const std::vector<rc::Objective::Obs>& obs, std::vector<double>& L,
-                       double* sec) {
+                       double* sec, bool quad_check = true) {
     static const auto primary = quadrature::parity_rule();
     static const auto check = quadrature::parity_rule(true);
     const Grid<2> g = rc::grid();
@@ -146,8 +153,8 @@ e::Estimate2 fit_panel(Context& ctx, const std::vector<rc::Objective::Obs>& obs,
                                    L.data());
     }
     Timer t{&sec[kFit]};
-    if (e::calibrate_from_surface(backends::CpuBackend{1}, rc::Objective{}, primary, check, obs.data(), T, g, L, est) !=
-        e::Status::Ok) {
+    if (e::calibrate_from_surface(backends::CpuBackend{1}, rc::Objective{}, primary, check, obs.data(), T, g, L, est,
+                                  e::kHessianStepFraction, quad_check) != e::Status::Ok) {
         std::abort();
     }
     return est;
@@ -176,6 +183,7 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
     row.pd = est.value[0];
     row.rho = est.value[1];
     row.flags = est.flags;
+    row.quad_flagged = static_cast<std::int32_t>(est.quad_check_flagged);
     const double v_hat[2] = {est.value[0], est.value[1]};
     double u_hat[2], se_calib[2];
     for (int a = 0; a < 2; ++a) {
@@ -233,7 +241,12 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
         }
         if (b < kBartlettPanels) s10_panels.emplace_back(b, panel_hash(db));
         const auto obs_b = as_obs(db, s.obligors);
-        const e::Estimate2 eb = fit_panel(ctx, obs_b, Lb, sec);
+        const bool checked = b % kQuadCheckEvery == 0;
+        const e::Estimate2 eb = fit_panel(ctx, obs_b, Lb, sec, checked);
+        if (checked) {
+            ++row.boot_quad_checked;
+            row.boot_quad_flagged += eb.quad_check_flagged > 0 ? 1 : 0;
+        }
         const bool finite = std::isfinite(eb.value[0]) && std::isfinite(eb.value[1]);
         e::AnalyticSe seb{{kNaN, kNaN}, false};
         if (finite && !(eb.flags & (e::kFlagFlatSurface | e::kFlagNumeric))) {
@@ -403,7 +416,7 @@ int main(int argc, char** argv) {
     cfg << "tool=study_parametric_bootstrap\nreplicates=" << R << "\nscenarios=";
     for (std::size_t k = 0; k < ids.size(); ++k) cfg << (k ? "," : "") << ids[k];
     cfg << "\nB=" << kB << "\nbartlett_panels=" << kBartlettPanels << "\njeffreys_check=" << kJeffreysCheck
-        << "\nwidth_replicates=" << kWidthReplicates << "\nboot_seed=" << kBootSeed << "\ngit_commit=" << VCAL_GIT_COMMIT
+        << "\nwidth_replicates=" << kWidthReplicates << "\nquad_check_every=" << kQuadCheckEvery << "\nboot_seed=" << kBootSeed << "\ngit_commit=" << VCAL_GIT_COMMIT
         << "\ngit_dirty=" << VCAL_GIT_DIRTY << "\nexecutable_sha256=" << exe << "\n";
     if (!checkpoint_dir.empty() && exe.empty()) {
         std::fprintf(stderr, "--checkpoint: cannot read the executable %s to hash it\n", argv[0]);
@@ -561,7 +574,7 @@ int main(int argc, char** argv) {
                 << ",kb_fallback_" << p << ",wstar_finite_" << p << ",s4a_lo_" << p << ",s4a_hi_" << p << ",s4a_flags_" << p
                 << ",s4b_lo_" << p << ",s4b_hi_" << p << ",s4b_flags_" << p;
         }
-        out << ",jef_flags\n";
+        out << ",jef_flags,boot_quad_checked,boot_quad_flagged,quad_flagged\n";
         char line[512];
         for (std::size_t k = 0; k < ids.size(); ++k) {
             const rc::Scenario s = rc::scenario(ids[k]);
@@ -580,7 +593,8 @@ int main(int argc, char** argv) {
                                   w.s4a_lo[a], w.s4a_hi[a], w.s4a_flags[a], w.s4b_lo[a], w.s4b_hi[a], w.s4b_flags[a]);
                     out << line;
                 }
-                out << ',' << w.jef_flags << '\n';
+                out << ',' << w.jef_flags << ',' << w.boot_quad_checked << ',' << w.boot_quad_flagged << ','
+                    << w.quad_flagged << '\n';
             }
         }
         if (!out) {

@@ -469,3 +469,29 @@ VCAL_TEST(calibrate_integrates_each_distinct_observation_once_bitwise_identicall
     vcal::test::note("integrations: " + std::to_string(calls_same) + " (distinct) vs " + std::to_string(calls_each) +
                      " (every period)");
 }
+
+// P-16 (D-180): calibrate_from_surface with quadrature_check = false skips the check rule's integrals
+// and marks the fit as not checked; the estimate, SEs, correlation, log-likelihood, grid index and every
+// flag other than the quadrature flag are bit for bit the checked fit's.
+VCAL_TEST(calibrate_without_the_quadrature_check_is_otherwise_identical) {
+    const auto p = panel();
+    const auto g = coarse_grid();
+    const Rules r;
+    const auto T = static_cast<std::int64_t>(p.size());
+    std::vector<double> L(static_cast<std::size_t>(T * g.size()));
+    e::evaluate_surface(Backend{1}, Objective{}, r.primary, p.data(), T, g, L.data());
+    e::Estimate2 on{}, off{};
+    VCAL_REQUIRE(e::calibrate_from_surface(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, on) ==
+                 e::Status::Ok);
+    VCAL_REQUIRE(e::calibrate_from_surface(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, off,
+                                           e::kHessianStepFraction, false) == e::Status::Ok);
+    VCAL_CHECK(bits_equal(on.value[0], off.value[0]) && bits_equal(on.value[1], off.value[1]));
+    VCAL_CHECK(bits_equal(on.se[0], off.se[0]) && bits_equal(on.se[1], off.se[1]) && bits_equal(on.corr, off.corr));
+    VCAL_CHECK(bits_equal(on.loglik, off.loglik));
+    VCAL_CHECK(on.grid_index == off.grid_index && on.nan_count == off.nan_count);
+    VCAL_CHECK((on.flags & ~e::kFlagQuadratureUnconverged) == (off.flags & ~e::kFlagQuadratureUnconverged));
+    VCAL_CHECK((off.flags & e::kFlagQuadratureUnconverged) == 0u);
+    VCAL_CHECK_EQ(off.quad_check_flagged, e::kQuadratureNotChecked);
+    VCAL_CHECK(std::isnan(off.quad_check_max) && std::isnan(off.quad_check_total));
+    VCAL_CHECK(on.quad_check_flagged >= 0 && std::isfinite(on.quad_check_max));
+}
