@@ -228,6 +228,13 @@ target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal:
 vcal_target_defaults(study_parametric_bootstrap)
 add_test(NAME study_parametric_bootstrap_smoke COMMAND study_parametric_bootstrap --replicates 2 --scenarios 29)
 set_tests_properties(study_parametric_bootstrap_smoke PROPERTIES LABELS slow)
+# P-11 (D-179): the checkpoint records the source commit (the generated build-info header).
+target_include_directories(study_parametric_bootstrap PRIVATE "${PROJECT_BINARY_DIR}")
+add_dependencies(study_parametric_bootstrap vcal_git_info)
+add_test(NAME study_parametric_bootstrap_resume
+         COMMAND "${CMAKE_COMMAND}" "-DTOOL=$<TARGET_FILE:study_parametric_bootstrap>"
+                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/resume_test" -P "${CMAKE_CURRENT_SOURCE_DIR}/studies/resume_test.cmake")
+set_tests_properties(study_parametric_bootstrap_resume PROPERTIES LABELS slow)
 
 # --- M2c C ABI (D-138..D-144) -----------------------------------------------------------------------
 # The consumer is plain C: abi_c_test is C11, and abi_c99_header_check compiles vcal.h as C99 with
