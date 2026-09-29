@@ -75,6 +75,25 @@ struct BinomialMixture {
         const auto f = model::make_binomial_log_integrand(model::make_vasicek1f(th.pd, th.rho), y.n, y.d);
         return special::lbinom(y.n, y.d) + integrator.log_integrate(f, model::binomial_mixture_hint(f));
     }
+
+    // The contribution with its score and Hessian in (PD, rho) (D-170): grad = (l_PD, l_rho),
+    // hess = (l_PD,PD, l_rho,rho, l_PD,rho). From the same nodes and fold as log_contrib, so the
+    // value equals log_contrib's bit for bit. Needs an integrator with log_integrate_with.
+    template <class I>
+    VCAL_HD typename P::accum_t log_contrib_derivs(const Obs& y, const Theta& th, const I& integrator,
+                                                   double (&grad)[2], double (&hess)[3]) const {
+        const auto f = model::make_binomial_log_integrand(model::make_vasicek1f(th.pd, th.rho), y.n, y.d);
+        const auto df = model::make_binomial_log_integrand_derivs(th.pd, th.rho, y.n, y.d);
+        quadrature::detail::OnlineLogSumExpMoments<model::BinomialLogIntegrandDerivs, 5> acc(df);
+        const double l = special::lbinom(y.n, y.d) + integrator.log_integrate_with(f, model::binomial_mixture_hint(f), acc);
+        const double m0 = acc.mean(0), m1 = acc.mean(1);
+        grad[0] = m0;
+        grad[1] = m1;
+        hess[0] = acc.mean(2) - m0 * m0;
+        hess[1] = acc.mean(3) - m1 * m1;
+        hess[2] = acc.mean(4) - m0 * m1;
+        return l;
+    }
 };
 
 // --- contract (C++17 trait + per-clause static_asserts, D-063) -------------------------------

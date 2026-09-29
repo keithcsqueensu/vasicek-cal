@@ -5,6 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "backends/cpu/cpu_backend.hpp"
@@ -306,4 +307,69 @@ VCAL_TEST(conditional_pd_interval_not_computed_for_flat_fits_and_thread_independ
     const auto b = q_interval(p, grid(), fit(p, grid(), 3));
     VCAL_CHECK(bits_equal(a.lo, b.lo));
     VCAL_CHECK(bits_equal(a.hi, b.hi));
+}
+
+// D-170: the Newton solves and the nested Brent solves compute the same intervals. Both solve the
+// same equations to 1e-9 in scaled units, so the endpoints agree to about twice that; the flags
+// agree exactly. Panels: the M1.4 test panel, a no-default panel (truncated), steep n = 1e4
+// panels, and a panel whose rho maximum sits near the box's lower bound.
+VCAL_TEST(profile_newton_matches_nested_brent) {
+    const Rules r;
+    std::vector<std::vector<Obs>> panels{panel()};
+    panels.push_back(std::vector<Obs>(12, Obs{500, 0}));
+    {
+        std::vector<Obs> p;
+        const std::int64_t d[] = {41, 55, 38, 120, 62, 47, 90, 51, 33, 70, 58, 44, 101, 66, 49};
+        for (const auto x : d) p.push_back({10000, x});
+        panels.push_back(p);
+    }
+    {
+        std::vector<Obs> p;
+        const std::int64_t d[] = {50, 49, 51, 50, 52, 48, 50, 51, 49, 50};
+        for (const auto x : d) p.push_back({10000, x});
+        panels.push_back(p);
+    }
+    const auto g = grid();
+    double worst_u = 0.0, worst_l = 0.0, worst_q = 0.0;
+    std::int64_t ev_newton = 0, ev_brent = 0, q_newton = 0, q_brent = 0;
+    for (const auto& p : panels) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        e::Estimate2 est{};
+        std::vector<double> L;
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        const auto n = e::profile_intervals_newton(Objective{}, r.primary, p.data(), T, g, L, est);
+        const auto b = e::profile_intervals_brent(Objective{}, r.primary, p.data(), T, g, L, est);
+        ev_newton += n.evaluations;
+        ev_brent += b.evaluations;
+        worst_l = std::fmax(worst_l, std::fabs(n.loglik_max - b.loglik_max));
+        for (int a = 0; a < 2; ++a) {
+            VCAL_CHECK_EQ(n.flags[a], b.flags[a]);
+            const auto s = g.axis[a].scale;
+            for (const double* end : {&n.lo[a], &n.hi[a]}) {
+                const double other = end == &n.lo[a] ? b.lo[a] : b.hi[a];
+                worst_u = std::fmax(worst_u, std::fabs(vcal::grid::to_scaled(s, *end) - vcal::grid::to_scaled(s, other)));
+            }
+        }
+        VCAL_CHECK(n.residual_max <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+        // The q interval, from the same maximum.
+        const auto qn = e::conditional_pd_interval_solve<true>(Objective{}, r.primary, p.data(), T, g, L, est, n);
+        const auto qb = e::conditional_pd_interval_solve<false>(Objective{}, r.primary, p.data(), T, g, L, est, n);
+        VCAL_CHECK_EQ(qn.flags, qb.flags);
+        for (const auto& ends : {std::pair<double, double>{qn.lo, qb.lo}, std::pair<double, double>{qn.hi, qb.hi}}) {
+            const double gap = std::fabs(vcal::grid::to_scaled(vcal::AxisScale::Logit, ends.first) -
+                                         vcal::grid::to_scaled(vcal::AxisScale::Logit, ends.second));
+            worst_q = std::fmax(worst_q, gap);
+        }
+        VCAL_CHECK(qn.residual_max <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+        q_newton += qn.evaluations;
+        q_brent += qb.evaluations;
+    }
+    vcal::test::note("worst endpoint gap " + describe(worst_u) + " scaled units; l_max gap " + describe(worst_l) +
+                     "; panel evaluations " + std::to_string(ev_newton) + " (Newton) vs " + std::to_string(ev_brent) +
+                     " (Brent)");
+    vcal::test::note("q: worst endpoint gap " + describe(worst_q) + " in logit(q); panel evaluations " +
+                     std::to_string(q_newton) + " (Newton) vs " + std::to_string(q_brent) + " (Brent)");
+    VCAL_CHECK(worst_u <= tol::TOL_PROFILE_SOLVER_AGREEMENT_U);
+    VCAL_CHECK(worst_q <= tol::TOL_PROFILE_SOLVER_AGREEMENT_U);
+    VCAL_CHECK(worst_l <= tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
 }

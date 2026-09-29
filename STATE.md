@@ -201,6 +201,7 @@ Last updated: 2026-09-28 (research roadmap D-148 to D-152; S-23 prediction regis
    - **M3.3 done (D-166):** the grid-Bayesian estimator (`engine/posterior.hpp`) with flat and Jeffreys priors and the resolution rule (4 points per posterior SD; local refinement or refusal; the registered extent amended before S-9 runs). **M3 is complete.** Open: C ABI exposure (a decision), and the registered runs S-8/S-27/S-28, S-9, S-15.
 3. **Surface-row cache across panels (D-167):** approved; adopted in the recovery harness and study tools, keyed on everything that determines a row, filled on demand.
 4. **C ABI 0.3 (done, D-169):** `vcal_calibrate_rate`, `vcal_calibrate_moments`, `vcal_calibrate_posterior` and the native profile; the zero-default treatments are explicit options, no recommended default until S-28.
+4a. **Performance before the M3 studies (owner, 2026-09-28):** profile and q solves by safeguarded Newton with analytic derivatives (done, D-170; goldens refreshed, 0 coverage flips over 81,000 fits); study fits compute only the arms they score (done, D-171); the bootstrap reduction over distinct rows in (n, d) order and a bounded argmax equal to the full grid's (D-172, next, in the same golden-refresh cycle with its own flip check).
 5. **The M3 folded studies:** S-8/S-27/S-28 (one pass), S-9, S-15, with the cache.
 6. **S-10 and S-4b on the CPU** (D-168; were after M4).
 7. **Consolidation:** tag v0.2; README updated with the study results.

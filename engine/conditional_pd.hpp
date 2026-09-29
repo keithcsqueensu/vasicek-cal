@@ -38,6 +38,9 @@
 // Delta-method Wald (reported beside the profile): s-hat +- z_0.975 se_s, with se_s from the
 // covariance of the axes' scaled coordinates at the estimate (D-119) and the gradient below.
 //
+// Solvers (D-170): steps 1 and 2 solve by safeguarded Newton when the objective gives analytic
+// derivatives (see conditional_pd_interval_solve), otherwise by Brent; everything else is shared.
+//
 // Serial and deterministic: results do not depend on threads. Headline fits only.
 #pragma once
 
@@ -110,13 +113,26 @@ struct ConditionalPdInterval {
     std::int64_t evaluations;  // panel log-likelihood evaluations used
 };
 
-template <class Objective, class Integrator>
-ConditionalPdInterval conditional_pd_interval(const Objective& objective, const Integrator& primary,
-                                              const typename Objective::Obs* obs, std::int64_t periods,
-                                              const Grid<2>& grid, const std::vector<double>& L, const Estimate2& est,
-                                              const ProfileIntervals2& prof, double z_a = kAdverseZ999,
-                                              double threshold = kProfileThreshold95) {
+// kNewton selects the solver at the two solve points (D-170): safeguarded Newton with analytic
+// derivatives, or Brent. Everything else (guide, brackets, walk, limits) is shared.
+//   Inner, along the curve at fixed x = Phi^-1(q): PD(rho) = Phi(y), y = sqrt(1 - rho) x - sqrt(rho) z_a,
+//     y_rho = -x / (2 sqrt(1 - rho)) - z_a / (2 sqrt(rho)),
+//     y_rho,rho = -x / (4 (1 - rho)^(3/2)) + z_a / (4 rho^(3/2)),
+//     PD_rho = phi(y) y_rho,  PD_rho,rho = phi(y) (y_rho,rho - y y_rho^2),
+//     dl/drho = l_PD PD_rho + l_rho,  d2l/drho2 = l_PD,PD PD_rho^2 + 2 l_PD,rho PD_rho + l_rho,rho + l_PD PD_rho,rho,
+//   then to w by the axis's chain rule.
+//   Outer: P_q'(s) = l_PD phi(y) sqrt(1 - rho) dx/ds at the inner maximum (envelope), with
+//     dx/ds = q (1 - q) / phi(x).
+// The root converges by bracketing (profile_detail::newton_root); the endpoint is its evaluated
+// point with the smallest residual, reported without re-evaluation.
+template <bool kNewton, class Objective, class Integrator>
+ConditionalPdInterval conditional_pd_interval_solve(const Objective& objective, const Integrator& primary,
+                                                    const typename Objective::Obs* obs, std::int64_t periods,
+                                                    const Grid<2>& grid, const std::vector<double>& L,
+                                                    const Estimate2& est, const ProfileIntervals2& prof,
+                                                    double z_a = kAdverseZ999, double threshold = kProfileThreshold95) {
     using profile_detail::brent_min;
+    using profile_detail::Point1;
     using profile_detail::brent_root;
     const double nan = std::numeric_limits<double>::quiet_NaN();
     const double inf = std::numeric_limits<double>::infinity();
@@ -196,10 +212,12 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
     };
     const Limit limit[2] = {edge_extreme(apd.lo, -1.0), edge_extreme(apd.hi, +1.0)};
 
-    // P_q at s: the inner maximum over w, and whether its maximiser is on a bound of the box.
+    // P_q at s: the inner maximum over w, whether its maximiser is on a bound of the box, and
+    // (Newton) dP_q/ds there.
     struct Inner {
         double value;
         bool on_bound;
+        double slope;
     };
     const auto inner = [&](double s) -> Inner {
         const double x = probit_of_logit(s);
@@ -226,7 +244,7 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
                 if (feasible(w)) w0 = w;
             }
         }
-        if (std::isnan(w0)) return {-inf, false};
+        if (std::isnan(w0)) return {-inf, false, nan};
         // The end of the feasible stretch from w0 towards `to` (a scan point beyond which, or at
         // which, feasibility is lost), by bisection; `bound` reports whether it is one.
         const auto cut = [&](double to, bool& bound) {
@@ -260,11 +278,40 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
             const double y = std::sqrt(1.0 - rho) * x - std::sqrt(rho) * z_a;
             return -loglik(std::exp(special::log_phi(y)), rho);
         };
+        // Newton: l along the curve with its w-derivatives; dP_q/ds (envelope) rides in dwdu.
+        const double dx_ds = std::exp(special::log_phi(x) + special::log_phi(-x) + 0.5 * x * x +
+                                      special::constants::kLnSqrt2Pi);
+        const auto along = [&](auto w) {  // generic: instantiated only by the Newton branch
+            const double rho = grid::from_scaled(arho.scale, w);
+            const double sr = std::sqrt(rho), s1 = std::sqrt(1.0 - rho);
+            const double y = std::sqrt(1.0 - rho) * x - std::sqrt(rho) * z_a;
+            const double v[2] = {std::exp(special::log_phi(y)), rho};
+            ++out.evaluations;
+            const auto d = profile_detail::panel_derivs_natural(objective, primary, obs, first, count, v);
+            const double phi_y = special::constants::kInvSqrt2Pi * std::exp(-0.5 * y * y);
+            const double y_r = -x / (2.0 * s1) - z_a / (2.0 * sr);
+            const double y_rr = -x / (4.0 * s1 * s1 * s1) + z_a / (4.0 * sr * sr * sr);
+            const double p_r = phi_y * y_r;
+            const double p_rr = phi_y * (y_rr - y * y_r * y_r);
+            const double l_r = d.g[0] * p_r + d.g[1];
+            const double l_rr = d.h[0] * p_r * p_r + 2.0 * d.h[2] * p_r + d.h[1] + d.g[0] * p_rr;
+            const double j1 = grid::dvalue_dscaled(arho.scale, w), j2 = grid::d2value_dscaled2(arho.scale, w);
+            return Point1{w, d.l, l_r * j1, l_rr * j1 * j1 + l_r * j2, 0.0, d.g[0] * phi_y * s1 * dx_ds};
+        };
         profile_detail::Min1 m{};
+        double slope = nan;
+        double start = w0;  // Newton's start: the guide's seed, then the last maximum when widening
         const double edge_tol = 1e3 * kProfileMaxTol;
         bool at_lo = false, at_hi = false;
         for (int widen = 0; widen < 64; ++widen) {
-            m = brent_min(neg, lo, hi, kProfileMaxTol);
+            if constexpr (kNewton) {
+                const Point1 p = profile_detail::newton_max(along, lo, hi, start, kProfileMaxTol);
+                m = {p.x, -p.f};
+                slope = p.dwdu;
+            } else {
+                m = brent_min(neg, lo, hi, kProfileMaxTol);
+            }
+            start = m.x;
             at_lo = m.x - lo <= edge_tol;
             at_hi = hi - m.x <= edge_tol;
             const bool grow_lo = at_lo && !lo_bound, grow_hi = at_hi && !hi_bound;
@@ -278,7 +325,7 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
                 hi_bound = hi_bound || hi >= w_hi;
             }
         }
-        return {-m.f, (at_lo && lo_bound) || (at_hi && hi_bound)};
+        return {-m.f, (at_lo && lo_bound) || (at_hi && hi_bound), slope};
     };
     // The guide's profile: the largest guide value along the curve (no likelihood evaluations).
     const auto guide = [&](double s) {
@@ -295,6 +342,11 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
     const double s_max = logit_phi(conditional_pd_x(prof.max_at[0], prof.max_at[1], z_a));
     const double h = apd.step();
     const auto g = [&](double s) { return inner(s).value - level; };
+    // g with its slope (Newton), and w = 1 when the inner maximiser is on a bound of the box.
+    const auto gp = [&](double s) {
+        const Inner in = inner(s);
+        return Point1{s, in.value - level, in.slope, 0.0, in.on_bound ? 1.0 : 0.0, 0.0};
+    };
     for (const int side : {-1, +1}) {
         const Limit& lim = limit[side < 0 ? 0 : 1];
         const auto beyond = [&](double s) { return side < 0 ? s <= lim.s : s >= lim.s; };
@@ -303,6 +355,8 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
         double g_inside = 0.0;
         double endpoint = lim.s;
         bool truncated = true, failed = false;
+        double residual = 0.0;
+        bool end_on_bound = false;
         for (std::int32_t k = 1;; ++k) {
             double s = s_max + static_cast<double>(side * k) * h;
             const bool at_limit = beyond(s);
@@ -312,7 +366,9 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
                 inside_exact = false;
                 continue;
             }
-            const double g_s = at_limit ? loglik(lim.pd, lim.rho) - level : g(s);
+            // At the limit there is no curve to maximise over: no slope.
+            const Point1 p_s = at_limit ? Point1{s, loglik(lim.pd, lim.rho) - level, nan, 0.0, 1.0, 0.0} : gp(s);
+            const double g_s = p_s.f;
             if (std::isnan(g_s)) {
                 failed = true;
                 break;
@@ -324,20 +380,36 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
                 if (at_limit) break;
                 continue;
             }
-            double outside = s, g_outside = g_s;
-            if (!inside_exact) g_inside = g(inside);
-            while (!(g_inside >= 0.0) && inside != s_max) {  // the guide was optimistic: step back
+            double outside = s;
+            Point1 p_outside = p_s;
+            Point1 p_inside{inside, g_inside, nan, 0.0, 0.0, 0.0};
+            if (!inside_exact) p_inside = gp(inside);
+            while (!(p_inside.f >= 0.0) && inside != s_max) {  // the guide was optimistic: step back
                 outside = inside;
-                g_outside = g_inside;
+                p_outside = p_inside;
                 inside -= static_cast<double>(side) * h;
                 if (side * (inside - s_max) < 0.0) inside = s_max;
-                g_inside = g(inside);
+                p_inside = gp(inside);
             }
-            if (!(g_inside >= 0.0) || !(g_outside > -inf)) {
+            if (!(p_inside.f >= 0.0) || !(p_outside.f > -inf)) {
                 failed = true;
                 break;
             }
-            endpoint = brent_root(g, inside, outside, g_inside, g_outside, kProfileRootTol);
+            if constexpr (kNewton) {
+                const Point1 r = profile_detail::newton_root(gp, inside, outside, p_outside, kProfileRootTol);
+                if (!std::isfinite(r.f)) {
+                    failed = true;
+                    break;
+                }
+                endpoint = r.x;
+                residual = std::fabs(r.f);
+                end_on_bound = r.w != 0.0;
+            } else {
+                endpoint = brent_root(g, inside, outside, p_inside.f, p_outside.f, kProfileRootTol);
+                const Inner at = inner(endpoint);
+                residual = std::fabs(at.value - level);
+                end_on_bound = at.on_bound;
+            }
             truncated = false;
             break;
         }
@@ -349,9 +421,8 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
         if (truncated) {
             out.flags |= box | (side < 0 ? kIntervalLowerTruncated : kIntervalUpperTruncated);
         } else {
-            const Inner at = inner(endpoint);
-            out.residual_max = std::fmax(out.residual_max, std::fabs(at.value - level));
-            if (at.on_bound) out.flags |= box;
+            out.residual_max = std::fmax(out.residual_max, residual);
+            if (end_on_bound) out.flags |= box;
         }
         // A truncated end is q at the limit point, evaluated directly (not through logit and back).
         (side < 0 ? out.lo : out.hi) = truncated ? conditional_pd(lim.pd, lim.rho, z_a)
@@ -359,6 +430,17 @@ ConditionalPdInterval conditional_pd_interval(const Objective& objective, const 
     }
     if (out.flags & kIntervalNotComputed) out.lo = out.hi = nan;
     return out;
+}
+
+// The q interval: Newton when the objective gives analytic derivatives (D-170), otherwise Brent.
+template <class Objective, class Integrator>
+ConditionalPdInterval conditional_pd_interval(const Objective& objective, const Integrator& primary,
+                                              const typename Objective::Obs* obs, std::int64_t periods,
+                                              const Grid<2>& grid, const std::vector<double>& L, const Estimate2& est,
+                                              const ProfileIntervals2& prof, double z_a = kAdverseZ999,
+                                              double threshold = kProfileThreshold95) {
+    constexpr bool kNewton = profile_detail::has_contrib_derivs<Objective, Integrator>::value;
+    return conditional_pd_interval_solve<kNewton>(objective, primary, obs, periods, grid, L, est, prof, z_a, threshold);
 }
 
 }  // namespace vcal::engine

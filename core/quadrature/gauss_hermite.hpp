@@ -29,9 +29,13 @@ struct GaussHermiteFixed {
     GaussHermiteRule rule;
 
     template <class G>
-    VCAL_HD typename P::accum_t log_integrate(const G& g, IntegrandHint /*unused*/) const {
+    VCAL_HD typename P::accum_t log_integrate(const G& g, IntegrandHint hint) const {
         detail::OnlineLogSumExp acc;
-        for (int i = 0; i < rule.n; ++i) acc.add(rule.log_weight[i] + g(rule.node[i]));
+        return log_integrate_with(g, hint, acc);
+    }
+    template <class G, class Acc>
+    VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint /*unused*/, Acc& acc) const {
+        for (int i = 0; i < rule.n; ++i) acc.add(rule.log_weight[i] + g(rule.node[i]), rule.node[i]);
         return acc.result();
     }
 };
@@ -43,14 +47,18 @@ struct GaussHermiteAdaptive {
 
     template <class G>
     VCAL_HD typename P::accum_t log_integrate(const G& g, IntegrandHint hint) const {
+        detail::OnlineLogSumExp acc;
+        return log_integrate_with(g, hint, acc);
+    }
+    template <class G, class Acc>
+    VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint hint, Acc& acc) const {
         if (!(hint.scale > 0.0) || !std::isfinite(hint.scale) || !std::isfinite(hint.mode)) {
             return static_cast<double>(NAN);
         }
-        detail::OnlineLogSumExp acc;
         for (int i = 0; i < rule.n; ++i) {
             const double u = rule.node[i];
             const double z = hint.mode + hint.scale * u;
-            acc.add(rule.log_weight[i] + 0.5 * (u - z) * (u + z) + g(z));
+            acc.add(rule.log_weight[i] + 0.5 * (u - z) * (u + z) + g(z), z);
         }
         return std::log(hint.scale) + acc.result();
     }

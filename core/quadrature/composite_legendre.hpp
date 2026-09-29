@@ -54,6 +54,11 @@ struct CompositeLegendre {
 
     template <class G>
     VCAL_HD typename P::accum_t log_integrate(const G& g, IntegrandHint hint) const {
+        detail::OnlineLogSumExp acc;
+        return log_integrate_with(g, hint, acc);
+    }
+    template <class G, class Acc>
+    VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint hint, Acc& acc) const {
         if (!(hint.scale > 0.0) || !std::isfinite(hint.scale) || !std::isfinite(hint.mode) || panels < 1) {
             return static_cast<double>(NAN);
         }
@@ -94,14 +99,13 @@ struct CompositeLegendre {
         const double u_hi = std::asinh((z_hi - z_c) / w);
         const double du = (u_hi - u_lo) / static_cast<double>(panels);
         const double half = 0.5 * du;
-        detail::OnlineLogSumExp acc;
         for (int k = 0; k < panels; ++k) {
             const double mid = u_lo + (static_cast<double>(k) + 0.5) * du;
             for (int i = 0; i < rule.n; ++i) {
                 const double u = mid + half * rule.node[i];
                 const double z = z_c + w * std::sinh(u);
                 const double h = g(z) - 0.5 * z * z;
-                acc.add(std::log(rule.weight[i] * half * w * std::cosh(u)) + (h - hm));
+                acc.add(std::log(rule.weight[i] * half * w * std::cosh(u)) + (h - hm), z);
             }
         }
         return hm + acc.result() - special::constants::kLnSqrt2Pi;
@@ -119,6 +123,10 @@ struct SplitRule {
     template <class G>
     VCAL_HD typename P::accum_t log_integrate(const G& g, IntegrandHint hint) const {
         return hint.one_sided ? one_sided.log_integrate(g, hint) : interior.log_integrate(g, hint);
+    }
+    template <class G, class Acc>
+    VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint hint, Acc& acc) const {
+        return hint.one_sided ? one_sided.log_integrate_with(g, hint, acc) : interior.log_integrate_with(g, hint, acc);
     }
 };
 

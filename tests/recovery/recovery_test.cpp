@@ -498,3 +498,14 @@ VCAL_TEST(recovery_fit_arms_compute_only_what_is_requested) {
     VCAL_CHECK(std::isnan(pq.q_boot_lo) && std::isnan(pq.boot_lo[1]));
     VCAL_CHECK(same(pq.value[0], all.value[0]) && same(pq.se[1], all.se[1]));  // the estimate is always there
 }
+
+// D-170 regression: scenario 20, replicate 388. q's lower end is held where the curve q = c meets
+// the PD axis's edge, a bound that moves with q, so the envelope slope there is wrong. A root
+// finder that stopped on a short Newton step returned a residual of 6.2e-4; convergence is now by
+// bracketing.
+VCAL_TEST(q_interval_end_on_a_moving_bound_meets_the_residual) {
+    const rc::Fit f = rc::fit(rc::scenario(20), 388, nullptr, rc::kArmProfile | rc::kArmQ);
+    VCAL_CHECK(f.q_prof_residual <= vcal::tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
+    VCAL_CHECK(f.q_prof_lo <= f.q_hat && f.q_hat <= f.q_prof_hi);
+    VCAL_CHECK(f.q_prof_flags & vcal::engine::kIntervalLowerBoxLimited);
+}
