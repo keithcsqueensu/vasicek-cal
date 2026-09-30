@@ -1017,6 +1017,29 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Verified:** on scenarios 51 and 29 × 100 replicates, the rows are byte-identical to the tool before P-16 on every shared column (the three new columns are appended).
   - **Measured, and smaller than first estimated:** the calibrate phase fell 11% for scenario 51 (176 → 156 CPU s) and 5% for scenario 29, a few per cent of the run. The check integrates each distinct observation once against the Hessian's eight, so it was never the quarter to a third first estimated; the time lever is P-15. P-16 is kept for what it reports.
 
+## The parametric bootstrap and the Bartlett correction: S-10 and S-4, 2026-09-29
+
+- **D-181 — S-10 and S-4 are finished. S-4 held 6 of 6: the Bartlett-corrected profile interval with a parametric-bootstrap factor (S-4b) is the most accurate interval tested at T = 20, with no verdict below the band in groups B–D, at 4–5% more width. S-10 held 2 of 5 (K1, K2, K3 missed): neither parametric bootstrap interval is a candidate for ρ.**
+  - **The run:** `study_parametric_bootstrap`, 81 × 1,000 recovery panels, B = 999 parametric panels per replicate, 23,190 s on 24 threads (555,004 CPU s). Built at d800d34, on main as f180dfe, whose source differs only by two value-preserving casts. The scoring script and addenda were committed before the subset run.
+    - **Checks:** Jeffreys and the profile reproduce S-9's rows exactly; W0 agrees with profile coverage on all 162,000.
+    - **Quadrature (P-16):** the check flagged 0 of 81,000 original fits and 0 of 4,050,000 sampled bootstrap fits.
+    - **Performance items verified:** the subset's 9,000 rows reproduce byte for byte, the end-to-end check of P-14, P-11 and P-16.
+    - **Projection:** about 5 h was projected after P-14; the run took 6.4 h. A miss, undiagnosed beyond the phase split: simulation 23%, calibrate 51%, W* 23%.
+  - **S-4:** group B, pooled.
+    - **Coverage:** ρ 0.9467 and PD 0.9453, against Jeffreys' 0.9430 and 0.9422 and the profile's 0.9371 and 0.9401.
+    - **Paired against Jeffreys:** z = 3.6 for ρ and 3.1 for PD.
+    - **The six findings:** all six are in the band, three by less than 0.002.
+    - **Against the oracle (in-sample):** S-4b keeps 51% (PD) and 75% (ρ) of S-4a's gain.
+    - **Width:** 1.051 (ρ) and 1.041 (PD) of the profile's at T = 20; groups C–D within 0.002 of the profile's coverage.
+  - **S-10:**
+    - **Percentile:** undercovers ρ at T = 20, at 0.878, with its misses one-sided: 12.1% of replicates have the truth above the upper end.
+    - **K2's miss,** a studentised interval worse than Jeffreys (ρ 0.918), is diagnosed post hoc (`diagnose_k2.py`). The logit-scale analytic SE grows as ρ̂ falls where the data carry little of ρ's signal; its correlation with ρ̂'s error reaches −0.86. So t* is not pivotal and the upper end sits too low. In the other eight group-B scenarios it matches Jeffreys (0.945 each).
+    - **Studentised, for PD:** it corrects PD's width (0 of 50 below the band in groups B–D) but does not improve on Jeffreys.
+  - **Interval comparison:** `studies/interval_comparison.py` now includes the percentile, studentised and S-4b intervals. Recommendation item 3 of D-176 is answered in `studies/README.md`.
+  - **For the owner:**
+    - **Is S-4b promoted?** Whether S-4b becomes an engine option, or changes the preferred interval, is left open. D-176's recommendation stands until then.
+    - **Data files:** per D-163, the per-replicate Parquet is not committed; it is attached to the release `s10-s4-data-2026-09-29`, with its SHA-256 in the MANIFEST. S-8's and S-9's Parquet files (D-174, D-175) and S-5's `bca_ends.parquet` (D-176) were committed after D-163, contrary to it. S-9's is read by S-10's `compare.py`. This entry records the inconsistency and does not act on it.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

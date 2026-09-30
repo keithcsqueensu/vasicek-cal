@@ -13,7 +13,8 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-INTS = {"scenario": pa.uint8(), "replicate": pa.uint16(), "periods": pa.uint16(), "obligors": pa.uint16()}
+INTS = {"scenario": pa.uint8(), "replicate": pa.uint16(), "periods": pa.uint16(), "obligors": pa.uint16(),
+        "boot_quad_checked": pa.int32(), "boot_quad_flagged": pa.int32(), "quad_flagged": pa.int32()}
 
 
 def column_type(name):
@@ -28,7 +29,8 @@ def column_type(name):
 
 def main():
     src, dst = sys.argv[1], sys.argv[2]
-    header = open(src, encoding="ascii").readline().strip().split(",")
+    with open(src, encoding="ascii") as f:
+        header = f.readline().strip().split(",")
     # No null values: "nan" (a refused or unavailable value) must stay a NaN double, as the run wrote it,
     # not become a null (pyarrow's default null spellings include "nan").
     opts = pacsv.ConvertOptions(column_types={c: column_type(c) for c in header}, null_values=[],

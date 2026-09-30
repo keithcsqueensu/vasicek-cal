@@ -8,3 +8,6 @@ CMakeUserPresets.json
 __pycache__/
 # machine-specific local notes, never committed (D-104)
 *.local.md
+
+# Per-replicate data kept out of the tree (D-163): attached to a release, SHA-256 in the MANIFEST
+studies/parametric-bootstrap/fits.parquet

@@ -1,0 +1,32 @@
+{
+  "study": "S-10, parametric bootstrap intervals, and S-4, the Bartlett-corrected profile threshold, in one run (D-176, D-181)",
+  "prediction": "studies/parametric-bootstrap/PREDICTION.md (K1-K5) and studies/bartlett-profile/PREDICTION.md (H1-H6), registered in 9fbe961 (D-176); the scoring addenda of 2026-09-29 committed with the tool and compare.py in e88ecf2, before the subset run",
+  "scoring": "compare.py, committed in e88ecf2 before the subset run; unchanged since except the P-16 quadrature report (f180dfe, before the full run). Run as: uv run --no-project --with pyarrow==25.0.1 python studies/parametric-bootstrap/compare.py fits.parquet --summary-out summary.csv",
+  "compiler": "MSVC 1951, Release",
+  "runs": {
+    "subset": {
+      "command": "study_parametric_bootstrap --replicates 1000 --scenarios 29,37,72,4,68,49,7,43,51 --out rows.csv",
+      "commit": "fcd7e13 (e88ecf2 after the rebase onto main; before P-14)",
+      "wall_seconds": 5217,
+      "note": "the decision point (STATE.md): it projected about 13 h for the full matrix; P-14, P-11 and P-16 came first (D-178 to D-180). Its 9,000 rows equal the full run's rows for the same scenarios byte for byte on every one of their 56 columns (the full run appends P-16's three)"
+    },
+    "full": {
+      "command": "study_parametric_bootstrap --checkpoint ck --out rows.csv (81 scenarios x 1,000 replicates, B = 999, 24 threads)",
+      "commit": "d800d34283cf77739cd1c68e031afbc21b707ca0 (tree clean; the P-16 branch head). On main as f180dfe, whose source differs only by two value-preserving sign-conversion casts in the tool",
+      "executable_sha256": "5d80ae130a3de5dc01339d80e85666b21de371c94b871dcf5d64e2771d8ff7dd",
+      "started": "2026-09-29T14:10:46-04:00",
+      "finished": "2026-09-29T20:37:16-04:00",
+      "wall_seconds": 23190,
+      "cpu_seconds": 555004,
+      "phase_split": "simulate 23%, surface 1%, argmax + refine + SE 43%, analytic SE 8%, W* (S-4b) 23%, Jeffreys 2%; profile, W0 and the S-4 widths under 1% each",
+      "projection": "about 5 h after P-14 (STATE.md); took 6.4 h, a miss of about 28%. The run was CPU-bound throughout (555,004 CPU s over 24 threads is 23,125 s against 23,190 s wall), so the miss is in the projected CPU, not in scheduling; its cause is not diagnosed beyond the phase split above",
+      "checks": "Jeffreys recomputed on replicates 0-49 (4,050 rows): 0 differ from S-9's; profile ends and flags: 0 of 162,000 differ from S-9's; W0 <= c against profile coverage: 0 of 162,000 disagree; quadrature check (P-16): 0 of 81,000 original fits and 0 of 4,050,000 sampled bootstrap fits flagged"
+    }
+  },
+  "files": {
+    "summary.csv": "sha256 0d3d67a4a98c91b4dd73d20b1e89e6728ca3d4d8bb2bb47e46c883d7eab65026; compare.py --summary-out",
+    "diagnose_k2.py": "a post-hoc diagnosis of K2's miss, written after the scoring; not a registered prediction",
+    "fits.parquet (not committed, D-163)": "sha256 11cca3133549117d143bee2b5533cbcda6945bd9a13267f9d8210b0938bbc227, 15,637,058 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s10-s4-data-2026-09-29; regenerable exactly by the full run's command at its commit, then export_fits.py (pyarrow 25.0.1, zstd 19) from rows.csv (sha256 3ce79bf22f736001c8ea20f400aa95f9b41ce335a4d0bd3e913b4b592a1b1582, 47,867,503 bytes); every double exact. export_fits.py's integer types for the three P-16 columns were added after the scoring (the first export stored them as doubles); only the quadrature report's formatting changed"
+  },
+  "result": "S-10: 2 of 5 held (K4, K5); K1, K2 and K3 did not. S-4: 6 of 6 held (H1 the in-sample bound, not a test)"
+}
