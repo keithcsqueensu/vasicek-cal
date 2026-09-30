@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177)
+Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181)
 
 ## Current status
 
@@ -232,10 +232,17 @@ aimed at the 81% phase: at the subset's 16.4 distinct observations per 53.3 peri
 3.2×, most where T = 100 and n is small, projecting the full run to about 5–6 h), then P-11 (checkpoint
 and resume) to protect the run; P-10 and P-9 after. The run's tool already hands out replicates dynamically. **Decision (owner):** P-14, then P-11, then the full run overnight; also the owner's item 1 (overlapping scenarios, with P-11) and a sampled, reported quadrature check on bootstrap fits (P-16) instead of skipping it. P-14 is done (D-178): byte-identical rows on the bootstrap path, and the full run projects to about 5 h.
 
+**S-10/S-4 finished (D-181).** The full run took 6.4 h (23,190 s; projected about 5 h, a miss), and the subset's rows reproduce byte for byte.
+- **S-4:** held 6 of 6. S-4b, the Bartlett-corrected profile interval with a parametric-bootstrap factor, covers ρ at 0.947 and PD at 0.945 at T = 20, puts no verdict below the band in groups B–D, and is 4–5% wider than the profile interval.
+- **S-10:** held 2 of 5. K1, K2 and K3 missed; K2 is diagnosed in `studies/README.md`.
+- **Open for the owner:**
+  - whether S-4b becomes an engine option or changes the preferred interval (D-176 stands until then);
+  - the D-163 inconsistency: the S-8, S-9 and `bca_ends` Parquet files are committed, contrary to D-163.
+
 **Priority order (owner, 2026-09-29):**
 
-1. **The S-10/S-4 run** (registered, D-176): the tool, the scoring script before the subset run, the
-   subset, then the full matrix. P-items first only if the subset's timing says so.
+1. **The S-10/S-4 run** (registered, D-176): **done** (D-181). Next, in the owner's order: P-15 (analytic
+   Hessian SEs in calibrate), then P-9 (measure the repeat rate first), then SIMD Philox.
 2. **The remaining P-items:** P-11, P-10 and P-9 (after its measurement), before the S-10/S-4 full run if its decision point says to run as is; then P-6 and P-7; P-12 and P-13 planned, not now; P-8 with M4.
 3. **The rate MLE as a first-class estimator:** an analytic score and Hessian and Newton solves; interval
    coverage; an n·PD adequacy flag from S-27; rate-vs-count disagreement as a data diagnostic; its own
@@ -317,7 +324,7 @@ methodology note and a scipy script.
 | S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `studies/README.md` entry | replay panels and subset; rounding-level agreement |
 | S-2 | Sample-size planning table from the existing recovery results: years needed for ρ within ±0.05 (and PD within a stated relative error) by PD and n | committed recovery summary; no new fits |
 | S-3 | Jackknife bias correction for ρ̂; profile intervals around the corrected estimate | ρ small-T profile findings and the PASS verdicts they could break |
-| S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10) | the 6 pinned small-T profile findings |
+| S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10). **Finished (D-181): 6 of 6 held** | the 6 pinned small-T profile findings |
 | S-5 | BCa intervals | the 125 pinned percentile findings |
 | S-6 | Pluto–Tasche most-prudent upper bounds (closed form; serially correlated version stays in M6) | coverage of the true PD in low-default scenarios |
 | S-7 | Grid resolution against accuracy and runtime | 61 × 41 (D-115) against 31 × 21 … 241 × 161 |
@@ -358,7 +365,7 @@ methodology note and a scipy script.
 
 | # | Study |
 |---|---|
-| S-10 | Parametric bootstrap intervals via the DGP (subset exploration here; full matrix in M4) |
+| S-10 | Parametric bootstrap intervals via the DGP. **Finished on the CPU, full matrix (D-168, D-181): 2 of 5 held** |
 | S-11 | Misspecification: standard Vasicek fitted to t-copula, AR(1)-factor and beta-mixture data; bias and coverage (subset here; full matrix in M4) |
 
 ### M4 — CUDA backend
@@ -371,7 +378,7 @@ in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D
 
 | # | Study |
 |---|---|
-| S-10 | Parametric bootstrap intervals: full matrix |
+| S-10 | Parametric bootstrap intervals: full matrix. *Done on the CPU (D-181); nothing left for M4* |
 | S-11 | Misspecification: full matrix |
 | S-12 | Double (iterated) bootstrap to calibrate interval coverage |
 | S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
