@@ -48,6 +48,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # the diff below needs the base commit
+      # D-183: no file above 1 MiB outside D-163's named exceptions, and the listed ones frozen.
+      # In plan, so it runs on every event, prose-only changes included, and a failure fails ci-ok.
+      - name: Committed data files (D-163, D-183)
+        run: python3 tools/check_data_files.py
       - id: plan
         shell: bash
         run: |

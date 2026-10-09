@@ -226,9 +226,10 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
    history length beside the interval, as S-13 recommends. *Answered by S-4 and S-10 (D-181):* the
    parametric bootstrap's own intervals do not close it. The Bartlett-corrected profile interval (S-4b)
    closes about half of what Jeffreys leaves: ρ 0.947, PD 0.945, and no verdict below the band in
-   groups B–D. The cost is 4–5% more width at T = 20 and a parametric bootstrap per estimate. *Whether
-   this changes the preferred interval is the owner's call; the rest of this recommendation stands
-   until then.*
+   groups B–D. The cost is 4–5% more width at T = 20 and a parametric bootstrap per estimate. **Decision (D-182):** the preferred interval stays Jeffreys
+   equal-tailed, per S-4's pre-registered H5–H6 rule. S-4b becomes a `native` option, documented as the
+   most accurate at T = 20 in these tests, at about 4–5% more width and 199 bootstrap panels per fit. A
+   future change to the default needs a new registered study with an explicit width–coverage rule.
 4. **In group A** (near-uninformative data) Jeffreys is narrower than the profile interval and still
    conservative.
 5. **Do not use BCa or percentile bootstrap intervals** for PD or ρ in this model.
@@ -446,8 +447,8 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 
   H3 held on PD by a small margin: S-4b kept 51% of the oracle's gain, where at least 50% was predicted.
 - **Mitigation:** where small-T coverage matters more than 4–5% of width, the Bartlett-corrected profile
-  interval is the most accurate interval tested (see "Interval methods compared"). It is not yet an
-  engine option: making it one, with the parametric bootstrap that estimates k_b, is the owner's call (D-181).
+  interval is the most accurate interval tested (see "Interval methods compared"). It becomes a
+  `native` option (D-182); the default interval stays Jeffreys equal-tailed.
 - **Monitoring implication:** at T ≈ 20 the plain profile interval is about 1.3 points short for ρ.
   A band that must hold its nominal rate there should use the corrected threshold. The factor's size is
   itself a diagnostic: k_b well above 1 says the history is too short for the χ² threshold.
