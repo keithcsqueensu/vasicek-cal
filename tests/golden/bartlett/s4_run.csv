@@ -1,0 +1,12 @@
+# S-4b (the Bartlett-corrected profile interval, D-182) for five recovery replicates, from the S-4 run
+# (study_parametric_bootstrap at d800d34, D-181; rows.csv sha256 3ce79bf2...1582): k_b, its fallback and
+# finite-W* count, and the corrected interval, per parameter. resample::bartlett_profile_intervals with
+# seed 0x53313050424F4F54, stream = scenario, first_panel = 1000 replicate and 199 panels must equal
+# them bit for bit (bartlett_reproduces_the_s4_run). 29/0: T 20, n 10^4; 63/0: T 20, n 100;
+# 51/0: T 100, n 100; 0/0 and 0/1: group A, the factor on the grid bound (rho, then both).
+scenario,replicate,kb_pd_hex,kb_fallback_pd,wstar_finite_pd,s4b_lo_pd_hex,s4b_hi_pd_hex,s4b_flags_pd,kb_rho_hex,kb_fallback_rho,wstar_finite_rho,s4b_lo_rho_hex,s4b_hi_rho_hex,s4b_flags_rho
+29,0,0x1.392bc5885acbep+0,0,199,0x1.f6b8f3613d9d0p-8,0x1.74b63c22be163p-7,0,0x1.27cdaa3b0b2d6p+0,0,199,0x1.1f84f2d996432p-7,0x1.3dfb100bea5c2p-5,0
+63,0,0x1.1daa982f093ebp+0,0,199,0x1.09ec26d62d623p-5,0x1.1014843be76e4p-4,0,0x1.28edfb559c849p+0,0,199,0x1.1a97b3b68d782p-6,0x1.7039f23bb6901p-3,0
+51,0,0x1.f113f765ffc82p-1,0,199,0x1.3355e7a993497p-8,0x1.e37f115cee6cbp-7,0,0x1.b04ae3f2cdbbcp-1,0,199,0x1.f1b44fa285f32p-3,0x1.0000000000000p-1,2
+0,0,0x1.6304d93e4525ep-1,0,199,0x1.f820787abd53ap-13,0x1.02b954ad412c7p-8,0,0x1.0000000000000p+0,1,199,0x1.0624dd2f1a9fcp-10,0x1.0000000000000p-1,3
+0,1,0x1.0000000000000p+0,1,199,0x1.a36e2eb1c432dp-14,0x1.6bb7ad067b6e9p-9,1,0x1.0000000000000p+0,1,199,0x1.0624dd2f1a9fcp-10,0x1.0000000000000p-1,3

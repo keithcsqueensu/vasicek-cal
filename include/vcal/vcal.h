@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0
  *
- * vasicek-cal C ABI, version 0.3 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
- * 0.3 adds the M3 estimators and the native profile, D-169).
+ * vasicek-cal C ABI, version 0.4 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
+ * 0.3 adds the M3 estimators and the native profile, D-169; 0.4 adds the Bartlett-corrected profile
+ * interval, a native option, D-182, D-184).
  * The only public header.
  *
  * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
@@ -74,7 +75,7 @@ extern "C" {
 #endif
 
 #define VCAL_ABI_VERSION_MAJOR 0
-#define VCAL_ABI_VERSION_MINOR 3
+#define VCAL_ABI_VERSION_MINOR 4
 #define VCAL_ABI_VERSION ((VCAL_ABI_VERSION_MAJOR << 16) | VCAL_ABI_VERSION_MINOR)
 
 /* ---- status codes ------------------------------------------------------------------------- */
@@ -96,7 +97,8 @@ enum {
 enum {
     VCAL_PROFILE_PARITY = 0, /* textbook, scipy-replicable (D-035) */
     VCAL_PROFILE_NATIVE = 1  /* parity plus labelled enhancements; ABI 0.3 (D-169): the rate MLE's
-                                zero-rate treatments other than refusal (D-044) */
+                                zero-rate treatments other than refusal (D-044); ABI 0.4: the
+                                Bartlett-corrected profile interval (D-184) */
 };
 
 enum { VCAL_SCALE_LINEAR = 0, VCAL_SCALE_LOG = 1, VCAL_SCALE_LOGIT = 2, VCAL_SCALE_PROBIT = 3 };
@@ -370,6 +372,55 @@ VCAL_API vcal_status VCAL_CALL vcal_resample(vcal_context* context, const vcal_p
 VCAL_API vcal_status VCAL_CALL vcal_resample_weights(vcal_context* context, const vcal_resample_spec* spec,
                                                      int64_t n_periods, double* weights, int64_t capacity,
                                                      int64_t* required);
+
+/* ---- the Bartlett-corrected profile interval (ABI 0.4; D-182, D-184) ------------------------ */
+
+/* A native option (VCAL_PROFILE_NATIVE context): the profile-likelihood interval at the threshold
+ * k_a chi2_1(0.95)/2, where k_a, an estimate of E[W_a] for the likelihood-ratio statistic, is the mean
+ * W*_a over parametric-bootstrap panels simulated at the estimate (vcal_dgp_simulate's DGP, the
+ * panel's own n_t) and refitted. Study S-4 (D-181) found it the most accurate interval tested at
+ * T = 20 (rho 0.947, PD 0.945), at about 4-5% more width than the profile interval and one bootstrap
+ * of `panels` fits per estimate. The preferred interval remains the Jeffreys equal-tailed credible
+ * interval (vcal_calibrate_posterior; D-182). docs/methodology/bartlett_profile.md. */
+
+/* Per-parameter factor flags (uint32_t). */
+enum {
+    VCAL_BARTLETT_ON_BOUND = 1u << 0,       /* the estimate is on the grid bound: k = 1 */
+    VCAL_BARTLETT_TOO_FEW_FINITE = 1u << 1, /* more than 10% of the W* not finite: k = 1 */
+    VCAL_BARTLETT_NOT_COMPUTED = 1u << 2    /* no usable estimate (flat or numeric): no bootstrap, k NaN */
+};
+
+typedef struct vcal_bartlett_spec {
+    uint32_t struct_size;
+    uint32_t panels;      /* bootstrap panels, B; 0 = 199, the count S-4 used */
+    uint64_t seed;        /* the bootstrap panels' DGP seed */
+    uint32_t stream;      /* their DGP scenario field */
+    uint32_t first_panel; /* panel b is the DGP's replicate first_panel + b; first_panel + B - 1 < 2^32 */
+} vcal_bartlett_spec;
+
+typedef struct vcal_bartlett_intervals {
+    uint32_t struct_size;
+    uint32_t pd_flags;  /* VCAL_INTERVAL_* */
+    uint32_t rho_flags;
+    uint32_t pd_factor_flags; /* VCAL_BARTLETT_* */
+    uint32_t rho_factor_flags;
+    uint32_t reserved;
+    double pd_lo, pd_hi;
+    double rho_lo, rho_hi;
+    double pd_factor, rho_factor;  /* k (1 on a fallback; NaN if not computed) */
+    int64_t pd_finite, rho_finite; /* finite W* */
+    int64_t panels;                /* bootstrap panels simulated and fitted */
+    int64_t panels_quad_flagged;   /* of them, fits whose quadrature check flagged a period */
+    double residual_max;           /* max |profile(endpoint) - threshold| over solved endpoints */
+    int64_t evaluations;           /* the interval solves' panel log-likelihood evaluations */
+} vcal_bartlett_intervals;
+
+/* Fits the panel as vcal_calibrate (estimate), then the Bartlett-corrected intervals. Needs a
+ * VCAL_PROFILE_NATIVE context; every n_obligors at most 2^33 - 2^17 (the DGP's limit). Deterministic
+ * in (panel, grid, spec), whatever the thread count. Costs about B fits. */
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_bartlett(vcal_context* context, const vcal_panel* panel,
+                                                       const vcal_grid* grid, const vcal_bartlett_spec* spec,
+                                                       vcal_estimate* estimate, vcal_bartlett_intervals* intervals);
 
 /* ---- synthetic data ----------------------------------------------------------------------- */
 

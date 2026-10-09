@@ -1065,6 +1065,32 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Adding to the list** is a decision and needs a D-entry. D-163's route, a release with the SHA-256 in the MANIFEST, stays the default.
   - **Verified:** the check fails in a scratch commit adding a 2 MiB file, and in one changing a listed file and deleting another.
 
+## S-4b implemented as a native option, 2026-10-09
+
+- **D-184 — S-4b, the Bartlett-corrected profile interval, is a native option: `resample::bartlett_profile_intervals` and, in C ABI 0.4, `vcal_calibrate_bartlett` (needs a `VCAL_PROFILE_NATIVE` context).** Implements D-182.
+  - **What:** the profile interval at the threshold k_a c / 2, where k_a is the mean of the finite W*_{a,b} = 2 (l*_max − P*_a(θ̂_a)) over B parametric-bootstrap panels.
+    - **The panels:** simulated from the recovery DGP at θ̂, with the panel's own n_t, and keyed by (seed, stream, first_panel + b).
+    - **The fallback:** k_a = 1 when θ̂_a is on the grid bound or more than 10% of the W* are not finite. If the estimate is unusable, no bootstrap is run.
+    - **The count:** B defaults to 199, S-4's count.
+    - **Prose:** `docs/methodology/bartlett_profile.md`.
+  - **Where:** in `resample/` rather than `engine/`, because it needs the DGP, which `engine/` may not include (D-050). `resample/` already builds on `engine/` with Philox from `dgp/`.
+  - **One implementation, tied to the study:** with S-4's seed, stream = scenario, first_panel = 1000 r and B = 199, it is S-4's S-4b for replicate r. `bartlett_reproduces_the_s4_run` (slow) checks five replicates of the committed run against `tests/golden/bartlett/s4_run.csv`: k_b, its fallback and finite count, and both ends with their flags, bit for bit.
+    - **The replicates:** T = 20 at n = 10⁴ and 100, T = 100 at n = 100, and two group-A on-bound fallbacks.
+    - **Off MSVC 19.51,** the compiler that wrote the golden, the factor and the ends are compared at `TOL_PROFILE_CROSS_PLATFORM_REL`, as the recovery replay does (D-121).
+    - **Not covered:** the "too few finite" fallback never occurred in the run, so no golden covers it.
+  - **Cost:** the bootstrap panels' surfaces come through a row cache (D-167). The panels share the n_t, so rows repeat, and the results are identical. This took the five-replicate test from 187 s to 10 s (MSVC Release, single-threaded fits): about 2 s per estimate at B = 199, against 37 s without the cache.
+  - **Tests:**
+    - `unit_bartlett`:
+      - the factor equals the mean W* computed from the public building blocks;
+      - deterministic, and identical for 1 and 4 threads;
+      - on-bound gives the profile interval bit for bit;
+      - spec checks.
+    - `abi_engine_equivalence`: the ABI call equals the engine bit for bit at 1 and 3 threads, on a panel with unequal n_t; parity refuses it.
+    - `abi_c`: from C, the layout, native only, determinism and the spec checks.
+  - **ABI 0.4:**
+    - **added:** `vcal_bartlett_spec` (24 bytes), `vcal_bartlett_intervals` (120 bytes, no padding) and the `VCAL_BARTLETT_*` factor flags;
+    - **unchanged:** existing calls.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
