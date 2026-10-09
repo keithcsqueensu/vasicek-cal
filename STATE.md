@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-09-29 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181)
+Last updated: 2026-10-09 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181; S-4b a native option and D-163's named exceptions, D-182, D-183)
 
 ## Current status
 
@@ -235,9 +235,10 @@ and resume) to protect the run; P-10 and P-9 after. The run's tool already hands
 **S-10/S-4 finished (D-181).** The full run took 6.4 h (23,190 s; projected about 5 h, a miss), and the subset's rows reproduce byte for byte.
 - **S-4:** held 6 of 6. S-4b, the Bartlett-corrected profile interval with a parametric-bootstrap factor, covers ρ at 0.947 and PD at 0.945 at T = 20, puts no verdict below the band in groups B–D, and is 4–5% wider than the profile interval.
 - **S-10:** held 2 of 5. K1, K2 and K3 missed; K2 is diagnosed in `studies/README.md`.
-- **Open for the owner:**
-  - whether S-4b becomes an engine option or changes the preferred interval (D-176 stands until then);
-  - the D-163 inconsistency: the S-8, S-9 and `bca_ends` Parquet files are committed, contrary to D-163.
+- **Owner's decisions (2026-10-09):**
+  - **The interval (D-182):** the default stays Jeffreys equal-tailed. S-4b becomes a `native` option (next). A change to the default needs a new registered study.
+  - **Data files (D-183):** the committed data files are named exceptions to D-163, and CI fails on any other file above 1 MiB.
+- **Then P-15,** with a check during its profiling of whether the 5 h → 6.4 h miss comes from thread scheduling on hybrid cores (P-10).
 
 **Priority order (owner, 2026-09-29):**
 

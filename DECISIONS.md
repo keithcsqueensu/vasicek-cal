@@ -1040,6 +1040,31 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **Is S-4b promoted?** Whether S-4b becomes an engine option, or changes the preferred interval, is left open. D-176's recommendation stands until then.
     - **Data files:** per D-163, the per-replicate Parquet is not committed; it is attached to the release `s10-s4-data-2026-09-29`, with its SHA-256 in the MANIFEST. S-8's and S-9's Parquet files (D-174, D-175) and S-5's `bca_ends.parquet` (D-176) were committed after D-163, contrary to it. S-9's is read by S-10's `compare.py`. This entry records the inconsistency and does not act on it.
 
+## S-4b as a native option; D-163's named exceptions, 2026-10-09
+
+- **D-182 (owner) — The preferred interval stays the Jeffreys equal-tailed credible interval with the resolution rule on (D-176), per the pre-registered H5–H6 rule. S-4b, the Bartlett-corrected profile interval, is added as a `native` option. A future change to the default needs a new registered study with an explicit width–coverage rule.** Resolves the first open item of D-181.
+  - **Why (owner):** the pre-registered H5–H6 rule.
+  - **What that rule says:** S-4 registered how S-4b would be judged against Jeffreys before any run.
+    - **H5:** S-4b's group-B ρ coverage is within ±0.006 of Jeffreys'.
+    - **H6:** S-4b is 2–8% wider than the profile interval.
+
+    Both held: S-4b is +0.004 over Jeffreys for ρ at T = 20, at about 4% more width. Read against that rule, it is a match bought with width rather than a gain.
+  - **What the option is documented as:** the most accurate at T = 20 in this project's tests (S-4, D-181), at about 4–5% more width than the profile interval and a parametric bootstrap of 199 panels per fit to estimate the Bartlett factor.
+  - **Changing the default later:** that needs a new study, registered before its run, with an explicit rule that trades width against coverage. It must not be decided by rereading S-4.
+- **D-183 (owner) — The data files already committed are named exceptions to D-163, and CI fails if a file above 1 MiB is committed outside that list.** Resolves the second open item of D-181.
+  - **The exceptions** (`tools/committed_data_files.txt`, each with its size and the SHA-256 of the committed blob):
+    - **committed before D-163:** S-13's `fits_r10000.parquet` and the jackknife run's `replicates.parquet` and `replicates_polished.parquet`;
+    - **committed after it, contrary to it:** S-8's and S-9's `fits.parquet`, S-15's `draws.parquet`, and S-5's `bca_ends.parquet`.
+
+    They stay: S-10's `compare.py` reads S-9's file, and removing them would not shrink the history.
+  - **The check** (`tools/check_data_files.py`, standard library, run in CI's `plan` job on every event, so prose-only changes are covered too and a failure fails `ci-ok`) fails if:
+    - any file tracked at HEAD above 1 MiB is not listed;
+    - a listed file is missing;
+    - a listed file differs in size or SHA-256 from its line, so listed files are frozen.
+  - **The threshold:** 1 MiB. The per-replicate files are megabytes, while the largest golden table and summary are under 0.9 MB. Today exactly the five listed files above 1 MiB exceed it.
+  - **Adding to the list** is a decision and needs a D-entry. D-163's route, a release with the SHA-256 in the MANIFEST, stays the default.
+  - **Verified:** the check fails in a scratch commit adding a 2 MiB file, and in one changing a listed file and deleting another.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

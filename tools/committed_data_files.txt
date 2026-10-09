@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+# Data files committed to the tree as named exceptions to D-163 (D-183).
+#
+# D-163: per-replicate data are not committed; a study commits its summary tables and the
+# per-replicate file's SHA-256 in its MANIFEST.json, and attaches the file to a release.
+# The files below were committed before D-163 or, contrary to it, after it, and stay
+# (D-183). tools/check_data_files.py, run by CI's plan job on every event, fails if any
+# tracked file above 1 MiB is not listed here, or if a listed file's content differs from
+# its SHA-256 below. Adding a line here is a decision: it needs a D-entry.
+#
+# sha256 (of the committed blob)                                    bytes      path                                                   committed
+8dfe5d2256369a0a627c80b970b137937824994c787c6b85303af253b7994e72  11593019  studies/recovery-r10000/fits_r10000.parquet            # before D-163 (S-13, D-158)
+b3aa7875350b5e1081ca04debeaff5b2d2a8f5b68b12f51044af2cacbf51922d   5798359  studies/jackknife-bias-rho/replicates.parquet          # before D-163 (S-3/S-5/S-21, D-159)
+61f171bb9f3388624ddfb2e948f23003215b64650f948f4e0a377e6f4f6e1645    798033  studies/jackknife-bias-rho/replicates_polished.parquet # before D-163 (D-159)
+e096b35f18411cc8ebfcc51610fe7d783948b6c597f0881725bb1342051be484  18834003  studies/mle-vs-mom/fits.parquet                        # after D-163 (S-8, D-174)
+bdc607d765e3ce63a48680f96aa67b4f9404c3ba0bc4354795bdd712f3415b8c  22635725  studies/bayes-coverage/fits.parquet                    # after D-163 (S-9, D-175; read by S-10's compare.py)
+a0b3af51720c4d81a815412049f12e607fde36b386a42036f26b87cfd00215fb    223787  studies/bayes-sbc/draws.parquet                        # after D-163 (S-15, D-175)
+6d23ae1bd77b027b4613e44a08c9a9ca6b4adfb73f75cfc4bdaaa1227fe8f68d   2496618  studies/jackknife-bias-rho/bca_ends.parquet            # after D-163 (S-5 ends, D-176)
