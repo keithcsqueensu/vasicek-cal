@@ -67,4 +67,13 @@ struct ProfileInterval {
 ProfileInterval profile_interval(const std::vector<Period>& panel, const Fit& fit, int param, double pd_lo,
                                  double pd_hi, double rho_lo, double rho_hi, double threshold);
 
+// The log-likelihood under an AR(1) factor, Z_1 ~ N(0, 1), Z_t | Z_{t-1} ~ N(phi Z_{t-1}, 1 - phi^2) (M6, D-195).
+// Independent of core's AR(1) filter (benchmark_models/ar1/): a dense filter on one fixed uniform grid in z over
+// [-10, 10], trapezoid weights, the transition density built directly, and ref's own log Phi and log C(n, k). The
+// grid depends only on the panel (step = min(0.02, 0.4 / sqrt(max n)) unless given), never on the parameters, so
+// the result is a smooth function of (PD, rho, phi): the oracle for core's goldens and its smoothness test. Valid
+// where the conditional likelihood of every period is resolved by that step (rho <= 0.5 for n up to 10^4) and
+// carries no mass beyond |z| = 10; |phi| < 1. Slow by design: O(T G^2) with G = 20 / step.
+double ar1_loglik(double pd, double rho, double phi, const std::vector<Period>& panel, double step = 0.0);
+
 }  // namespace vcalref

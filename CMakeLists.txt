@@ -63,6 +63,12 @@ add_library(vcal_resample INTERFACE)
 add_library(vcal::resample ALIAS vcal_resample)
 target_link_libraries(vcal_resample INTERFACE vcal_engine)
 
+# benchmark_models/ (M6, D-195): the AR(1)-factor likelihood and its search, on core/ and engine/. Header-only;
+# never the DGP, the ABI or ref/ (the layering check).
+add_library(vcal_benchmark_models INTERFACE)
+add_library(vcal::benchmark_models ALIAS vcal_benchmark_models)
+target_link_libraries(vcal_benchmark_models INTERFACE vcal_engine)
+
 # backends/cpu/: OpenMP `parallel for` only (D-028). Without OpenMP it runs serially and gives
 # identical results (determinism does not depend on the thread count, §6).
 option(VCAL_ENABLE_OPENMP "Parallelise the CPU backend with OpenMP" ON)

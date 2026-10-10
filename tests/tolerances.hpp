@@ -278,4 +278,19 @@ inline constexpr double TOL_POSTERIOR_REFERENCE_REL = 1e-10;
 // last-bit differences in log P(d) by 2e-4. Observed 2.85e-10 over the 117 points (Linux glibc vs
 // Windows UCRT; values from -11.4 to +0.03); 1e-9 leaves a factor of 3.5.
 inline constexpr double TOL_POSTERIOR_JEFFREYS_ABS = 1e-9;
+
+// --- AR(1)-factor likelihood, M6 -----------------------------------------------------------------
+// M6 (D-195): the AR(1) filter's log-likelihood (neighbour placement, parity rule) against ref's dense
+// uniform-grid filter, relative to max(1, |l|), on adjacent periods with very different modes (n from 20
+// to 10^4, phi -0.6 to 0.95, rho 0.05 to 0.3). Observed 4.4e-14 over 128 cases; core's per-period
+// goldens are held at the same 1e-12.
+inline constexpr double TOL_AR1_REFERENCE_REL = 1e-12;
+// M6 (D-195, owner's smoothness condition): second differences of core minus ref along lines in phi and
+// rho, as a fraction of core's own largest second difference on the line (as Q16's test for the
+// composite rule). Rounding alone gives 5e-14 to 6.4e-13; a kink in the node placement would not.
+inline constexpr double TOL_AR1_SMOOTH_D2_REL = 1e-11;
+// M6 (D-195): the analytic score (Fisher's identity over the smoothed node weights) against
+// Richardson-extrapolated central differences, relative to max(1, |derivative|). Observed 6.8e-10, the
+// differences' own noise (last-bit noise in l divided by steps of 1e-3 relative).
+inline constexpr double TOL_AR1_SCORE_REL = 1e-8;
 }  // namespace vcal::tol

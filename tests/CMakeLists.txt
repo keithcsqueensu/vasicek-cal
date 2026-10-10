@@ -138,6 +138,18 @@ add_test(NAME unit_bartlett COMMAND unit_bartlett bartlett_factor_is_the_mean_pr
 add_test(NAME bartlett_s4_run COMMAND unit_bartlett bartlett_reproduces_the_s4_run)
 set_tests_properties(bartlett_s4_run PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_ref SOURCES unit/ref_test.cpp LIBS vcal::ref)
+# The AR(1)-factor likelihood (M6, D-195): phi = 0 bit for bit, ref's dense filter on adversarial panels, the
+# placement check, the score. The smoothness sweep (ref at 41 points per line) is slow.
+add_executable(unit_ar1_filter unit/ar1_filter_test.cpp)
+target_link_libraries(unit_ar1_filter PRIVATE vcal_test_harness vcal::benchmark_models vcal::ref)
+vcal_target_defaults(unit_ar1_filter)
+add_test(NAME unit_ar1_filter
+         COMMAND unit_ar1_filter ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit
+                 ar1_matches_the_dense_reference_on_adversarial_panels
+                 ar1_doubled_nodes_cannot_see_placement_error_and_the_placement_check_does
+                 ar1_score_matches_richardson_differences)
+add_test(NAME unit_ar1_filter_smooth COMMAND unit_ar1_filter ar1_likelihood_is_smooth_in_phi_and_rho)
+set_tests_properties(unit_ar1_filter_smooth PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 # The Bernoulli kernel forced at start-up through VCAL_DGP_KERNEL (P-17, D-194), and once with an invalid value:
 # the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their
