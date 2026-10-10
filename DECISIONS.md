@@ -1133,14 +1133,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **Phase shares:** each phase carries its share of a full run's replicates, so arms run only on the first replicates are not over-weighted, and one-time costs are counted once. Examples: S-10's Jeffreys check 0.05, its widths 0.20, its surface cache fill once; the jackknife run's exact refits 0.005, which unweighted would be overstated about 200-fold.
     - **Weighting:** cells are weighted by their scenario counts.
     - **Range:** the 5th–95th percentile of a bootstrap over jobs within cells.
+    - **Wall time:** thread-seconds / (threads × efficiency), the efficiency measured from the last full run, not assumed. S-10/S-4: 555,004 / (24 × 23,190) = 0.997, covering scenario overlap, cache fills and the idle tail. Each validation re-measures it.
     - **Sample size:** `perf/project_runtime.py --run` starts at 2 replicates per scenario and doubles until the range is within ±10%. The subset-based projection is printed alongside.
   - **Calibrated on S-10 (owner: "calibrated", not "validated"),** with the run's own binary (`perf/projection_s10.md`):
-    - **2 replicates per scenario** (18 jobs per cell): 6.11 h, 90% range 5.68–6.54 h, against the actual 6.44 h (ratio 1.05; in range).
-    - **1 per scenario** (9 per cell): 5.33 h, 4.98–5.66 h. **A miss: 17% short and outside its range.** Single-replicate costs are skewed (0.44–2.53× the scenario mean), and the bootstrap under-covers at that size.
-    - **The subset-based method:** 3.91–4.60 h on the same samples.
+    - **2 replicates per scenario** (18 jobs per cell): 6.13 h, 90% range 5.70–6.56 h, against the actual 6.44 h (ratio 1.05; in range).
+    - **1 per scenario** (9 per cell): 5.34 h, 5.00–5.68 h. **A miss: 17% short and outside its range.** Single-replicate costs are skewed (0.44–2.53× the scenario mean), and the bootstrap under-covers at that size.
+    - **The subset-based method:** 3.92–4.61 h on the same samples.
   - **The default** is 2 replicates per scenario (owner-approved), with sampling continuing until the range is within ±10%, so that studies whose costs are more or less variable than S-10's get the sample they need.
   - **Next:** the next full study run records its projection and range before it starts and is compared with its actual wall time. If it lands in range again, the method is called validated.
-  - **Example:** the current code (with P-15) projects the S-10/S-4 run at 4.02 h (3.85–4.18 h) from a 114 s sample.
+  - **P-15's effect, before and after:** on the same projection method, the S-10/S-4 run projects at 6.13 h on its own binary (with P-14 and P-16) and at 4.03 h (3.86–4.19 h) on the current code, from a 114 s sample. That is about 34% off, from P-15 alone (`perf/p15_analytic_se.md`). P-14's own effect was 13 h → about 5 h (D-178).
 
 ## Open
 

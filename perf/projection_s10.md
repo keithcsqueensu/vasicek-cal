@@ -15,16 +15,18 @@ took 23,190 s wall and 555,004 thread-seconds on 24 threads, with an Intel Core 
   - Jeffreys × 0.05 and the S-4 widths × 0.20;
   - the surface phase counted once, as the cache fill;
   - the other phases × 1;
-  - then times its 9 scenarios × 1,000 replicates.
+  - then times its 9 scenarios × 1,000 replicates;
+  - wall time = thread-seconds / (24 threads × 0.997), the efficiency the run itself measured
+    (555,004 / (24 × 23,190)): scenario overlap, cache fills and the idle tail.
 - **The range:** a bootstrap over the cell's sampled scenarios. The tool's `--timing-out` now records jobs,
   and `perf/project_runtime.py` resamples those.
 
 | Sample | Jobs per cell | Sample wall | Projection | 90% range | Actual | Actual / projection |
 |---|---|---|---|---|---|---|
-| 1 replicate per scenario | 9 | 107 s | 5.33 h | 4.98–5.66 h | 6.44 h, outside | 1.21 |
-| 2 replicates per scenario | 18 | 135 s | 6.11 h | 5.68–6.54 h | 6.44 h, inside | 1.05 |
-| subset-based (81/9), 1 per scenario | — | — | 3.91 h | — | 6.44 h | 1.64 |
-| subset-based (81/9), 2 per scenario | — | — | 4.60 h | — | 6.44 h | 1.40 |
+| 1 replicate per scenario | 9 | 107 s | 5.34 h | 5.00–5.68 h | 6.44 h, outside | 1.21 |
+| 2 replicates per scenario | 18 | 135 s | 6.13 h | 5.70–6.56 h | 6.44 h, inside | 1.05 |
+| subset-based (81/9), 1 per scenario | — | — | 3.92 h | — | 6.44 h | 1.64 |
+| subset-based (81/9), 2 per scenario | — | — | 4.61 h | — | 6.44 h | 1.40 |
 
 ## Why one replicate per scenario missed
 
@@ -43,8 +45,9 @@ rule of sampling until the range is within ±10%.
 **Calibrated on S-10.** This is one run, and the method's choices (the phase schedule, the default sample
 size) were made against it. The next full study run is its test: the projection and its range are recorded
 before the run starts and compared with the actual wall time after it ends. If the actual lands in range
-again, the method is called validated (D-187).
+again, the method is called validated (D-187). The validation also re-measures the efficiency factor
+(0.997 here) and records it beside the projection.
 
-For reference, the current code (P-15, D-185) projects the same S-10/S-4 run at 4.02 h (90% range
-3.85–4.18 h, ±4%) from a 114 s sample at 2 replicates per scenario: `python perf/project_runtime.py --run
+For reference, the current code (P-15, D-185) projects the same S-10/S-4 run at 4.03 h (90% range
+3.86–4.19 h, ±4%) from a 114 s sample at 2 replicates per scenario: `python perf/project_runtime.py --run
 "build/cpu-release/tests/study_parametric_bootstrap.exe"`.

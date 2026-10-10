@@ -9,18 +9,21 @@ thread-seconds by phase, with each phase's share of a full run's replicates. The
     taken over the sampled jobs that run the phase in a full run (replicate < share x R_full); a phase
     with share "once" (a one-time cost, such as filling a surface-row cache) is counted once, in total;
   - the full run's thread-seconds are the sum over cells of that cost x the cell's scenarios x R_full,
-    and its wall time that over the thread count (the study tools hand out jobs dynamically and have run
-    at 99.7% utilisation, D-186);
+    and its wall time that over (threads x efficiency). The efficiency is measured from real runs, not
+    assumed: thread-seconds / (threads x wall) of the last full run, which covers scenario overlap, cache
+    fills and the tail where threads idle. S-10/S-4: 555,004 / (24 x 23,190) = 0.997, the default;
+    each validation re-measures it;
   - the range is the 5th-95th percentile of 2,000 bootstrap draws, resampling jobs within each cell;
   - the subset-based projection (the subset's mean cost per job x every job), the method that missed S-10
     by 1.375x, is printed alongside for comparison.
 
-Calibrated on S-10 (D-187): with 2 replicates per scenario (18 per cell) the projection was 6.11 h
-(90% 5.68-6.54 h) against the actual 6.44 h; with 1 per scenario (9 per cell) 5.33 h (4.98-5.66 h), a
+Calibrated on S-10 (D-187): with 2 replicates per scenario (18 per cell) the projection was 6.13 h
+(90% 5.70-6.56 h) against the actual 6.44 h; with 1 per scenario (9 per cell) 5.34 h (5.00-5.68 h), a
 17% miss outside its range, because single-replicate costs are skewed (0.44-2.53x the scenario mean).
 To be called validated after it lands in range on the next full run.
 
-    python perf/project_runtime.py SAMPLE.csv [--replicates-full 1000] [--threads 24] [--subset 29,37,...]
+    python perf/project_runtime.py SAMPLE.csv [--replicates-full 1000] [--threads 24] [--efficiency 0.997]
+        [--subset 29,37,...]
     python perf/project_runtime.py --run "build/cpu-release/tests/study_parametric_bootstrap" \\
         [--start 2] [--target 0.10] [--max 32] [--threads 24] [--subset ...]
 
@@ -87,7 +90,7 @@ def project(jobs, shares, r_full, scenarios_per_cell, rng=None):
     return total
 
 
-def summarise(jobs, shares, r_full, threads, subset, draws=2000):
+def summarise(jobs, shares, r_full, threads, efficiency, subset, draws=2000):
     scen = {}
     for j in jobs:
         scen.setdefault(j["scenario"], j["cell"])
@@ -107,14 +110,14 @@ def summarise(jobs, shares, r_full, threads, subset, draws=2000):
     k = max(j["replicate"] for j in jobs) + 1
     return {"point": point, "lo": lo, "hi": hi, "half": max(point - lo, hi - point) / point, "subset": sub,
             "cells": len(per_cell), "scenarios": len(scen), "per_cell": len(jobs) / len(per_cell), "k": k,
-            "threads": threads}
+            "threads": threads, "efficiency": efficiency}
 
 
 def report(tool, s):
-    h = lambda x: x / s["threads"] / 3600
+    h = lambda x: x / (s["threads"] * s["efficiency"]) / 3600
     print(f"{tool}: {s['scenarios']} scenarios in {s['cells']} (T, n) cells, {s['k']} replicates each "
           f"({s['per_cell']:.0f} jobs per cell)")
-    print(f"  projection: {s['point']:,.0f} thread-s, {h(s['point']):.2f} h on {s['threads']} threads; "
+    print(f"  projection: {s['point']:,.0f} thread-s, {h(s['point']):.2f} h on {s['threads']} threads at efficiency {s['efficiency']}; "
           f"90% range {h(s['lo']):.2f}-{h(s['hi']):.2f} h (+/-{100 * s['half']:.0f}%)")
     if s["subset"] is not None:
         print(f"  subset-based, for comparison: {s['subset']:,.0f} thread-s, {h(s['subset']):.2f} h")
@@ -129,12 +132,14 @@ def main():
     ap.add_argument("--target", type=float, default=0.10)
     ap.add_argument("--replicates-full", type=int, default=1000)
     ap.add_argument("--threads", type=int, default=24)
+    ap.add_argument("--efficiency", type=float, default=0.997,
+                    help="thread-seconds / (threads x wall) measured on the last full run (S-10/S-4: 0.997)")
     ap.add_argument("--subset", default=SUBSET_DEFAULT)
     a = ap.parse_args()
     subset = {int(x) for x in a.subset.split(",") if x}
     if a.sample:
         tool, shares, jobs = read_sample(a.sample)
-        s = summarise(jobs, shares, a.replicates_full, a.threads, subset)
+        s = summarise(jobs, shares, a.replicates_full, a.threads, a.efficiency, subset)
         report(tool, s)
         return 0 if s["half"] <= a.target else 3
     if not a.run:
@@ -151,7 +156,7 @@ def main():
                 print(done.stderr, file=sys.stderr)
                 return done.returncode
             tool, shares, jobs = read_sample(out)
-            s = summarise(jobs, shares, a.replicates_full, a.threads, subset)
+            s = summarise(jobs, shares, a.replicates_full, a.threads, a.efficiency, subset)
             report(tool, s)
             if s["half"] <= a.target:
                 return 0

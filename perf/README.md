@@ -36,15 +36,18 @@ paired verdicts. Only the runtime projection changes.
    biased whenever arms are sampled. A fractional phase is averaged over the sampled replicates that run it
    in a full run.
 3. **Weight by cell.** A cell's cost per replicate times its scenario count times the full run's replicates,
-   summed over cells; wall time is that over the thread count (the tools hand out jobs dynamically).
+   summed over cells. Wall time is that over (threads × efficiency), where the efficiency is measured from
+   real runs, not assumed: thread-seconds / (threads × wall) of the last full run, which covers scenario
+   overlap, cache fills and the tail where threads idle. S-10/S-4: 555,004 / (24 × 23,190) = **0.997**,
+   the default (`--efficiency`). Each validation re-measures it, and a run that falls below it says so.
 4. **Report a range, and sample until it is tight.** The range is the 5th–95th percentile of a bootstrap over
    jobs within each cell. `perf/project_runtime.py --run "<tool>"` starts at 2 replicates per scenario and
    doubles until the range is within ±10% of the projection (`--target`), up to `--max`. It prints the
    subset-based projection alongside for comparison.
 
 **Calibrated on S-10, not yet validated** (`perf/projection_s10.md`). With 2 replicates per scenario
-(18 jobs per cell) the projection was 6.11 h (90% range 5.68–6.54 h) against the actual 6.44 h. With 1 per
-scenario (9 per cell) it was 5.33 h (4.98–5.66 h): a 17% miss, outside its range, because single
+(18 jobs per cell) the projection was 6.13 h (90% range 5.70–6.56 h) against the actual 6.44 h. With 1 per
+scenario (9 per cell) it was 5.34 h (5.00–5.68 h): a 17% miss, outside its range, because single
 replicates' costs are skewed (0.44–2.53× their scenario's mean). The bootstrap range is a sampling range
 only, and it under-covered at 9 jobs per cell. The method was tuned against this one run, so its next
 full run is a test: the projection is recorded before the run and compared with the actual wall time after

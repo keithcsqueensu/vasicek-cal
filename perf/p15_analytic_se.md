@@ -21,6 +21,11 @@ The calibrate phase falls 2.7× (mean 664 → 244). In this sample Jeffreys, whi
 of the work, so the total falls 16%. In the S-10/S-4 full run the calibrate phase was 43% of 555,004 CPU s
 and Jeffreys 2%, so at 2.7× the same run would save about a quarter of its CPU.
 
+**The full S-10/S-4 run, before and after** (the runtime projection of D-187, the same method on both
+binaries, 2 replicates per scenario): 6.13 h (90% range 5.70–6.56 h) on the run's own binary d800d34 (P-14
+and P-16 already in; the actual run took 6.44 h) against 4.03 h (3.86–4.19 h) with P-15, about 34% off.
+These are projections, not runs; the next full run of the tool records its actual time.
+
 On the recovery harness (81 × 1,000), whose fits reuse cached surfaces and spend most of their time in the
 bootstrap and the profile, the wall time was 288 s before and 285 s after: no measurable change.
 

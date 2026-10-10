@@ -240,7 +240,7 @@ and resume) to protect the run; P-10 and P-9 after. The run's tool already hands
   - **Data files (D-183):** the committed data files are named exceptions to D-163, and CI fails on any other file above 1 MiB.
 - **P-15 done (D-185):** calibrate's SEs are now analytic. It is a correction as well as a speed-up (the calibrate phase is 2.7× faster on the S-10 workload). No verdict changes; goldens refreshed.
 - **The runtime miss (D-186):** not hybrid-core scheduling. The subset had no scenario in the costliest (T, n) cell; the projection fix is queued.
-- **The runtime projection (D-187):** a timing sample per (T, n) cell with phase shares, sampled until its 90% range is within ±10% (`perf/project_runtime.py`). It is calibrated on S-10 (6.11 h, 5.68–6.54 h, against 6.44 h), not yet validated: the next full run records its projection before starting and is compared after.
+- **The runtime projection (D-187):** a timing sample per (T, n) cell with phase shares, sampled until its 90% range is within ±10% (`perf/project_runtime.py`). Wall time uses a measured efficiency factor (0.997 on S-10). It is calibrated on S-10 (6.13 h, 5.70–6.56 h, against 6.44 h), not yet validated: the next full run records its projection before starting and is compared after.
 - **Queued (owner, 2026-10-09):** the roadmap addendum: `docs/references.md`, study stubs a–m, the features, and a D-entry. Planning only, then stop for review.
 
   After those, P-9 (measure the repeat rate first), then SIMD Philox.
