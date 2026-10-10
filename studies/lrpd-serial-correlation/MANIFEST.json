@@ -1,18 +1,19 @@
 {
   "study": "S-35, long-run PD under an AR(1) factor (D-188, D-190, D-192)",
-  "prediction": "studies/lrpd-serial-correlation/PREDICTION.md: L1-L11 registered in 56b3266 (D-190) before any AR(1) panel was fitted; L12-L15 (the observed-rate arm, owner) appended in af9de79 before any run; the scoring addendum and compare.py in 2b6aed3, before the subset run. Those SHAs are the run's, on the branch s35-observed; after the rebase onto the clang fix 6a30746 (a cast only) they are 4acfe54 and f996459",
-  "scoring": "compare.py, committed in 2b6aed3 (f996459 after the rebase) before the subset run, unchanged since. Run as: uv run --no-project --with scipy==1.16.2 --with pyarrow==25.0.1 python studies/lrpd-serial-correlation/compare.py rows.csv rate_rows.csv --summary-out summary.csv",
+  "prediction": "studies/lrpd-serial-correlation/PREDICTION.md: L1-L11 registered in 56b3266 (D-190) before any AR(1) panel was fitted; L12-L15 (the observed-rate arm, owner) appended in af9de79 before any run; the scoring addendum and compare.py in 2b6aed3, before the subset run (ids on s35-observed)",
+  "provenance": "Commit ids here are on the branch s35-observed, kept unchanged as the run's record: the registration 56b3266, the observed-rate addendum af9de79, the tool 161b788 and the scoring 2b6aed3, which the runs used. For merging, the same commits (same messages) were rebased onto main, plus one value-preserving cast in the tool for clang 18; the rebased ids are not cited because they change with each rebase",
+  "scoring": "compare.py, committed in 2b6aed3 before the subset run, unchanged since. Run as: uv run --no-project --with scipy==1.16.2 --with pyarrow==25.0.1 python studies/lrpd-serial-correlation/compare.py rows.csv rate_rows.csv --summary-out summary.csv",
   "compiler": "MSVC 1951, Release",
   "runs": {
     "subset": {
       "command": "study_lrpd_serial --scenarios 29,37,72,4,68,49,7,43,51 (1,000 replicates, phi 0, 0.3, 0.6, 24 threads)",
-      "commit": "2b6aed3 on s35-observed (the tool's source as of 161b788); f996459 and 609960f after the rebase",
+      "commit": "2b6aed3 on s35-observed (the tool's source as of 161b788)",
       "wall_seconds": 80,
       "checks": "binomial and rate MLE phi = 0 counts against the pinned summaries: 0 failures; observed-rate arm: 9,000 rows equal S-8's bit for bit"
     },
     "full": {
       "command": "study_lrpd_serial --out rows.csv --rate-out rate_rows.csv --timing-out timing.csv (81 scenarios x 1,000 replicates x phi 0, 0.3, 0.6; 27 rate cells; 24 threads)",
-      "commit": "2b6aed3 on s35-observed (tree clean; the tool's source as of 161b788). After the rebase onto 6a30746, which adds one value-preserving cast to the tool for clang 18, the same commit is f996459",
+      "commit": "2b6aed3 on s35-observed (tree clean; the tool's source as of 161b788)",
       "executable_sha256": "041f69ddffede6a126b30888f4ed7311c06c471fec4c0f121905c0c389a6c4fe",
       "wall_seconds": 1056,
       "cpu_seconds": 25317,
