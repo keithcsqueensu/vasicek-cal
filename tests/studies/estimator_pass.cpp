@@ -22,7 +22,7 @@
 // Coverage of the true PD and rho by a profile interval: 1 covers, 0 misses, -1 not estimated;
 // an interval that was not computed does not cover (D-131).
 //
-//   study_estimator_pass [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N]
+//   study_estimator_pass [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N] [--timing-out FILE]
 //
 // --out writes the rows (CSV, doubles to 17 significant digits, an exact round trip) for conversion
 // to a committed Parquet file. Results do not depend on the thread count.
@@ -42,6 +42,7 @@
 
 #include "core/objectives/vasicek_rate.hpp"
 #include "engine/moments.hpp"
+#include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -182,12 +183,15 @@ Row pass_fit(const rc::Scenario& s, std::uint32_t replicate, engine::SurfaceRowC
 }  // namespace
 
 int main(int argc, char** argv) {
+    std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string out_path;
     unsigned threads = std::thread::hardware_concurrency();
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--timing-out") == 0 && i + 1 < argc) {
+            timing_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
             threads = static_cast<unsigned>(std::strtoul(argv[++i], nullptr, 10));
@@ -233,13 +237,17 @@ int main(int argc, char** argv) {
     std::mutex progress;
     std::size_t done = 0;
     const auto start = std::chrono::steady_clock::now();
+    vcal::test::TimingSample sample("study_estimator_pass", {"fit"}, {"1"});
     auto worker = [&] {
         for (;;) {
             const std::size_t j = next.fetch_add(1);
             if (j >= jobs.size()) return;
             const auto [k, r] = jobs[j];
             const rc::Scenario s = pass_scenario(ids[k]);
+            const auto t0 = std::chrono::steady_clock::now();
             rows[k * R + r] = pass_fit(s, r, s.obligors <= 10000 ? &cache : nullptr);
+            const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            sample.record(s.id, s.periods, s.obligors, r, &sec);
             const std::lock_guard<std::mutex> lock(progress);
             if (++done % 1000 == 0 || done == jobs.size()) {
                 std::fprintf(stderr, "fits %zu/%zu, %.0f s\n", done, jobs.size(),
@@ -250,6 +258,13 @@ int main(int argc, char** argv) {
     std::vector<std::thread> pool;
     for (unsigned t = 0; t < threads; ++t) pool.emplace_back(worker);
     for (auto& t : pool) t.join();
+    if (!timing_path.empty()) {
+        if (!sample.write(timing_path)) {
+            std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", timing_path.c_str());
+    }
     std::printf("%u replicates x %zu scenarios in %.0f s (%u threads; %zu cached surface rows)\n", R, ids.size(),
                 std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count(), threads, cache.size());
 

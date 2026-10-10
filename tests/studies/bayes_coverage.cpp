@@ -11,7 +11,7 @@
 // interval ends (natural scale), and the pinned profile interval's ends. Nothing is scored here:
 // studies/bayes-coverage/compare.py scores the predictions from these rows.
 //
-//   study_bayes_coverage [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N]
+//   study_bayes_coverage [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N] [--timing-out FILE]
 //
 // Doubles are written to 17 significant digits (an exact round trip). Results do not depend on the
 // thread count.
@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "engine/posterior.hpp"
+#include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -106,12 +107,15 @@ Row fit_one(const rc::Scenario& s, std::uint32_t replicate, e::SurfaceRowCache& 
 }  // namespace
 
 int main(int argc, char** argv) {
+    std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string out_path;
     unsigned threads = std::thread::hardware_concurrency();
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--timing-out") == 0 && i + 1 < argc) {
+            timing_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
             threads = static_cast<unsigned>(std::strtoul(argv[++i], nullptr, 10));
@@ -164,13 +168,17 @@ int main(int argc, char** argv) {
     std::atomic<std::size_t> next{0};
     std::mutex progress;
     std::size_t done = 0;
+    vcal::test::TimingSample sample("study_bayes_coverage", {"fit"}, {"1"});
     auto worker = [&] {
         for (;;) {
             const std::size_t j = next.fetch_add(1);
             if (j >= jobs.size()) return;
             const auto [k, r] = jobs[j];
             const rc::Scenario s = rc::scenario(ids[k]);
+            const auto t0 = std::chrono::steady_clock::now();
             rows[k * R + r] = fit_one(s, r, cache, tables.at(s.obligors));
+            const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            sample.record(s.id, s.periods, s.obligors, r, &sec);
             const std::lock_guard<std::mutex> lock(progress);
             if (++done % 1000 == 0 || done == jobs.size()) {
                 std::fprintf(stderr, "fits %zu/%zu, %.0f s\n", done, jobs.size(),
@@ -181,6 +189,13 @@ int main(int argc, char** argv) {
     std::vector<std::thread> pool;
     for (unsigned t = 0; t < threads; ++t) pool.emplace_back(worker);
     for (auto& t : pool) t.join();
+    if (!timing_path.empty()) {
+        if (!sample.write(timing_path)) {
+            std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", timing_path.c_str());
+    }
     std::printf("%u replicates x %zu scenarios in %.0f s (%u threads)\n", R, ids.size(),
                 std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count(), threads);
     for (std::size_t k = 0; k < ids.size(); ++k) {

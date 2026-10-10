@@ -1124,6 +1124,24 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **A caution for short timings:** in a 522 s two-scenario run (P-14's verification), unchanged phases cost up to 38% more per unit of work than in the subset run. A phase's thread-seconds depend on which cores ran it, so short before/after timings are taken in ABBA order (as P-15's were).
   - **P-10 stays planned** for tools that schedule statically. It was not the cause here. The projection method is the owner's queued fix: a timing sample per (T, n) cell.
 
+## Runtime projection from a timing sample, 2026-10-09
+
+- **D-187 (owner) — A full study run's runtime is projected from a timing sample of every (T, n) cell, weighted by the cell's count in the matrix and following the tool's phase schedule, with a range, sampled until the range is within ±10%; not from the study subset.** Amends how runtime decisions are made under D-148 and the P-item rules (D-177).
+  - **Why:** S-10/S-4's projection from the study subset missed by 1.375× (5 h projected, 6.4 h actual; D-186). The subset is chosen for statistical coverage (T × ρ), but runtime follows T × n, and the costliest cell (T = 100, n = 10⁴) had no subset scenario. **The study subset is unchanged:** it stays the basis for predictions and paired verdicts.
+  - **The method** (`perf/README.md`, "Projecting a full run"):
+    - **Sample:** a study tool run with `--timing-out` on a few replicates of every scenario records each job's thread-seconds by phase (`tests/harness/timing_sample.hpp`). Five matrix tools take the option.
+    - **Phase shares:** each phase carries its share of a full run's replicates, so arms run only on the first replicates are not over-weighted, and one-time costs are counted once. Examples: S-10's Jeffreys check 0.05, its widths 0.20, its surface cache fill once; the jackknife run's exact refits 0.005, which unweighted would be overstated about 200-fold.
+    - **Weighting:** cells are weighted by their scenario counts.
+    - **Range:** the 5th–95th percentile of a bootstrap over jobs within cells.
+    - **Sample size:** `perf/project_runtime.py --run` starts at 2 replicates per scenario and doubles until the range is within ±10%. The subset-based projection is printed alongside.
+  - **Calibrated on S-10 (owner: "calibrated", not "validated"),** with the run's own binary (`perf/projection_s10.md`):
+    - **2 replicates per scenario** (18 jobs per cell): 6.11 h, 90% range 5.68–6.54 h, against the actual 6.44 h (ratio 1.05; in range).
+    - **1 per scenario** (9 per cell): 5.33 h, 4.98–5.66 h. **A miss: 17% short and outside its range.** Single-replicate costs are skewed (0.44–2.53× the scenario mean), and the bootstrap under-covers at that size.
+    - **The subset-based method:** 3.91–4.60 h on the same samples.
+  - **The default** is 2 replicates per scenario (owner-approved), with sampling continuing until the range is within ±10%, so that studies whose costs are more or less variable than S-10's get the sample they need.
+  - **Next:** the next full study run records its projection and range before it starts and is compared with its actual wall time. If it lands in range again, the method is called validated.
+  - **Example:** the current code (with P-15) projects the S-10/S-4 run at 4.02 h (3.85–4.18 h) from a 114 s sample.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
