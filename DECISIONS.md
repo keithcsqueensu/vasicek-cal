@@ -1202,7 +1202,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **The projection, recorded before the run (D-187):** 0.39 h, 90% range 0.35–0.43 h, from a 2-replicate sample (24 threads, efficiency 0.997).
     - **The phases:** binomial MLE 97%, rate MLE 2%, simulation 1%.
     - **A test of D-187's method on a second tool:** the sample's binomial phase includes the surface-row cache's first fills, which a full run amortises, so the projection may run high.
-  - **P-9 on the AR(1) DGP** (`study_lrpd_serial --count-repeats`): exact repeats are 2.4%, 2.5% and 2.7% of the 81,000 panels at φ = 0, 0.3 and 0.6 (cell scope), almost all in the n = 100 cells at T ≤ 40.
+  - **P-9 on the AR(1) DGP** (`study_lrpd_serial --count-repeats`): exact repeats are 3.0%, 3.1% and 3.2% of the 81,000 panels at φ = 0, 0.3 and 0.6 (cell scope; 2.4%, 2.5% and 2.7% within a scenario), almost all in the n = 100 cells at T ≤ 40.
     - **Cross-check:** at φ = 0 they equal P-9's outer-panel count exactly (2,443).
     - **The saving:** at most about 0.6% of S-35's run, less in practice since the bootstrap arm cannot be shared. D-189 stands: P-9 is not built.
 - **D-191 (owner's item 4: re-profile before deciding) — SIMD Philox goes after S-35's full run, before the first large parametric-bootstrap run.**
