@@ -316,7 +316,7 @@ int main(int argc, char** argv) {
     }
     double total[kPhases] = {};
     for (std::size_t j = 0; j < S * R; ++j) {
-        for (int ph = 0; ph < kPhases; ++ph) total[ph] += seconds[j * kPhases + ph];
+        for (int ph = 0; ph < kPhases; ++ph) total[ph] += seconds[j * kPhases + static_cast<std::size_t>(ph)];
     }
     const double all = total[0] + total[1] + total[2];
     std::printf("%u replicates x %zu scenarios x %zu phi in %.0f s (%u threads; %zu cached surface rows); CPU s %.0f:",
