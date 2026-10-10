@@ -394,20 +394,23 @@ int main(int argc, char** argv) {
     std::vector<JkFit> fits(static_cast<std::size_t>(R) * ids.size());
     const auto start = std::chrono::steady_clock::now();
     // Timing sample phases: the J14 refits run on replicates 0..kExactRefitReplicates-1 only.
-    vcal::test::TimingSample sample("study_jackknife_run", {"fit", "exact refits"},
-                                    {"1", std::to_string(static_cast<double>(kExactRefitReplicates) / rc::kReplicates)});
+    vcal::test::TimingSample sample(
+        "study_jackknife_run", {"fit", "exact refits", "cache fill"},
+        {"1", std::to_string(static_cast<double>(kExactRefitReplicates) / rc::kReplicates), "once"});  // D-193
     const std::uint32_t batch = 25;
     for (std::uint32_t r0 = 0; r0 < R; r0 += batch) {
         const std::uint32_t r1 = r0 + batch < R ? r0 + batch : R;
         backends::CpuBackend{}.parallel_for(static_cast<std::int64_t>(r1 - r0) * per, [&](std::int64_t j) {
             const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / per);
             const std::size_t k = static_cast<std::size_t>(j % per);
+            const vcal::test::FillMeter fills;
             const auto t0 = std::chrono::steady_clock::now();
             const rc::Scenario s = rc::scenario(ids[k]);
             JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
             f = jk_fit(s, r, polished);
             const double total = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            sample.record(s.id, s.periods, s.obligors, r, {total - f.refit_seconds, f.refit_seconds});
+            sample.record(s.id, s.periods, s.obligors, r,
+                          {total - f.refit_seconds - fills.seconds(), f.refit_seconds, fills.seconds()});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());

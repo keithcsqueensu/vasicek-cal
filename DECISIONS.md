@@ -1263,6 +1263,30 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
       - at n = 100 the stable observed-rate ρ coverage is two errors offsetting. Its level (0.51 at φ = 0) reinforces S-27's n·PD threshold.
     - **The monitoring implication now says plainly** that an apparently stable coverage figure can hide offsetting biases.
 
+## Runtime projection: fixed costs once, sustained clocks, 2026-10-10
+
+- **D-193 (owner: approve D-192's agreement check, and record fixed and per-replicate costs separately) — Timing samples separate fixed costs at the source. Investigating that found a second bias, boost clocks in short samples, so a sample must also run at sustained load.**
+  - **Fixed costs at the source:**
+    - `SurfaceRowCache` tallies, per thread, the seconds and rows it spends filling rows. This is timing instrumentation only; no result depends on it, and every study's rows are unchanged.
+    - Every tool with `--timing-out` (S-10, S-9, the S-8 pass, the severe-period and jackknife runs, S-35) measures each job's fills with `FillMeter`. It records them in a `cache fill` phase with share `once`, subtracted from the phase they happened in.
+    - The projection is the fixed part once plus the per-replicate part × the count.
+    - S-10's surface phase was counted once as a whole; now only its fills are, and its lookups count per replicate.
+  - **What the separation showed:**
+    - **S-35's full run, rerun with the instrumentation:** fills total 205 s, 1% of the run, at about 0.04 s per row, the same per-row cost as in samples. The rerun's rows equal the released rows byte for byte, a reproduction check.
+    - **The per-replicate cost is not the same in a short sample:** with fills removed, cold samples projected 0.20–0.25 h against 0.293 h actual.
+    - **The cause is clock state, not the replicates:**
+      - S-35's 32-replicate sample cost 0.215 s per job cold and 0.279 s straight after sustained load, against 0.275 s in the full run.
+      - The full run's cost per job is flat across replicate blocks (0.274–0.277 s).
+      - D-192's 0.39 h was two biases partly offsetting: fills charged per replicate (high) and boost clocks (low).
+  - **The method now:** `perf/project_runtime.py --run` does four things.
+    - **Warm-up:** it discards `--warmup` seconds of runs (default 120).
+    - **Doubling:** it doubles the sample until the range and the agreement (D-192) are both within ±10%, **and** the sample itself ran at least `--min-wall` seconds (default 120).
+    - **The allowance:** it prints the range widened by a machine-state allowance, `--allowance`, default ±5%. Two 128-replicate S-35 samples on different occasions were 24,059 and 25,990 thread-seconds apart, about ±4%.
+    - **`--max`:** its default rises to 256.
+  - **On S-35, from cold:** it stopped at 128 replicates per scenario (a 134 s sample) with 0.28 h, or 0.27–0.29 h with the allowance, against 0.293 h actual. That run built these rules, so this is a check, not a validation.
+  - **On S-10:** its 2-replicate calibration sample took 135 s, which already met the new minimum. That fits its landing in range, but the calibration predates the fill split, so the next S-10-type run rechecks it.
+  - **Status:** "calibrated, not validated" until the next full run lands in range, as the owner asked.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

@@ -237,17 +237,18 @@ int main(int argc, char** argv) {
     std::mutex progress;
     std::size_t done = 0;
     const auto start = std::chrono::steady_clock::now();
-    vcal::test::TimingSample sample("study_estimator_pass", {"fit"}, {"1"});
+    vcal::test::TimingSample sample("study_estimator_pass", {"fit", "cache fill"}, {"1", "once"});  // D-193
     auto worker = [&] {
         for (;;) {
             const std::size_t j = next.fetch_add(1);
             if (j >= jobs.size()) return;
             const auto [k, r] = jobs[j];
             const rc::Scenario s = pass_scenario(ids[k]);
+            const vcal::test::FillMeter fills;
             const auto t0 = std::chrono::steady_clock::now();
             rows[k * R + r] = pass_fit(s, r, s.obligors <= 10000 ? &cache : nullptr);
             const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            sample.record(s.id, s.periods, s.obligors, r, {sec});
+            sample.record(s.id, s.periods, s.obligors, r, {sec - fills.seconds(), fills.seconds()});
             const std::lock_guard<std::mutex> lock(progress);
             if (++done % 1000 == 0 || done == jobs.size()) {
                 std::fprintf(stderr, "fits %zu/%zu, %.0f s\n", done, jobs.size(),

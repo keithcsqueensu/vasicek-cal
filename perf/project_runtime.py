@@ -25,14 +25,21 @@ To be called validated after it lands in range on the next full run.
     python perf/project_runtime.py SAMPLE.csv [--replicates-full 1000] [--threads 24] [--efficiency 0.997]
         [--subset 29,37,...]
     python perf/project_runtime.py --run "build/cpu-release/tests/study_parametric_bootstrap" \\
-        [--start 2] [--target 0.10] [--max 32] [--threads 24] [--subset ...]
+        [--start 2] [--target 0.10] [--max 256] [--warmup 120] [--min-wall 120] [--threads 24] [--subset ...]
 
-With --run the tool is run with --replicates K (K = --start, then doubled) and --timing-out, until the
-range is within +/- target of the projection AND the projection agrees with the previous K's within the
-same target, or K reaches --max; each run starts from replicate 0, so the samples cost at most twice the
-last one. The agreement check (D-192) catches a bias the range cannot: S-35's 2-replicate sample projected
-0.40 h (range +/-10%) against 0.28 h at 8 and 32 replicates and 0.293 h actual, because one-time costs (the
-surface-row cache's first fills) that a tool does not time as a "once" phase were charged to too few jobs.
+With --run the tool is run with --replicates K (K = --start, then doubled) and --timing-out. It stops when
+all three hold, or when K reaches --max:
+  - the range is within +/- target of the projection;
+  - the projection agrees with the previous K's within the same target (D-192);
+  - the sample itself ran at least --min-wall seconds (default 120; D-193).
+Before sampling, --warmup seconds (default 120) of discarded runs bring the machine to sustained load. Each
+run starts from replicate 0, so the samples cost at most twice the last one.
+
+Two biases the range cannot see, both found on S-35 (0.293 h actual, 25,276 thread-s):
+  - a one-time cost charged per replicate. The 2-replicate sample charged the surface-row cache's fills to
+    its few jobs and projected 0.40 h; tools now record fills as a "once" phase;
+  - boost clocks in a short sample. After that fix, cold samples of 2-32 replicates projected 0.20-0.25 h,
+    a 64-replicate sample (67 s) 0.27 h, and a 128-replicate sample (145 s) 0.30 h.
 Standard library only.
 """
 
@@ -45,6 +52,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 SUBSET_DEFAULT = "29,37,72,4,68,49,7,43,51"  # the study subset (D-150)
@@ -117,12 +125,14 @@ def summarise(jobs, shares, r_full, threads, efficiency, subset, draws=2000):
             "threads": threads, "efficiency": efficiency}
 
 
-def report(tool, s):
+def report(tool, s, allowance):
     h = lambda x: x / (s["threads"] * s["efficiency"]) / 3600
     print(f"{tool}: {s['scenarios']} scenarios in {s['cells']} (T, n) cells, {s['k']} replicates each "
           f"({s['per_cell']:.0f} jobs per cell)")
     print(f"  projection: {s['point']:,.0f} thread-s, {h(s['point']):.2f} h on {s['threads']} threads at efficiency {s['efficiency']}; "
           f"90% range {h(s['lo']):.2f}-{h(s['hi']):.2f} h (+/-{100 * s['half']:.0f}%)")
+    print(f"  with the machine-state allowance (+/-{100 * allowance:.0f}%, D-193): "
+          f"{h(s['lo'] * (1 - allowance)):.2f}-{h(s['hi'] * (1 + allowance)):.2f} h")
     if s["subset"] is not None:
         print(f"  subset-based, for comparison: {s['subset']:,.0f} thread-s, {h(s['subset']):.2f} h")
 
@@ -132,45 +142,64 @@ def main():
     ap.add_argument("sample", nargs="?")
     ap.add_argument("--run", help="the study tool command; run with --replicates K --timing-out")
     ap.add_argument("--start", type=int, default=2)
-    ap.add_argument("--max", type=int, default=32)
+    ap.add_argument("--max", type=int, default=256)
     ap.add_argument("--target", type=float, default=0.10)
     ap.add_argument("--replicates-full", type=int, default=1000)
     ap.add_argument("--threads", type=int, default=24)
     ap.add_argument("--efficiency", type=float, default=0.997,
                     help="thread-seconds / (threads x wall) measured on the last full run (S-10/S-4: 0.997)")
     ap.add_argument("--subset", default=SUBSET_DEFAULT)
+    ap.add_argument("--warmup", type=float, default=120.0,
+                    help="seconds of discarded runs before sampling, so the sample sees sustained clocks (D-193)")
+    ap.add_argument("--allowance", type=float, default=0.05,
+                    help="machine-state spread added to the sampling range (S-35: two 128-replicate samples on "
+                         "different occasions, 24,059 and 25,990 thread-s, about +/-4%%; D-193)")
+    ap.add_argument("--min-wall", type=float, default=120.0,
+                    help="the accepted sample must itself run this long: short runs stay at boost clocks (D-193)")
     a = ap.parse_args()
     subset = {int(x) for x in a.subset.split(",") if x}
     if a.sample:
         tool, shares, jobs = read_sample(a.sample)
         s = summarise(jobs, shares, a.replicates_full, a.threads, a.efficiency, subset)
-        report(tool, s)
+        report(tool, s, a.allowance)
         return 0 if s["half"] <= a.target else 3
     if not a.run:
         ap.error("give a SAMPLE file or --run")
     k = a.start
     previous = None  # the last sample's projection: a bias check the range cannot give (D-192)
     with tempfile.TemporaryDirectory() as d:
+        # Warm-up (D-193): a cold machine runs a short sample at boost clocks. S-35's 32-replicate sample cost
+        # 0.215 s per job cold and 0.279 s after sustained load, against 0.275 s in the full run.
+        t_end = time.monotonic() + a.warmup
+        while time.monotonic() < t_end:
+            cmd = shlex.split(a.run, posix=False) + ["--replicates", str(a.start)]
+            cmd[0] = str(Path(cmd[0]).resolve())
+            print("warming up:", " ".join(cmd), file=sys.stderr)
+            if subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+                break  # the sampling run reports the error
         while True:
             out = Path(d) / f"timing_{k}.csv"
             cmd = shlex.split(a.run, posix=False) + ["--replicates", str(k), "--timing-out", str(out)]
             cmd[0] = str(Path(cmd[0]).resolve())  # Windows' CreateProcess does not resolve a relative a/b path
             print("running:", " ".join(cmd), file=sys.stderr)
+            t0 = time.monotonic()
             done = subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+            wall = time.monotonic() - t0
             if done.returncode != 0:
                 print(done.stderr, file=sys.stderr)
                 return done.returncode
             tool, shares, jobs = read_sample(out)
             s = summarise(jobs, shares, a.replicates_full, a.threads, a.efficiency, subset)
-            report(tool, s)
+            report(tool, s, a.allowance)
             drift = abs(s["point"] - previous) / s["point"] if previous is not None else None
             if drift is not None:
                 print(f"  against {k // 2} replicates per scenario: {100 * drift:.0f}% apart")
-            if s["half"] <= a.target and drift is not None and drift <= a.target:
+            print(f"  sample wall {wall:.0f} s (minimum {a.min_wall:.0f} s)")
+            if s["half"] <= a.target and drift is not None and drift <= a.target and wall >= a.min_wall:
                 return 0
             if 2 * k > a.max:
-                print(f"  range or agreement still wider than +/-{100 * a.target:.0f}% at {k} replicates per "
-                      "scenario: report the projection with its range", file=sys.stderr)
+                print(f"  range, agreement or sample length not met at {k} replicates per scenario: "
+                      "report the projection with its range", file=sys.stderr)
                 return 3
             previous = s["point"]
             k *= 2

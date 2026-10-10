@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
     const auto per = static_cast<std::int64_t>(ids.size());
     std::vector<SpFit> fits(static_cast<std::size_t>(R) * ids.size());
     const auto start = std::chrono::steady_clock::now();
-    vcal::test::TimingSample sample("study_severe_period", {"fit"}, {"1"});
+    vcal::test::TimingSample sample("study_severe_period", {"fit", "cache fill"}, {"1", "once"});  // D-193
     const std::uint32_t batch = 25;
     for (std::uint32_t r0 = 0; r0 < R; r0 += batch) {
         const std::uint32_t r1 = r0 + batch < R ? r0 + batch : R;
@@ -232,11 +232,12 @@ int main(int argc, char** argv) {
             const std::size_t k = static_cast<std::size_t>(j % per);
             std::int64_t c[kVariants];
             for (int v = 0; v < kVariants; ++v) c[v] = counts[k][static_cast<std::size_t>(v)];
+            const vcal::test::FillMeter fills;
             const auto t0 = std::chrono::steady_clock::now();
             const rc::Scenario s = rc::scenario(ids[k]);
             fits[static_cast<std::size_t>(r) * ids.size() + k] = sp_fit(s, r, c);
             const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            sample.record(s.id, s.periods, s.obligors, r, {sec});
+            sample.record(s.id, s.periods, s.obligors, r, {sec - fills.seconds(), fills.seconds()});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());

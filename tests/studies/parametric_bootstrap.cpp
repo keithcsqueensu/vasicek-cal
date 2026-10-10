@@ -83,9 +83,9 @@ inline constexpr double kC = 2.0 * e::kProfileThreshold95;         // chi2_1 0.9
 double logit(double v) { return std::log(v) - std::log1p(-v); }
 double inv_logit(double u) { return grid::from_scaled(AxisScale::Logit, u); }
 
-enum Phase { kSimulate, kSurface, kFit, kSe, kProfile, kLr0, kLrBoot, kJeffreys, kWidths, kPhases };
+enum Phase { kSimulate, kSurface, kFit, kSe, kProfile, kLr0, kLrBoot, kJeffreys, kWidths, kCacheFill, kPhases };
 const char* const kPhaseNames[kPhases] = {"simulate", "surface", "argmax+refine+SE", "analytic SE", "profile",
-                                          "W0", "W* (S-4b)", "Jeffreys", "S-4 widths"};
+                                          "W0", "W* (S-4b)", "Jeffreys", "S-4 widths", "cache fill"};
 
 struct Timer {
     double* acc;
@@ -149,10 +149,15 @@ e::Estimate2 fit_panel(Context& ctx, const std::vector<rc::Objective::Obs>& obs,
     e::Estimate2 est{};
     if (vcal::grid_error(g) != nullptr || rc::Objective::panel_error(obs.data(), T) != nullptr) std::abort();
     {
-        Timer t{&sec[kSurface]};
-        L.assign(static_cast<std::size_t>(T * g.size()), 0.0);
-        e::evaluate_surface_cached(backends::CpuBackend{1}, ctx.cache, rc::Objective{}, primary, obs.data(), T, g,
-                                   L.data());
+        const vcal::test::FillMeter fills;
+        {
+            Timer t{&sec[kSurface]};
+            L.assign(static_cast<std::size_t>(T * g.size()), 0.0);
+            e::evaluate_surface_cached(backends::CpuBackend{1}, ctx.cache, rc::Objective{}, primary, obs.data(), T, g,
+                                       L.data());
+        }
+        sec[kSurface] -= fills.seconds();  // a fill is paid once per run, not per replicate (D-193)
+        sec[kCacheFill] += fills.seconds();
     }
     Timer t{&sec[kFit]};
     if (e::calibrate_from_surface(backends::CpuBackend{1}, rc::Objective{}, primary, check, obs.data(), T, g, L, est,
@@ -569,14 +574,15 @@ int main(int argc, char** argv) {
     std::printf("\n");
 
     // A runtime timing sample (D-187): each job's thread-seconds by phase, with each phase's share of a
-    // full run's replicates. The surface phase is mostly the row cache's one-time fill; Jeffreys runs on
-    // replicates 0-49 and the S-4 widths on 0-199 of rc::kReplicates.
+    // full run's replicates. The row cache's fills are their own phase, counted once (D-193); the surface
+    // phase keeps the row lookups and copies, per replicate. Jeffreys runs on replicates 0-49 and the S-4
+    // widths on 0-199 of rc::kReplicates.
     if (!timing_path.empty()) {
         const auto frac = [](std::uint32_t count) {
             return std::to_string(static_cast<double>(count) / rc::kReplicates);
         };
         std::vector<std::string> phases(kPhaseNames, kPhaseNames + kPhases), shares(kPhases, "1");
-        shares[kSurface] = "once";
+        shares[kCacheFill] = "once";
         shares[kJeffreys] = frac(kJeffreysCheck);
         shares[kWidths] = frac(kWidthReplicates);
         vcal::test::TimingSample sample("study_parametric_bootstrap", phases, shares);

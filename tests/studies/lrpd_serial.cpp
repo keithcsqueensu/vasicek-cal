@@ -49,8 +49,9 @@ using Clock = std::chrono::steady_clock;
 using RateObjective = o::VasicekRate<PrecisionF64, o::ZeroRates::Refuse>;
 using CensorObjective = o::VasicekRate<PrecisionF64, o::ZeroRates::Censor>;
 
-enum Phase { kSimulate, kBinomial, kRate, kObserved, kPhases };
-const char* const kPhaseNames[kPhases] = {"simulate", "binomial MLE", "rate MLE", "observed-rate MLE"};
+enum Phase { kSimulate, kBinomial, kRate, kObserved, kCacheFill, kPhases };
+const char* const kPhaseNames[kPhases] = {"simulate", "binomial MLE", "rate MLE", "observed-rate MLE",
+                                          "cache fill"};
 
 struct Timer {
     double* acc;
@@ -301,8 +302,13 @@ int main(int argc, char** argv) {
                     if (dgp::simulate_panel_ar1(spec, phis[p], d.data(), nullptr) != dgp::Status::Ok) std::abort();
                 }
                 {
-                    Timer t{&sec[kBinomial]};
-                    rows[job * P + p] = binomial_row(s, r, d, cache);
+                    const vcal::test::FillMeter fills;
+                    {
+                        Timer t{&sec[kBinomial]};
+                        rows[job * P + p] = binomial_row(s, r, d, cache);
+                    }
+                    sec[kBinomial] -= fills.seconds();  // a fill is paid once per run, not per replicate (D-193)
+                    sec[kCacheFill] += fills.seconds();
                 }
                 {
                     Timer t{&sec[kObserved]};
@@ -375,6 +381,7 @@ int main(int argc, char** argv) {
     std::printf("\n");
     if (!timing_out.empty()) {
         std::vector<std::string> phases(kPhaseNames, kPhaseNames + kPhases), shares(kPhases, "1");
+        shares[kCacheFill] = "once";
         vcal::test::TimingSample sample("study_lrpd_serial", phases, shares);
         for (std::size_t k = 0; k < S; ++k) {
             const rc::Scenario s = rc::scenario(ids[k]);
