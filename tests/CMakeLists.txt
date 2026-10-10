@@ -198,6 +198,11 @@ add_executable(study_argmax_check studies/argmax_check.cpp)
 target_link_libraries(study_argmax_check PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_argmax_check)
 add_test(NAME study_argmax_check COMMAND study_argmax_check --replicates 40)
+# P-9's measurement (perf/p9_repeat_rate.md): repeated panels in the recovery and S-10 runs. Built so it
+# keeps compiling; run by hand.
+add_executable(p9_repeat_rate ${PROJECT_SOURCE_DIR}/perf/p9_repeat_rate.cpp)
+target_link_libraries(p9_repeat_rate PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(p9_repeat_rate)
 set_tests_properties(study_argmax_check PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)
