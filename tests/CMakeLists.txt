@@ -147,9 +147,19 @@ add_test(NAME unit_ar1_filter
          COMMAND unit_ar1_filter ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit
                  ar1_matches_the_dense_reference_on_adversarial_panels
                  ar1_doubled_nodes_cannot_see_placement_error_and_the_placement_check_does
-                 ar1_score_matches_richardson_differences ar1_likelihood_goldens_reproduce)
+                 ar1_score_matches_richardson_differences ar1_likelihood_goldens_reproduce
+                 ar1_filter_is_the_same_under_every_kernel)
 add_test(NAME unit_ar1_filter_smooth COMMAND unit_ar1_filter ar1_likelihood_is_smooth_in_phi_and_rho)
 set_tests_properties(unit_ar1_filter_smooth PROPERTIES LABELS slow)
+# P-18 (D-199): the filter suite under each transition kernel forced; a kernel this machine lacks skips the entry
+# visibly (exit 77).
+foreach(_k scalar sse2 avx2)
+    add_test(NAME unit_ar1_filter_kernel_${_k}
+             COMMAND unit_ar1_filter ar1_forced_kernel_is_available ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit
+                     ar1_matches_the_dense_reference_on_adversarial_panels ar1_score_matches_richardson_differences
+                     ar1_likelihood_goldens_reproduce)
+    set_tests_properties(unit_ar1_filter_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
+endforeach()
 # The AR(1) filter's transition kernels (P-18, D-199): every kernel against a plain reference, bit for bit; each
 # kernel also forced by VCAL_AR1_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed.
 add_executable(unit_ar1_transition unit/ar1_transition_test.cpp)

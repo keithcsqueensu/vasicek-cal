@@ -33,6 +33,8 @@ std::size_t backward_avx2(const double* pu, std::size_t nc, const double* z, con
                           unsigned char* flags, double* e);
 std::size_t exp_shifted_avx2(const double* in, std::size_t n, double shift, double* out);
 std::size_t exp_avx2(const double* in, std::size_t n, double* out);
+std::size_t score_terms_avx2(const double* w, double uj, std::size_t nn, const double* z, double phi, double var,
+                             double* out);
 #endif
 
 namespace {
@@ -49,6 +51,7 @@ struct V1 {
     static T add(T a, T b) { return a + b; }
     static T sub(T a, T b) { return a - b; }
     static T mul(T a, T b) { return a * b; }
+    static T div(T a, T b) { return a / b; }
     static T vmin(T x, T c) { return x < c ? x : c; }  // c when x is NaN, as minpd(x, c)
     static T vmax(T x, T c) { return x > c ? x : c; }  // c when x is NaN, as maxpd(x, c)
     static T floor(T x) { return std::floor(x); }
@@ -70,6 +73,7 @@ struct V1 {
     static M band(M a, M b) { return a && b; }
     static M bnot(M a) { return !a; }
     static bool all(M a) { return a; }
+    static bool any(M a) { return a; }
     static unsigned bits(M a) { return a ? 1u : 0u; }
     static T blend(M m, T a, T b) { return m ? a : b; }
 };
@@ -88,6 +92,7 @@ struct V128 {
     static T add(T a, T b) { return _mm_add_pd(a, b); }
     static T sub(T a, T b) { return _mm_sub_pd(a, b); }
     static T mul(T a, T b) { return _mm_mul_pd(a, b); }
+    static T div(T a, T b) { return _mm_div_pd(a, b); }
     static T vmin(T x, T c) { return _mm_min_pd(x, c); }
     static T vmax(T x, T c) { return _mm_max_pd(x, c); }
     static T floor(T x) {
@@ -110,6 +115,7 @@ struct V128 {
     static M band(M a, M b) { return _mm_and_pd(a, b); }
     static M bnot(M a) { return _mm_xor_pd(a, _mm_castsi128_pd(_mm_set1_epi32(-1))); }
     static bool all(M a) { return _mm_movemask_pd(a) == 3; }
+    static bool any(M a) { return _mm_movemask_pd(a) != 0; }
     static unsigned bits(M a) { return static_cast<unsigned>(_mm_movemask_pd(a)); }
     static T blend(M m, T a, T b) { return _mm_or_pd(_mm_and_pd(m, a), _mm_andnot_pd(m, b)); }
 };
@@ -200,12 +206,18 @@ bool forward(const double* pu, const double* lhat, std::size_t np, const double*
 #endif
 #if defined(VCAL_AR1_X86_64)
     if (kern == Kernel::Sse2) {
+        for (; k + 8 <= nd; k += 8) {
+            forward_block<V128, 4>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+        }
         for (; k + 2 <= nd; k += 2) {
-            forward_block<V128>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+            forward_block<V128, 1>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
         }
     }
 #endif
-    for (; k < nd; ++k) forward_block<V1>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+    for (; k + 4 <= nd; k += 4) {
+        forward_block<V1, 4>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+    }
+    for (; k < nd; ++k) forward_block<V1, 1>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
     if (counts != nullptr) {
         counts->terms += terms;
         counts->below += below;
@@ -224,15 +236,23 @@ bool backward(const double* pu, std::size_t nc, const double* z, const double* a
 #endif
 #if defined(VCAL_AR1_X86_64)
     if (kern == Kernel::Sse2) {
+        for (; j + 8 <= nc; j += 8) {
+            backward_block<V128, 4>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                                    e != nullptr ? e + j * nn : nullptr, &terms, &below);
+        }
         for (; j + 2 <= nc; j += 2) {
-            backward_block<V128>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
-                                 e != nullptr ? e + j * nn : nullptr, &terms, &below);
+            backward_block<V128, 1>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                                    e != nullptr ? e + j * nn : nullptr, &terms, &below);
         }
     }
 #endif
+    for (; j + 4 <= nc; j += 4) {
+        backward_block<V1, 4>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                              e != nullptr ? e + j * nn : nullptr, &terms, &below);
+    }
     for (; j < nc; ++j) {
-        backward_block<V1>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j, e != nullptr ? e + j * nn : nullptr,
-                           &terms, &below);
+        backward_block<V1, 1>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                              e != nullptr ? e + j * nn : nullptr, &terms, &below);
     }
     if (counts != nullptr) {
         counts->terms += terms;
@@ -257,6 +277,27 @@ bool exp_shifted(const double* in, std::size_t n, double shift, double* out, Cou
     if (counts != nullptr) {
         counts->terms += terms;
         counts->below += below;
+    }
+    return true;
+}
+
+bool score_terms(const double* w, std::size_t nc, std::size_t nn, const double* u, const double* z, double phi,
+                 double var, double* out) {
+    const Kernel kern = selected();
+    if (kern == Kernel::Unavailable) return false;
+    for (std::size_t j = 0; j < nc; ++j) {
+        const double* wj = w + j * nn;
+        double* oj = out + j * nn;
+        std::size_t k = 0;
+#if defined(VCAL_AR1_AVX2)
+        if (kern == Kernel::Avx2) k = score_terms_avx2(wj, u[j], nn, z, phi, var, oj);
+#endif
+#if defined(VCAL_AR1_X86_64)
+        if (kern == Kernel::Sse2) {
+            for (; k + 2 <= nn; k += 2) score_terms_block<V128>(wj + k, u[j], z + k, phi, var, oj + k);
+        }
+#endif
+        for (; k < nn; ++k) score_terms_block<V1>(wj + k, u[j], z + k, phi, var, oj + k);
     }
     return true;
 }

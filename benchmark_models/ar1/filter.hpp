@@ -413,16 +413,17 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
             if (!kernel::exp_shifted(pair.data(), nc * nn, mx, weights.data(), work.counts)) {
                 weights.assign(nc * nn, static_cast<double>(NAN));
             }
+            // Each pair's term by the kernel (exact divisions, the same operation order); summed here in order.
+            auto& terms = work.pair;  // the pair log-weights are no longer needed once weighted
+            if (!kernel::score_terms(weights.data(), nc, nn, cur.z.data(), nx.z.data(), phi, var, terms.data())) {
+                terms.assign(nc * nn, static_cast<double>(NAN));
+            }
             double sw = 0.0, sd = 0.0;
-            for (std::size_t j = 0; j < nc; ++j) {
-                const double u = cur.z[j];
-                for (std::size_t k = 0; k < nn; ++k) {
-                    const double wjk = weights[j * nn + k];
-                    if (wjk == 0.0) continue;
-                    const double a = nx.z[k] - phi * u;
-                    sw += wjk;
-                    sd += wjk * (a * u / var - phi * (a * a) / (var * var) + phi / var);
-                }
+            for (std::size_t i = 0; i < nc * nn; ++i) {
+                const double wjk = weights[i];
+                if (wjk == 0.0) continue;
+                sw += wjk;
+                sd += terms[i];
             }
             grad[2] += sd / sw;
             detail::DetLse s;

@@ -27,6 +27,7 @@ struct V256 {
     static T add(T a, T b) { return _mm256_add_pd(a, b); }
     static T sub(T a, T b) { return _mm256_sub_pd(a, b); }
     static T mul(T a, T b) { return _mm256_mul_pd(a, b); }
+    static T div(T a, T b) { return _mm256_div_pd(a, b); }
     static T vmin(T x, T c) { return _mm256_min_pd(x, c); }
     static T vmax(T x, T c) { return _mm256_max_pd(x, c); }
     static T floor(T x) { return _mm256_round_pd(x, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC); }
@@ -46,6 +47,7 @@ struct V256 {
     static M band(M a, M b) { return _mm256_and_pd(a, b); }
     static M bnot(M a) { return _mm256_xor_pd(a, _mm256_castsi256_pd(_mm256_set1_epi64x(-1))); }
     static bool all(M a) { return _mm256_movemask_pd(a) == 15; }
+    static bool any(M a) { return _mm256_movemask_pd(a) != 0; }
     static unsigned bits(M a) { return static_cast<unsigned>(_mm256_movemask_pd(a)); }
     static T blend(M m, T a, T b) { return _mm256_blendv_pd(b, a, m); }
 };
@@ -55,8 +57,11 @@ struct V256 {
 std::size_t forward_avx2(const double* pu, const double* lhat, std::size_t np, const double* z, const double* a,
                          std::size_t nd, double c, double hlv, double* mx, double* sum, unsigned char* flags) {
     std::size_t k = 0, terms = 0, below = 0;
+    for (; k + 16 <= nd; k += 16) {
+        forward_block<V256, 4>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+    }
     for (; k + 4 <= nd; k += 4) {
-        forward_block<V256>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
+        forward_block<V256, 1>(pu, lhat, np, z + k, a + k, c, hlv, mx + k, sum + k, flags + k, &terms, &below);
     }
     return k;
 }
@@ -65,9 +70,13 @@ std::size_t backward_avx2(const double* pu, std::size_t nc, const double* z, con
                           const double* b, std::size_t nn, double c, double hlv, double* mx, double* sum,
                           unsigned char* flags, double* e) {
     std::size_t j = 0, terms = 0, below = 0;
+    for (; j + 16 <= nc; j += 16) {
+        backward_block<V256, 4>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                                e != nullptr ? e + j * nn : nullptr, &terms, &below);
+    }
     for (; j + 4 <= nc; j += 4) {
-        backward_block<V256>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
-                             e != nullptr ? e + j * nn : nullptr, &terms, &below);
+        backward_block<V256, 1>(pu + j, z, a, v, b, nn, c, hlv, mx + j, sum + j, flags + j,
+                                e != nullptr ? e + j * nn : nullptr, &terms, &below);
     }
     return j;
 }
@@ -76,6 +85,13 @@ std::size_t exp_shifted_avx2(const double* in, std::size_t n, double shift, doub
     std::size_t i = 0, terms = 0, below = 0;
     for (; i + 4 <= n; i += 4) exp_shifted_block<V256>(in + i, shift, out + i, &terms, &below);
     return i;
+}
+
+std::size_t score_terms_avx2(const double* w, double uj, std::size_t nn, const double* z, double phi, double var,
+                             double* out) {
+    std::size_t k = 0;
+    for (; k + 4 <= nn; k += 4) score_terms_block<V256>(w + k, uj, z + k, phi, var, out + k);
+    return k;
 }
 
 std::size_t exp_avx2(const double* in, std::size_t n, double* out) {

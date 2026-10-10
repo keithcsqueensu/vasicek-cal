@@ -55,6 +55,11 @@ bool backward(const double* pu, std::size_t nc, const double* z, const double* a
               Counts* counts = nullptr);
 // out[i] = det_exp(in[i] - shift), as the score's pair weights.
 bool exp_shifted(const double* in, std::size_t n, double shift, double* out, Counts* counts = nullptr);
+// The score's d log K / dphi terms under the pair weights (filter.hpp's score), in its operation order:
+//     out[j nn + k] = w[j nn + k] * (((a u_j) / var - (phi (a a)) / (var var)) + phi / var),  a = z_k - phi u_j.
+// Division is correctly rounded, so lanes give the scalar values exactly; the caller sums them in order.
+bool score_terms(const double* w, std::size_t nc, std::size_t nn, const double* u, const double* z, double phi,
+                 double var, double* out);
 // det_exp(x) for each x, through the selected kernel (for the tests).
 bool exp_lanes(const double* in, std::size_t n, double* out);
 

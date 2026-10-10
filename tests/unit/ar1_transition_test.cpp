@@ -150,6 +150,32 @@ VCAL_TEST(ar1_kernel_exp_is_det_exp_bit_for_bit) {
         VCAL_CHECK_EQ(bad, std::size_t{0});
         vcal::test::note(std::string(k::name(kern)) + ": " + std::to_string(xs.size()) + " arguments bit for bit");
     });
+    // The non-positive path (lanes_exp_nonpos: the LSE terms and the pair weights), reached through exp_shifted with
+    // shift 0 on blocks of arguments <= 0: across k = -1021, where the single exact product gives way to the
+    // two-product form, through the subnormal band, to the cut-offs and -inf.
+    std::vector<double> nonpos;
+    for (int i = 0; i <= 81000; ++i) nonpos.push_back(-i * 0.01);
+    for (int i = 0; i <= 200000; ++i) nonpos.push_back(-708.0 - i * (37.2 / 200000.0));
+    for (const double e : {-707.7, -707.75, -708.05, -708.4, -0.0, 0.0, -800.0, -801.0, -1e300}) {
+        nonpos.push_back(e);
+        nonpos.push_back(std::nextafter(e, -HUGE_VAL));
+    }
+    nonpos.push_back(-HUGE_VAL);
+    for (int i = 0; i < 100000; ++i) nonpos.push_back(-850.0 * g.uniform());
+    for_each_kernel([&](k::Kernel kern) {
+        std::vector<double> got(nonpos.size());
+        VCAL_REQUIRE(k::exp_shifted(nonpos.data(), nonpos.size(), 0.0, got.data()));
+        std::size_t bad = 0;
+        for (std::size_t i = 0; i < nonpos.size(); ++i) {
+            const double want_i = vcal::detmath::det_exp(nonpos[i] - 0.0);
+            if (!bits_equal(got[i], want_i) && ++bad <= 5) {
+                vcal::test::report_failure(__FILE__, __LINE__, std::string(k::name(kern)) + ": nonpos exp(" +
+                                                                   describe(nonpos[i]) + ") = " + describe(got[i]) +
+                                                                   ", det_exp " + describe(want_i));
+            }
+        }
+        VCAL_CHECK_EQ(bad, std::size_t{0});
+    });
 }
 
 // The skip below kExpZeroBelow is exact only if exp there is exactly +0, for det_exp and for the platform's
@@ -224,6 +250,17 @@ VCAL_TEST(ar1_kernels_equal_the_reference_bit_for_bit) {
             for (std::size_t i = 0; i < n * n; ++i) VCAL_CHECK(bits_equal(ge[i], e[i]));
             VCAL_REQUIRE(k::exp_shifted(shx.data(), n * n, shift, gsh.data()));
             for (std::size_t i = 0; i < n * n; ++i) VCAL_CHECK(bits_equal(gsh[i], sh[i]));
+            // The score's pair terms, against the filter's scalar expression.
+            std::vector<double> gt(n * n), u(n);
+            for (std::size_t j = 0; j < n; ++j) u[j] = pu[j] / phi;
+            VCAL_REQUIRE(k::score_terms(sh.data(), n, n, u.data(), z.data(), phi, var, gt.data()));
+            for (std::size_t j = 0; j < n; ++j) {
+                for (std::size_t kk = 0; kk < n; ++kk) {
+                    const double d = z[kk] - phi * u[j];
+                    const double want = sh[j * n + kk] * (d * u[j] / var - phi * (d * d) / (var * var) + phi / var);
+                    VCAL_CHECK(bits_equal(gt[j * n + kk], want));
+                }
+            }
             ++compared;
             (void)kern;
         });

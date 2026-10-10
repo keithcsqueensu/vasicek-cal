@@ -6,11 +6,14 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "benchmark_models/ar1/transition.hpp"
 #include "core/objectives/binomial_mixture.hpp"
 #include "core/quadrature/parity.hpp"
 #include "engine/surface.hpp"
@@ -197,6 +200,64 @@ VCAL_TEST(ar1_score_matches_richardson_differences) {
         }
     }
     vcal::test::note("worst relative score error: " + describe(worst));
+}
+
+// The per-kernel CTest entries' guard: a kernel VCAL_AR1_KERNEL names that this CPU or build lacks skips the entry
+// visibly (exit 77, SKIP_RETURN_CODE), never passing without having run that path.
+VCAL_TEST(ar1_forced_kernel_is_available) {
+    namespace k = vcal::benchmark_models::ar1::kernel;
+    const std::string env = vcal::test::env_or_empty("VCAL_AR1_KERNEL");
+    if (!env.empty() && k::selected() == k::Kernel::Unavailable) {
+        std::printf("SKIPPED: VCAL_AR1_KERNEL=%s is not a kernel this CPU or build has\n", env.c_str());
+        std::fflush(stdout);
+        std::exit(77);
+    }
+    vcal::test::note(std::string("transition kernel: ") + k::name(k::selected()));
+}
+
+// P-18 (D-199): the filter's transition sums run on whichever kernel is selected (scalar, SSE2, AVX2), and the
+// log-likelihood, the placement check, the per-period terms and the score are the same bit for bit under each, on
+// the adversarial panels at negative, zero and high phi. CTest also runs the whole filter suite with each kernel
+// forced (unit_ar1_filter_kernel_<name>).
+VCAL_TEST(ar1_filter_is_the_same_under_every_kernel) {
+    namespace k = vcal::benchmark_models::ar1::kernel;
+    struct Restore {
+        k::Kernel saved = k::selected();
+        ~Restore() { k::select(saved); }
+    } restore;
+    std::vector<double> ref;
+    bool have_ref = false;
+    int kernels = 0;
+    for (const auto kern : {k::Kernel::Scalar, k::Kernel::Sse2, k::Kernel::Avx2}) {
+        if (!k::select(kern)) {
+            vcal::test::note(std::string("kernel ") + k::name(kern) + " not available here");
+            continue;
+        }
+        ++kernels;
+        std::vector<double> got;
+        ar1::FilterWork w;
+        for (const auto& p : adversarial_panels({20, 1000, 10000})) {
+            for (const double phi : {-0.6, 0.0, 0.6, 0.95}) {
+                const ar1::Theta th{0.01, 0.12, phi};
+                const auto T = static_cast<std::int64_t>(p.obs.size());
+                const auto l = ar1::log_likelihood(p.obs.data(), T, th, vcal::quadrature::parity_rule(), w);
+                double g[3];
+                ar1::score(p.obs.data(), T, th, w, g);
+                got.push_back(l.value);
+                got.push_back(l.placement);
+                got.insert(got.end(), w.contrib.begin(), w.contrib.end());
+                got.insert(got.end(), g, g + 3);
+            }
+        }
+        if (!have_ref) {
+            ref = got;
+            have_ref = true;
+            continue;
+        }
+        VCAL_REQUIRE(got.size() == ref.size());
+        for (std::size_t i = 0; i < got.size(); ++i) VCAL_CHECK(bits_equal(got[i], ref[i]));
+    }
+    vcal::test::note(std::to_string(kernels) + " kernels, " + std::to_string(ref.size()) + " numbers bit for bit");
 }
 
 // The committed goldens (tests/golden/ar1/likelihood.csv, tests/studies/ar1_goldens.cpp): the engine reproduces its
