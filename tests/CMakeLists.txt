@@ -147,9 +147,23 @@ add_test(NAME unit_ar1_filter
          COMMAND unit_ar1_filter ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit
                  ar1_matches_the_dense_reference_on_adversarial_panels
                  ar1_doubled_nodes_cannot_see_placement_error_and_the_placement_check_does
-                 ar1_score_matches_richardson_differences)
+                 ar1_score_matches_richardson_differences ar1_likelihood_goldens_reproduce)
 add_test(NAME unit_ar1_filter_smooth COMMAND unit_ar1_filter ar1_likelihood_is_smooth_in_phi_and_rho)
 set_tests_properties(unit_ar1_filter_smooth PROPERTIES LABELS slow)
+# The AR(1) MLE's search and profile intervals (D-195, D-196): recovery on DGP panels with known phi, ref's
+# independent surface at the estimate, the binomial MLE at phi = 0, the box, determinism, the profile ends.
+add_executable(unit_ar1_search unit/ar1_search_test.cpp)
+target_link_libraries(unit_ar1_search PRIVATE vcal_test_harness vcal::benchmark_models vcal::ref vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(unit_ar1_search)
+add_test(NAME unit_ar1_search
+         COMMAND unit_ar1_search ar1_fit_is_a_maximum_of_the_dense_reference ar1_search_at_phi_zero_is_the_binomial_mle
+                 ar1_fit_holds_a_bound_and_flags_it ar1_fit_is_deterministic
+                 ar1_profile_ends_are_where_the_profile_crosses_the_threshold)
+# Slow (about 80 s): 39 cold-started 2-D maxima on each of four panels, and three T = 200 fits.
+add_test(NAME unit_ar1_search_recovery
+         COMMAND unit_ar1_search ar1_fit_is_not_beaten_on_a_fine_phi_grid
+                 ar1_fit_recovers_parameters_on_long_informative_panels)
+set_tests_properties(unit_ar1_search_recovery PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 # The Bernoulli kernel forced at start-up through VCAL_DGP_KERNEL (P-17, D-194), and once with an invalid value:
 # the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their
@@ -271,6 +285,11 @@ set_tests_properties(study_bayes_sbc_smoke PROPERTIES LABELS slow)
 # profile LR statistic at the truth and S-4b's factor from the same bootstrap panels.
 # S-35 (D-190): the recovery matrix under the AR(1)-factor DGP; scored by
 # studies/lrpd-serial-correlation/compare.py. The smoke test runs two replicates of one scenario.
+# The AR(1) likelihood goldens (tests/golden/ar1/likelihood.csv; D-195): engine and ref at fixed parameters on
+# hand-made panels, no fits. Run by hand to regenerate; unit_ar1_filter checks the engine against them.
+add_executable(ar1_goldens studies/ar1_goldens.cpp)
+target_link_libraries(ar1_goldens PRIVATE vcal::benchmark_models vcal::ref)
+vcal_target_defaults(ar1_goldens)
 # S-35's M6 arm, model-based reference numbers (D-196): the expected Fisher information of the AR(1) likelihood at
 # the true parameters (scores only, no fit). Run by hand; a two-panel run is a smoke test.
 add_executable(study_ar1_information studies/ar1_information.cpp)

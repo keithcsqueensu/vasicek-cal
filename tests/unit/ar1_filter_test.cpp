@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "core/quadrature/parity.hpp"
 #include "engine/surface.hpp"
 #include "ref/ref.hpp"
+#include "tests/harness/golden.hpp"
 #include "tests/harness/vcal_test.hpp"
 #include "tests/tolerances.hpp"
 
@@ -195,6 +197,35 @@ VCAL_TEST(ar1_score_matches_richardson_differences) {
         }
     }
     vcal::test::note("worst relative score error: " + describe(worst));
+}
+
+// The committed goldens (tests/golden/ar1/likelihood.csv, tests/studies/ar1_goldens.cpp): the engine reproduces its
+// own values to TOL_AR1_REFERENCE_REL on every platform, and they agree with ref's to the same tolerance. The scipy
+// replication (validation/scipy/ar1_binomial_mle.py) checks the same rows three ways, in two formulations of the
+// factor's law (transition densities, and the explicit joint normal density).
+VCAL_TEST(ar1_likelihood_goldens_reproduce) {
+    const auto t = vcal::test::read_golden_csv("ar1/likelihood.csv");
+    const auto rule = vcal::quadrature::parity_rule();
+    ar1::FilterWork w;
+    double worst_engine = 0.0, worst_ref = 0.0;
+    for (const auto& r : t.rows) {
+        std::vector<ar1::Obs> obs;
+        std::istringstream ns(r[t.column("n")]), ds(r[t.column("d")]);
+        std::int64_t n = 0, d = 0;
+        while (ns >> n && ds >> d) obs.push_back({n, d});
+        const ar1::Theta th{vcal::test::parse_double(r[t.column("pd_hex")]), vcal::test::parse_double(r[t.column("rho_hex")]),
+                            vcal::test::parse_double(r[t.column("phi_hex")])};
+        const double want = vcal::test::parse_double(r[t.column("loglik_hex")]);
+        const double ref = vcal::test::parse_double(r[t.column("ref_loglik_hex")]);
+        const double got = ar1::log_likelihood(obs.data(), static_cast<std::int64_t>(obs.size()), th, rule, w).value;
+        const double scale = std::fmax(1.0, std::fabs(want));
+        worst_engine = std::fmax(worst_engine, std::fabs(got - want) / scale);
+        worst_ref = std::fmax(worst_ref, std::fabs(want - ref) / scale);
+        VCAL_CHECK(std::fabs(got - want) <= tol::TOL_AR1_REFERENCE_REL * scale);
+        VCAL_CHECK(std::fabs(want - ref) <= tol::TOL_AR1_REFERENCE_REL * scale);
+    }
+    vcal::test::note(std::to_string(t.rows.size()) + " rows; engine vs golden " + describe(worst_engine) +
+                     ", golden vs ref " + describe(worst_ref));
 }
 
 // D-195's smoothness condition: the node placement moves with theta, so a clamp, branch or floor in it would put

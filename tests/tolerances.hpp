@@ -215,6 +215,14 @@ inline constexpr double TOL_SCIPY_RATE_LOGLIK_ABS = 1e-12;
 // Observed 2.3e-10; set to the engine's own root tolerance (1e-9) so that a platform's last digits
 // cannot fail it.
 inline constexpr double TOL_SCIPY_RATE_PROFILE_U = 1e-9;
+// M6 (D-197): validation/scipy/ar1_binomial_mle.py, the AR(1)-factor log-likelihood in the Markov
+// formulation (a uniform Simpson-grid filter on every golden row; nested quad for T <= 3, n <= 1000) vs
+// the engine, relative to max(1, |l|). Observed 2.9e-14 (grid), 7.5e-15 (nested). Held at ref's 1e-12.
+inline constexpr double TOL_SCIPY_AR1_LOGLIK_REL = 1e-12;
+// M6 (D-197): the same rows for T <= 3 in the joint formulation (owner): adaptive 3-D cubature of the
+// explicit multivariate normal density with Toeplitz covariance phi^|i-j|, sharing no transition density
+// with the engine. Observed 1.8e-14; looser by the owner's choice, above the cubature's requested 1e-11.
+inline constexpr double TOL_SCIPY_AR1_JOINT_REL = 1e-10;
 
 // --- method of moments, M3 -----------------------------------------------------------------------
 // log PD_2 = log E[p(Z)^2] by the parity integrator (the n = 2, d = 2 binomial-mixture integral)
