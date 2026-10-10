@@ -58,6 +58,15 @@ S-10's checkpoint configuration, and on stderr by every tool that simulates pane
   `simulate_panel` (CTest `p17_simd_philox_identity` runs it briefly).
 - **On a study's rows.** In the A/B/B/A runs below, all four `study_parametric_bootstrap` row files are
   byte-identical.
+- **Rechecked after the rebase onto D-193** (owner), whose `timing_sample.hpp` changes conflicted. Base
+  fd20ece (A) against the rebased branch with the default AVX2 kernel (B), and B forced to scalar through
+  `VCAL_DGP_KERNEL`. All three files are byte-identical in each case:
+  - `study_parametric_bootstrap --replicates 2`, all 81 scenarios: 162 rows;
+  - `study_lrpd_serial --replicates 20` at φ ∈ {0, 0.3, 0.6}: 4,862 count rows and 1,621 rate rows.
+
+  The logs record `dgp_kernel=avx2` and `dgp_kernel=scalar`. The test suite also passes on the rebased
+  branch (MSVC 45 of 45 and GCC 43 of 43 without the slow label), with every reference hash equal under
+  every kernel and every forced selection.
 
 ## Speed: the kernels
 
