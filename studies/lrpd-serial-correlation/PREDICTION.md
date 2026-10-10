@@ -165,9 +165,13 @@ Appended before the subset run; no prediction, threshold or definition above cha
 
 ## Addendum, 2026-10-10: the M6 arm, the AR(1)-aware binomial MLE, registered before any of its fits on S-35's panels
 
-Appended before the M6 arm has fitted any of S-35's panels; nothing above changes. This arm tests Miu and
-Ozdemir's (2008) claim directly: with the serial correlation modelled, does the long-run PD stop being
-understated, and do the intervals cover again?
+Appended before the M6 arm has fitted any of S-35's panels; nothing above changes. This arm tests one
+mechanism behind Miu and Ozdemir's (2008) comparison, not the comparison as a whole. Their claim sets simple
+averaging against their MLE as estimators of the long-run PD under correlated defaults, and part of
+averaging's understatement comes from nonlinearity: the mean of default rates is not the PD implied by the
+latent factor, whatever the dependence over time. The question here is narrower. Given a binomial MLE that
+already handles that nonlinearity, does also modelling the serial correlation (AR(1)) stop the long-run PD
+being understated, and do the intervals cover again?
 
 - **The estimator** (D-195, D-196; `benchmark_models/ar1/`): the binomial-mixture likelihood under an AR(1)
   factor, by a forward filter over each period's parity nodes placed for the law of Z_t given its
@@ -268,7 +272,7 @@ in S-35's full run.
 | L18 | **Above the binomial MLE's wherever it matters:** at φ = 0.6, pooled PD profile coverage exceeds the binomial MLE's by at least 0.10 in each of groups B, C and D |
 | L19 | **Little cost when there is no correlation:** at φ = 0, pooled PD profile coverage is within −0.03 to +0.01 of the binomial MLE's in each of groups B, C and D |
 | L20 | **ρ coverage returns too:** pooled ρ profile coverage at φ = 0.6 is 0.88–0.96 in each of groups B, C and D |
-| L21 | **The point estimate does not rescue the median (Grenander):** at φ = 0.6, the AR(1) MLE's median relative error of PD̂ is closer to 0 than the binomial MLE's in between 19 and 31 of the 50 informative scenarios, and differs from it by less than 0.01 in at least 40 of the 50. So Miu and Ozdemir's improvement is predicted not to appear in the point estimate. The claim would be supported by 32 or more of 50 (a one-sided sign test at about 3%) |
+| L21 | **The point estimate does not rescue the median (Grenander):** at φ = 0.6, the AR(1) MLE's median relative error of PD̂ is closer to 0 than the binomial MLE's in between 19 and 31 of the 50 informative scenarios, and differs from it by less than 0.01 in at least 40 of the 50. This tests one mechanism only: whether modelling the AR(1) structure, on top of an MLE that already handles the nonlinearity, moves the median point estimate. If L21 holds, the conclusion is "modelling serial correlation fixes the interval but not the median bias", not "Miu and Ozdemir's claim fails". Their comparison of averaging against an MLE also rests on the nonlinearity, which S-35's main arms address separately. The AR(1) model would be shown to move the median by 32 or more of 50 (a one-sided sign test at about 3%) |
 | L22 | **φ̂ < 0 at true φ = 0, where φ is credible:** over the credible scenarios of group D, the pooled share of φ̂ < 0 is 0.50–0.60 (Kendall's bias −1/T against an SE of about 0.11 gives 0.54) |
 | L23 | **φ̂ < 0 at true φ = 0, short T (qualitative; φ not credible):** over group B the pooled share is above 0.5 (0.55–0.80), and over group A's T = 20 scenarios it is higher than over group B's |
 | L24 | **φ̂ < 0 at true φ = 0.6:** in group D's credible scenarios under 0.5% (φ̂ ≈ 0.57 ± 0.10); in group B (qualitative) between 1% and 15% |

@@ -1350,6 +1350,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **φ intervals on the study subset only (owner):** the full run stays at about 18 h. If the χ² calibration fails, that is a new study with its own registration.
   - **The bootstrap comparator (owner):** study subset, replicates 0–99, φ = 0.6, B = 199, seed 0xB0071A61. The Monte Carlo SE at 100 replicates is registered (±2.2 points), so smaller differences are not read as results.
   - **Seeds reserved:** the validation run uses 0x7A11DA7E, disjoint from S-35's, the information's and the scratch seed 0xA11CE5EED.
+  - **What the arm tests, stated fairly (owner):** one mechanism behind Miu and Ozdemir's (2008) comparison, not the comparison as a whole. Their claim sets averaging against their MLE, and part of averaging's understatement comes from nonlinearity (the mean of rates against the PD implied by the latent factor). The arm asks whether modelling the AR(1) structure, on top of a binomial MLE that already handles the nonlinearity, moves the median point estimate. If L21 holds, the conclusion reads "modelling serial correlation fixes the interval but not the median bias", not "the paper's claim fails". This scopes D-192's shorter wording ("the test of Miu and Ozdemir's claim").
 
 ## Open
 
