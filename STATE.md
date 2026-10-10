@@ -294,7 +294,7 @@ subset in under 1. Before any full run, its runtime is projected from a timing s
 
 | # | Study | Placement | Subset | Full matrix | Overlaps | Assessment |
 |---|---|---|---|---|---|---|
-| S-35 | Long-run PD by averaging against MLE under an AR(1) factor | **now** (AR(1) DGP variant; the average, parity and rate MLEs); M6 (AR(1)-aware MLE) | minutes | 15–30 min (3 φ) | S-11 (shares its AR(1) DGP variant), S-13, M6 AR(1) | highest priority (owner) |
+| S-35 | Long-run PD by averaging against MLE under an AR(1) factor | **now** (AR(1) DGP variant; the average, parity and rate MLEs); M6 (AR(1)-aware MLE) | minutes | 15–30 min (3 φ) | S-11 (shares its AR(1) DGP variant), S-13, M6 AR(1) | highest priority (owner); **registered, AR(1) DGP built** (D-190); not run |
 | S-36 | Fitted ρ as the rating philosophy moves from TTC to PIT | M6 | tens of minutes | hours (obligor-level simulation) | S-29, S-30, S-33 | worth doing; new generator code (D-149 artifacts) |
 | S-37 | Asymptotic rate MLE as least squares | M7, as documentation | — | — | D-164's closed form | **not worth a study:** without covariates it is already the closed form; with covariates it is an identity for the published-method track |
 | S-38 | Granularity error in factor extraction, propagated to stressed PDs | now (extraction, with S-19); M7 (stressed PDs) | minutes | minutes | S-19, S-27 | worth doing; cheap |
