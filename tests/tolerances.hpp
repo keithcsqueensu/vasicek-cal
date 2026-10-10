@@ -140,11 +140,11 @@ inline constexpr double TOL_PROFILE_CROSS_PLATFORM_REL = 1e-8;
 // located by Brent to about 1e-7 in logit (D-164); libm can move Brent's path inside that. Observed
 // 4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.
 inline constexpr double TOL_RATE_POLISHED_CROSS_PLATFORM = 1e-7;
-// analytic_se_scaled (the analytic observed information, D-170's derivatives; S-10's studentised
-// interval) against calibrate's SE (D-119: the observed information by central differences, step
-// 0.15 SE), relative, logit units, at the refined estimate. The difference is the central
-// differences' truncation error, O(step^2). Observed 6.5e-5, tripled, rounded up.
-inline constexpr double TOL_ANALYTIC_SE_VS_CENTRAL_REL = 2e-4;
+// calibrate's SE (P-15, D-185: the analytic observed information at the refined estimate's scaled
+// coordinates) against analytic_se_scaled at the estimate's natural values, relative, logit units:
+// the same Hessian, evaluated after the estimate's round trip through the natural scale. Observed
+// 1.1e-16 (one ulp, MSVC); 1e-13 leaves room for another platform's logit round trip.
+inline constexpr double TOL_CALIBRATE_SE_VS_ANALYTIC_REL = 1e-13;
 // Profile endpoints, safeguarded Newton vs nested Brent (D-170), in scaled units. Each solves the
 // same equation to 1e-9, so they may differ by 2e-9; doubled. Observed 5.1e-10 over the test panels.
 // The polished maxima differ by up to 2.0e-9 (Brent stops 1e-9 inside a bound, Newton evaluates
@@ -169,11 +169,13 @@ inline constexpr double TOL_CONDITIONAL_PD_REL = 6e-15;
 // 1e-5), relative. The differences' own O(h^2) error dominates: observed 4.9e-10, doubled and rounded up.
 inline constexpr double TOL_CONDITIONAL_PD_GRADIENT_REL = 1e-9;
 
-// --- study S-1, z-sign invariance (D-300, D-301, D-157) ------------------------------------------
+// --- study S-1, z-sign invariance (D-300, D-301, D-157, D-185) -----------------------------------
 // S-1's C8: SEs and their correlation, parity vs the mirrored convention, relative. Registered as
 // TOL_RECOVERY_REPLAY_SE_REL (5e-10), measured on panels up to n = 1e4. On panel 20 (n = 1e5, rho
-// 0.24) the Windows UCRT libm gives 6.95e-10 (MSVC and MinGW GCC alike; glibc passes). Doubled, rounded up.
-inline constexpr double TOL_ZSIGN_SE_REL = 2e-9;
+// 0.24) the Windows UCRT libm gave 6.95e-10 with D-119's central differences (D-157: 2e-9). With the
+// analytic Hessian (P-15, D-185) the correlation there differs by 3.37e-9 (MSVC): the posterior-moment
+// derivatives round more at n >= 1e5 (D-170: TOL_SCORE_HESSIAN_FD_REL_LARGE_N). Doubled, rounded up.
+inline constexpr double TOL_ZSIGN_SE_REL = 1e-8;
 
 // --- resampling, M2b (D-132..D-135) --------------------------------------------------------------
 // A replicate's estimate (W x L) vs calibrate on the explicitly resampled panel, relative. Only

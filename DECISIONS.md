@@ -1091,6 +1091,39 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **added:** `vcal_bartlett_spec` (24 bytes), `vcal_bartlett_intervals` (120 bytes, no padding) and the `VCAL_BARTLETT_*` factor flags;
     - **unchanged:** existing calls.
 
+## P-15: calibrate's SEs from the analytic Hessian; the S-10 runtime miss, 2026-10-09
+
+- **D-185 (owner, P-15) — calibrate's observed information is the objective's analytic Hessian (D-170's derivatives) where the objective gives them, replacing D-119's central differences; objectives without analytic derivatives (the Vasicek-rate MLE) keep D-119. Changes results within a stated tolerance; the goldens are refreshed.** Supersedes D-119 for the binomial objective.
+  - **What:**
+    - `engine/derivs.hpp` holds the derivative helpers, moved unchanged from `profile.hpp` so that calibrate, which `profile.hpp` builds on, can use them.
+    - `calibrate_from_surface` evaluates `panel_derivs` at the refined estimate's scaled coordinates. The SEs, correlation, near-bound flag and flat-surface test then follow as before.
+  - **A correction, not only a speed-up.** D-119's truncation error was much larger than the 6.5e-5 observed on three panels for `TOL_ANALYTIC_SE_VS_CENTRAL_REL` (D-170):
+    - **Checked independently:** the observed information was recomputed by Richardson-extrapolated central differences of the scipy script's log-likelihood. The analytic SEs agree to 1e-10 relative (1.6e-7 at worst, near a bound).
+    - **D-119's errors:** up to 9e-3 in interior fits and up to 96% near a bound. Fit 39/888's ρ SE was 23 times too small.
+    - **The tolerance described the wrong regime:** it was not representative of the recovery matrix. The registrations of S-4 and S-10 quote the 6.5e-5 figure; it is corrected here, and they are not edited.
+  - **Flip check, every recovery fit** (`perf/p15_analytic_se.md`):
+    - **Changed:** only `se_pd`, `se_rho` and `q_se_s` (72,341 fits) and the near-bound flag (16 fits: 15 on, 1 off).
+    - **Bit for bit unchanged:** every estimate, log-likelihood, profile interval and bootstrap interval.
+    - **Coverage flips, gained/lost:** Wald PD 0/0, Wald ρ 1/0, t PD 0/1, t ρ 1/1, q Wald 32/0; profile and bootstrap 0/0 for PD, ρ and q.
+    - **Verdicts:** none changes, in any of the nine verdict columns.
+  - **Goldens refreshed:**
+    - **Recovery:** `recovery_harness --write`. The new summary equals the flip check's run byte for byte, and the manifest now describes the analytic SEs.
+    - **xref regression values:** rewritten. Their profile ends also moved, by at most 2e-10 relative. They were last written at the initial release, before D-170's Newton profile, and had been passing at `TOL_PROFILE_CROSS_PLATFORM_REL` since; that drift predates P-15.
+  - **Tolerances:**
+    - **Retired:** `TOL_ANALYTIC_SE_VS_CENTRAL_REL`, since calibrate's SE is now the analytic one. In its place, `TOL_CALIBRATE_SE_VS_ANALYTIC_REL` (1e-13; observed 1.1e-16) checks that calibrate's SE is `analytic_se_scaled`'s, apart from the estimate's natural-scale round trip.
+    - **Raised:** `TOL_ZSIGN_SE_REL` from 2e-9 to 1e-8, **a second post-registration change to S-1's C8** (the first was D-157). Panel 20 (n = 10⁵, ρ = 0.24) differs by 3.37e-9 in the correlation between the conventions, against 6.95e-10 with central differences. At n ≥ 10⁵ the posterior-moment derivatives round more, as D-170's `TOL_SCORE_HESSIAN_FD_REL_LARGE_N` records. S-1's verdict is unchanged: its finding is panel 26 only (D-301).
+  - **Cross-checks:** core against `ref/` SEs: interior 1.56% → 1.57% (the gap is ref's own); near a bound 4.2% → 0.36%. The full suite passes locally, slow tests included.
+  - **Speed:**
+    - **S-10 workload:** the calibrate phase is 2.7× faster (ABBA, 664 → 244 thread-seconds), which would take about a quarter off the S-10/S-4 run's CPU.
+    - **Recovery harness:** no measurable change, since its fits are dominated by the bootstrap and the profile.
+  - **Committed study results are unchanged:** S-8, S-9 and S-10 were computed with D-119's SEs and stay as run, reproducible at their build commits. The S-10 tool's rows differ only in its two calibrate-SE columns, and its Jeffreys ends are identical.
+- **D-186 — The S-10/S-4 runtime miss (5 h projected, 6.4 h actual) was not thread scheduling on hybrid cores: it was the projection's extrapolation from a subset unrepresentative of cost.** The owner's question for P-15's profiling.
+  - **Not the machine:** on the 9 subset scenarios, the phases whose code did not change cost the same in the full run as in the subset run (ratio 1.00 per phase, within 2% per scenario).
+  - **Not idle threads:** 555,004 thread-seconds over 24 threads is 23,125 s against 23,190 s wall, 99.7% busy. The tool already hands out replicates dynamically.
+  - **The extrapolation:** the full run's cost of the subset scenarios, scaled by 81/9, is 403,707 thread-seconds against the actual 555,004 (1.375×), which is the whole miss. Cost follows T × n, and the costliest cell (T = 100, n = 10⁴; 22,733 per scenario, 37% of the run) has no subset scenario.
+  - **A caution for short timings:** in a 522 s two-scenario run (P-14's verification), unchanged phases cost up to 38% more per unit of work than in the subset run. A phase's thread-seconds depend on which cores ran it, so short before/after timings are taken in ABBA order (as P-15's were).
+  - **P-10 stays planned** for tools that schedule statically. It was not the cause here. The projection method is the owner's queued fix: a timing sample per (T, n) cell.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

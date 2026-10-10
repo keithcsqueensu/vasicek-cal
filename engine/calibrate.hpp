@@ -5,9 +5,10 @@
 //   2. L = evaluate_surface (T x K);
 //   3. W = one row of ones; reduce_weighted(ArgMax) -> grid argmax k*;
 //   4. refine_2d on the 3x3 stencil of the same weighted sums -> estimate and flags;
-//   4b. SEs from the observed information at the estimate (D-119): the Hessian of the objective
-//      itself by central differences in the axes' scaled coordinates, step = hessian_step_fraction
-//      (default 0.15) x the stencil SE, delta method to natural scale. Headline fits only;
+//   4b. SEs from the observed information at the estimate: the Hessian of the panel log-likelihood
+//      in the axes' scaled coordinates, delta method to natural scale. Analytic (P-15, D-185: D-170's
+//      derivatives) where the objective gives them; otherwise by central differences (D-119),
+//      step = hessian_step_fraction (default 0.15) x the stencil SE. Headline fits only;
 //      resampling never calls this, so W x L reuse is unaffected. An estimate within
 //      kNearBoundSe SEs of an axis bound is flagged kFlagNearBound: Wald SEs are unreliable
 //      there, and profile-likelihood intervals (M2) are the right tool;
@@ -31,6 +32,7 @@
 
 #include "core/grid.hpp"
 #include "core/reducers/argmax.hpp"
+#include "engine/derivs.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
 #include "engine/surface_cache.hpp"
@@ -159,26 +161,39 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
         out.quad_check_flagged = kQuadratureNotChecked;
     }
 
-    // D-119: observed information at the estimate from the objective itself.
+    // Observed information at the estimate from the objective itself: analytic (P-15, D-185) where the
+    // objective gives its derivatives, else by central differences (D-119).
     if (!(out.flags & (kFlagGridEdge | kFlagFlatSurface))) {
-        const double s0 = hessian_step_fraction * r.se_scaled[0];
-        const double s1 = hessian_step_fraction * r.se_scaled[1];
-        std::vector<double> lt(static_cast<std::size_t>(periods));
-        const auto ll = [&](double d0, double d1) {
-            const double v[2] = {grid::from_scaled(grid.axis[0].scale, r.scaled[0] + d0),
-                                 grid::from_scaled(grid.axis[1].scale, r.scaled[1] + d1)};
-            const auto th = Objective::theta(v);
-            for (std::int64_t t = 0; t < periods; ++t) {
-                const std::int64_t u = first[static_cast<std::size_t>(t)];
-                lt[static_cast<std::size_t>(t)] =
-                    u == t ? objective.log_contrib(obs[t], th, primary) : lt[static_cast<std::size_t>(u)];
-            }
-            return weighted_sum(lt.data(), periods, 1, ones.data(), 0);
-        };
-        const double f0 = out.loglik;
-        const double h00 = (ll(s0, 0.0) - 2.0 * f0 + ll(-s0, 0.0)) / (s0 * s0);
-        const double h11 = (ll(0.0, s1) - 2.0 * f0 + ll(0.0, -s1)) / (s1 * s1);
-        const double h01 = (ll(s0, s1) - ll(s0, -s1) - ll(-s0, s1) + ll(-s0, -s1)) / (4.0 * s0 * s1);
+        double h00, h11, h01;
+        if constexpr (profile_detail::has_contrib_derivs<Objective, Integrator>::value) {
+            (void)hessian_step_fraction;
+            std::vector<std::int64_t> df, dc;
+            profile_detail::distinct_observations(obs, periods, df, dc);
+            const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
+            const auto d = profile_detail::panel_derivs(objective, primary, obs, df, dc, ax, r.scaled[0], r.scaled[1]);
+            h00 = d.h[0];
+            h11 = d.h[1];
+            h01 = d.h[2];
+        } else {
+            const double s0 = hessian_step_fraction * r.se_scaled[0];
+            const double s1 = hessian_step_fraction * r.se_scaled[1];
+            std::vector<double> lt(static_cast<std::size_t>(periods));
+            const auto ll = [&](double d0, double d1) {
+                const double v[2] = {grid::from_scaled(grid.axis[0].scale, r.scaled[0] + d0),
+                                     grid::from_scaled(grid.axis[1].scale, r.scaled[1] + d1)};
+                const auto th = Objective::theta(v);
+                for (std::int64_t t = 0; t < periods; ++t) {
+                    const std::int64_t u = first[static_cast<std::size_t>(t)];
+                    lt[static_cast<std::size_t>(t)] =
+                        u == t ? objective.log_contrib(obs[t], th, primary) : lt[static_cast<std::size_t>(u)];
+                }
+                return weighted_sum(lt.data(), periods, 1, ones.data(), 0);
+            };
+            const double f0 = out.loglik;
+            h00 = (ll(s0, 0.0) - 2.0 * f0 + ll(-s0, 0.0)) / (s0 * s0);
+            h11 = (ll(0.0, s1) - 2.0 * f0 + ll(0.0, -s1)) / (s1 * s1);
+            h01 = (ll(s0, s1) - ll(s0, -s1) - ll(-s0, s1) + ll(-s0, -s1)) / (4.0 * s0 * s1);
+        }
         const double det = h00 * h11 - h01 * h01;
         if (h00 < 0.0 && det > 0.0) {
             const double su0 = std::sqrt(-h11 / det);

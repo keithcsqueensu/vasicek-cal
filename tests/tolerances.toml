@@ -384,17 +384,16 @@ comment = [
     "4.6e-8 (the gap, Linux GCC 11/14, Clang 18, nvcc images), doubled and rounded up.",
 ]
 
-[TOL_ANALYTIC_SE_VS_CENTRAL_REL]
+[TOL_CALIBRATE_SE_VS_ANALYTIC_REL]
 type = "double"
-value = 2e-4
+value = 1e-13
 section = "profile likelihood, M2 (D-128..D-130)"
 comment = [
-    "analytic_se_scaled (the analytic observed information, D-170's derivatives; S-10's studentised",
-    "interval) against calibrate's SE (D-119: the observed information by central differences, step",
-    "0.15 SE), relative, logit units, at the refined estimate. The difference is the central",
-    "differences' truncation error, O(step^2). Observed 6.5e-5, tripled, rounded up.",
+    "calibrate's SE (P-15, D-185: the analytic observed information at the refined estimate's scaled",
+    "coordinates) against analytic_se_scaled at the estimate's natural values, relative, logit units:",
+    "the same Hessian, evaluated after the estimate's round trip through the natural scale. Observed",
+    "1.1e-16 (one ulp, MSVC); 1e-13 leaves room for another platform's logit round trip.",
 ]
-
 [TOL_PROFILE_SOLVER_AGREEMENT_U]
 type = "double"
 value = 4e-9
@@ -448,12 +447,14 @@ comment = [
 
 [TOL_ZSIGN_SE_REL]
 type = "double"
-value = 2e-9
-section = "study S-1, z-sign invariance (D-300, D-301, D-157)"
+value = 1e-8
+section = "study S-1, z-sign invariance (D-300, D-301, D-157, D-185)"
 comment = [
     "S-1's C8: SEs and their correlation, parity vs the mirrored convention, relative. Registered as",
     "TOL_RECOVERY_REPLAY_SE_REL (5e-10), measured on panels up to n = 1e4. On panel 20 (n = 1e5, rho",
-    "0.24) the Windows UCRT libm gives 6.95e-10 (MSVC and MinGW GCC alike; glibc passes). Doubled, rounded up.",
+    "0.24) the Windows UCRT libm gave 6.95e-10 with D-119's central differences (D-157: 2e-9). With the",
+    "analytic Hessian (P-15, D-185) the correlation there differs by 3.37e-9 (MSVC): the posterior-moment",
+    "derivatives round more at n >= 1e5 (D-170: TOL_SCORE_HESSIAN_FD_REL_LARGE_N). Doubled, rounded up.",
 ]
 
 [TOL_RESAMPLE_VS_REFIT_REL]

@@ -428,10 +428,10 @@ VCAL_TEST(profile_lr_statistic_is_the_threshold_at_the_interval_ends) {
     VCAL_CHECK(worst <= 2.0 * tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
 }
 
-// analytic_se_scaled (S-10's studentised interval) against calibrate's SE (D-119: the observed
-// information by central differences), both in logit units at the refined estimate: the same
-// quantity by two methods, relative agreement to TOL_ANALYTIC_SE_VS_CENTRAL_REL.
-VCAL_TEST(analytic_se_agrees_with_the_central_difference_se) {
+// P-15 (D-185): calibrate's SE is the analytic observed information (D-170's derivatives, themselves
+// checked against Richardson differences at TOL_SCORE_HESSIAN_FD_REL), the same as analytic_se_scaled's
+// up to the round trip of the estimate through the natural scale, in logit units.
+VCAL_TEST(calibrate_se_is_the_analytic_observed_information) {
     const Rules r;
     const auto g = grid();
     double worst = 0.0;
@@ -445,10 +445,10 @@ VCAL_TEST(analytic_se_agrees_with_the_central_difference_se) {
         VCAL_REQUIRE(se.ok);
         for (int a = 0; a < 2; ++a) {
             const auto s = g.axis[a].scale;
-            const double central = est.se[a] / vcal::grid::dvalue_dscaled(s, vcal::grid::to_scaled(s, est.value[a]));
-            worst = std::fmax(worst, std::fabs(se.se_u[a] / central - 1.0));
+            const double cal = est.se[a] / vcal::grid::dvalue_dscaled(s, vcal::grid::to_scaled(s, est.value[a]));
+            worst = std::fmax(worst, std::fabs(se.se_u[a] / cal - 1.0));
         }
     }
-    vcal::test::note("analytic vs central-difference SE, worst relative difference " + describe(worst));
-    VCAL_CHECK(worst <= tol::TOL_ANALYTIC_SE_VS_CENTRAL_REL);
+    vcal::test::note("calibrate vs analytic_se_scaled SE, worst relative difference " + describe(worst));
+    VCAL_CHECK(worst <= tol::TOL_CALIBRATE_SE_VS_ANALYTIC_REL);
 }
