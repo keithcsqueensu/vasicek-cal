@@ -56,6 +56,8 @@ struct Estimate3 {
     int scan_local_maxima;
     int scan_unconverged;       // scan points that hit the iteration limit (a diagnostic; the polish decides)
     double second_maximum_gap;  // loglik minus the second-best polished maximum (inf if only one)
+    double phi0_value[2];       // the scan's maximum over (PD, rho) at phi = 0: the binomial-mixture MLE
+    double phi0_loglik;         // the log-likelihood there (S-35 M6's checks before scoring, PREDICTION.md)
     std::int64_t evaluations;   // log-likelihood evaluations (the three passes each)
     std::int64_t scores;        // score evaluations (a backward pass with pairs, after an evaluation)
     std::uint32_t flags;        // engine kFlag* (kFlagGridEdge: at a bound) and the ones above
@@ -341,6 +343,9 @@ inline bool fit(const Obs* obs, std::int64_t periods, const Box& box, double sta
         ls[k0] = s.newton(u, pd_rho, kScanTolerance, conv);
         if (!conv) ++out.scan_unconverged;
         for (int i = 0; i < 3; ++i) us[k0][i] = u[i];
+        out.phi0_value[0] = detail::inv_logit(u[0]);
+        out.phi0_value[1] = detail::inv_logit(u[1]);
+        out.phi0_loglik = ls[k0];
         if (!std::isfinite(ls[k0])) return false;
     }
     for (int dir : {1, -1}) {
