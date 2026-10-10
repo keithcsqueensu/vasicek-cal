@@ -66,3 +66,15 @@ per scenario and φ; and every per-pair number behind the pooled ones.
 `score.py rows.csv` reads the tool's rows and the information file, runs W1 first and stops on a failure, then prints
 each prediction's number and verdict and the per-pair table. Coverage counts a not-computed interval as missing
 (D-131); a truncated interval covers when the truth lies inside it.
+
+## Disclosure: the scorer's dry run (owner), after the predictions above were final
+
+The predictions above were committed in c22c6a5. Then, as the owner asked, the scorer was run once on real tool
+output to check its plumbing: `study_lrpd_serial_m6 --seed 0x5AFE --replicates 3 --phi-intervals all` (the smoke
+seed, never the validation seed; 729 fits), scored with `score.py --dry-run`. It parsed every column, read the flags
+from `tests/engine_flags.json`, joined the credible pairs and printed the per-pair table; without `--dry-run` it
+refused the file (no validation seed). At three replicates per pair the numbers are not results, but they were seen,
+so all of them are listed: W1 729 of 729; W2 worst 95th percentile 0.038 (PD), 0.071 (ρ); **W3 SD 1.597 (PD),
+2.045 (ρ), against the band 0.7–1.5, over 45 paired differences**; W4 median φ̂ −0.0144; W5 pooled 0.922 (PD),
+0.954 (ρ), 0.967 (φ), 22 pairs below a floor (three intervals per pair); W6 0.923, 0.872, 0.974; W7 worst +1.05
+(medians of three); W8 66.7%; W9 0%. No prediction was changed after seeing them.
