@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -179,6 +180,108 @@ VCAL_TEST(reference_panels_are_bitwise_identical_to_the_mirror) {
     const std::string got = vcal::test::sha256_hex(blob);
     vcal::test::note("reference-panel SHA-256 " + got);
     VCAL_CHECK_EQ(got, want);
+}
+
+// The AR(1)-factor variant (D-190): every platform reproduces the mirror's AR(1) reference panels bit for
+// bit, with their own checked-in SHA-256 (same canonical bytes as the base panels).
+VCAL_TEST(ar1_reference_panels_are_bitwise_identical_to_the_mirror) {
+    const auto t = vcal::test::read_golden_csv("dgp/reference_panels_ar1.csv");
+    struct Rows {
+        std::uint64_t seed;
+        std::uint32_t scenario, replicate;
+        double pd, rho, phi;
+        std::vector<std::int64_t> n, d;
+        std::vector<double> z;
+    };
+    std::vector<Rows> panels;
+    for (const auto& r : t.rows) {
+        const auto id = static_cast<std::size_t>(parse_int(r[t.column("panel")]));
+        if (panels.size() <= id) panels.resize(id + 1);
+        auto& p = panels[id];
+        p.seed = std::stoull(r[t.column("seed_hex")], nullptr, 16);
+        p.scenario = static_cast<std::uint32_t>(parse_int(r[t.column("scenario")]));
+        p.replicate = static_cast<std::uint32_t>(parse_int(r[t.column("replicate")]));
+        p.pd = parse_double(r[t.column("pd_hex")]);
+        p.rho = parse_double(r[t.column("rho_hex")]);
+        p.phi = parse_double(r[t.column("phi_hex")]);
+        p.n.push_back(parse_int(r[t.column("n")]));
+        p.d.push_back(parse_int(r[t.column("d")]));
+        p.z.push_back(parse_double(r[t.column("z_hex")]));
+    }
+    VCAL_REQUIRE(panels.size() == 6);
+    std::vector<std::uint8_t> blob;
+    for (const auto& p : panels) {
+        const auto T = static_cast<std::int64_t>(p.n.size());
+        std::vector<std::int64_t> d(p.n.size());
+        std::vector<double> z(p.n.size());
+        const dgp::PanelSpec spec{p.seed, p.scenario, p.replicate, p.pd, p.rho, p.n.data(), T};
+        VCAL_REQUIRE(dgp::simulate_panel_ar1(spec, p.phi, d.data(), z.data()) == dgp::Status::Ok);
+        for (std::size_t i = 0; i < p.n.size(); ++i) {
+            VCAL_CHECK_EQ(d[i], p.d[i]);
+            VCAL_CHECK(bits_equal(z[i], p.z[i]));
+            std::uint64_t zb = 0;
+            std::memcpy(&zb, &z[i], sizeof zb);
+            append_le(blob, static_cast<std::uint64_t>(d[i]));
+            append_le(blob, zb);
+        }
+    }
+    std::ifstream in(vcal::test::golden_path("dgp/reference_panels_ar1.sha256"));
+    std::string want;
+    in >> want;
+    const std::string got = vcal::test::sha256_hex(blob);
+    vcal::test::note("AR(1) reference-panel SHA-256 " + got);
+    VCAL_CHECK_EQ(got, want);
+}
+
+// The variant's definition, checked against the base DGP directly rather than through the mirror: phi = 0
+// is the base panel bit for bit; for any phi, Z_0 is the base factor, Z_t = phi Z_{t-1} + sqrt(1 - phi^2)
+// e_t with e_t the base factor (computed in that order), and d_t is the base Bernoulli count at Z_t.
+VCAL_TEST(ar1_variant_is_the_base_draws_through_the_recursion) {
+    const std::int64_t n[] = {100, 1000, 0, 5000, 300, 1, 2000, 100};
+    constexpr std::int64_t T = 8;
+    for (const std::uint32_t rep : {0u, 1u, 77u}) {
+        const dgp::PanelSpec spec{0x1234ABCDull, 9, rep, 0.03, 0.15, n, T};
+        std::int64_t d0[T], d[T];
+        double e[T], z[T];
+        VCAL_REQUIRE(dgp::simulate_panel(spec, d0, e) == dgp::Status::Ok);
+        VCAL_REQUIRE(dgp::simulate_panel_ar1(spec, 0.0, d, z) == dgp::Status::Ok);
+        for (std::int64_t t = 0; t < T; ++t) {
+            VCAL_CHECK_EQ(d[t], d0[t]);
+            VCAL_CHECK(bits_equal(z[t], e[t]));
+        }
+        const dgp::PhiloxKey key{static_cast<std::uint32_t>(spec.seed), static_cast<std::uint32_t>(spec.seed >> 32)};
+        for (const double phi : {0.3, 0.6, -0.4}) {
+            VCAL_REQUIRE(dgp::simulate_panel_ar1(spec, phi, d, z) == dgp::Status::Ok);
+            const double se = std::sqrt(1.0 - phi * phi);
+            for (std::int64_t t = 0; t < T; ++t) {
+                const double want = t == 0 ? e[0] : phi * z[t - 1] + se * e[t];
+                VCAL_CHECK(bits_equal(z[t], want));
+                // d_t: the base DGP's Bernoulli uniforms for this period, compared with p(Z_t).
+                const double p = dgp::det_ncdf((dgp::det_probit(spec.pd) - std::sqrt(spec.rho) * z[t]) /
+                                               std::sqrt(1.0 - spec.rho));
+                std::int64_t count = 0;
+                for (std::int64_t i = 0; i < n[t]; i += 2) {
+                    const auto w = dgp::philox4x32({spec.scenario, rep, static_cast<std::uint32_t>(t),
+                                                    dgp::kFactorBlocks + static_cast<std::uint32_t>(i / 2)},
+                                                   key);
+                    count += dgp::uniform_from_words(w[0], w[1]) < p ? 1 : 0;
+                    if (i + 1 < n[t]) count += dgp::uniform_from_words(w[2], w[3]) < p ? 1 : 0;
+                }
+                VCAL_CHECK_EQ(d[t], count);
+            }
+        }
+    }
+}
+
+VCAL_TEST(ar1_rejects_phi_outside_the_open_unit_interval) {
+    const std::int64_t n[] = {10, 10};
+    const dgp::PanelSpec spec{1, 0, 0, 0.01, 0.1, n, 2};
+    std::int64_t d[2];
+    for (const double phi : {1.0, -1.0, 1.5, std::numeric_limits<double>::quiet_NaN(),
+                             std::numeric_limits<double>::infinity()}) {
+        VCAL_CHECK(dgp::simulate_panel_ar1(spec, phi, d, nullptr) == dgp::Status::InvalidSpec);
+    }
+    VCAL_CHECK(dgp::simulate_panel_ar1(spec, 0.999, d, nullptr) == dgp::Status::Ok);
 }
 
 VCAL_TEST(sha256_matches_hashlib) {

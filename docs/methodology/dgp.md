@@ -69,6 +69,28 @@ are fixed, with no data-dependent exits (D-113).
 
 **Φ⁻¹(p).** Wichura's AS241 (PPND16) on the log above.
 
+## The AR(1) factor
+
+A variant for studies of serial correlation (S-35, S-11; D-190), `dgp::simulate_panel_ar1`. It takes one
+more input, φ with −1 < φ < 1, and changes only step 1 of each period. With e_t the factor the base DGP
+draws for period t:
+
+- Z_0 = e_0;
+- Z_t = φ·Z_{t−1} + √(1 − φ²)·e_t for t ≥ 1, computed as (φ × Z_{t−1}) + (s × e_t), with s = √(1 − φ²)
+  computed once.
+
+Steps 2 and 3 use Z_t as before. Every period's Z_t is N(0, 1) and the lag-k correlation is φ^k, so a
+period's default count has the same distribution as under the base DGP, and only the dependence between
+periods changes. The process starts in its stationary distribution, with no burn-in.
+
+**The variant draws nothing of its own.** The e_t and the Bernoulli uniforms come from the base DGP's
+key and counters. Panels with the same seed, scenario and replicate at different φ therefore share their
+random numbers (common random numbers), and φ = 0 reproduces the base panel bit for bit. A study comparing
+values of φ compares them on the same draws, and its φ = 0 arm is the pinned run's panels.
+
+`tests/golden/dgp/reference_panels_ar1.csv` and `reference_panels_ar1.sha256` hold six reference panels
+(φ from −0.5 to 0.95) in the same format, with a φ column. Panel 0 is base panel 0 at φ = 0.
+
 ## Checking a reproduction
 
 `tests/golden/dgp/reference_panels.csv` lists six reference panels and their exact output (d_t
