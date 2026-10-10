@@ -98,8 +98,11 @@ put kinks into the likelihood. The variances are two-pass sums of squares (non-n
 and the likelihood's second differences against the dense filter along lines in φ and ρ are at rounding
 level (`TOL_AR1_SMOOTH_D2_REL`).
 
-**Cost.** One evaluation (three passes) takes about 4–6 ms at T = 20 and 20–33 ms at T = 100 on one
-thread; the period-to-period transition (128 × 128 node pairs, 256 for zero-default periods) dominates.
+**Cost.** The period-to-period transition (128 × 128 node pairs, 256 for zero-default periods) dominates. Its
+log-sum-exps run one lane per node (scalar, SSE2 or AVX2, chosen at run time; all three give the same numbers) with
+the in-house exp the DGP also uses, which is identical on every platform (P-18, D-199). With AVX2, one evaluation
+(three passes) takes about 2.4–5.2 ms at T = 20 and 12.5–28 ms at T = 100 on one thread, and its score about
+four-fifths as much again.
 
 ## 4. The estimate
 

@@ -4,7 +4,8 @@
 
 Two independent jobs (D-052..D-057, D-061, D-109, D-110):
 
-1. mpmath: the constants in dgp/generated/constants.hpp, and reference values for measuring
+1. mpmath: the constants in dgp/generated/constants.hpp and common/detmath/generated/det_exp_constants.hpp
+   (D-199), and reference values for measuring
    the accuracy of the DGP's in-house log, exp and Phi (Phi^-1 reuses special/probit.csv).
 
 2. A pure-Python mirror of dgp/: Philox4x32-10, det_log, det_exp, det_ncdf, det_probit, the
@@ -315,18 +316,45 @@ REFERENCE_PANELS_AR1 = [
 ]
 
 
+DETMATH_KEYS = ("kLn2Hi", "kLn2Lo", "kInvLn2")  # det_exp's and det_log's, shared through common/detmath (D-199)
+
+
 def render_constants(c: dict[str, float]) -> str:
     out = [
         header_banner(GENERATOR, MANIFEST),
         (
-            "//\n// Constants for the DGP's own deterministic maths (dgp/det_math.cpp). kLn2Hi keeps 32\n"
-            "// significant bits, so k * kLn2Hi is exact for |k| < 2^21 (Cody-Waite reduction).\n"
+            "//\n// Constants for the DGP's own deterministic maths (dgp/det_math.cpp). ln 2's Cody-Waite split and\n"
+            "// 1/ln 2 are shared with the core through common/detmath/generated/det_exp_constants.hpp (D-199).\n"
             "#pragma once\n\nnamespace vcal::dgp::generated {\n\n"
         ),
     ]
     for name, v in c.items():
-        out.append(f"inline constexpr double {name} = {cxx(v)};  // {v!r}\n")
+        if name not in DETMATH_KEYS:
+            out.append(f"inline constexpr double {name} = {cxx(v)};  // {v!r}\n")
     out.append("\n}  // namespace vcal::dgp::generated\n")
+    return "".join(out)
+
+
+def render_detmath(c: dict[str, float], m: Mirror) -> str:
+    """det_exp's data for common/detmath (D-199): plain constants, no functions, so an AVX2-compiled file can
+    include it without the inline-function ODR hazard (dgp/philox_lanes.hpp)."""
+    out = [
+        header_banner(GENERATOR, MANIFEST),
+        (
+            "//\n// det_exp's constants (common/detmath/det_exp.hpp; D-052, D-199): ln 2 = kLn2Hi + kLn2Lo with kLn2Hi\n"
+            "// keeping 32 significant bits, so k * kLn2Hi is exact for |k| < 2^21 (Cody-Waite reduction); 1/ln 2; and\n"
+            "// the Taylor coefficients 1/n!, n = 0..kExpTerms, each the previous divided by n in IEEE double, as the\n"
+            "// mirror computes them. Data only.\n"
+            "#pragma once\n\nnamespace vcal::detmath::generated {\n\n"
+        ),
+    ]
+    for name in DETMATH_KEYS:
+        out.append(f"inline constexpr double {name} = {cxx(c[name])};  // {c[name]!r}\n")
+    out.append(f"inline constexpr int kExpTerms = {EXP_TERMS};\n")
+    out.append(f"inline constexpr double kExpCoef[{EXP_TERMS + 1}] = {{\n")
+    for n, v in enumerate(m.exp_coef):
+        out.append(f"    {cxx(v)},  // 1/{n}!\n")
+    out.append("};\n\n}  // namespace vcal::detmath::generated\n")
     return "".join(out)
 
 
@@ -456,7 +484,8 @@ def build_outputs() -> dict[str, str]:
     check_kat()
     c = constants()
     m = Mirror(c)
-    out = {f"{GEN_DIR}/constants.hpp": render_constants(c)}
+    out = {f"{GEN_DIR}/constants.hpp": render_constants(c),
+           "common/detmath/generated/det_exp_constants.hpp": render_detmath(c, m)}
     out.update(golden_accuracy())
     out.update(golden_mirror(m))
     out.update(golden_panels(m))

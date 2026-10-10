@@ -76,16 +76,37 @@ public:
 
     static Theta theta(const double (&u)[3]) { return {inv_logit(u[0]), inv_logit(u[1]), u[2]}; }
 
+    // The last evaluation and the search's current point, each with its per-period terms, so fit() can take the
+    // estimate's log-likelihood and placement check from the evaluation the search already made there (P-18): the
+    // same theta through the same code, so the same numbers bit for bit.
+    struct Point {
+        double u[3];
+        LogLikelihood ll;
+        std::vector<double> contrib;
+        bool valid = false;
+    };
+
+    void record(const double (&u)[3], const LogLikelihood& ll) {
+        for (int i = 0; i < 3; ++i) last_.u[i] = u[i];
+        last_.ll = ll;
+        last_.contrib = work_.contrib;
+        last_.valid = true;
+    }
+
     double value(const double (&u)[3]) {
         ++evaluations;
-        return log_likelihood(obs_, T_, theta(u), rule_, work_).value;
+        const auto ll = log_likelihood(obs_, T_, theta(u), rule_, work_);
+        record(u, ll);
+        return ll.value;
     }
 
     // The log-likelihood and its gradient in u.
     double value_and_gradient(const double (&u)[3], double (&g)[3]) {
         const Theta th = theta(u);
         ++evaluations;
-        const double l = log_likelihood(obs_, T_, th, rule_, work_).value;
+        const auto ll = log_likelihood(obs_, T_, th, rule_, work_);
+        record(u, ll);
+        const double l = ll.value;
         if (!std::isfinite(l)) {
             g[0] = g[1] = g[2] = static_cast<double>(NAN);
             return l;
@@ -119,6 +140,7 @@ public:
     double newton(double (&u)[3], const bool (&free)[3], double tolerance, bool& converged, bool warm = false) {
         double g[3];
         double l = value_and_gradient(u, g);
+        current_ = last_;
         converged = false;
         double H[3][3] = {};
         bool have_h = false;
@@ -177,6 +199,7 @@ public:
                 ln = value(un);
                 if (std::isfinite(ln) && ln >= l + 1e-4 * alpha * slope) {
                     accepted = true;
+                    accepted_ = last_;  // un's evaluation, before the Hessian's or gradient's probes
                     break;
                 }
                 alpha *= 0.5;
@@ -212,6 +235,7 @@ public:
                 g[i] = gn[i];
             }
             l = lnew;
+            current_ = accepted_;
             backtracked = alpha < 1.0 ? backtracked + 1 : 0;
             if (moved < 10.0 * tolerance) {
                 converged = true;
@@ -288,7 +312,7 @@ public:
                 }
             }
             if (ok) {
-                double y[3], x[3];
+                double y[3] = {0.0, 0.0, 0.0}, x[3] = {0.0, 0.0, 0.0};  // every entry read is written first; GCC cannot see it
                 for (int a = 0; a < m; ++a) {
                     double sum = g[idx[a]];
                     for (int k = 0; k < a; ++k) sum -= L[a][k] * y[k];
@@ -317,6 +341,7 @@ public:
     std::int64_t evaluations = 0;
     std::int64_t scores = 0;
     double last_g_[3] = {0.0, 0.0, 0.0};  // the gradient in u at newton's result
+    Point last_, accepted_, current_;      // the last evaluation; the line search's accepted one; newton's result
     bool warm_valid_ = false;
     bool warm_act_[3] = {false, false, false};
     double warm_h_[3][3] = {};
@@ -361,6 +386,7 @@ inline bool fit(const Obs* obs, std::int64_t periods, const Box& box, double sta
     const bool all[3] = {true, true, true};
     double best_l = -HUGE_VAL, second_l = -HUGE_VAL;
     double best_u[3] = {us[k0][0], us[k0][1], us[k0][2]};
+    detail::Search::Point best_point;
     for (int k = 0; k < K; ++k) {
         const bool left = k == 0 || ls[k] >= ls[k - 1];
         const bool right = k == K - 1 || ls[k] >= ls[k + 1];
@@ -374,6 +400,7 @@ inline bool fit(const Obs* obs, std::int64_t periods, const Box& box, double sta
             second_l = best_l;
             best_l = l;
             for (int i = 0; i < 3; ++i) best_u[i] = u[i];
+            best_point = s.current_;
         } else if (l > second_l) {
             second_l = l;
         }
@@ -385,11 +412,18 @@ inline bool fit(const Obs* obs, std::int64_t periods, const Box& box, double sta
     out.value[0] = th.pd;
     out.value[1] = th.rho;
     out.value[2] = th.phi;
-    const auto est = log_likelihood(obs, periods, th, quadrature::parity_rule(), s.work_);
+    // The search evaluated the estimate already (P-18): take its numbers, else evaluate it once.
+    const bool cached = best_point.valid && best_point.u[0] == best_u[0] && best_point.u[1] == best_u[1] &&
+                        best_point.u[2] == best_u[2];
+    if (!cached) {
+        best_point.ll = log_likelihood(obs, periods, th, quadrature::parity_rule(), s.work_);
+        best_point.contrib = s.work_.contrib;
+    }
+    const auto est = best_point.ll;
     out.loglik = est.value;
     out.placement_check = est.placement;
     double scale = 0.0;
-    for (const double l : s.work_.contrib) scale += std::fabs(l);
+    for (const double l : best_point.contrib) scale += std::fabs(l);
     detail::Search d(obs, periods, box);
     d.rule_ = quadrature::parity_rule(true);
     const double doubled = log_likelihood(obs, periods, th, d.rule_, d.work_).value;

@@ -32,6 +32,14 @@
 // misplaced centre, since both rules share it. tests/unit/ar1_filter_test.cpp holds the hard cases against an
 // independent dense-grid filter.
 //
+// The transition sums (P-18, D-199): every log-sum-exp over node pairs (M's numerator, the smoothing pass's beta,
+// the score's beta and pair weights) runs through benchmark_models/ar1/transition.hpp, one lane per output node,
+// with the in-house det_exp (common/detmath, shared with the DGP), so the scalar, SSE2 and AVX2 kernels agree bit
+// for bit and the transition is the same number on every platform. Each period's own integral keeps core's
+// accumulator, and LSE_j(lhat_j) is taken with the kernels' arithmetic, so M is exactly 0 at phi = 0 and that
+// case is still the per-period likelihood bit for bit. (The binomial terms themselves still use log_phi's libm
+// calls, so the filter as a whole is not yet platform-independent; D-199.)
+//
 // phi = 0 gives the per-period likelihood bit for bit under both placements, with no special case: mu = 0
 // and sigma^2 = 1 exactly (every phi term is 0 * finite), so the transformed model's fields equal the
 // original's and z = 0 + 1 y = y; the log-ratio below is then exactly 0 (0.5 y^2 - y^2 * 0.5 and
@@ -47,6 +55,8 @@
 #include "core/model/binomial_mixture.hpp"
 #include "core/model/vasicek.hpp"
 #include "core/quadrature/integrator.hpp"
+#include "benchmark_models/ar1/transition.hpp"
+#include "common/detmath/det_exp.hpp"
 #include "core/special/lbinom.hpp"
 #include "engine/surface.hpp"
 
@@ -85,6 +95,12 @@ struct FilterWork {
     std::vector<double> contrib;           // per-period terms l_t = log p(d_t | d_1..d_{t-1})
     std::vector<double> mean, var;         // smoothed moments of Z_t (from smooth())
     std::vector<double> mu, sigma;         // proxies for a Neighbours pass
+    // Scratch reused from call to call (P-18): sized once, then no allocation per evaluation.
+    std::vector<double> w, ones, beta, beta_next, pair, weights, pu, a, mx, sum, ew;
+    std::vector<unsigned char> flags;
+    // P-18's measurement (D-199): terms seen by the transition kernels and those skipped because their exp is exactly
+    // +0. Counted by the scalar kernel only (VCAL_AR1_KERNEL=scalar); null leaves counting off.
+    kernel::Counts* counts = nullptr;
 };
 
 namespace detail {
@@ -106,65 +122,116 @@ struct ProxyTransition {
     double log_ratio_first(double z, double y) const { return (0.5 * (y * y) + half_log_s2) - 0.5 * (z * z); }
 };
 
+// The transition's online log-sum-exp for one value at a time, with det_exp: the kernels' arithmetic for one lane
+// (transition.hpp), so that LSE_j(lhat_j) here and the forward kernel's LSE_j(lhat_j + 0) at phi = 0 are the same
+// number bit for bit, and M is exactly 0 there.
+struct DetLse {
+    double mx = -HUGE_VAL, sum = 0.0;
+    unsigned char flags = 0;
+    void add(double x) {
+        if (std::isnan(x)) {
+            flags |= kernel::kFlagNan;
+        } else if (x == HUGE_VAL) {
+            flags |= kernel::kFlagInf;
+        } else if (x == -HUGE_VAL) {
+        } else {
+            const double d = x - mx;
+            if (x > mx) {
+                sum = sum * detmath::det_exp(-std::fabs(d)) + 1.0;
+                mx = x;
+            } else if (!(d < kernel::kExpZeroBelow)) {  // below it exp is exactly +0 (transition.hpp)
+                sum = sum + detmath::det_exp(-std::fabs(d));
+            }
+        }
+    }
+    double result() const { return kernel::lse_result(mx, sum, flags); }
+};
+
 // The rules' accumulator, with the predictive-to-proxy ratio folded into each node's term. In the first period
 // the predictive is the prior N(0, 1); with the prior as proxy (the Predictive placement, and every placement
 // at phi = 0) the ratio is exactly 0 and the accumulator is OnlineLogSumExp exactly.
 class FilterAcc {
 public:
-    FilterAcc(const ProxyTransition& tr, const PeriodNodes* prev, PeriodNodes& out, std::vector<double>& w)
-        : tr_(tr), prev_(prev), out_(out), w_(w) {
+    FilterAcc(const ProxyTransition& tr, const PeriodNodes* prev, PeriodNodes& out, FilterWork& work)
+        : tr_(tr), prev_(prev), out_(out), work_(work), w_(work.w) {
         out_.z.clear();
         out_.y.clear();
         out_.v.clear();
         w_.clear();
     }
 
+    // The rule's nodes arrive one at a time; their terms are computed together, in result(), so the transition
+    // sums run one lane per destination node (transition.hpp).
     void add(double v, double y) {
-        const double z = out_.mu + out_.sigma * y;
-        double w;
-        if (prev_ != nullptr) {
-            quadrature::detail::OnlineLogSumExp m;
-            const std::size_t np = prev_->z.size();
-            for (std::size_t j = 0; j < np; ++j) m.add(prev_->lhat[j] + tr_.log_ratio(prev_->z[j], z, y));
-            w = v + (m.result() - prev_->lhat_lse);
-        } else {
-            w = v + tr_.log_ratio_first(z, y);
-        }
-        acc_.add(w);
-        out_.z.push_back(z);
+        out_.z.push_back(out_.mu + out_.sigma * y);
         out_.y.push_back(y);
         out_.v.push_back(v);
-        w_.push_back(w);
     }
 
-    double result() const { return acc_.result(); }
+    double result() {
+        if (done_) return acc_.result();
+        done_ = true;
+        const std::size_t nd = out_.z.size();
+        w_.resize(nd);
+        if (prev_ != nullptr && nd > 0) {
+            const std::size_t np = prev_->z.size();
+            auto& pu = work_.pu;
+            auto& a = work_.a;
+            auto& mx = work_.mx;
+            auto& sum = work_.sum;
+            auto& flags = work_.flags;
+            pu.resize(np);
+            for (std::size_t j = 0; j < np; ++j) pu[j] = tr_.phi * prev_->z[j];
+            a.resize(nd);
+            for (std::size_t k = 0; k < nd; ++k) a[k] = 0.5 * (out_.y[k] * out_.y[k]) + tr_.half_log_s2;
+            mx.resize(nd);
+            sum.resize(nd);
+            flags.resize(nd);
+            if (!kernel::forward(pu.data(), prev_->lhat.data(), np, out_.z.data(), a.data(), nd, tr_.inv_two_var,
+                                 tr_.half_log_var, mx.data(), sum.data(), flags.data(), work_.counts)) {
+                w_.assign(nd, static_cast<double>(NAN));  // no kernel selected (VCAL_AR1_KERNEL): refuse
+            } else {
+                for (std::size_t k = 0; k < nd; ++k) {
+                    w_[k] = out_.v[k] + (kernel::lse_result(mx[k], sum[k], flags[k]) - prev_->lhat_lse);
+                }
+            }
+        } else {
+            for (std::size_t k = 0; k < nd; ++k) w_[k] = out_.v[k] + tr_.log_ratio_first(out_.z[k], out_.y[k]);
+        }
+        for (std::size_t k = 0; k < nd; ++k) acc_.add(w_[k]);
+        return acc_.result();
+    }
 
 private:
     const ProxyTransition& tr_;
     const PeriodNodes* prev_;
     PeriodNodes& out_;
+    FilterWork& work_;
     std::vector<double>& w_;
-    quadrature::detail::OnlineLogSumExp acc_;
+    quadrature::detail::OnlineLogSumExp acc_;  // each period's own integral: core's accumulator (phi = 0 is exact)
+    bool done_ = false;
 };
 
 // Mean and variance of z under the weights exp(lw + extra) (extra optional), normalised. Two passes, so the
 // variance is a sum of non-negative terms: no floor or clamp, which would put a kink into the likelihood
 // through the node placement (D-195's smoothness condition).
 inline void weighted_moments(const std::vector<double>& z, const std::vector<double>& lw,
-                             const std::vector<double>* extra, double& mean, double& var) {
+                             const std::vector<double>* extra, double& mean, double& var, std::vector<double>& ew) {
     const std::size_t n = z.size();
     double mx = -HUGE_VAL;
     for (std::size_t k = 0; k < n; ++k) mx = std::fmax(mx, lw[k] + (extra ? (*extra)[k] : 0.0));
+    ew.resize(n);  // each weight once, for both passes
     double sw = 0.0, szw = 0.0;
     for (std::size_t k = 0; k < n; ++k) {
         const double wk = std::exp(lw[k] + (extra ? (*extra)[k] : 0.0) - mx);
+        ew[k] = wk;
         sw += wk;
         szw += wk * z[k];
     }
     mean = szw / sw;
     double sdd = 0.0;
     for (std::size_t k = 0; k < n; ++k) {
-        const double wk = std::exp(lw[k] + (extra ? (*extra)[k] : 0.0) - mx);
+        const double wk = ew[k];
         const double e = z[k] - mean;
         sdd += wk * (e * e);
     }
@@ -182,7 +249,7 @@ double forward(const Obs* obs, std::int64_t periods, const Theta& th, const Inte
     ProxyTransition tr{phi, 1.0 / (2.0 * var), 0.5 * std::log(var), 0.0};
     work.nodes.resize(static_cast<std::size_t>(periods));
     work.contrib.assign(static_cast<std::size_t>(periods), 0.0);
-    std::vector<double> w;
+    std::vector<double>& w = work.w;
     double m = 0.0, s2 = 1.0;  // filtered mean and variance of the previous period's Z
     for (std::int64_t t = 0; t < periods; ++t) {
         const auto ts = static_cast<std::size_t>(t);
@@ -201,7 +268,7 @@ double forward(const Obs* obs, std::int64_t periods, const Theta& th, const Inte
         const model::Vasicek1F shifted{base.c - base.sqrt_rho * cur.mu, base.sqrt_rho * cur.sigma,
                                        base.sqrt_one_minus_rho};
         const auto f = model::make_binomial_log_integrand(shifted, obs[t].n, obs[t].d);
-        FilterAcc acc(tr, t == 0 ? nullptr : &work.nodes[ts - 1], cur, w);
+        FilterAcc acc(tr, t == 0 ? nullptr : &work.nodes[ts - 1], cur, work);
         const double l = special::lbinom(obs[t].n, obs[t].d) +
                          integrator.log_integrate_with(f, model::binomial_mixture_hint(f), acc);
         work.contrib[ts] = l;
@@ -213,16 +280,44 @@ double forward(const Obs* obs, std::int64_t periods, const Theta& th, const Inte
         // next step's numerator folds them, is the reference that makes M exact at phi = 0.
         const double lse_w = acc.result();
         cur.lhat.resize(w.size());
-        quadrature::detail::OnlineLogSumExp s;
+        DetLse s;
         for (std::size_t k = 0; k < w.size(); ++k) {
             cur.lhat[k] = w[k] - lse_w;
             s.add(cur.lhat[k]);
         }
         cur.lhat_lse = s.result();
-        weighted_moments(cur.z, cur.lhat, nullptr, m, s2);
+        weighted_moments(cur.z, cur.lhat, nullptr, m, s2, work.ew);
     }
-    const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
-    return engine::weighted_sum(work.contrib.data(), periods, 1, ones.data(), 0);
+    work.ones.assign(static_cast<std::size_t>(periods), 1.0);
+    return engine::weighted_sum(work.contrib.data(), periods, 1, work.ones.data(), 0);
+}
+
+// beta_t(j) = LSE_k((log R(j -> k) + v_{t+1,k}) + beta_{t+1}(k)) over the next period's nodes, by the backward
+// kernel (transition.hpp); e, if not null, receives each term (row j, column k).
+inline void backward_lse(const ProxyTransition& tr, const PeriodNodes& cur, const PeriodNodes& nx,
+                         const std::vector<double>& beta_next, std::vector<double>& beta, std::vector<double>* e,
+                         FilterWork& work) {
+    const std::size_t nc = cur.z.size(), nn = nx.z.size();
+    auto& pu = work.pu;
+    auto& a = work.a;
+    auto& mx = work.mx;
+    auto& sum = work.sum;
+    auto& flags = work.flags;
+    pu.resize(nc);
+    a.resize(nn);
+    mx.resize(nc);
+    sum.resize(nc);
+    flags.resize(nc);
+    for (std::size_t j = 0; j < nc; ++j) pu[j] = tr.phi * cur.z[j];
+    for (std::size_t k = 0; k < nn; ++k) a[k] = 0.5 * (nx.y[k] * nx.y[k]) + tr.half_log_s2;
+    if (e != nullptr) e->resize(nc * nn);
+    if (!kernel::backward(pu.data(), nc, nx.z.data(), a.data(), nx.v.data(), beta_next.data(), nn, tr.inv_two_var,
+                          tr.half_log_var, mx.data(), sum.data(), flags.data(), e != nullptr ? e->data() : nullptr,
+                          work.counts)) {
+        beta.assign(nc, static_cast<double>(NAN));  // no kernel selected (VCAL_AR1_KERNEL): refuse
+        return;
+    }
+    for (std::size_t j = 0; j < nc; ++j) beta[j] = kernel::lse_result(mx[j], sum[j], flags[j]);
 }
 
 // Smoothed means and variances of each Z_t over the last forward pass's nodes, by a backward pass:
@@ -235,27 +330,22 @@ inline void smooth(const Theta& th, FilterWork& work) {
     ProxyTransition tr{phi, 1.0 / (2.0 * var), 0.5 * std::log(var), 0.0};
     work.mean.assign(T, 0.0);
     work.var.assign(T, 1.0);
-    std::vector<double> beta_next, beta;
+    std::vector<double>& beta_next = work.beta_next;
+    std::vector<double>& beta = work.beta;
     for (std::size_t tt = T; tt-- > 0;) {
         const PeriodNodes& cur = work.nodes[tt];
         beta.assign(cur.z.size(), 0.0);
         if (tt + 1 < T) {
             const PeriodNodes& nx = work.nodes[tt + 1];
             tr.half_log_s2 = std::log(nx.sigma);
-            for (std::size_t j = 0; j < cur.z.size(); ++j) {
-                quadrature::detail::OnlineLogSumExp b;
-                for (std::size_t k = 0; k < nx.z.size(); ++k) {
-                    b.add(tr.log_ratio(cur.z[j], nx.z[k], nx.y[k]) + nx.v[k] + beta_next[k]);
-                }
-                beta[j] = b.result();
-            }
+            backward_lse(tr, cur, nx, beta_next, beta, nullptr, work);
             // Shift for range only; the smoothed weights are normalised below.
-            quadrature::detail::OnlineLogSumExp s;
+            DetLse s;
             for (const double x : beta) s.add(x);
             const double shift = s.result();
             for (double& x : beta) x -= shift;
         }
-        weighted_moments(cur.z, cur.lhat, &beta, work.mean[tt], work.var[tt]);
+        weighted_moments(cur.z, cur.lhat, &beta, work.mean[tt], work.var[tt], work.ew);
         beta_next.swap(beta);
     }
 }
@@ -306,7 +396,10 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
     const double var = 1.0 - phi * phi;
     detail::ProxyTransition tr{phi, 1.0 / (2.0 * var), 0.5 * std::log(var), 0.0};
     grad[0] = grad[1] = grad[2] = 0.0;
-    std::vector<double> beta_next, beta, pair;
+    std::vector<double>& beta_next = work.beta_next;
+    std::vector<double>& beta = work.beta;
+    std::vector<double>& pair = work.pair;
+    std::vector<double>& weights = work.weights;
     for (std::size_t tt = T; tt-- > 0;) {
         const PeriodNodes& cur = work.nodes[tt];
         const std::size_t nc = cur.z.size();
@@ -315,32 +408,33 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
             const PeriodNodes& nx = work.nodes[tt + 1];
             const std::size_t nn = nx.z.size();
             tr.half_log_s2 = std::log(nx.sigma);
-            // Pairwise smoothed weights of (Z_t, Z_{t+1}): lhat_t(j) + log R(j -> k) + v_{t+1}(k) + beta_{t+1}(k).
-            pair.resize(nc * nn);
+            // Pairwise smoothed weights of (Z_t, Z_{t+1}): lhat_t(j) + (log R(j -> k) + v_{t+1}(k)) + beta_{t+1}(k).
+            detail::backward_lse(tr, cur, nx, beta_next, beta, &pair, work);
             double mx = -HUGE_VAL;
             for (std::size_t j = 0; j < nc; ++j) {
-                quadrature::detail::OnlineLogSumExp b;
                 for (std::size_t k = 0; k < nn; ++k) {
-                    const double e = tr.log_ratio(cur.z[j], nx.z[k], nx.y[k]) + nx.v[k] + beta_next[k];
-                    b.add(e);
-                    pair[j * nn + k] = cur.lhat[j] + e;
+                    pair[j * nn + k] = cur.lhat[j] + pair[j * nn + k];
                     mx = std::fmax(mx, pair[j * nn + k]);
                 }
-                beta[j] = b.result();
+            }
+            weights.resize(nc * nn);
+            if (!kernel::exp_shifted(pair.data(), nc * nn, mx, weights.data(), work.counts)) {
+                weights.assign(nc * nn, static_cast<double>(NAN));
+            }
+            // Each pair's term by the kernel (exact divisions, the same operation order); summed here in order.
+            auto& terms = work.pair;  // the pair log-weights are no longer needed once weighted
+            if (!kernel::score_terms(weights.data(), nc, nn, cur.z.data(), nx.z.data(), phi, var, terms.data())) {
+                terms.assign(nc * nn, static_cast<double>(NAN));
             }
             double sw = 0.0, sd = 0.0;
-            for (std::size_t j = 0; j < nc; ++j) {
-                const double u = cur.z[j];
-                for (std::size_t k = 0; k < nn; ++k) {
-                    const double wjk = std::exp(pair[j * nn + k] - mx);
-                    if (wjk == 0.0) continue;
-                    const double a = nx.z[k] - phi * u;
-                    sw += wjk;
-                    sd += wjk * (a * u / var - phi * (a * a) / (var * var) + phi / var);
-                }
+            for (std::size_t i = 0; i < nc * nn; ++i) {
+                const double wjk = weights[i];
+                if (wjk == 0.0) continue;
+                sw += wjk;
+                sd += terms[i];
             }
             grad[2] += sd / sw;
-            quadrature::detail::OnlineLogSumExp s;
+            detail::DetLse s;
             for (const double x : beta) s.add(x);
             const double shift = s.result();
             for (double& x : beta) x -= shift;

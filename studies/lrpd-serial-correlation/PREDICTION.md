@@ -300,3 +300,8 @@ it far higher:
 - **Next:** P-18 (the filter's transition, with the shared in-house exp) is re-projected the same way. The
   arm's scale is decided after that number and before the validation run, since any reduction in replicates
   or scope would be an amendment, and amendments are allowed only before the validation run (D-197).
+- **After P-18 (2026-10-10; D-199), the same method:** 3,005,761 thread-seconds, **34.9 h** on 24 threads; 90% range
+  32.9–37.0 h, 31.2–38.9 h with the allowance; accepted at 8 replicates per scenario (0% from 4). The owner decides
+  the arm's scale from this number, before the validation run.
+- **The scale (owner, 2026-10-10; D-199):** unchanged. The arm runs as registered, in checkpointed segments; nothing in
+  this addendum or above is amended.

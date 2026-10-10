@@ -76,6 +76,9 @@ struct CompositeLegendre {
             }
             for (int i = 0; i < kCompositeBisections; ++i) {
                 const double mid = 0.5 * (inner + outer);
+                // Converged to adjacent doubles: inner is only ever set to a point not below the target, so from
+                // here outer could only be reassigned to itself. Stopping returns the same outer (P-7, D-199).
+                if (mid == inner || mid == outer) break;
                 if (below(zm + sign * mid)) {
                     outer = mid;
                 } else {

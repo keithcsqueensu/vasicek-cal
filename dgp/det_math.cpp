@@ -14,6 +14,7 @@
 #include <cstring>
 #include <limits>
 
+#include "common/detmath/det_exp.hpp"
 #include "dgp/dgp.hpp"
 #include "dgp/generated/constants.hpp"
 
@@ -21,6 +22,7 @@ namespace vcal::dgp {
 namespace {
 
 namespace gc = generated;
+namespace dm = detmath::generated;  // ln 2, 1/ln 2: shared with det_exp (common/detmath, D-199)
 
 constexpr double kInf = std::numeric_limits<double>::infinity();
 constexpr double kNaN = std::numeric_limits<double>::quiet_NaN();
@@ -31,18 +33,15 @@ constexpr double kTwo54 = 0x1p54;
 constexpr int kMillsIterations = 128;
 constexpr int kSeriesTerms = 32;
 constexpr int kLogTerms = 10;
-constexpr int kExpTerms = 16;
 constexpr double kNcdfTail = 2.0;
 
-// 1/(2k+1) and 1/n!, computed by IEEE division exactly as the mirror does.
+// 1/(2k+1), computed by IEEE division exactly as the mirror does. (det_exp's 1/n! are generated data in
+// common/detmath, D-199.)
 struct Coefficients {
     double log_coef[kLogTerms + 1];
-    double exp_coef[kExpTerms + 1];
     Coefficients() {
         log_coef[0] = 0.0;
         for (int k = 1; k <= kLogTerms; ++k) log_coef[k] = 1.0 / static_cast<double>(2 * k + 1);
-        exp_coef[0] = 1.0;
-        for (int n = 1; n <= kExpTerms; ++n) exp_coef[n] = exp_coef[n - 1] / static_cast<double>(n);
     }
 };
 
@@ -106,22 +105,11 @@ double det_log(double x) {
     const double r = z * poly;
     const double log_m = 2.0 * s + 2.0 * (s * r);
     const double fe = static_cast<double>(e);
-    return (fe * gc::kLn2Lo + log_m) + fe * gc::kLn2Hi;
+    return (fe * dm::kLn2Lo + log_m) + fe * dm::kLn2Hi;
 }
 
-// e^x = 2^k e^r, k = floor(x / ln 2 + 1/2), r = (x - k ln2_hi) - k ln2_lo (Cody-Waite),
-// e^r by its Taylor series to r^16 (|r| <= 0.347), scaled by ldexp (correctly rounded).
-double det_exp(double x) {
-    if (std::isnan(x)) return x;
-    if (x > 800.0) return kInf;
-    if (x < -800.0) return 0.0;
-    const double kd = std::floor(x * gc::kInvLn2 + 0.5);
-    const double r = (x - kd * gc::kLn2Hi) - kd * gc::kLn2Lo;
-    const auto& c = coef();
-    double p = c.exp_coef[kExpTerms];
-    for (int n = kExpTerms - 1; n >= 0; --n) p = p * r + c.exp_coef[n];
-    return std::ldexp(p, static_cast<int>(kd));
-}
+// e^x: the shared definition (common/detmath/det_exp.hpp, D-199).
+double det_exp(double x) { return detmath::det_exp(x); }
 
 // Phi(x): x < -2: phi(x) R(-x); x > 2: 1 - phi(x) R(x); otherwise the everywhere-convergent
 // series Phi(x) = 1/2 + phi(x) (x + x^3/3 + x^5/15 + ...) (terms x^(2n+1)/(2n+1)!!, n <= 32).
