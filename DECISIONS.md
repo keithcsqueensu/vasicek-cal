@@ -1186,7 +1186,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The key:** only the ordered default-count vector keeps a memoised fit bit for bit the fit it replaces, since the log-likelihood sums periods in order. The sorted key that P-9's entry named would change results within rounding, and is wrong for any estimator that uses period order (the AR(1)-aware MLE of M6).
   - **The result:** under the ordered key, 32% of the (T = 20, n = 100) cell's bootstrap panels repeat, 21% at (40, 100), and at most 2% elsewhere; none at n = 10,000. The projected saving is 4,313 of 436,676 thread-seconds, **1.0%** of the S-10/S-4 run. The sorted key would save 6.3%, not bit for bit. The recovery harness's shareable repeats (2.4% of outer fits, all at n = 100 and PD 0.001) are a few seconds.
   - **Why so little:** the repeats are panels with almost no defaults, in the cheapest cells. The n = 100 cells are 10% of the run's cost and the n = 10,000 cells 64%, and those never repeat.
-  - **Still to measure:** the AR(1) DGP's repeat rate, counted with the variant (S-35) before S-35's full run. This decision stands unless that count projects a real saving.
+  - **The AR(1) DGP** (S-35's panels, counted by `study_lrpd_serial --count-repeats`, D-190): 3.0%, 3.1% and 3.2% of panels repeat at φ = 0, 0.3 and 0.6, almost all at n = 100. The saving is at most about 0.6% of S-35's run, so the decision stands.
   - **Also recorded:** in the same timing sample, simulation is 31% of the S-10/S-4 run's projected thread-seconds (38–46% in the n = 10,000 cells). That is input to the SIMD Philox decision.
 
 ## Open

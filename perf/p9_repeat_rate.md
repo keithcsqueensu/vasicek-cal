@@ -75,10 +75,25 @@ next steps).
 
 ## The AR(1) DGP
 
-Not yet measured: the AR(1) variant does not exist yet (S-35, D-188). Under an AR(1) factor the periods are
-no longer exchangeable, so only the ordered key is valid, and persistence makes runs of quiet periods more
-alike, which could raise the rate at low PD. The same tool will count it once the variant is built, before
-S-35's full run; this decision stands unless that count projects a real saving.
+Measured with S-35's own tool on its exact panels (`study_lrpd_serial --count-repeats`, D-190), the recovery
+matrix's outer panels at each φ. Under an AR(1) factor the periods are no longer exchangeable, so only the
+ordered key is valid. Persistence makes runs of quiet periods more alike, but the effect on the rate is
+small.
+
+Fraction of the 81,000 panels that repeat an earlier panel of the same (T, n) cell, by φ:
+
+| φ | repeats | of which at n = 100, T ≤ 40 |
+|---|---|---|
+| 0 | 2,443 (3.0%) | 2,443 |
+| 0.3 | 2,478 (3.1%) | 2,471 |
+| 0.6 | 2,624 (3.2%) | 2,594 |
+
+The φ = 0 count equals this tool's outer-panel count exactly (2,443 per cell; 1,974 per scenario), a check
+that the two tools draw the same panels.
+
+S-35 fits no parametric bootstrap. Its binomial fits are 97% of its projected run, and a memo could share
+their estimate, SEs, profile and q intervals but not their iid-bootstrap arm. So the saving is at most about
+0.6% of S-35's run, from that run's own timing sample. **This decision stands: P-9 is not built.**
 
 Reproduce: `p9_repeat_rate --scenarios <the n <= 1,000 ids> --out small.csv`, then `p9_repeat_rate
 --scenarios <the n = 10,000 ids> --boot-replicates 100 --out large.csv` (ids with id % 3 == 2 have
