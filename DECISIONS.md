@@ -1255,6 +1255,13 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **The size:** a PD interval on serially correlated default history is too narrow by up to √((1 + φ)/(1 − φ)), whatever the history's length.
     - **The report:** a monitoring report that shows a PD interval should show the residual lag-1 autocorrelation of the probit default rates beside it.
   - **Next for S-35:** M6's AR(1)-aware MLE, its predictions appended before its run. A HAC (sandwich) SE is a cheaper candidate `native` option, not yet registered.
+  - **Owner's review (same day):**
+    - **The D-187 amendment is approved,** with one addition: tools record fixed and per-replicate costs separately, and the projection adds the fixed part once (D-193). The agreement check stays as a safety net, and the label stays "calibrated, not validated" until a run lands in range.
+    - **The write-up leads with three findings:**
+      - a longer history does not fix it;
+      - the plain MLE does not rescue the long-run PD, which makes S-35's M6 arm the test of Miu and Ozdemir's (2008) claim;
+      - at n = 100 the stable observed-rate ρ coverage is two errors offsetting. Its level (0.51 at φ = 0) reinforces S-27's n·PD threshold.
+    - **The monitoring implication now says plainly** that an apparently stable coverage figure can hide offsetting biases.
 
 ## Open
 
