@@ -1186,10 +1186,11 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - Z_0 = e_0 and Z_t = φ Z_{t−1} + √(1 − φ²) e_t, with e_t the base factor draw for period t. Every Bernoulli draw is the base DGP's.
     - It starts in the stationary distribution, so every period's count has its φ = 0 distribution.
     - Specified like the base DGP (D-149): prose, a line-for-line Python mirror (`tools/gen_dgp_tables.py`), and six reference panels with their own SHA-256, matched bit for bit by the C++.
-  - **For the owner: no key domain of its own.** D-149 asks a new DGP variant for its own key domain. This variant deliberately draws no stream of its own: it reuses the base DGP's draws (common random numbers).
-    - **The benefit:** comparisons across φ are paired on the same random numbers, φ = 0 is the pinned run's panels bit for bit (tested), and the φ = 0 arm doubles as a check of the run.
-    - **The cost:** none found. No two variants' draws can collide, because the variant adds no draws. S-11 shares the variant (D-188).
-    - **If the owner prefers a separate key domain,** only the e_t's key changes (seed XOR a tag), at the price of the pairing.
+  - **No key domain of its own: an explicit exception to D-149 (owner-approved).** D-149 gives each new DGP variant its own key domain. This variant deliberately reuses the base DGP's draws instead (common random numbers).
+    - **Why D-149's rule does not apply:** the rule stops *independent* segments from sharing draws, which would create false dependence between them (S-24's second segment). Panels at different φ are not independent segments but versions of the same panel, so sharing their draws is the design, not a collision.
+    - **What it buys:** every comparison across φ is paired, which is exactly what S-35's question needs. φ = 0 reproduces the pinned run's panels bit for bit (tested), a correctness check in its own right.
+    - **The scale (checked at the owner's request):** the innovation is multiplied by √(1 − φ²) and Z_0 = e_0 has variance 1. So Var Z_t = φ² · 1 + (1 − φ²) · 1 = 1 at every t and φ by induction, and every period's Z_t is N(0, 1). PD and ρ therefore do not shift with φ; only the dependence between periods changes. The recursion test checks the computed Z_t bit for bit against this formula.
+    - **Scope:** S-11 shares the variant (D-188). Any future variant modelling independent segments still takes its own key domain.
   - **S-35's registration** (`studies/lrpd-serial-correlation/PREDICTION.md`, L1–L11):
     - **The setup:** the recovery matrix at φ ∈ {0, 0.3, 0.6}, paired. The estimators are the simple average with a t interval, the parity binomial MLE as the recovery harness fits it, and the Vasicek-rate MLE on the n → ∞ rates.
     - **The targets:** the generating values. Under a stationary AR(1) factor the marginal is unchanged, so they are also the pseudo-true values (D-150, D-151).
