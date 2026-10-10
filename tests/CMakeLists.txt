@@ -238,6 +238,13 @@ set_tests_properties(study_bayes_sbc_smoke PROPERTIES LABELS slow)
 
 # S-10 and S-4 (studies/parametric-bootstrap, studies/bartlett-profile): the parametric bootstrap, the
 # profile LR statistic at the truth and S-4b's factor from the same bootstrap panels.
+# S-35 (D-190): the recovery matrix under the AR(1)-factor DGP; scored by
+# studies/lrpd-serial-correlation/compare.py. The smoke test runs two replicates of one scenario.
+add_executable(study_lrpd_serial studies/lrpd_serial.cpp)
+target_link_libraries(study_lrpd_serial PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_lrpd_serial)
+add_test(NAME study_lrpd_serial_smoke COMMAND study_lrpd_serial --replicates 2 --scenarios 29,2 --phis 0,0.6
+         --out lrpd_smoke.csv --rate-out lrpd_smoke_rate.csv)
 add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
 target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_parametric_bootstrap)
