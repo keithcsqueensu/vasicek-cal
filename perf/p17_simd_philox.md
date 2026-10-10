@@ -95,5 +95,5 @@ The simulate phase falls 3.2×, and the projected run 21% (381,839 → 299,703 t
 21% is a projection, calibrated and not validated (D-187): the next parametric-bootstrap full run records
 its projection before it starts and confirms or corrects it against the actual time. The
 other phases are unchanged within noise. W* (S-4b) also draws panels, but its cost is the fits. These are
-projections from the sampled tool, not a full run. D-193's fill split is on another branch, so these
+projections from the sampled tool, not a full run. Both binaries predate D-193's fill split, so these
 absolute hours are not comparable with D-193's; the A/B ratio is the result.
