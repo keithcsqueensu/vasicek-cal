@@ -1374,6 +1374,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The S-35 M6 registration is frozen (owner).** It merged in PR #50 (3876889) before any validation work. At φ = 0.3 and 0.6 across all 81 cells, the validation run is close to a preview of the arm's results on another seed, which is acceptable only because the predictions were merged first. So no amendment to the S-35 M6 registration (PREDICTION.md's 2026-10-10 addendum, L16–L28 and its checks) may follow the validation run; anything the validation run suggests becomes a new study with its own registration.
   - **Next:** the validation run (seed 0x7A11DA7E), its predictions committed before it runs (owner's design, with three changes: correctness only, with T = 100 credible cells the strict pass and T = 40 against a stated range; ρ̂'s bias judged against the iid binomial MLE's, not zero; and a paired check at φ = 0 against the binomial MLE on the same panels; per-cell results reported beside the pooled ones); the S-35 M6 arm's tool and its timing sample; then the arm.
 
+## S-35's M6 arm: the tool, 2026-10-10
+
+- **D-198 — `study_lrpd_serial_m6`, the tool for S-35's M6 arm and (with `--seed`) the validation run, written to the registration (PREDICTION.md, the 2026-10-10 addendum) before either runs.** A new tool rather than a change to `study_lrpd_serial`, whose rows reproduce the pinned S-35 run.
+  - **Per panel:** the binomial-mixture MLE (calibrate with the shared row cache) as the scan's start and the reference of the first check before scoring; the M6 estimate with its SEs, checks, scan diagnostics and flags; 3-D profile intervals for PD and ρ; φ's on the study subset only; on the subset, replicates 0–99 at φ = 0.6, the parametric-bootstrap comparator (B = 199, seed 0xB0071A61, replicate 256 r + b), percentile intervals.
+  - **The φ = 0 scan point** (the binomial MLE, polished) is now in `Estimate3` (`phi0_value`, `phi0_loglik`), so both registered checks before scoring can be computed from the rows.
+  - **One reading of the registration:** "each is refitted for the point estimate only" is read as the estimator exactly as on the panel itself, so each comparator refit starts its scan at that bootstrap panel's own binomial MLE, not at the parent estimate; a different start could change which local maximum is found.
+  - **Timing shares (perf/README.md):** the comparator 0.1 (replicates 0–99 of 1,000); φ's interval runs on every replicate of the subset's scenarios, which the per-cell means carry; fills once.
+  - **The smoke test** runs on its own seed (0x5AFE), never S-35's, with a 3-panel comparator forced on.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

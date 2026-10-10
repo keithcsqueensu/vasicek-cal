@@ -285,6 +285,17 @@ set_tests_properties(study_bayes_sbc_smoke PROPERTIES LABELS slow)
 # profile LR statistic at the truth and S-4b's factor from the same bootstrap panels.
 # S-35 (D-190): the recovery matrix under the AR(1)-factor DGP; scored by
 # studies/lrpd-serial-correlation/compare.py. The smoke test runs two replicates of one scenario.
+# S-35's M6 arm (PREDICTION.md, the 2026-10-10 addendum; D-196): the AR(1)-aware MLE on S-35's panels, and with
+# --seed the validation run (D-197). A tool; the smoke test runs two replicates of one subset scenario on its own
+# seed, with a 3-panel comparator.
+add_executable(study_lrpd_serial_m6 studies/lrpd_serial_m6.cpp)
+target_link_libraries(study_lrpd_serial_m6 PRIVATE vcal_test_harness vcal::benchmark_models vcal::resample vcal::backend_cpu
+                                                   vcal::dgp)
+vcal_target_defaults(study_lrpd_serial_m6)
+add_test(NAME study_lrpd_serial_m6_smoke
+         COMMAND study_lrpd_serial_m6 --scenarios 72 --replicates 2 --phis 0,0.6 --seed 0x5AFE --comparator --boot-panels 3
+                 --out m6_smoke.csv)
+
 # The AR(1) likelihood goldens (tests/golden/ar1/likelihood.csv; D-195): engine and ref at fixed parameters on
 # hand-made panels, no fits. Run by hand to regenerate; unit_ar1_filter checks the engine against them.
 add_executable(ar1_goldens studies/ar1_goldens.cpp)
