@@ -32,6 +32,14 @@
 // misplaced centre, since both rules share it. tests/unit/ar1_filter_test.cpp holds the hard cases against an
 // independent dense-grid filter.
 //
+// The transition sums (P-18, D-199): every log-sum-exp over node pairs (M's numerator, the smoothing pass's beta,
+// the score's beta and pair weights) runs through benchmark_models/ar1/transition.hpp, one lane per output node,
+// with the in-house det_exp (common/detmath, shared with the DGP), so the scalar, SSE2 and AVX2 kernels agree bit
+// for bit and the transition is the same number on every platform. Each period's own integral keeps core's
+// accumulator, and LSE_j(lhat_j) is taken with the kernels' arithmetic, so M is exactly 0 at phi = 0 and that
+// case is still the per-period likelihood bit for bit. (The binomial terms themselves still use log_phi's libm
+// calls, so the filter as a whole is not yet platform-independent; D-199.)
+//
 // phi = 0 gives the per-period likelihood bit for bit under both placements, with no special case: mu = 0
 // and sigma^2 = 1 exactly (every phi term is 0 * finite), so the transformed model's fields equal the
 // original's and z = 0 + 1 y = y; the log-ratio below is then exactly 0 (0.5 y^2 - y^2 * 0.5 and
