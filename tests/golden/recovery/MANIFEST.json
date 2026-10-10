@@ -8,7 +8,7 @@
   "scenarios": "id = ((i_pd*3 + i_rho)*3 + i_T)*3 + i_n; PD {0.001, 0.01, 0.05}, rho {0.02, 0.12, 0.24}, T {20, 40, 100}, n {100, 1000, 10000}",
   "grid": "PD logit [0.0001, 0.20000000000000001] x 61; rho logit [0.001, 0.5] x 41",
   "integrator": "parity rule (D-118): adaptive GH 128 for 0 < d < n, composite Gauss-Legendre 16 x 16 for d in {0, n}; check: the rule doubled",
-  "standard_errors": "Hessian of the objective at the estimate, step 0.14999999999999999 x stencil SE (D-119)",
+  "standard_errors": "observed information at the estimate, the objective's analytic Hessian (P-15, D-185; D-170's derivatives)",
   "interval": "95% Wald, symmetric in the logit coordinate, z = 1.959963984540054",
   "coverage_band_z": 3.29,
   "max_flagged_fraction": 0.050000000000000003,
@@ -18,5 +18,5 @@
   "bootstrap": "iid bootstrap of periods, B = 999, percentile interval (type 7), seed = recovery seed XOR (scenario << 32 | replicate), resampling key domain (D-132, D-135, D-136)",
   "profile_findings": "20 conservative, 6 undercoverage (reviewed)",
   "conditional_pd": "S-23: q = Phi((Phi^-1(PD) + sqrt(rho) z) / sqrt(1 - rho)), z = Phi^-1(0.999) = 3.0902323061678136; profile interval along q = c (engine/conditional_pd.hpp), delta-method Wald in logit(q), bootstrap percentile of q at the same replicates; reviewed findings: 17 profile, 18 Wald, 73 bootstrap",
-  "wall_seconds": 562
+  "wall_seconds": 282
 }

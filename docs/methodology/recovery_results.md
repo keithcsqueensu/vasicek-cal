@@ -26,8 +26,8 @@ Definitions, design and interpretation: [recovery.md](recovery.md) (D-121, D-124
 | 29 | 0.01 | 0.02 | 20 | 10000 | PD | 0.0% | 0.910 | 0.927–0.973 | 1.075 | 0.927 | 0.920 | KNOWN FINDING | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
 | 37 | 0.01 | 0.12 | 20 | 1000 | PD | 0.2% | 0.917 | 0.927–0.973 | 1.029 | 0.932 | 0.944 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
 | 38 | 0.01 | 0.12 | 20 | 10000 | PD | 0.0% | 0.927 | 0.927–0.973 | 1.033 | 0.943 | 0.947 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
-| 47 | 0.01 | 0.24 | 20 | 10000 | PD | 4.7% | 0.920 | 0.927–0.973 | 1.055 | 0.938 | 0.936 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
-| 49 | 0.01 | 0.24 | 40 | 1000 | PD | 2.8% | 0.924 | 0.927–0.973 | 1.027 | 0.934 | 0.938 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
+| 47 | 0.01 | 0.24 | 20 | 10000 | PD | 4.7% | 0.920 | 0.927–0.973 | 1.056 | 0.938 | 0.936 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
+| 49 | 0.01 | 0.24 | 40 | 1000 | PD | 2.8% | 0.924 | 0.927–0.973 | 1.027 | 0.933 | 0.938 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
 | 55 | 0.05 | 0.02 | 20 | 1000 | PD | 0.9% | 0.921 | 0.927–0.973 | 1.037 | 0.938 | 0.936 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
 | 58 | 0.05 | 0.02 | 40 | 1000 | PD | 0.0% | 0.910 | 0.927–0.973 | 1.059 | 0.924 | 0.940 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
 | 65 | 0.05 | 0.12 | 20 | 10000 | PD | 0.0% | 0.920 | 0.927–0.973 | 1.020 | 0.939 | 0.936 | PASS | small-T Wald undercoverage: the Hessian SE understates the spread of the estimates |
@@ -151,10 +151,10 @@ q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% 
 | 27 | 0.01 | 0.02 | 20 | 100 | 0.02816 | -0.367 | 0.981 | 96.2% (95.8%) | 0.0% | 0 / 19 | 16.34 | CONSERVATIVE | 0.944 | DEFERRED | 0.815 | KNOWN FINDING |
 | 28 | 0.01 | 0.02 | 20 | 1000 | 0.02816 | -0.063 | 0.937 | 30.0% (30.0%) | 0.0% | 51 / 12 | 3.21 | PASS | 0.997 | DEFERRED | 0.834 | KNOWN FINDING |
 | 29 | 0.01 | 0.02 | 20 | 10000 | 0.02816 | -0.046 | 0.929 | 0.0% (0.0%) | 0.0% | 57 / 14 | 2.09 | PASS | 0.887 | KNOWN FINDING | 0.824 | KNOWN FINDING |
-| 30 | 0.01 | 0.02 | 40 | 100 | 0.02816 | -0.176 | 0.983 | 91.6% (91.6%) | 0.0% | 0 / 17 | 9.14 | CONSERVATIVE | 0.947 | DEFERRED | 0.864 | KNOWN FINDING |
+| 30 | 0.01 | 0.02 | 40 | 100 | 0.02816 | -0.176 | 0.983 | 91.6% (91.6%) | 0.0% | 0 / 17 | 9.14 | CONSERVATIVE | 0.946 | DEFERRED | 0.864 | KNOWN FINDING |
 | 31 | 0.01 | 0.02 | 40 | 1000 | 0.02816 | -0.041 | 0.939 | 7.3% (7.3%) | 0.0% | 47 / 14 | 2.24 | PASS | 0.966 | PASS | 0.879 | KNOWN FINDING |
 | 32 | 0.01 | 0.02 | 40 | 10000 | 0.02816 | -0.018 | 0.949 | 0.0% (0.0%) | 0.0% | 31 / 20 | 1.69 | PASS | 0.926 | KNOWN FINDING | 0.900 | KNOWN FINDING |
-| 33 | 0.01 | 0.02 | 100 | 100 | 0.02816 | -0.112 | 0.981 | 87.2% (87.2%) | 0.0% | 1 / 18 | 5.22 | CONSERVATIVE | 0.944 | DEFERRED | 0.894 | KNOWN FINDING |
+| 33 | 0.01 | 0.02 | 100 | 100 | 0.02816 | -0.112 | 0.981 | 87.2% (87.2%) | 0.0% | 1 / 18 | 5.22 | CONSERVATIVE | 0.943 | DEFERRED | 0.894 | KNOWN FINDING |
 | 34 | 0.01 | 0.02 | 100 | 1000 | 0.02816 | -0.022 | 0.946 | 0.0% (0.0%) | 0.0% | 28 / 26 | 1.64 | PASS | 0.949 | PASS | 0.933 | PASS |
 | 35 | 0.01 | 0.02 | 100 | 10000 | 0.02816 | -0.014 | 0.947 | 0.0% (0.0%) | 0.0% | 28 / 25 | 1.39 | PASS | 0.925 | KNOWN FINDING | 0.923 | KNOWN FINDING |
 | 36 | 0.01 | 0.12 | 20 | 100 | 0.09033 | -0.250 | 0.945 | 72.9% (59.1%) | 0.0% | 37 / 18 | 20.73 | PASS | 1.000 | DEFERRED | 0.797 | KNOWN FINDING |
@@ -169,7 +169,7 @@ q = Φ((Φ⁻¹(PD) + √ρ·Φ⁻¹(0.999))/√(1 − ρ)), the PD at the 0.1% 
 | 45 | 0.01 | 0.24 | 20 | 100 | 0.1757 | -0.243 | 0.937 | 78.0% (29.3%) | 0.0% | 48 / 15 | 16.74 | PASS | 1.000 | DEFERRED | 0.782 | KNOWN FINDING |
 | 46 | 0.01 | 0.24 | 20 | 1000 | 0.1757 | -0.107 | 0.945 | 19.5% (0.0%) | 0.0% | 34 / 21 | 6.74 | PASS | 0.902 | DEFERRED | 0.866 | KNOWN FINDING |
 | 47 | 0.01 | 0.24 | 20 | 10000 | 0.1757 | -0.088 | 0.928 | 5.6% (0.0%) | 0.0% | 51 / 21 | 5.65 | PASS | 0.915 | KNOWN FINDING | 0.841 | KNOWN FINDING |
-| 48 | 0.01 | 0.24 | 40 | 100 | 0.1757 | -0.102 | 0.947 | 33.3% (4.8%) | 0.0% | 36 / 17 | 7.31 | PASS | 0.949 | DEFERRED | 0.849 | KNOWN FINDING |
+| 48 | 0.01 | 0.24 | 40 | 100 | 0.1757 | -0.102 | 0.947 | 33.3% (4.8%) | 0.0% | 36 / 17 | 7.31 | PASS | 0.950 | DEFERRED | 0.849 | KNOWN FINDING |
 | 49 | 0.01 | 0.24 | 40 | 1000 | 0.1757 | -0.054 | 0.935 | 2.7% (0.0%) | 0.0% | 40 / 25 | 4.04 | PASS | 0.926 | KNOWN FINDING | 0.879 | KNOWN FINDING |
 | 50 | 0.01 | 0.24 | 40 | 10000 | 0.1757 | -0.049 | 0.948 | 0.1% (0.0%) | 0.0% | 36 / 16 | 3.50 | PASS | 0.931 | PASS | 0.900 | KNOWN FINDING |
 | 51 | 0.01 | 0.24 | 100 | 100 | 0.1757 | -0.054 | 0.955 | 2.6% (0.1%) | 0.0% | 27 / 18 | 3.59 | PASS | 0.953 | PASS | 0.899 | KNOWN FINDING |
@@ -253,7 +253,7 @@ Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near
 | 0.02 | 20 | 1000 | -3.06e-06 ± 8.1e-06 | 2.57e-04 | -0.0013 ± 0.0008 | 0.0254 | 70.1% (45.3%) | 0.973 / 0.913 | 0.977 / 0.933 | DEFERRED / DEFERRED | 0.963 / 0.991 | 0.0% / 94.6% | PASS / CONSERVATIVE | 0.918 / 0.825 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 20 | 10000 | 1.14e-07 ± 4.1e-06 | 1.30e-04 | -0.0016 ± 0.0003 | 0.0095 | 6.0% (0.5%) | 0.930 / 0.987 | 0.945 / 0.990 | DEFERRED / DEFERRED | 0.937 / 0.931 | 0.0% / 13.9% | PASS / PASS | 0.924 / 0.835 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 40 | 100 | -1.64e-05 ± 1.6e-05 | 5.10e-04 | +0.0190 ± 0.0031 | 0.0990 | 99.9% (81.7%) | 0.000 / 1.000 | 0.000 / 1.000 | DEFERRED / DEFERRED | 0.986 / 0.989 | 25.5% / 100.0% | CONSERVATIVE / CONSERVATIVE | 0.880 / 0.611 | KNOWN FINDING / KNOWN FINDING |
-| 0.02 | 40 | 1000 | -1.99e-06 ± 5.6e-06 | 1.77e-04 | +0.0000 ± 0.0006 | 0.0198 | 51.5% (26.9%) | 0.969 / 0.946 | 0.977 / 0.953 | DEFERRED / DEFERRED | 0.950 / 0.986 | 0.0% / 87.7% | PASS / CONSERVATIVE | 0.928 / 0.897 | PASS / KNOWN FINDING |
+| 0.02 | 40 | 1000 | -1.99e-06 ± 5.6e-06 | 1.77e-04 | +0.0000 ± 0.0006 | 0.0198 | 51.8% (26.9%) | 0.971 / 0.946 | 0.977 / 0.952 | DEFERRED / DEFERRED | 0.950 / 0.986 | 0.0% / 87.7% | PASS / CONSERVATIVE | 0.928 / 0.897 | PASS / KNOWN FINDING |
 | 0.02 | 40 | 10000 | -1.20e-06 ± 2.9e-06 | 9.07e-05 | -0.0005 ± 0.0002 | 0.0065 | 0.1% (0.0%) | 0.951 / 0.970 | 0.955 / 0.976 | PASS / PASS | 0.958 / 0.951 | 0.0% / 0.8% | PASS / PASS | 0.944 / 0.903 | PASS / KNOWN FINDING |
 | 0.02 | 100 | 100 | -1.18e-05 ± 9.9e-06 | 3.14e-04 | +0.0173 ± 0.0020 | 0.0649 | 98.4% (61.4%) | 0.688 / 0.375 | 0.750 / 0.375 | DEFERRED / DEFERRED | 0.977 / 0.986 | 1.3% / 98.9% | CONSERVATIVE / CONSERVATIVE | 0.944 / 0.431 | PASS / KNOWN FINDING |
 | 0.02 | 100 | 1000 | 1.09e-07 ± 3.7e-06 | 1.16e-04 | -0.0015 ± 0.0004 | 0.0134 | 33.6% (11.5%) | 0.940 / 0.950 | 0.946 / 0.952 | DEFERRED / DEFERRED | 0.938 / 0.964 | 0.0% / 73.5% | PASS / PASS | 0.932 / 0.918 | PASS / KNOWN FINDING |
@@ -269,7 +269,7 @@ Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near
 | 0.12 | 100 | 10000 | -3.73e-06 ± 5.0e-06 | 1.58e-04 | -0.0011 ± 0.0006 | 0.0190 | 0.0% (0.0%) | 0.931 / 0.960 | 0.937 / 0.963 | PASS / PASS | 0.939 / 0.961 | 0.0% / 0.0% | PASS / PASS | 0.925 / 0.938 | KNOWN FINDING / PASS |
 | 0.24 | 20 | 100 | 1.49e-05 ± 3.1e-05 | 9.93e-04 | -0.0458 ± 0.0072 | 0.2319 | 100.0% (85.0%) | — | — | DEFERRED / DEFERRED | 0.981 / 0.999 | 56.0% / 100.0% | CONSERVATIVE / CONSERVATIVE | 0.762 / 0.672 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 20 | 1000 | 7.56e-05 ± 2.2e-05 | 6.97e-04 | -0.0234 ± 0.0041 | 0.1305 | 68.3% (8.1%) | 1.000 / 0.987 | 1.000 / 0.994 | DEFERRED / DEFERRED | 0.941 / 0.950 | 9.1% / 80.3% | PASS / PASS | 0.806 / 0.857 | KNOWN FINDING / KNOWN FINDING |
-| 0.24 | 20 | 10000 | 1.14e-04 ± 2.2e-05 | 7.06e-04 | -0.0110 ± 0.0026 | 0.0821 | 25.5% (0.8%) | 0.901 / 0.928 | 0.913 / 0.945 | DEFERRED / DEFERRED | 0.944 / 0.944 | 1.0% / 29.1% | PASS / PASS | 0.872 / 0.885 | KNOWN FINDING / KNOWN FINDING |
+| 0.24 | 20 | 10000 | 1.14e-04 ± 2.2e-05 | 7.06e-04 | -0.0110 ± 0.0026 | 0.0821 | 25.4% (0.8%) | 0.901 / 0.928 | 0.913 / 0.945 | DEFERRED / DEFERRED | 0.944 / 0.944 | 1.0% / 29.1% | PASS / PASS | 0.872 / 0.885 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 40 | 100 | -1.45e-05 ± 2.2e-05 | 6.82e-04 | -0.0816 ± 0.0059 | 0.2045 | 99.9% (62.9%) | 0.000 / 1.000 | 0.000 / 1.000 | DEFERRED / DEFERRED | 0.978 / 0.994 | 36.3% / 99.9% | CONSERVATIVE / CONSERVATIVE | 0.811 / 0.799 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 40 | 1000 | 4.13e-06 ± 1.5e-05 | 4.90e-04 | -0.0144 ± 0.0030 | 0.0965 | 33.2% (1.9%) | 0.886 / 0.972 | 0.901 / 0.978 | DEFERRED / DEFERRED | 0.942 / 0.933 | 0.7% / 41.3% | PASS / PASS | 0.851 / 0.886 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 40 | 10000 | 2.41e-05 ± 1.4e-05 | 4.32e-04 | -0.0070 ± 0.0018 | 0.0582 | 5.6% (0.0%) | 0.936 / 0.952 | 0.941 / 0.959 | DEFERRED / DEFERRED | 0.954 / 0.952 | 0.0% / 6.6% | PASS / PASS | 0.907 / 0.913 | KNOWN FINDING / KNOWN FINDING |
@@ -281,13 +281,13 @@ Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near
 
 | ρ | T | n | PD bias | PD RMSE | ρ bias | ρ RMSE | flagged (edge) | Wald cov. PD / ρ | t(T−1) cov. PD / ρ | Wald verdict PD / ρ | profile cov. PD / ρ (all) | profile truncated PD / ρ | profile verdict PD / ρ | bootstrap cov. PD / ρ (all) | bootstrap verdict PD / ρ |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0.02 | 20 | 100 | 6.10e-05 ± 7.6e-05 | 2.39e-03 | +0.0049 ± 0.0012 | 0.0372 | 76.6% (48.9%) | 0.991 / 0.829 | 0.991 / 0.876 | DEFERRED / DEFERRED | 0.966 / 0.979 | 0.0% / 96.2% | PASS / CONSERVATIVE | 0.912 / 0.826 | KNOWN FINDING / KNOWN FINDING |
+| 0.02 | 20 | 100 | 6.10e-05 ± 7.6e-05 | 2.39e-03 | +0.0049 ± 0.0012 | 0.0372 | 76.7% (48.9%) | 0.991 / 0.828 | 0.991 / 0.876 | DEFERRED / DEFERRED | 0.966 / 0.979 | 0.0% / 96.2% | PASS / CONSERVATIVE | 0.912 / 0.826 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 20 | 1000 | 6.55e-06 ± 3.5e-05 | 1.10e-03 | -0.0015 ± 0.0003 | 0.0106 | 13.4% (2.3%) | 0.934 / 0.988 | 0.948 / 0.991 | DEFERRED / DEFERRED | 0.937 / 0.943 | 0.0% / 30.1% | PASS / PASS | 0.913 / 0.837 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 20 | 10000 | -1.85e-05 ± 2.9e-05 | 9.29e-04 | -0.0011 ± 0.0002 | 0.0067 | 0.0% (0.0%) | 0.910 / 0.911 | 0.927 / 0.930 | KNOWN FINDING / KNOWN FINDING | 0.920 / 0.927 | 0.0% / 0.0% | KNOWN FINDING / KNOWN FINDING | 0.908 / 0.813 | KNOWN FINDING / KNOWN FINDING |
-| 0.02 | 40 | 100 | -2.42e-05 ± 5.3e-05 | 1.69e-03 | +0.0033 ± 0.0009 | 0.0277 | 62.5% (37.7%) | 0.971 / 0.845 | 0.973 / 0.859 | DEFERRED / DEFERRED | 0.949 / 0.982 | 0.0% / 91.6% | PASS / CONSERVATIVE | 0.927 / 0.890 | KNOWN FINDING / KNOWN FINDING |
+| 0.02 | 40 | 100 | -2.42e-05 ± 5.3e-05 | 1.69e-03 | +0.0033 ± 0.0009 | 0.0277 | 63.1% (37.7%) | 0.970 / 0.843 | 0.973 / 0.856 | DEFERRED / DEFERRED | 0.949 / 0.982 | 0.0% / 91.6% | PASS / CONSERVATIVE | 0.927 / 0.890 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 40 | 1000 | -3.30e-06 ± 2.5e-05 | 7.83e-04 | -0.0013 ± 0.0002 | 0.0078 | 2.4% (0.1%) | 0.946 / 0.984 | 0.952 / 0.986 | PASS / KNOWN FINDING | 0.948 / 0.937 | 0.0% / 7.4% | PASS / PASS | 0.940 / 0.879 | PASS / KNOWN FINDING |
 | 0.02 | 40 | 10000 | -3.72e-06 ± 2.0e-05 | 6.31e-04 | -0.0003 ± 0.0002 | 0.0048 | 0.0% (0.0%) | 0.929 / 0.940 | 0.934 / 0.943 | PASS / PASS | 0.940 / 0.944 | 0.0% / 0.0% | PASS / PASS | 0.931 / 0.896 | PASS / KNOWN FINDING |
-| 0.02 | 100 | 100 | 2.09e-06 ± 3.4e-05 | 1.08e-03 | -0.0006 ± 0.0006 | 0.0181 | 50.4% (24.9%) | 0.956 / 0.899 | 0.956 / 0.901 | DEFERRED / DEFERRED | 0.948 / 0.983 | 0.0% / 87.3% | PASS / CONSERVATIVE | 0.941 / 0.902 | PASS / KNOWN FINDING |
+| 0.02 | 100 | 100 | 2.09e-06 ± 3.4e-05 | 1.08e-03 | -0.0006 ± 0.0006 | 0.0181 | 50.6% (24.9%) | 0.955 / 0.899 | 0.955 / 0.901 | DEFERRED / DEFERRED | 0.948 / 0.983 | 0.0% / 87.3% | PASS / CONSERVATIVE | 0.941 / 0.902 | PASS / KNOWN FINDING |
 | 0.02 | 100 | 1000 | -9.57e-06 ± 1.7e-05 | 5.27e-04 | -0.0005 ± 0.0001 | 0.0047 | 0.0% (0.0%) | 0.934 / 0.964 | 0.935 / 0.967 | PASS / PASS | 0.940 / 0.957 | 0.0% / 0.0% | PASS / PASS | 0.935 / 0.927 | PASS / KNOWN FINDING |
 | 0.02 | 100 | 10000 | -8.48e-06 ± 1.3e-05 | 3.97e-04 | -0.0003 ± 0.0001 | 0.0030 | 0.0% (0.0%) | 0.944 / 0.935 | 0.948 / 0.940 | PASS / PASS | 0.946 / 0.949 | 0.0% / 0.0% | PASS / PASS | 0.939 / 0.912 | PASS / KNOWN FINDING |
 | 0.12 | 20 | 100 | 8.15e-05 ± 1.0e-04 | 3.25e-03 | -0.0161 ± 0.0027 | 0.0863 | 46.9% (10.8%) | 0.962 / 1.000 | 0.974 / 1.000 | DEFERRED / DEFERRED | 0.953 / 0.948 | 0.0% / 75.0% | PASS / PASS | 0.886 / 0.863 | KNOWN FINDING / KNOWN FINDING |
@@ -301,9 +301,9 @@ Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near
 | 0.12 | 100 | 10000 | 4.03e-05 ± 3.3e-05 | 1.06e-03 | -0.0011 ± 0.0005 | 0.0153 | 0.0% (0.0%) | 0.955 / 0.941 | 0.959 / 0.943 | PASS / PASS | 0.955 / 0.942 | 0.0% / 0.0% | PASS / PASS | 0.948 / 0.928 | PASS / PASS |
 | 0.24 | 20 | 100 | 9.40e-06 ± 1.4e-04 | 4.55e-03 | -0.0312 ± 0.0040 | 0.1303 | 71.7% (8.4%) | 0.951 / 1.000 | 0.961 / 1.000 | DEFERRED / DEFERRED | 0.930 / 0.933 | 0.0% / 80.2% | PASS / PASS | 0.833 / 0.858 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 20 | 1000 | 2.40e-04 ± 1.3e-04 | 4.06e-03 | -0.0095 ± 0.0024 | 0.0756 | 18.5% (0.0%) | 0.907 / 0.937 | 0.921 / 0.952 | DEFERRED / DEFERRED | 0.950 / 0.941 | 0.0% / 22.1% | PASS / PASS | 0.851 / 0.893 | KNOWN FINDING / KNOWN FINDING |
-| 0.24 | 20 | 10000 | 2.72e-04 ± 1.3e-04 | 4.11e-03 | -0.0093 ± 0.0019 | 0.0616 | 4.7% (0.0%) | 0.920 / 0.939 | 0.938 / 0.951 | KNOWN FINDING / PASS | 0.936 / 0.946 | 0.0% / 8.0% | PASS / PASS | 0.875 / 0.841 | KNOWN FINDING / KNOWN FINDING |
-| 0.24 | 40 | 100 | 8.39e-05 ± 1.0e-04 | 3.15e-03 | -0.0136 ± 0.0028 | 0.0891 | 30.0% (1.0%) | 0.936 / 0.996 | 0.941 / 0.996 | DEFERRED / DEFERRED | 0.947 / 0.949 | 0.0% / 35.7% | PASS / PASS | 0.908 / 0.876 | KNOWN FINDING / KNOWN FINDING |
-| 0.24 | 40 | 1000 | 1.58e-04 ± 9.3e-05 | 2.95e-03 | -0.0059 ± 0.0018 | 0.0561 | 2.8% (0.0%) | 0.924 / 0.947 | 0.934 / 0.955 | KNOWN FINDING / PASS | 0.938 / 0.934 | 0.0% / 3.2% | PASS / PASS | 0.899 / 0.892 | KNOWN FINDING / KNOWN FINDING |
+| 0.24 | 20 | 10000 | 2.72e-04 ± 1.3e-04 | 4.11e-03 | -0.0093 ± 0.0019 | 0.0616 | 4.7% (0.0%) | 0.920 / 0.939 | 0.938 / 0.950 | KNOWN FINDING / PASS | 0.936 / 0.946 | 0.0% / 8.0% | PASS / PASS | 0.875 / 0.841 | KNOWN FINDING / KNOWN FINDING |
+| 0.24 | 40 | 100 | 8.39e-05 ± 1.0e-04 | 3.15e-03 | -0.0136 ± 0.0028 | 0.0891 | 30.1% (1.0%) | 0.936 / 0.996 | 0.941 / 0.996 | DEFERRED / DEFERRED | 0.947 / 0.949 | 0.0% / 35.7% | PASS / PASS | 0.908 / 0.876 | KNOWN FINDING / KNOWN FINDING |
+| 0.24 | 40 | 1000 | 1.58e-04 ± 9.3e-05 | 2.95e-03 | -0.0059 ± 0.0018 | 0.0561 | 2.8% (0.0%) | 0.924 / 0.947 | 0.933 / 0.955 | KNOWN FINDING / PASS | 0.938 / 0.934 | 0.0% / 3.2% | PASS / PASS | 0.899 / 0.892 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 40 | 10000 | 1.21e-04 ± 8.7e-05 | 2.74e-03 | -0.0052 ± 0.0013 | 0.0429 | 0.1% (0.0%) | 0.934 / 0.948 | 0.941 / 0.956 | PASS / PASS | 0.939 / 0.956 | 0.0% / 0.1% | PASS / PASS | 0.908 / 0.905 | KNOWN FINDING / KNOWN FINDING |
 | 0.24 | 100 | 100 | 2.31e-05 ± 6.4e-05 | 2.02e-03 | -0.0061 ± 0.0018 | 0.0577 | 2.6% (0.0%) | 0.947 / 0.973 | 0.948 / 0.973 | PASS / KNOWN FINDING | 0.952 / 0.953 | 0.0% / 2.8% | PASS / PASS | 0.932 / 0.911 | PASS / KNOWN FINDING |
 | 0.24 | 100 | 1000 | 1.14e-05 ± 5.5e-05 | 1.74e-03 | -0.0018 ± 0.0011 | 0.0344 | 0.0% (0.0%) | 0.951 / 0.944 | 0.955 / 0.945 | PASS / PASS | 0.951 / 0.945 | 0.0% / 0.0% | PASS / PASS | 0.928 / 0.921 | PASS / KNOWN FINDING |
@@ -313,13 +313,13 @@ Bootstrap: 73 reviewed findings, all below the band: 31 boundary breakdown: near
 
 | ρ | T | n | PD bias | PD RMSE | ρ bias | ρ RMSE | flagged (edge) | Wald cov. PD / ρ | t(T−1) cov. PD / ρ | Wald verdict PD / ρ | profile cov. PD / ρ (all) | profile truncated PD / ρ | profile verdict PD / ρ | bootstrap cov. PD / ρ (all) | bootstrap verdict PD / ρ |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0.02 | 20 | 100 | -1.95e-04 ± 1.9e-04 | 6.06e-03 | -0.0019 ± 0.0006 | 0.0180 | 51.3% (24.5%) | 0.967 / 0.934 | 0.977 / 0.953 | DEFERRED / DEFERRED | 0.943 / 0.972 | 0.0% / 82.5% | PASS / PASS | 0.901 / 0.825 | KNOWN FINDING / KNOWN FINDING |
+| 0.02 | 20 | 100 | -1.95e-04 ± 1.9e-04 | 6.06e-03 | -0.0019 ± 0.0006 | 0.0180 | 51.4% (24.5%) | 0.967 / 0.934 | 0.977 / 0.953 | DEFERRED / DEFERRED | 0.943 / 0.972 | 0.0% / 82.5% | PASS / PASS | 0.901 / 0.825 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 20 | 1000 | 8.31e-05 ± 1.2e-04 | 3.70e-03 | -0.0017 ± 0.0002 | 0.0078 | 0.9% (0.0%) | 0.921 / 0.948 | 0.938 / 0.975 | KNOWN FINDING / PASS | 0.936 / 0.926 | 0.0% / 2.0% | PASS / KNOWN FINDING | 0.922 / 0.803 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 20 | 10000 | 3.60e-05 ± 1.1e-04 | 3.35e-03 | -0.0011 ± 0.0002 | 0.0061 | 0.0% (0.0%) | 0.939 / 0.929 | 0.954 / 0.946 | PASS / PASS | 0.951 / 0.948 | 0.0% / 0.0% | PASS / PASS | 0.936 / 0.835 | PASS / KNOWN FINDING |
 | 0.02 | 40 | 100 | 1.19e-04 ± 1.4e-04 | 4.28e-03 | -0.0017 ± 0.0004 | 0.0131 | 31.4% (10.0%) | 0.943 / 0.956 | 0.949 / 0.962 | DEFERRED / DEFERRED | 0.944 / 0.955 | 0.0% / 68.5% | PASS / PASS | 0.922 / 0.902 | KNOWN FINDING / KNOWN FINDING |
 | 0.02 | 40 | 1000 | -2.92e-05 ± 8.5e-05 | 2.70e-03 | -0.0006 ± 0.0002 | 0.0054 | 0.0% (0.0%) | 0.910 / 0.943 | 0.924 / 0.952 | KNOWN FINDING / PASS | 0.940 / 0.940 | 0.0% / 0.0% | PASS / PASS | 0.930 / 0.881 | PASS / KNOWN FINDING |
 | 0.02 | 40 | 10000 | -1.27e-04 ± 7.2e-05 | 2.28e-03 | -0.0008 ± 0.0001 | 0.0046 | 0.0% (0.0%) | 0.946 / 0.928 | 0.957 / 0.933 | PASS / PASS | 0.964 / 0.945 | 0.0% / 0.0% | PASS / PASS | 0.955 / 0.877 | PASS / KNOWN FINDING |
-| 0.02 | 100 | 100 | -4.46e-05 ± 9.0e-05 | 2.86e-03 | -0.0012 ± 0.0003 | 0.0087 | 8.5% (1.4%) | 0.922 / 0.976 | 0.923 / 0.976 | DEFERRED / DEFERRED | 0.936 / 0.956 | 0.0% / 32.7% | PASS / PASS | 0.933 / 0.922 | PASS / KNOWN FINDING |
+| 0.02 | 100 | 100 | -4.46e-05 ± 9.0e-05 | 2.86e-03 | -0.0012 ± 0.0003 | 0.0087 | 8.6% (1.4%) | 0.922 / 0.976 | 0.923 / 0.976 | DEFERRED / DEFERRED | 0.936 / 0.956 | 0.0% / 32.7% | PASS / PASS | 0.933 / 0.922 | PASS / KNOWN FINDING |
 | 0.02 | 100 | 1000 | -7.55e-05 ± 5.2e-05 | 1.65e-03 | -0.0002 ± 0.0001 | 0.0034 | 0.0% (0.0%) | 0.941 / 0.950 | 0.943 / 0.952 | PASS / PASS | 0.954 / 0.948 | 0.0% / 0.0% | PASS / PASS | 0.943 / 0.930 | PASS / PASS |
 | 0.02 | 100 | 10000 | -1.12e-04 ± 4.8e-05 | 1.53e-03 | -0.0003 ± 0.0001 | 0.0029 | 0.0% (0.0%) | 0.941 / 0.936 | 0.946 / 0.937 | PASS / PASS | 0.948 / 0.944 | 0.0% / 0.0% | PASS / PASS | 0.943 / 0.921 | PASS / KNOWN FINDING |
 | 0.12 | 20 | 100 | 5.66e-04 ± 3.1e-04 | 9.69e-03 | -0.0071 ± 0.0016 | 0.0500 | 0.8% (0.1%) | 0.935 / 0.984 | 0.947 / 0.994 | PASS / KNOWN FINDING | 0.948 / 0.944 | 0.0% / 4.6% | PASS / PASS | 0.918 / 0.871 | KNOWN FINDING / KNOWN FINDING |
