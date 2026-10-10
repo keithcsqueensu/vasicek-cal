@@ -247,8 +247,9 @@ and resume) to protect the run; P-10 and P-9 after. The run's tool already hands
 - **Next (owner, 2026-10-10): M6's AR(1)-aware MLE,** as the M6 arm of S-35. It tests one mechanism behind Miu and Ozdemir's (2008) comparison: whether modelling the serial correlation, on top of an MLE that already handles the nonlinearity, stops the long-run PD being understated (D-196). Its intervals resample through the DGP (no W × L), which is where P-17 pays.
 - **M6's AR(1)-aware MLE, in progress (D-195, D-196):**
   - **Done:** the likelihood (forward–backward–forward filter over neighbour-placed parity nodes; φ = 0 bit for bit), `vcalref::ar1_loglik` as its oracle, the analytic score, the search and 3-D profile intervals, and `study_ar1_information`.
-  - **The S-35 M6 arm** is registered (PREDICTION.md, L16–L28, with the exploratory look disclosed). No AR(1) fit runs on any panel until that registration merges.
-  - **Next, after the merge:** the search's recovery tests and goldens; the methodology note and the scipy script; the validation run (seed 0x7A11DA7E); then the arm, after its timing sample.
+  - **The S-35 M6 arm** is registered (PREDICTION.md, L16–L28, with the exploratory look disclosed); merged in PR #50.
+  - **Validation (D-197):** likelihood goldens; the scipy replication in two formulations (transition densities, and the explicit Toeplitz joint density; all within 3e-14); the search's recovery tests (`unit_ar1_search`), which found and fixed a Hessian-refresh defect from cold starts; `docs/methodology/ar1_binomial_mle.md`.
+  - **Next:** the validation run (seed 0x7A11DA7E); the timing sample and projection; then the arm. The owner's performance pass (P-18, P-6, P-13, P-12, P-7, after a re-profile) is queued; P-18 re-projects the arm before and after.
 
   After those, P-9 (measure the repeat rate first), then SIMD Philox. **P-9: measured, not built** (D-189): memoising exactly repeated panels would save about 1% of the S-10/S-4 run. In the same timing sample the simulation is 31% of the projected run (38–46% in the n = 10,000 cells), which bears on SIMD Philox.
 

@@ -538,6 +538,26 @@ comment = [
     "cannot fail it.",
 ]
 
+[TOL_SCIPY_AR1_LOGLIK_REL]
+type = "double"
+value = 1e-12
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "M6 (D-197): validation/scipy/ar1_binomial_mle.py, the AR(1)-factor log-likelihood in the Markov",
+    "formulation (a uniform Simpson-grid filter on every golden row; nested quad for T <= 3, n <= 1000) vs",
+    "the engine, relative to max(1, |l|). Observed 2.9e-14 (grid), 7.5e-15 (nested). Held at ref's 1e-12.",
+]
+
+[TOL_SCIPY_AR1_JOINT_REL]
+type = "double"
+value = 1e-10
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "M6 (D-197): the same rows for T <= 3 in the joint formulation (owner): adaptive 3-D cubature of the",
+    "explicit multivariate normal density with Toeplitz covariance phi^|i-j|, sharing no transition density",
+    "with the engine. Observed 1.8e-14; looser by the owner's choice, above the cubature's requested 1e-11.",
+]
+
 [TOL_MOM_JOINT_DEFAULT_LOG_ABS]
 type = "double"
 value = 2e-14

@@ -109,9 +109,11 @@ public:
     }
 
     // Quasi-Newton on the coordinates with free[i]; u is updated in place. Returns the log-likelihood at u. The
-    // Hessian is central differences of the score at the start and whenever the active set changes, and BFGS
-    // updates from the analytic score in between (each kept negative definite by skipping an update with
-    // y's < 0).
+    // Hessian is central differences of the score at the start, whenever the active set changes and whenever the
+    // last step needed damping, and BFGS updates from the analytic score in between. BFGS keeps a negative definite
+    // matrix negative definite (an update with y's <= 0 is skipped) but cannot make an indefinite one definite: far
+    // from the maximum the differenced Hessian can be indefinite, and carried forward it would leave every later
+    // step damped towards gradient ascent, converging linearly. So a damped step is followed by a fresh Hessian.
     double newton(double (&u)[3], const bool (&free)[3], double tolerance, bool& converged, bool warm = false) {
         double g[3];
         double l = value_and_gradient(u, g);
@@ -127,13 +129,14 @@ public:
             have_h = true;
         }
         int backtracked = 0;  // consecutive steps the line search had to shorten
+        bool was_damped = false;  // the last step needed lambda > 0: H was not negative definite
         for (int it = 0; it < kMaxNewtonIterations && std::isfinite(l); ++it) {
             // Active set: a free coordinate at a bound with its gradient pointing out is held.
             bool act[3];
             for (int i = 0; i < 3; ++i) {
                 act[i] = free[i] && !((u[i] <= lo_[i] && g[i] < 0.0) || (u[i] >= hi_[i] && g[i] > 0.0));
             }
-            if (!have_h || backtracked >= 2 || act[0] != prev_act[0] || act[1] != prev_act[1] ||
+            if (!have_h || was_damped || backtracked >= 2 || act[0] != prev_act[0] || act[1] != prev_act[1] ||
                 act[2] != prev_act[2]) {
                 backtracked = 0;
                 hessian(u, act, H);
@@ -141,7 +144,7 @@ public:
                 for (int i = 0; i < 3; ++i) prev_act[i] = act[i];
             }
             double s[3] = {0.0, 0.0, 0.0};
-            if (!damped_step(H, g, act, s)) break;
+            if (!damped_step(H, g, act, s, was_damped)) break;
             // A coordinate at a bound whose step points out of the box is held too, and the step recomputed
             // (projected Newton); otherwise the projection returns it to the bound and the search cycles.
             for (int pass = 0; pass < 3; ++pass) {
@@ -153,10 +156,12 @@ public:
                     }
                 }
                 if (!changed) break;
-                if (!damped_step(H, g, act, s)) {
+                bool damped_again = false;
+                if (!damped_step(H, g, act, s, damped_again)) {
                     s[0] = s[1] = s[2] = 0.0;
                     break;
                 }
+                was_damped = damped_again;  // the step taken is the one on the reduced set
             }
             // Backtracking line search, projected onto the box.
             double slope = 0.0;
@@ -244,8 +249,11 @@ public:
     }
 
     // Solves (-H + lambda I) s = g on the active coordinates, raising lambda from 0 until -H + lambda I is
-    // positive definite (Cholesky). False if no lambda works (non-finite input).
-    static bool damped_step(const double (&H)[3][3], const double (&g)[3], const bool (&act)[3], double (&s)[3]) {
+    // positive definite (Cholesky); damped is whether lambda > 0 was needed. False if no lambda works (non-finite
+    // input).
+    static bool damped_step(const double (&H)[3][3], const double (&g)[3], const bool (&act)[3], double (&s)[3],
+                            bool& damped) {
+        damped = false;
         int idx[3];
         int m = 0;
         for (int i = 0; i < 3; ++i) {
@@ -291,6 +299,7 @@ public:
                 }
                 s[0] = s[1] = s[2] = 0.0;
                 for (int a = 0; a < m; ++a) s[idx[a]] = x[a];
+                damped = lambda > 0.0;
                 return std::isfinite(x[0]);
             }
             lambda = lambda == 0.0 ? 1e-6 * scale : 4.0 * lambda;
@@ -464,7 +473,7 @@ inline void profile_intervals(const Obs* obs, std::int64_t periods, const Box& b
             };
             const double bound = side < 0 ? s.lo_[a] : s.hi_[a];
             const auto clamp = [&](double v) { return side < 0 ? std::fmax(v, bound) : std::fmin(v, bound); };
-            double v_in = u_hat[a], f_in = est.loglik - target;  // inside: f >= 0
+            double v_in = u_hat[a];  // inside: f >= 0
             double v_out = v_in, f_out = 0.0;
             bool bracketed = false;
             // First trial: the Wald end; then Newton extrapolation on f (or doubling), until f < 0 or the bound.
@@ -480,7 +489,6 @@ inline void profile_intervals(const Obs* obs, std::int64_t periods, const Box& b
                 }
                 const double prev = v_in;
                 v_in = v;
-                f_in = f;
                 if (v == bound) break;
                 double next = dp * side < 0.0 ? v - f / dp : v + 2.0 * (v - prev);
                 if (!(side * (next - v) > 0.0) || !std::isfinite(next)) next = v + 2.0 * (v - prev);
