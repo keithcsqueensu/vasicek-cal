@@ -271,6 +271,12 @@ set_tests_properties(study_bayes_sbc_smoke PROPERTIES LABELS slow)
 # profile LR statistic at the truth and S-4b's factor from the same bootstrap panels.
 # S-35 (D-190): the recovery matrix under the AR(1)-factor DGP; scored by
 # studies/lrpd-serial-correlation/compare.py. The smoke test runs two replicates of one scenario.
+# S-35's M6 arm, model-based reference numbers (D-196): the expected Fisher information of the AR(1) likelihood at
+# the true parameters (scores only, no fit). Run by hand; a two-panel run is a smoke test.
+add_executable(study_ar1_information studies/ar1_information.cpp)
+target_link_libraries(study_ar1_information PRIVATE vcal_test_harness vcal::benchmark_models vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_ar1_information)
+add_test(NAME study_ar1_information_smoke COMMAND study_ar1_information --panels 2 --out ar1_information_smoke.csv)
 add_executable(study_lrpd_serial studies/lrpd_serial.cpp)
 target_link_libraries(study_lrpd_serial PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_lrpd_serial)
