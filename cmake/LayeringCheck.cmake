@@ -13,6 +13,9 @@
 #   abi/       : must not include ref/ tests/ (the independent reference stays out of the library)
 #   ref/       : may include only standard headers (no '/') and ref/... (D-031)
 #   benchmark_models/ : must not include dgp/ abi/ ref/ tests/ (D-195)
+#   common/    : may include only standard headers (no '/') and common/... (D-199). It holds code shared on
+#                purpose across layers that must otherwise stay apart (det_exp: the DGP and the AR(1) filter);
+#                every other layer may include it except ref/, which stays on its own maths (D-031)
 
 if(NOT DEFINED ROOT)
     message(FATAL_ERROR "LayeringCheck: pass -DROOT=<source tree>")
@@ -52,6 +55,10 @@ function(_vcal_scan dir mode)
                 if(_inc MATCHES "/" AND NOT _inc MATCHES "^ref/")
                     set(_bad "ref/ may include only standard headers and ref/...")
                 endif()
+            elseif(mode STREQUAL "common")
+                if(_inc MATCHES "/" AND NOT _inc MATCHES "^common/")
+                    set(_bad "common/ may include only standard headers and common/...")
+                endif()
             else()
                 foreach(_prefix IN LISTS _forbid_${mode})
                     string(FIND "${_inc}" "${_prefix}" _pos)
@@ -77,6 +84,7 @@ _vcal_scan(resample resample)
 _vcal_scan(abi    abi)
 _vcal_scan(ref    ref)
 _vcal_scan(benchmark_models benchmark)
+_vcal_scan(common common)
 
 if(_violations GREATER 0)
     message(FATAL_ERROR "found ${_violations} layering violation(s)")

@@ -1,14 +1,15 @@
 {
   "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_dgp_tables.py",
   "generator_files": {
-    "tools/gen_dgp_tables.py": "4033cb70d5635fa839f3990b467f05afc3650d1cda0fa8e1e2ca7ff9bad69843",
+    "tools/gen_dgp_tables.py": "8f891c00ad90a6ddccd8295c249871066bbe78a768efb0eabb71a322fecf182b",
     "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
   },
   "mp_dps": 50,
   "mpmath_backend": "python",
   "mpmath_version": "1.4.1",
   "outputs": {
-    "dgp/generated/constants.hpp": "3418fc4ffd8fa6fc9c27962aecd183d40785820dab1352d98fa65c5e9f89e9e7",
+    "common/detmath/generated/det_exp_constants.hpp": "ab0120caf7179adf4c365cd090078f062842adfc4ee472c7dc89bcd93e0afc76",
+    "dgp/generated/constants.hpp": "743c1a940b5832f0d6e562f8bcb892dcb82e8703e5c6ace3274b794c41dea1e8",
     "tests/golden/dgp/exp.csv": "b83f44780838c74f882421454f41ebdb88a7867c709a22552b774d77ac977f4d",
     "tests/golden/dgp/log.csv": "fc1b728ee7acac4072783ad19d2525ebcb2e046ee6410ef875fa08635b619b4b",
     "tests/golden/dgp/mirror_values.csv": "4868cf5e557d98d900c3f90107411b8e4d059abd495df4da7460df9665a4dddf",
