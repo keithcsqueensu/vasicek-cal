@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <mutex>
@@ -31,10 +32,11 @@ public:
 
     std::size_t phases() const { return phases_.size(); }
 
-    // Thread-safe; seconds has phases() values.
+    // Thread-safe; seconds has phases() values (one per phase, in order), or the call aborts.
     void record(std::uint32_t scenario, std::int64_t periods, std::int64_t obligors, std::uint32_t replicate,
-                const double* seconds) {
-        Row r{scenario, periods, obligors, replicate, std::vector<double>(seconds, seconds + phases_.size())};
+                std::vector<double> seconds) {
+        if (seconds.size() != phases_.size()) std::abort();
+        Row r{scenario, periods, obligors, replicate, std::move(seconds)};
         const std::lock_guard<std::mutex> lock(mutex_);
         rows_.push_back(std::move(r));
     }

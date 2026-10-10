@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
             const rc::Scenario s = rc::scenario(ids[k]);
             fits[static_cast<std::size_t>(r) * ids.size() + k] = sp_fit(s, r, c);
             const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            sample.record(s.id, s.periods, s.obligors, r, &sec);
+            sample.record(s.id, s.periods, s.obligors, r, {sec});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());

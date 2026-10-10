@@ -572,7 +572,9 @@ int main(int argc, char** argv) {
     // full run's replicates. The surface phase is mostly the row cache's one-time fill; Jeffreys runs on
     // replicates 0-49 and the S-4 widths on 0-199 of rc::kReplicates.
     if (!timing_path.empty()) {
-        const auto frac = [](std::uint32_t m) { return std::to_string(static_cast<double>(m) / rc::kReplicates); };
+        const auto frac = [](std::uint32_t count) {
+            return std::to_string(static_cast<double>(count) / rc::kReplicates);
+        };
         std::vector<std::string> phases(kPhaseNames, kPhaseNames + kPhases), shares(kPhases, "1");
         shares[kSurface] = "once";
         shares[kJeffreys] = frac(kJeffreysCheck);
@@ -580,7 +582,10 @@ int main(int argc, char** argv) {
         vcal::test::TimingSample sample("study_parametric_bootstrap", phases, shares);
         for (std::size_t k = 0; k < ids.size(); ++k) {
             const rc::Scenario s = rc::scenario(ids[k]);
-            for (std::uint32_t r = 0; r < R; ++r) sample.record(s.id, s.periods, s.obligors, r, rows[k * R + r].seconds);
+            for (std::uint32_t r = 0; r < R; ++r) {
+                const double* sec = rows[k * R + r].seconds;
+                sample.record(s.id, s.periods, s.obligors, r, std::vector<double>(sec, sec + kPhases));
+            }
         }
         if (!sample.write(timing_path)) {
             std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());

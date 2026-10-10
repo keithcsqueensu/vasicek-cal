@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
             const auto t0 = std::chrono::steady_clock::now();
             rows[k * R + r] = pass_fit(s, r, s.obligors <= 10000 ? &cache : nullptr);
             const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            sample.record(s.id, s.periods, s.obligors, r, &sec);
+            sample.record(s.id, s.periods, s.obligors, r, {sec});
             const std::lock_guard<std::mutex> lock(progress);
             if (++done % 1000 == 0 || done == jobs.size()) {
                 std::fprintf(stderr, "fits %zu/%zu, %.0f s\n", done, jobs.size(),

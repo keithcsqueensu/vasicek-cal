@@ -407,8 +407,7 @@ int main(int argc, char** argv) {
             JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
             f = jk_fit(s, r, polished);
             const double total = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
-            const double sec[2] = {total - f.refit_seconds, f.refit_seconds};
-            sample.record(s.id, s.periods, s.obligors, r, sec);
+            sample.record(s.id, s.periods, s.obligors, r, {total - f.refit_seconds, f.refit_seconds});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
