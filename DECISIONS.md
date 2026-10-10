@@ -1198,6 +1198,19 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **ρ:** it falls less, and its downward bias grows by about (f_μ − 1)/T.
     - **The simple average:** unbiased in mean, but below PD more often as φ grows.
   - **Not in this registration:** the AR(1)-aware MLE (M6); its predictions are appended before its run.
+  - **The tool:** `study_lrpd_serial` (`tests/studies/lrpd_serial.cpp`). The binomial fit is `recovery::fit_counts`, the recovery fit split from its panel draw, bit for bit the same.
+    - **The projection, recorded before the run (D-187):** 0.39 h, 90% range 0.35–0.43 h, from a 2-replicate sample (24 threads, efficiency 0.997).
+    - **The phases:** binomial MLE 97%, rate MLE 2%, simulation 1%.
+    - **A test of D-187's method on a second tool:** the sample's binomial phase includes the surface-row cache's first fills, which a full run amortises, so the projection may run high.
+  - **P-9 on the AR(1) DGP** (`study_lrpd_serial --count-repeats`): exact repeats are 2.4%, 2.5% and 2.7% of the 81,000 panels at φ = 0, 0.3 and 0.6 (cell scope), almost all in the n = 100 cells at T ≤ 40.
+    - **Cross-check:** at φ = 0 they equal P-9's outer-panel count exactly (2,443).
+    - **The saving:** at most about 0.6% of S-35's run, less in practice since the bootstrap arm cannot be shared. D-189 stands: P-9 is not built.
+- **D-191 (owner's item 4: re-profile before deciding) — SIMD Philox goes after S-35's full run, before the first large parametric-bootstrap run.**
+  - **The profile:**
+    - **S-35's run:** simulation is 1% of the projected 0.39 h, so SIMD Philox could not shorten it measurably.
+    - **The S-10/S-4 run** (current code, D-189's timing sample): simulation is 31% of the projected thread-seconds, and 38–46% in the n = 10,000 cells, against 17% before P-14 and P-15.
+  - **Where it pays:** only where panels are simulated per fit. That means parametric-bootstrap runs: S-10-type reruns, S-12's double bootstrap, and M6's AR(1) MLE intervals, which are resampled through `dgp/` (D-043).
+  - **Conditions:** it is built and measured as a P-item before the first of those, and must reproduce the DGP's panels bit for bit: the same mirror, the same reference hashes.
 
 ## Open
 

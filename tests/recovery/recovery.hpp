@@ -162,10 +162,13 @@ enum Arms : std::uint32_t {
 // results do not depend on the thread count (§6). With a row cache (D-167) the surface's rows come from
 // it, shared across replicates and scenarios; the result is identical bit for bit. Each requested arm
 // is computed exactly as with kArmAll.
-inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCache* cache = nullptr,
-               std::uint32_t arms = kArmAll) {
+// fit_counts fits given default counts d_t (n = s.obligors in every period) as replicate `replicate` of
+// s, with that replicate's bootstrap stream: a study fitting another DGP's panels (S-35) fits them
+// exactly as the recovery harness fits its own.
+inline Fit fit_counts(const Scenario& s, std::uint32_t replicate, const std::vector<std::int64_t>& d,
+                      engine::SurfaceRowCache* cache = nullptr, std::uint32_t arms = kArmAll) {
     if ((arms & kArmQ) && !(arms & kArmProfile)) std::abort();  // q's interval is built on the profile
-    const std::vector<std::int64_t> d = panel(s, replicate);
+    if (static_cast<std::int64_t>(d.size()) != s.periods) std::abort();
     std::vector<Objective::Obs> obs(d.size());
     for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {s.obligors, d[t]};
     static const auto primary = quadrature::parity_rule();
@@ -238,6 +241,11 @@ inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCac
             qi.residual_max,
             q_boot_lo,
             q_boot_hi};
+}
+
+inline Fit fit(const Scenario& s, std::uint32_t replicate, engine::SurfaceRowCache* cache = nullptr,
+               std::uint32_t arms = kArmAll) {
+    return fit_counts(s, replicate, panel(s, replicate), cache, arms);
 }
 
 inline constexpr std::uint32_t kNoReliableInterval =

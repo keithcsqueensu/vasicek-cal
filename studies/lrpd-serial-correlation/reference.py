@@ -180,7 +180,7 @@ def main() -> int:
                 "profile_rho_pred": coverage(float(r["rho_profile_coverage"]), f_rho, delta),
             })
     with open(args.out, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+        w = csv.DictWriter(fh, fieldnames=list(rows[0]), lineterminator="\n")
         w.writeheader()
         for row in rows:
             w.writerow({k: (f"{v:.6g}" if isinstance(v, float) else v) for k, v in row.items()})
@@ -204,7 +204,7 @@ def main() -> int:
                          "profile_rho_c0": c_rho, "profile_rho_pred": coverage(c_rho, f_s, delta)})
     rate_out = Path(args.out).with_name(Path(args.out).stem + "_rate.csv")
     with open(rate_out, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(rate[0]))
+        w = csv.DictWriter(fh, fieldnames=list(rate[0]), lineterminator="\n")
         w.writeheader()
         for row in rate:
             w.writerow({k: (f"{v:.6g}" if isinstance(v, float) else v) for k, v in row.items()})
