@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <string>
 
+#include "common/cpu/avx2.hpp"
 #include "dgp/dgp.hpp"
 #include "dgp/philox.hpp"
 
@@ -112,26 +113,6 @@ struct V128 {
 };
 #endif
 
-#if defined(VCAL_DGP_AVX2)
-bool cpu_has_avx2() {
-#if defined(_MSC_VER)
-    // CPUID leaf 7 EBX bit 5 is AVX2; the OS must also save the YMM state (OSXSAVE, then XCR0 bits 1-2).
-    int r[4];
-    __cpuid(r, 0);
-    if (r[0] < 7) return false;
-    __cpuid(r, 1);
-    const bool osxsave = (r[2] & (1 << 27)) != 0;
-    const bool avx = (r[2] & (1 << 28)) != 0;
-    if (!osxsave || !avx || (_xgetbv(0) & 6u) != 6u) return false;
-    __cpuidex(r, 7, 0);
-    return (r[1] & (1 << 5)) != 0;
-#else
-    // libgcc and compiler-rt check the OS's XCR0 for AVX features as well.
-    __builtin_cpu_init();
-    return __builtin_cpu_supports("avx2") != 0;
-#endif
-}
-#endif
 
 }  // namespace
 
@@ -147,7 +128,7 @@ bool bernoulli_kernel_available(BernoulliKernel kernel) {
 #endif
         case BernoulliKernel::Avx2: {
 #if defined(VCAL_DGP_AVX2)
-            static const bool has = cpu_has_avx2();
+            static const bool has = cpu::has_avx2();  // common/cpu (D-199), shared with the AR(1) filter
             return has;
 #else
             return false;

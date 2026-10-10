@@ -46,7 +46,7 @@ target_include_directories(vcal_dgp PUBLIC "${PROJECT_SOURCE_DIR}")
 vcal_target_defaults(vcal_dgp FP_STRICT)
 # The AVX2 Bernoulli kernel (P-17, D-194): only dgp/bernoulli_avx2.cpp is compiled for AVX2, and it runs
 # only on CPUs that have it (checked at run time). Every kernel gives the same panels bit for bit.
-option(VCAL_DGP_AVX2 "Build the AVX2 Bernoulli kernel on x86-64 (selected at run time)" ON)
+option(VCAL_DGP_AVX2 "Build the AVX2 kernels (Bernoulli count, AR(1) transition) on x86-64 (selected at run time)" ON)
 if(VCAL_DGP_AVX2 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|x64)$")
     target_compile_definitions(vcal_dgp PRIVATE VCAL_DGP_AVX2)
     if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
@@ -63,11 +63,23 @@ add_library(vcal_resample INTERFACE)
 add_library(vcal::resample ALIAS vcal_resample)
 target_link_libraries(vcal_resample INTERFACE vcal_engine)
 
-# benchmark_models/ (M6, D-195): the AR(1)-factor likelihood and its search, on core/ and engine/. Header-only;
-# never the DGP, the ABI or ref/ (the layering check).
-add_library(vcal_benchmark_models INTERFACE)
+# benchmark_models/ (M6, D-195): the AR(1)-factor likelihood and its search, on core/ and engine/; never the DGP,
+# the ABI or ref/ (the layering check). The filter and search are headers; the transition kernels (P-18, D-199)
+# are compiled, with strict FP and no contraction as dgp/, since their lanes must match the scalar kernel bit for
+# bit. Only transition_avx2.cpp is compiled for AVX2, and it runs only on CPUs that have it (checked at run time).
+add_library(vcal_benchmark_models STATIC benchmark_models/ar1/transition.cpp benchmark_models/ar1/transition_avx2.cpp)
 add_library(vcal::benchmark_models ALIAS vcal_benchmark_models)
-target_link_libraries(vcal_benchmark_models INTERFACE vcal_engine)
+target_include_directories(vcal_benchmark_models PUBLIC "${PROJECT_SOURCE_DIR}")
+target_link_libraries(vcal_benchmark_models PUBLIC vcal_engine)
+vcal_target_defaults(vcal_benchmark_models FP_STRICT)
+if(VCAL_DGP_AVX2 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|x64)$")
+    target_compile_definitions(vcal_benchmark_models PRIVATE VCAL_AR1_AVX2)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        set_source_files_properties(benchmark_models/ar1/transition_avx2.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+    else()
+        set_source_files_properties(benchmark_models/ar1/transition_avx2.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
+    endif()
+endif()
 
 # backends/cpu/: OpenMP `parallel for` only (D-028). Without OpenMP it runs serially and gives
 # identical results (determinism does not depend on the thread count, §6).

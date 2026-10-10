@@ -150,6 +150,18 @@ add_test(NAME unit_ar1_filter
                  ar1_score_matches_richardson_differences ar1_likelihood_goldens_reproduce)
 add_test(NAME unit_ar1_filter_smooth COMMAND unit_ar1_filter ar1_likelihood_is_smooth_in_phi_and_rho)
 set_tests_properties(unit_ar1_filter_smooth PROPERTIES LABELS slow)
+# The AR(1) filter's transition kernels (P-18, D-199): every kernel against a plain reference, bit for bit; each
+# kernel also forced by VCAL_AR1_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed.
+add_executable(unit_ar1_transition unit/ar1_transition_test.cpp)
+target_link_libraries(unit_ar1_transition PRIVATE vcal_test_harness vcal::benchmark_models)
+vcal_target_defaults(unit_ar1_transition)
+add_test(NAME unit_ar1_transition COMMAND unit_ar1_transition)
+foreach(_k scalar sse2 avx2 none-such)
+    add_test(NAME unit_ar1_kernel_${_k}
+             COMMAND unit_ar1_transition ar1_kernel_selection_follows_vcal_ar1_kernel ar1_kernels_equal_the_reference_bit_for_bit)
+    set_tests_properties(unit_ar1_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
+endforeach()
+
 # The AR(1) MLE's search and profile intervals (D-195, D-196): recovery on DGP panels with known phi, ref's
 # independent surface at the estimate, the binomial MLE at phi = 0, the box, determinism, the profile ends.
 add_executable(unit_ar1_search unit/ar1_search_test.cpp)
