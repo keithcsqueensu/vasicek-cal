@@ -1,0 +1,77 @@
+{
+  "generated_by": "tools/gen_engine_flags.py (D-200); do not edit",
+  "estimate": {
+    "kFlagGridEdge": {
+      "bit": 0,
+      "value": 1,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagFlatSurface": {
+      "bit": 1,
+      "value": 2,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagQuadratureUnconverged": {
+      "bit": 2,
+      "value": 4,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagRefinementRejected": {
+      "bit": 3,
+      "value": 8,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagNumeric": {
+      "bit": 4,
+      "value": 16,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagNearBound": {
+      "bit": 5,
+      "value": 32,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagRhoNotIdentified": {
+      "bit": 6,
+      "value": 64,
+      "source": "engine/refine.hpp"
+    },
+    "kFlagNotConverged": {
+      "bit": 7,
+      "value": 128,
+      "source": "benchmark_models/ar1/search.hpp"
+    },
+    "kFlagPlacementCheck": {
+      "bit": 8,
+      "value": 256,
+      "source": "benchmark_models/ar1/search.hpp"
+    }
+  },
+  "interval": {
+    "kIntervalLowerTruncated": {
+      "bit": 0,
+      "value": 1,
+      "source": "engine/profile.hpp"
+    },
+    "kIntervalUpperTruncated": {
+      "bit": 1,
+      "value": 2,
+      "source": "engine/profile.hpp"
+    },
+    "kIntervalNotComputed": {
+      "bit": 2,
+      "value": 4,
+      "source": "engine/profile.hpp"
+    },
+    "kIntervalLowerBoxLimited": {
+      "bit": 3,
+      "value": 8,
+      "source": "engine/conditional_pd.hpp"
+    },
+    "kIntervalUpperBoxLimited": {
+      "bit": 4,
+      "value": 16,
+      "source": "engine/conditional_pd.hpp"
+    }
+  }
+}

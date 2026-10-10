@@ -33,7 +33,10 @@
 //
 //   study_lrpd_serial_m6 [--phis 0,0.3,0.6] [--replicates R] [--scenarios ID,...] [--seed S] [--out FILE]
 //                        [--threads N] [--timing-out FILE] [--boot-sample K] [--checkpoint DIR]
-//                        [--stop-after-units N] [--comparator] [--boot-panels B]
+//                        [--stop-after-units N] [--phi-intervals all|subset] [--comparator] [--boot-panels B]
+//
+// --phi-intervals all computes phi's profile interval on every scenario: the validation run (D-197, D-200) scores
+// phi's coverage wherever the expected information marks it credible. The arm's registered design is the subset.
 //
 // Doubles are written to 17 significant digits.
 #include <algorithm>
@@ -132,7 +135,8 @@ e::Estimate2 binomial(const rc::Scenario& s, const std::vector<std::int64_t>& d,
 }
 
 // One panel's binomial MLE, M6 estimate and profile intervals (the comparator comes from the refit tasks).
-Row fit_panel(const rc::Scenario& s, const std::vector<std::int64_t>& d, e::SurfaceRowCache& cache, double* sec) {
+Row fit_panel(const rc::Scenario& s, const std::vector<std::int64_t>& d, bool phi_all, e::SurfaceRowCache& cache,
+              double* sec) {
     Row row{};
     row.boot_lo[0] = row.boot_lo[1] = row.boot_hi[0] = row.boot_hi[1] = nan();
     for (int a = 0; a < 3; ++a) row.prof.lo[a] = row.prof.hi[a] = nan();
@@ -156,7 +160,7 @@ Row fit_panel(const rc::Scenario& s, const std::vector<std::int64_t>& d, e::Surf
         const bool which[3] = {true, true, false};
         ar1::profile_intervals(obs.data(), T, kBox, row.est, which, row.prof);
     }
-    if (in_subset(s.id)) {
+    if (phi_all || in_subset(s.id)) {
         Timer t{&sec[kProfilePhi]};
         const bool which[3] = {false, false, true};
         ar1::ProfileIntervals3 p{};
@@ -253,6 +257,7 @@ int main(int argc, char** argv) {
     bool force_comparator = false;
     std::uint32_t boot_panels = kBootPanels, boot_sample = 0;
     std::size_t stop_after = 0;
+    bool phi_all = false;  // phi's profile interval on every scenario (the validation run), not the subset only
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--phis") == 0 && i + 1 < argc) {
             phis = parse_list(argv[++i]);
@@ -274,6 +279,13 @@ int main(int argc, char** argv) {
             checkpoint_dir = argv[++i];
         } else if (std::strcmp(argv[i], "--stop-after-units") == 0 && i + 1 < argc) {
             stop_after = static_cast<std::size_t>(std::strtoul(argv[++i], nullptr, 10));
+        } else if (std::strcmp(argv[i], "--phi-intervals") == 0 && i + 1 < argc) {
+            const std::string v = argv[++i];
+            if (v != "all" && v != "subset") {
+                std::fprintf(stderr, "--phi-intervals takes all or subset\n");
+                return 2;
+            }
+            phi_all = v == "all";
         } else if (std::strcmp(argv[i], "--comparator") == 0) {
             force_comparator = true;
         } else if (std::strcmp(argv[i], "--boot-panels") == 0 && i + 1 < argc) {
@@ -281,7 +293,8 @@ int main(int argc, char** argv) {
         } else {
             std::fprintf(stderr, "usage: study_lrpd_serial_m6 [--phis 0,0.3,0.6] [--replicates R] [--scenarios ID,...] "
                                  "[--seed S] [--out FILE] [--threads N] [--timing-out FILE] [--boot-sample K] "
-                                 "[--checkpoint DIR] [--stop-after-units N] [--comparator] [--boot-panels B]\n");
+                                 "[--checkpoint DIR] [--stop-after-units N] [--phi-intervals all|subset] [--comparator] "
+                                 "[--boot-panels B]\n");
             return 2;
         }
     }
@@ -314,8 +327,8 @@ int main(int argc, char** argv) {
     for (std::size_t k = 0; k < S; ++k) cfg << (k ? "," : "") << ids[k];
     cfg << "\nphis=";
     for (std::uint32_t p = 0; p < P; ++p) cfg << (p ? "," : "") << phis[p];
-    cfg << "\nseed=" << seed << "\ncomparator=" << (boot ? 1 : 0) << "\nboot_panels=" << boot_panels
-        << "\nboot_sample=" << boot_sample << "\ngit_commit=" << VCAL_GIT_COMMIT << "\ngit_dirty=" << VCAL_GIT_DIRTY
+    cfg << "\nseed=" << seed << "\nphi_intervals=" << (phi_all ? "all" : "subset") << "\ncomparator=" << (boot ? 1 : 0)
+        << "\nboot_panels=" << boot_panels << "\nboot_sample=" << boot_sample << "\ngit_commit=" << VCAL_GIT_COMMIT << "\ngit_dirty=" << VCAL_GIT_DIRTY
         << "\nexecutable_sha256=" << exe << "\ndgp_kernel=" << vcal::test::dgp_kernel() << "\n";
     if (!checkpoint_dir.empty() && exe.empty()) {
         std::fprintf(stderr, "--checkpoint: cannot read the executable %s to hash it\n", argv[0]);
@@ -436,7 +449,7 @@ int main(int argc, char** argv) {
                         const dgp::PanelSpec spec{seed, s.id, r, s.pd, s.rho, n.data(), s.periods};
                         if (dgp::simulate_panel_ar1(spec, phis[p], d.data(), nullptr) != dgp::Status::Ok) std::abort();
                     }
-                    rows[static_cast<std::size_t>(job) * P + p] = fit_panel(s, d, cache, sec.data());
+                    rows[static_cast<std::size_t>(job) * P + p] = fit_panel(s, d, phi_all, cache, sec.data());
                 }
                 const bool owes = boot && pb < P && in_subset(s.id) && r < kBootReplicates &&
                                   rows[static_cast<std::size_t>(job) * P + pb].fitted != 0u && refits_per_job > 0;
@@ -471,8 +484,9 @@ int main(int argc, char** argv) {
     std::snprintf(buf, sizeof buf, "# S-35 M6 arm (D-196, D-198): one row per (phi, scenario, replicate); seed 0x%llX; dgp_kernel %s\n",
                   static_cast<unsigned long long>(seed), vcal::test::dgp_kernel().c_str());
     std::string text = buf;
-    text += "# profile flags: engine kInterval*; phi's interval on the study subset only; boot_*: the comparator "
-            "(subset, replicates 0-99, phi = 0.6, S-35's seed only)\n"
+    text += phi_all ? "# profile flags: engine kInterval*; phi's interval on every scenario; "
+                    : "# profile flags: engine kInterval*; phi's interval on the study subset only; ";
+    text += "boot_*: the comparator (subset, replicates 0-99, phi = 0.6, S-35's seed only)\n"
             "phi,scenario,replicate,pd_true,rho_true,periods,obligors,binom_pd,binom_rho,binom_loglik,binom_flags,"
             "fitted,pd,rho,phi_hat,se_pd,se_rho,se_phi,loglik,phi0_pd,phi0_rho,phi0_loglik,doubled_check,"
             "placement_check,scan_local_maxima,scan_unconverged,second_maximum_gap,evaluations,scores,flags,"

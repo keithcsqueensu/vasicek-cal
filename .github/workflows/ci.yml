@@ -173,6 +173,7 @@ jobs:
           .venv/bin/python tools/gen_vasicek_rate_goldens.py --check
           .venv/bin/python tools/gen_moments_goldens.py --check
           .venv/bin/python tools/gen_tolerances.py --check
+          .venv/bin/python tools/gen_engine_flags.py --check
 
   # D-032, D-126: the plain scipy replication of the binomial-mixture MLE, run against the engine's
   # committed results, and S-23's cross-check of the conditional PD's profile interval on the
