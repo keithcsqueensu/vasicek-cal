@@ -47,6 +47,8 @@
 #include "core/model/binomial_mixture.hpp"
 #include "core/model/vasicek.hpp"
 #include "core/quadrature/integrator.hpp"
+#include "benchmark_models/ar1/transition.hpp"
+#include "common/detmath/det_exp.hpp"
 #include "core/special/lbinom.hpp"
 #include "engine/surface.hpp"
 
@@ -106,6 +108,31 @@ struct ProxyTransition {
     double log_ratio_first(double z, double y) const { return (0.5 * (y * y) + half_log_s2) - 0.5 * (z * z); }
 };
 
+// The transition's online log-sum-exp for one value at a time, with det_exp: the kernels' arithmetic for one lane
+// (transition.hpp), so that LSE_j(lhat_j) here and the forward kernel's LSE_j(lhat_j + 0) at phi = 0 are the same
+// number bit for bit, and M is exactly 0 there.
+struct DetLse {
+    double mx = -HUGE_VAL, sum = 0.0;
+    unsigned char flags = 0;
+    void add(double x) {
+        if (std::isnan(x)) {
+            flags |= kernel::kFlagNan;
+        } else if (x == HUGE_VAL) {
+            flags |= kernel::kFlagInf;
+        } else if (x == -HUGE_VAL) {
+        } else {
+            const double d = x - mx;
+            if (x > mx) {
+                sum = sum * detmath::det_exp(-std::fabs(d)) + 1.0;
+                mx = x;
+            } else if (!(d < kernel::kExpZeroBelow)) {  // below it exp is exactly +0 (transition.hpp)
+                sum = sum + detmath::det_exp(-std::fabs(d));
+            }
+        }
+    }
+    double result() const { return kernel::lse_result(mx, sum, flags); }
+};
+
 // The rules' accumulator, with the predictive-to-proxy ratio folded into each node's term. In the first period
 // the predictive is the prior N(0, 1); with the prior as proxy (the Predictive placement, and every placement
 // at phi = 0) the ratio is exactly 0 and the accumulator is OnlineLogSumExp exactly.
@@ -119,32 +146,52 @@ public:
         w_.clear();
     }
 
+    // The rule's nodes arrive one at a time; their terms are computed together, in result(), so the transition
+    // sums run one lane per destination node (transition.hpp).
     void add(double v, double y) {
-        const double z = out_.mu + out_.sigma * y;
-        double w;
-        if (prev_ != nullptr) {
-            quadrature::detail::OnlineLogSumExp m;
-            const std::size_t np = prev_->z.size();
-            for (std::size_t j = 0; j < np; ++j) m.add(prev_->lhat[j] + tr_.log_ratio(prev_->z[j], z, y));
-            w = v + (m.result() - prev_->lhat_lse);
-        } else {
-            w = v + tr_.log_ratio_first(z, y);
-        }
-        acc_.add(w);
-        out_.z.push_back(z);
+        out_.z.push_back(out_.mu + out_.sigma * y);
         out_.y.push_back(y);
         out_.v.push_back(v);
-        w_.push_back(w);
     }
 
-    double result() const { return acc_.result(); }
+    double result() {
+        if (done_) return acc_.result();
+        done_ = true;
+        const std::size_t nd = out_.z.size();
+        w_.resize(nd);
+        if (prev_ != nullptr && nd > 0) {
+            const std::size_t np = prev_->z.size();
+            pu_.resize(np);
+            for (std::size_t j = 0; j < np; ++j) pu_[j] = tr_.phi * prev_->z[j];
+            a_.resize(nd);
+            for (std::size_t k = 0; k < nd; ++k) a_[k] = 0.5 * (out_.y[k] * out_.y[k]) + tr_.half_log_s2;
+            mx_.resize(nd);
+            sum_.resize(nd);
+            flags_.resize(nd);
+            if (!kernel::forward(pu_.data(), prev_->lhat.data(), np, out_.z.data(), a_.data(), nd, tr_.inv_two_var,
+                                 tr_.half_log_var, mx_.data(), sum_.data(), flags_.data())) {
+                w_.assign(nd, static_cast<double>(NAN));  // no kernel selected (VCAL_AR1_KERNEL): refuse
+            } else {
+                for (std::size_t k = 0; k < nd; ++k) {
+                    w_[k] = out_.v[k] + (kernel::lse_result(mx_[k], sum_[k], flags_[k]) - prev_->lhat_lse);
+                }
+            }
+        } else {
+            for (std::size_t k = 0; k < nd; ++k) w_[k] = out_.v[k] + tr_.log_ratio_first(out_.z[k], out_.y[k]);
+        }
+        for (std::size_t k = 0; k < nd; ++k) acc_.add(w_[k]);
+        return acc_.result();
+    }
 
 private:
     const ProxyTransition& tr_;
     const PeriodNodes* prev_;
     PeriodNodes& out_;
     std::vector<double>& w_;
-    quadrature::detail::OnlineLogSumExp acc_;
+    std::vector<double> pu_, a_, mx_, sum_;
+    std::vector<unsigned char> flags_;
+    quadrature::detail::OnlineLogSumExp acc_;  // each period's own integral: core's accumulator (phi = 0 is exact)
+    bool done_ = false;
 };
 
 // Mean and variance of z under the weights exp(lw + extra) (extra optional), normalised. Two passes, so the
@@ -213,7 +260,7 @@ double forward(const Obs* obs, std::int64_t periods, const Theta& th, const Inte
         // next step's numerator folds them, is the reference that makes M exact at phi = 0.
         const double lse_w = acc.result();
         cur.lhat.resize(w.size());
-        quadrature::detail::OnlineLogSumExp s;
+        DetLse s;
         for (std::size_t k = 0; k < w.size(); ++k) {
             cur.lhat[k] = w[k] - lse_w;
             s.add(cur.lhat[k]);
@@ -223,6 +270,24 @@ double forward(const Obs* obs, std::int64_t periods, const Theta& th, const Inte
     }
     const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
     return engine::weighted_sum(work.contrib.data(), periods, 1, ones.data(), 0);
+}
+
+// beta_t(j) = LSE_k((log R(j -> k) + v_{t+1,k}) + beta_{t+1}(k)) over the next period's nodes, by the backward
+// kernel (transition.hpp); e, if not null, receives each term (row j, column k).
+inline void backward_lse(const ProxyTransition& tr, const PeriodNodes& cur, const PeriodNodes& nx,
+                         const std::vector<double>& beta_next, std::vector<double>& beta, std::vector<double>* e) {
+    const std::size_t nc = cur.z.size(), nn = nx.z.size();
+    std::vector<double> pu(nc), a(nn), mx(nc), sum(nc);
+    std::vector<unsigned char> flags(nc);
+    for (std::size_t j = 0; j < nc; ++j) pu[j] = tr.phi * cur.z[j];
+    for (std::size_t k = 0; k < nn; ++k) a[k] = 0.5 * (nx.y[k] * nx.y[k]) + tr.half_log_s2;
+    if (e != nullptr) e->resize(nc * nn);
+    if (!kernel::backward(pu.data(), nc, nx.z.data(), a.data(), nx.v.data(), beta_next.data(), nn, tr.inv_two_var,
+                          tr.half_log_var, mx.data(), sum.data(), flags.data(), e != nullptr ? e->data() : nullptr)) {
+        beta.assign(nc, static_cast<double>(NAN));  // no kernel selected (VCAL_AR1_KERNEL): refuse
+        return;
+    }
+    for (std::size_t j = 0; j < nc; ++j) beta[j] = kernel::lse_result(mx[j], sum[j], flags[j]);
 }
 
 // Smoothed means and variances of each Z_t over the last forward pass's nodes, by a backward pass:
@@ -242,15 +307,9 @@ inline void smooth(const Theta& th, FilterWork& work) {
         if (tt + 1 < T) {
             const PeriodNodes& nx = work.nodes[tt + 1];
             tr.half_log_s2 = std::log(nx.sigma);
-            for (std::size_t j = 0; j < cur.z.size(); ++j) {
-                quadrature::detail::OnlineLogSumExp b;
-                for (std::size_t k = 0; k < nx.z.size(); ++k) {
-                    b.add(tr.log_ratio(cur.z[j], nx.z[k], nx.y[k]) + nx.v[k] + beta_next[k]);
-                }
-                beta[j] = b.result();
-            }
+            backward_lse(tr, cur, nx, beta_next, beta, nullptr);
             // Shift for range only; the smoothed weights are normalised below.
-            quadrature::detail::OnlineLogSumExp s;
+            DetLse s;
             for (const double x : beta) s.add(x);
             const double shift = s.result();
             for (double& x : beta) x -= shift;
@@ -306,7 +365,7 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
     const double var = 1.0 - phi * phi;
     detail::ProxyTransition tr{phi, 1.0 / (2.0 * var), 0.5 * std::log(var), 0.0};
     grad[0] = grad[1] = grad[2] = 0.0;
-    std::vector<double> beta_next, beta, pair;
+    std::vector<double> beta_next, beta, pair, weights;
     for (std::size_t tt = T; tt-- > 0;) {
         const PeriodNodes& cur = work.nodes[tt];
         const std::size_t nc = cur.z.size();
@@ -315,24 +374,24 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
             const PeriodNodes& nx = work.nodes[tt + 1];
             const std::size_t nn = nx.z.size();
             tr.half_log_s2 = std::log(nx.sigma);
-            // Pairwise smoothed weights of (Z_t, Z_{t+1}): lhat_t(j) + log R(j -> k) + v_{t+1}(k) + beta_{t+1}(k).
-            pair.resize(nc * nn);
+            // Pairwise smoothed weights of (Z_t, Z_{t+1}): lhat_t(j) + (log R(j -> k) + v_{t+1}(k)) + beta_{t+1}(k).
+            detail::backward_lse(tr, cur, nx, beta_next, beta, &pair);
             double mx = -HUGE_VAL;
             for (std::size_t j = 0; j < nc; ++j) {
-                quadrature::detail::OnlineLogSumExp b;
                 for (std::size_t k = 0; k < nn; ++k) {
-                    const double e = tr.log_ratio(cur.z[j], nx.z[k], nx.y[k]) + nx.v[k] + beta_next[k];
-                    b.add(e);
-                    pair[j * nn + k] = cur.lhat[j] + e;
+                    pair[j * nn + k] = cur.lhat[j] + pair[j * nn + k];
                     mx = std::fmax(mx, pair[j * nn + k]);
                 }
-                beta[j] = b.result();
+            }
+            weights.resize(nc * nn);
+            if (!kernel::exp_shifted(pair.data(), nc * nn, mx, weights.data())) {
+                weights.assign(nc * nn, static_cast<double>(NAN));
             }
             double sw = 0.0, sd = 0.0;
             for (std::size_t j = 0; j < nc; ++j) {
                 const double u = cur.z[j];
                 for (std::size_t k = 0; k < nn; ++k) {
-                    const double wjk = std::exp(pair[j * nn + k] - mx);
+                    const double wjk = weights[j * nn + k];
                     if (wjk == 0.0) continue;
                     const double a = nx.z[k] - phi * u;
                     sw += wjk;
@@ -340,7 +399,7 @@ inline void score(const Obs* obs, std::int64_t periods, const Theta& th, FilterW
                 }
             }
             grad[2] += sd / sw;
-            quadrature::detail::OnlineLogSumExp s;
+            detail::DetLse s;
             for (const double x : beta) s.add(x);
             const double shift = s.result();
             for (double& x : beta) x -= shift;
