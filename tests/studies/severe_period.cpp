@@ -20,7 +20,7 @@
 // for conversion to a committed Parquet file. --counts prints each scenario's added default counts
 // and exits, reading no panel. Results do not depend on the thread count.
 //
-//   study_severe_period [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE]
+//   study_severe_period [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE] [--timing-out FILE]
 //   study_severe_period --counts
 #include <algorithm>
 #include <array>
@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "tests/harness/golden.hpp"
+#include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -168,12 +169,15 @@ double median(std::vector<double> x) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string summary_out, replicates_out;
     bool counts_only = false;
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--timing-out") == 0 && i + 1 < argc) {
+            timing_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--counts") == 0) {
             counts_only = true;
@@ -219,6 +223,7 @@ int main(int argc, char** argv) {
     const auto per = static_cast<std::int64_t>(ids.size());
     std::vector<SpFit> fits(static_cast<std::size_t>(R) * ids.size());
     const auto start = std::chrono::steady_clock::now();
+    vcal::test::TimingSample sample("study_severe_period", {"fit"}, {"1"});
     const std::uint32_t batch = 25;
     for (std::uint32_t r0 = 0; r0 < R; r0 += batch) {
         const std::uint32_t r1 = r0 + batch < R ? r0 + batch : R;
@@ -227,10 +232,21 @@ int main(int argc, char** argv) {
             const std::size_t k = static_cast<std::size_t>(j % per);
             std::int64_t c[kVariants];
             for (int v = 0; v < kVariants; ++v) c[v] = counts[k][static_cast<std::size_t>(v)];
-            fits[static_cast<std::size_t>(r) * ids.size() + k] = sp_fit(rc::scenario(ids[k]), r, c);
+            const auto t0 = std::chrono::steady_clock::now();
+            const rc::Scenario s = rc::scenario(ids[k]);
+            fits[static_cast<std::size_t>(r) * ids.size() + k] = sp_fit(s, r, c);
+            const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            sample.record(s.id, s.periods, s.obligors, r, {sec});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
+    }
+    if (!timing_path.empty()) {
+        if (!sample.write(timing_path)) {
+            std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", timing_path.c_str());
     }
 
     std::string csv =

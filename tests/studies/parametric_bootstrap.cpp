@@ -25,6 +25,7 @@
 // Nothing is scored here: studies/parametric-bootstrap/compare.py scores K1-K5 and H1-H6 from the rows.
 //
 //   study_parametric_bootstrap [--replicates R] [--scenarios ID,...] [--out FILE] [--threads N]
+//                              [--timing-out FILE]  (a runtime timing sample, perf/README.md, D-187)
 //                              [--checkpoint DIR] [--stop-after-scenarios N]
 //
 // --checkpoint DIR (P-11, D-179): each scenario, once both passes are done, is written to DIR; a rerun
@@ -58,6 +59,7 @@
 #include "engine/posterior.hpp"
 #include "generated/vcal_git_info.h"
 #include "tests/harness/checkpoint.hpp"
+#include "tests/harness/timing_sample.hpp"
 #include "resample/bootstrap.hpp"
 #include "tests/recovery/recovery.hpp"
 
@@ -361,7 +363,7 @@ void unpack(const std::vector<std::uint8_t>& bytes, std::uint32_t id, Row* rows,
 int main(int argc, char** argv) {
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
-    std::string out_path, checkpoint_dir;
+    std::string out_path, checkpoint_dir, timing_path;
     unsigned threads = std::thread::hardware_concurrency();
     std::uint32_t stop_after = 0;
     for (int i = 1; i < argc; ++i) {
@@ -371,6 +373,8 @@ int main(int argc, char** argv) {
             threads = static_cast<unsigned>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--out") == 0 && i + 1 < argc) {
             out_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--timing-out") == 0 && i + 1 < argc) {
+            timing_path = argv[++i];
         } else if (std::strcmp(argv[i], "--checkpoint") == 0 && i + 1 < argc) {
             checkpoint_dir = argv[++i];
         } else if (std::strcmp(argv[i], "--stop-after-scenarios") == 0 && i + 1 < argc) {
@@ -388,7 +392,7 @@ int main(int argc, char** argv) {
             }
         } else {
             std::fprintf(stderr, "usage: study_parametric_bootstrap [--replicates R] [--scenarios ID,...] [--out FILE] "
-                                 "[--threads N] [--checkpoint DIR] [--stop-after-scenarios N]\n");
+                                 "[--threads N] [--checkpoint DIR] [--stop-after-scenarios N] [--timing-out FILE]\n");
             return 2;
         }
     }
@@ -563,6 +567,32 @@ int main(int argc, char** argv) {
     std::printf("total CPU s %.0f:", all);
     for (int p = 0; p < kPhases; ++p) std::printf(" %s %.0f (%.0f%%);", kPhaseNames[p], total[p], 100.0 * total[p] / all);
     std::printf("\n");
+
+    // A runtime timing sample (D-187): each job's thread-seconds by phase, with each phase's share of a
+    // full run's replicates. The surface phase is mostly the row cache's one-time fill; Jeffreys runs on
+    // replicates 0-49 and the S-4 widths on 0-199 of rc::kReplicates.
+    if (!timing_path.empty()) {
+        const auto frac = [](std::uint32_t count) {
+            return std::to_string(static_cast<double>(count) / rc::kReplicates);
+        };
+        std::vector<std::string> phases(kPhaseNames, kPhaseNames + kPhases), shares(kPhases, "1");
+        shares[kSurface] = "once";
+        shares[kJeffreys] = frac(kJeffreysCheck);
+        shares[kWidths] = frac(kWidthReplicates);
+        vcal::test::TimingSample sample("study_parametric_bootstrap", phases, shares);
+        for (std::size_t k = 0; k < ids.size(); ++k) {
+            const rc::Scenario s = rc::scenario(ids[k]);
+            for (std::uint32_t r = 0; r < R; ++r) {
+                const double* sec = rows[k * R + r].seconds;
+                sample.record(s.id, s.periods, s.obligors, r, std::vector<double>(sec, sec + kPhases));
+            }
+        }
+        if (!sample.write(timing_path)) {
+            std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", timing_path.c_str());
+    }
 
     if (!out_path.empty()) {
         std::ofstream out(out_path, std::ios::binary);

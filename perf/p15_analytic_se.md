@@ -21,6 +21,31 @@ The calibrate phase falls 2.7× (mean 664 → 244). In this sample Jeffreys, whi
 of the work, so the total falls 16%. In the S-10/S-4 full run the calibrate phase was 43% of 555,004 CPU s
 and Jeffreys 2%, so at 2.7× the same run would save about a quarter of its CPU.
 
+**The full S-10/S-4 run, before and after.** P-15 takes about 20% off the run's projected thread-seconds,
+so the 6.13 h projection (90% range 5.70–6.56 h) on the run's own binary d800d34 becomes about 4.9 h. That
+binary already had P-14 and P-16, and the actual run took 6.44 h. These are projections, not runs; the next
+full run of the tool records its actual time.
+
+The measurement: `--replicates 2` over all 81 scenarios, d800d34 (A) and the current code (B) in the order
+A, B, B, A. Thread-seconds per sample, with the projection's phase schedule (D-187: Jeffreys × 0.05, the S-4
+widths × 0.20, the surface phase left out as a one-time fill):
+
+| run | wall s | total thread-s | scheduled thread-s |
+|---|---|---|---|
+| A | 144 | 1,632 | 1,096 |
+| B | 142 | 1,593 | 953 |
+| B | 139 | 1,516 | 903 |
+| A | 156 | 1,827 | 1,222 |
+
+The ratio B / A is 0.80 on the means, and 0.74–0.87 across the pairs.
+
+**A correction (a miss, recorded).** This section first said 4.03 h (3.86–4.19 h), "about 34% off". That
+compared samples taken at different times: d800d34's at 135 s of sample wall time, and the current code's
+at 114 s, in a faster machine state. The same current-code sample took 139–142 s when rerun. The A/B/B/A
+runs above replace it. The current code's own projection, from a sample taken during the A/B/B/A runs, is
+5.07 h (4.81–5.31 h). In that state d800d34's sample also ran 7–16% slower than when the 6.13 h was
+measured.
+
 On the recovery harness (81 × 1,000), whose fits reuse cached surfaces and spend most of their time in the
 bootstrap and the profile, the wall time was 288 s before and 285 s after: no measurable change.
 

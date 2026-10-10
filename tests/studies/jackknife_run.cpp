@@ -22,7 +22,7 @@
 // here: they live in studies/jackknife-bias-rho/reviewed.csv, so a review never needs a refit
 // (D-155). Results do not depend on the thread count.
 //
-//   study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE]
+//   study_jackknife_run [--replicates R] [--scenarios ID,...] [--summary-out FILE] [--replicates-out FILE] [--timing-out FILE]
 //                       [--polished]
 //
 // --polished adds the arm of the addendum of 2026-09-28: S-3's corrected rho and shifted interval,
@@ -44,6 +44,7 @@
 
 #include "resample/jackknife.hpp"
 #include "tests/harness/golden.hpp"
+#include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -72,6 +73,7 @@ struct JkFit {
     std::int8_t extreme_z_is_top;   // most influential period for rho == most extreme |Z_t|
     double refit_gap;               // J14: max_t |refined - polished| of rho in SE units (NaN if unchecked)
     double refit_gap_clean;         // the same over delete-one fits without flags (refinement accepted)
+    double refit_seconds;           // thread-seconds in the J14 refits (a timing sample's phase, D-187)
     // The polished arm (addendum, 2026-09-28; --polished only): the same S-3 and q quantities from
     // the exact off-grid maxima of the full and delete-one panels instead of the grid refinement.
     bool polished;
@@ -228,6 +230,7 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
 
     // J14: exact refits of the delete-one panels for the first replicates.
     out.refit_gap = out.refit_gap_clean = kNaN;
+    const auto refit_start = std::chrono::steady_clock::now();
     if (replicate < kExactRefitReplicates && unflagged) {
         double gap = 0.0, gap_clean = 0.0;
         std::vector<Objective::Obs> sub;
@@ -250,6 +253,7 @@ JkFit jk_fit(const rc::Scenario& s, std::uint32_t replicate, bool polished) {
         out.refit_gap = gap;
         out.refit_gap_clean = gap_clean;
     }
+    out.refit_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - refit_start).count();
     // The polished arm: each delete-one panel's exact maximum, from the profile code on that panel
     // (its per-period surfaces are L without row t), and the full panel's from prof.max_at.
     out.polished = polished;
@@ -350,12 +354,15 @@ double correlation(const std::vector<double>& a, const std::vector<double>& b) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string summary_out, replicates_out;
     bool polished = false;
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--timing-out") == 0 && i + 1 < argc) {
+            timing_path = argv[++i];
+        } else if (std::strcmp(argv[i], "--replicates") == 0 && i + 1 < argc) {
             R = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
         } else if (std::strcmp(argv[i], "--polished") == 0) {
             polished = true;
@@ -386,16 +393,31 @@ int main(int argc, char** argv) {
     const auto per = static_cast<std::int64_t>(ids.size());
     std::vector<JkFit> fits(static_cast<std::size_t>(R) * ids.size());
     const auto start = std::chrono::steady_clock::now();
+    // Timing sample phases: the J14 refits run on replicates 0..kExactRefitReplicates-1 only.
+    vcal::test::TimingSample sample("study_jackknife_run", {"fit", "exact refits"},
+                                    {"1", std::to_string(static_cast<double>(kExactRefitReplicates) / rc::kReplicates)});
     const std::uint32_t batch = 25;
     for (std::uint32_t r0 = 0; r0 < R; r0 += batch) {
         const std::uint32_t r1 = r0 + batch < R ? r0 + batch : R;
         backends::CpuBackend{}.parallel_for(static_cast<std::int64_t>(r1 - r0) * per, [&](std::int64_t j) {
             const std::uint32_t r = r0 + static_cast<std::uint32_t>(j / per);
             const std::size_t k = static_cast<std::size_t>(j % per);
-            fits[static_cast<std::size_t>(r) * ids.size() + k] = jk_fit(rc::scenario(ids[k]), r, polished);
+            const auto t0 = std::chrono::steady_clock::now();
+            const rc::Scenario s = rc::scenario(ids[k]);
+            JkFit& f = fits[static_cast<std::size_t>(r) * ids.size() + k];
+            f = jk_fit(s, r, polished);
+            const double total = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            sample.record(s.id, s.periods, s.obligors, r, {total - f.refit_seconds, f.refit_seconds});
         });
         std::fprintf(stderr, "replicates %u/%u, %.0f s\n", r1, R,
                      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
+    }
+    if (!timing_path.empty()) {
+        if (!sample.write(timing_path)) {
+            std::fprintf(stderr, "cannot write %s\n", timing_path.c_str());
+            return 1;
+        }
+        std::printf("wrote %s\n", timing_path.c_str());
     }
 
     double band_lo = 0.0, band_hi = 0.0;

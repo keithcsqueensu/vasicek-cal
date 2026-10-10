@@ -17,6 +17,42 @@ questions (S-16 FP32 search, S-17 GPU scaling) stay studies, registered in `stud
    recovery fit (PD, ρ and q coverage by each interval, flags, edge counts), one commit per P-item, the
    flip counts reported in the decision entry even when zero.
 
+## Projecting a full run (D-187)
+
+Before any full study run, project its runtime from a timing sample, not from the study subset. The
+subset is chosen for statistical coverage (T × ρ); runtime follows T × n. S-10/S-4's projection from the
+subset missed by 1.375× (5 h projected, 6.4 h actual, D-186), because the costliest cell (T = 100,
+n = 10⁴) had no subset scenario. The study subset is unchanged: it stays the basis for predictions and
+paired verdicts. Only the runtime projection changes.
+
+1. **Sample every cell.** Run the tool on a few replicates of every scenario of the full matrix with
+   `--timing-out FILE` (`study_parametric_bootstrap`, `study_bayes_coverage`, `study_estimator_pass`,
+   `study_severe_period` and `study_jackknife_run` take it). Each (scenario, replicate) job's thread-seconds
+   are recorded by phase (`tests/harness/timing_sample.hpp`).
+2. **Follow the phase schedule.** Each phase carries its share of a full run's replicates: `1` for every
+   replicate, a fraction for an arm run on the first replicates only (S-10's Jeffreys check on 0–49 of
+   1,000: 0.05; the jackknife run's exact refits on 0–4: 0.005), or `once` for a one-time cost (filling the
+   surface-row cache). A sample runs every arm on every sampled replicate, so an unweighted projection is
+   biased whenever arms are sampled. A fractional phase is averaged over the sampled replicates that run it
+   in a full run.
+3. **Weight by cell.** A cell's cost per replicate times its scenario count times the full run's replicates,
+   summed over cells. Wall time is that over (threads × efficiency), where the efficiency is measured from
+   real runs, not assumed: thread-seconds / (threads × wall) of the last full run, which covers scenario
+   overlap, cache fills and the tail where threads idle. S-10/S-4: 555,004 / (24 × 23,190) = **0.997**,
+   the default (`--efficiency`). Each validation re-measures it, and a run that falls below it says so.
+4. **Report a range, and sample until it is tight.** The range is the 5th–95th percentile of a bootstrap over
+   jobs within each cell. `perf/project_runtime.py --run "<tool>"` starts at 2 replicates per scenario and
+   doubles until the range is within ±10% of the projection (`--target`), up to `--max`. It prints the
+   subset-based projection alongside for comparison.
+
+**Calibrated on S-10, not yet validated** (`perf/projection_s10.md`). With 2 replicates per scenario
+(18 jobs per cell) the projection was 6.13 h (90% range 5.70–6.56 h) against the actual 6.44 h. With 1 per
+scenario (9 per cell) it was 5.34 h (5.00–5.68 h): a 17% miss, outside its range, because single
+replicates' costs are skewed (0.44–2.53× their scenario's mean). The bootstrap range is a sampling range
+only, and it under-covered at 9 jobs per cell. The method was tuned against this one run, so its next
+full run is a test: the projection is recorded before the run and compared with the actual wall time after
+it. If the actual lands in range again, the method is called validated.
+
 ## Benchmarks
 
 | P-item | Benchmark | What it reports |
