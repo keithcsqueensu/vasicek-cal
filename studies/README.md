@@ -135,7 +135,7 @@ not delay M3.
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
 | S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
-| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | not registered (D-188; highest priority of the addendum) |
+| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | **registered** (D-190; the AR(1)-aware MLE arm with M6) |
 | S-36 | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
 | S-37 | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
 | S-38 | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
@@ -1422,6 +1422,10 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   - **With M6:** the AR(1)-aware MLE.
 - **Cost:** about the baseline per φ. The subset at three φ takes a few minutes, and the full matrix
   about 15–30 minutes.
+- **Prediction:** registered (`lrpd-serial-correlation/PREDICTION.md`, D-190), L1–L11, before any AR(1)
+  panel was fitted. The AR(1)-aware MLE's predictions are appended before its run. **Result:** not run.
+  **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-36 Rating philosophy and fitted correlation (`pit-ttc-rho`)
 

@@ -1189,6 +1189,26 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The AR(1) DGP** (S-35's panels, counted by `study_lrpd_serial --count-repeats`, D-190): 3.0%, 3.1% and 3.2% of panels repeat at φ = 0, 0.3 and 0.6, almost all at n = 100. The saving is at most about 0.6% of S-35's run, so the decision stands.
   - **Also recorded:** in the same timing sample, simulation is 31% of the S-10/S-4 run's projected thread-seconds (38–46% in the n = 10,000 cells). That is input to the SIMD Philox decision.
 
+## S-35 registered; the AR(1)-factor DGP variant, 2026-10-09
+
+- **D-190 (owner's order: S-35 registration and the AR(1) DGP variant) — The AR(1) factor reuses the base DGP's draws; S-35 is registered before any AR(1) panel is fitted.**
+  - **The variant** (`dgp::simulate_panel_ar1`, `docs/methodology/dgp.md`, "The AR(1) factor"):
+    - Z_0 = e_0 and Z_t = φ Z_{t−1} + √(1 − φ²) e_t, with e_t the base factor draw for period t. Every Bernoulli draw is the base DGP's.
+    - It starts in the stationary distribution, so every period's count has its φ = 0 distribution.
+    - Specified like the base DGP (D-149): prose, a line-for-line Python mirror (`tools/gen_dgp_tables.py`), and six reference panels with their own SHA-256, matched bit for bit by the C++.
+  - **For the owner: no key domain of its own.** D-149 asks a new DGP variant for its own key domain. This variant deliberately draws no stream of its own: it reuses the base DGP's draws (common random numbers).
+    - **The benefit:** comparisons across φ are paired on the same random numbers, φ = 0 is the pinned run's panels bit for bit (tested), and the φ = 0 arm doubles as a check of the run.
+    - **The cost:** none found. No two variants' draws can collide, because the variant adds no draws. S-11 shares the variant (D-188).
+    - **If the owner prefers a separate key domain,** only the e_t's key changes (seed XOR a tag), at the price of the pairing.
+  - **S-35's registration** (`studies/lrpd-serial-correlation/PREDICTION.md`, L1–L11):
+    - **The setup:** the recovery matrix at φ ∈ {0, 0.3, 0.6}, paired. The estimators are the simple average with a t interval, the parity binomial MLE as the recovery harness fits it, and the Vasicek-rate MLE on the n → ∞ rates.
+    - **The targets:** the generating values. Under a stationary AR(1) factor the marginal is unchanged, so they are also the pseudo-true values (D-150, D-151).
+    - **The reference numbers** (`reference.py`) come from the model and pinned φ = 0 coverage only. They are the sandwich variance inflation of each estimator: Hermite expansion of the conditional score for the binomial MLE, closed forms for the rate MLE.
+    - **The central prediction:** intervals that assume independent periods lose coverage by a factor that does not shrink with T: PD profile coverage of about 0.86 at φ = 0.3 and 0.71–0.73 at φ = 0.6 in every informative group.
+    - **ρ:** it falls less, and its downward bias grows by about (f_μ − 1)/T.
+    - **The simple average:** unbiased in mean, but below PD more often as φ grows.
+  - **Not in this registration:** the AR(1)-aware MLE (M6); its predictions are appended before its run.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
