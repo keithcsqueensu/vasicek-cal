@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -317,6 +318,7 @@ struct CellStats {
 }  // namespace
 
 int main() {
+    if (!vcal::test::announce_dgp_kernel("study_z_sign_invariance")) return 2;
     const auto all = panels();
     const std::size_t P = all.size();
     std::vector<FitOut> par(P), mir(P), ctl(P);

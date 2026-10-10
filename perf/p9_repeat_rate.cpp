@@ -46,6 +46,7 @@
 #include <vector>
 
 #include "dgp/dgp.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -107,6 +108,7 @@ struct Result {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("p9_repeat_rate")) return 2;
     std::vector<std::uint32_t> ids;
     std::uint32_t boot_r = rc::kReplicates;
     std::int64_t boot_max_n = 10000;

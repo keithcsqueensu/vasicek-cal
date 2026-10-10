@@ -138,7 +138,8 @@ enum {
 VCAL_API uint32_t VCAL_CALL vcal_abi_version(void);
 
 /* Build provenance as "key=value" lines: library and ABI version, git commit and whether the
- * tree was dirty, compiler, C++ standard, build type, OpenMP, CUDA, profiles. */
+ * tree was dirty, compiler, C++ standard, build type, OpenMP, CUDA, profiles, and the DGP's
+ * Bernoulli kernel (dgp_kernel=scalar, sse2 or avx2; every kernel gives the same panels). */
 VCAL_API vcal_status VCAL_CALL vcal_build_info(char* buffer, int64_t capacity, int64_t* required);
 
 /* The calling thread's message from its last failing call ("" after a successful one). Does

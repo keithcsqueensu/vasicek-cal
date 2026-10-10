@@ -149,7 +149,7 @@ jobs:
       # Observed accuracy per platform, for the tolerance register (D-074); the ABI's build info,
       # DGP reference-panel check and export count (D-142, D-144).
       - name: Report accuracy and engine results
-        run: ctest --preset ${{ matrix.preset }} -R "^(unit_(special|quadrature|engine|dgp)|xref_core_regression|recovery_replay|abi_c|abi_exports)$" --verbose ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
+        run: ctest --preset ${{ matrix.preset }} -R "^(unit_(special|quadrature|engine|dgp|dgp_kernel_.*)|xref_core_regression|recovery_replay|abi_c|abi_exports)$" --verbose ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
 
   # D-033/D-067/D-082: every generated header and golden table must be reproducible exactly
   # from the tools/gen_*_tables.py generators at the pinned mpmath version; D-125: the tolerance
@@ -237,8 +237,10 @@ jobs:
         run: cmake --build --preset cuda-release
       - name: Test (CPU suite)
         run: ctest --preset cuda-release ${{ needs.plan.outputs.slow != 'true' && '-LE slow' || '' }}
-      - name: Report DGP reference-panel hash (D-114)
-        run: ctest --preset cuda-release -R "^unit_dgp$" --verbose | grep -E "reference-panel SHA-256|tests failed"
+      # Per Bernoulli kernel (D-194): each path's hashes, the start-up selection under VCAL_DGP_KERNEL, and
+      # any kernel this runner lacks, reported as skipped.
+      - name: Report DGP reference-panel hashes, per kernel (D-114, D-194)
+        run: ctest --preset cuda-release -R "^unit_dgp(_kernel_.*)?$" --verbose | grep -E "reference-panel SHA-256|selected at start-up|SKIPPED|Skipped|tests failed"
       - name: Evidence (flags applied, device code generated)
         run: |
           grep -oE -- '--Werror=[^ "]*|--generate-code=[^ "]*|-std=c\+\+17' build/cuda-release/compile_commands.json | sort | uniq -c

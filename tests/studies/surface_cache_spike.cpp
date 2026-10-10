@@ -32,6 +32,7 @@
 
 #include "core/reducers/argmax.hpp"
 #include "engine/surface_cache.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -185,6 +186,7 @@ bool same_fit(const rc::Fit& a, const rc::Fit& b) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_surface_cache_spike")) return 2;
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids = {29, 37, 72, 4, 68, 49, 7, 43, 51};  // the study subset (D-150)
     for (int i = 1; i < argc; ++i) {

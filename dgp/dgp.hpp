@@ -35,7 +35,13 @@ inline constexpr std::uint32_t kFactorBlocks = 1u << 16;
 // Bernoulli blocks run from kFactorBlocks to 2^32 - 1, two obligors per block.
 inline constexpr std::int64_t kMaxObligors = 2 * (std::int64_t{1} << 32) - 2 * std::int64_t{kFactorBlocks};
 
-enum class Status : std::int32_t { Ok = 0, InvalidSpec = 1, FpEnvironment = 2, FactorStreamExhausted = 3 };
+enum class Status : std::int32_t {
+    Ok = 0,
+    InvalidSpec = 1,
+    FpEnvironment = 2,
+    FactorStreamExhausted = 3,
+    KernelUnavailable = 4  // VCAL_DGP_KERNEL names a kernel this CPU or build lacks (count_defaults)
+};
 
 struct PanelSpec {
     std::uint64_t seed;
@@ -68,6 +74,31 @@ double uniform_from_words(std::uint32_t a, std::uint32_t b);
 
 // True if subnormals are neither flushed on output nor treated as zero on input.
 bool fp_environment_ok();
+
+// The Bernoulli count d_t of one period: the number of obligors i < n with U_i < p, U_i drawn as above
+// (P-17, D-194). Kernels: Scalar is the definition above, operation for operation; Sse2 (x86-64) and
+// Avx2 (x86-64, when the CPU and the OS support it, checked at run time) compare integer keys against a
+// threshold, 8 or 16 Philox blocks at a time, and return the same count bit for bit. count_defaults
+// returns -1 if n is out of range or the kernel is not available on this CPU or build.
+//
+// simulate_panel and simulate_panel_ar1 use bernoulli_kernel_selected(): the fastest available, unless the
+// environment variable VCAL_DGP_KERNEL (scalar, sse2 or avx2) names one, read once when first needed. A
+// value that is not one of those, or names a kernel this CPU or build lacks, selects Unavailable, and the
+// simulations then return Status::KernelUnavailable rather than quietly use another kernel.
+// select_bernoulli_kernel changes the selection (the tests run every path on one machine); it is
+// process-wide and must not be called while another thread is simulating. False, and no change, if the
+// kernel is not available. Selecting Unavailable is allowed: the simulations then refuse, as above.
+enum class BernoulliKernel : std::int32_t { Unavailable = -1, Scalar = 0, Sse2 = 1, Avx2 = 2 };
+bool bernoulli_kernel_available(BernoulliKernel kernel);
+BernoulliKernel bernoulli_kernel_selected();
+bool select_bernoulli_kernel(BernoulliKernel kernel);
+const char* bernoulli_kernel_name(BernoulliKernel kernel);  // "scalar", "sse2", "avx2", "unavailable"
+std::int64_t count_defaults(std::uint64_t seed, std::uint32_t scenario, std::uint32_t replicate, std::uint32_t period,
+                            std::int64_t n, double p, BernoulliKernel kernel);
+// K, the number of integer keys k in [0, 2^52) whose uniform (k + 1/2) 2^-52 is below p: U < p iff k < K
+// (docs/methodology/dgp.md, "An equivalent integer form of step 3"). 0 for p <= 2^-53 or NaN, 2^52 for
+// p > 1 - 2^-53.
+std::uint64_t bernoulli_threshold(double p);
 
 // The factor draw for one period, with an explicit block budget (tests use a tiny one).
 Status factor_draw(std::uint64_t seed, std::uint32_t scenario, std::uint32_t replicate, std::uint32_t period,

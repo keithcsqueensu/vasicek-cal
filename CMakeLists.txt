@@ -40,10 +40,21 @@ vcal_target_defaults(vcal_ref)
 
 # dgp/: synthetic data, CPU only (D-034), bitwise identical across platforms (D-052..D-057):
 # its own maths, strict FP semantics, no contraction; shares no code with core (D-050).
-add_library(vcal_dgp STATIC dgp/det_math.cpp dgp/dgp.cpp)
+add_library(vcal_dgp STATIC dgp/det_math.cpp dgp/dgp.cpp dgp/bernoulli.cpp dgp/bernoulli_avx2.cpp)
 add_library(vcal::dgp ALIAS vcal_dgp)
 target_include_directories(vcal_dgp PUBLIC "${PROJECT_SOURCE_DIR}")
 vcal_target_defaults(vcal_dgp FP_STRICT)
+# The AVX2 Bernoulli kernel (P-17, D-194): only dgp/bernoulli_avx2.cpp is compiled for AVX2, and it runs
+# only on CPUs that have it (checked at run time). Every kernel gives the same panels bit for bit.
+option(VCAL_DGP_AVX2 "Build the AVX2 Bernoulli kernel on x86-64 (selected at run time)" ON)
+if(VCAL_DGP_AVX2 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|x64)$")
+    target_compile_definitions(vcal_dgp PRIVATE VCAL_DGP_AVX2)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        set_source_files_properties(dgp/bernoulli_avx2.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+    else()
+        set_source_files_properties(dgp/bernoulli_avx2.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
+    endif()
+endif()
 set_target_properties(vcal_dgp PROPERTIES POSITION_INDEPENDENT_CODE ON)  # linked into the shared vcal
 
 # resample/: weight matrices W and replicate estimates from W x L (M2b, D-132..D-135). Header-only;

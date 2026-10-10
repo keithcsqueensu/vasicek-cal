@@ -52,6 +52,7 @@
 #include <string>
 #include <vector>
 
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/golden.hpp"
 #include "tests/recovery/recovery.hpp"
 
@@ -634,6 +635,7 @@ int check_against_goldens(const std::vector<rc::Summary>& all) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("recovery_harness")) return 2;
     std::uint32_t R = rc::kReplicates;
     bool write = false, check = false;
     std::string save_fits, load_fits;

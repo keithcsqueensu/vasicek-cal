@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/golden.hpp"
 #include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
@@ -169,6 +170,7 @@ double median(std::vector<double> x) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_severe_period")) return 2;
     std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;

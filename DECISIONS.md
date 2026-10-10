@@ -1287,6 +1287,28 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **On S-10:** its 2-replicate calibration sample took 135 s, which already met the new minimum. That fits its landing in range, but the calibration predates the fill split, so the next S-10-type run rechecks it.
   - **Status:** "calibrated, not validated" until the next full run lands in range, as the owner asked.
 
+## P-17: SIMD Philox for the DGP's Bernoulli draws, 2026-10-10
+
+- **D-194 (owner's order: SIMD Philox, then the AR(1)-aware MLE; D-191's conditions) — The Bernoulli count has scalar, SSE2 and AVX2 kernels that give the same panels bit for bit. AVX2 is chosen at run time, any kernel can be forced and is recorded, and the vector kernels compare integer keys against a threshold instead of uniforms against p. Changes results: no.** Full record: `perf/p17_simd_philox.md`.
+  - **Why now:** D-191 placed it before the first large parametric-bootstrap run. The owner added that M6's AR(1) likelihood cannot be split by period, so W × L reweighting does not apply. Its resampling is parametric bootstrap through the DGP (Q10b), which makes simulation a large share of M6's cost.
+  - **The integer form:**
+    - U = (k + ½)·2⁻⁵² < p iff k < K, where K = ⌈p·2⁵² − ½⌉ clipped to [0, 2⁵²]. Both floating-point steps are exact for 0 ≤ p ≤ 1.
+    - The comparison splits on the two 26-bit words, so SSE2's signed 32-bit compares are exact.
+    - `docs/methodology/dgp.md` states it as an equivalent form of step 3; the Python mirror is unchanged.
+  - **The kernels:**
+    - One Philox block per 32-bit lane, with the 64-bit products from `mul_epu32` on the even and odd lanes.
+    - AVX2 lives in one file compiled for AVX2 and runs only after a CPUID and XCR0 check. That file has internal linkage only, so no AVX2 instruction can leak into code that runs on other CPUs.
+    - SSE2 is the x86-64 baseline; scalar is the specification's loop and the only path on other architectures.
+  - **Every path tested on one machine (owner):**
+    - **Explicit selection:** `select_bernoulli_kernel` lets `unit_dgp` run both reference-panel SHA-256 checks under all three kernels, and compare 4,630 counts of each vector kernel with the scalar loop.
+    - **Forced at start-up:** `VCAL_DGP_KERNEL` forces a kernel. A value naming a kernel the machine lacks makes simulation refuse (`KernelUnavailable`) rather than fall back. CTest reruns the panel checks under each value and an invalid one.
+  - **The threshold's edges tested (owner):** p = 0 and 1, the smallest and largest p that change K, p exactly on 20,011 threshold steps and one ulp either side, and U < p ⇔ k < K on the words. A deliberate "≤" mutant fails at once.
+  - **Recorded:** the kernel in use appears in `vcal_build_info` (`dgp_kernel=`), in timing samples (`# dgp_kernel,`), in S-10's checkpoint configuration, and on stderr from every tool that simulates.
+  - **Measured:** 4.1× (MSVC) and 3.6× (GCC) faster per panel at n = 10,000; 3.2× and 2.6× at 1,000; 1.6× and 1.3× at 100. On the S-10 tool, A/B/B/A on one machine state: the simulate phase 3.2× faster, all rows byte-identical.
+  - **A projection, not yet confirmed:** the S-10/S-4 run projects 21% shorter (`perf/project_runtime.py` on the four timing samples). Like D-187's projections it is calibrated, not validated; the next parametric-bootstrap full run records its projection before it starts and confirms or corrects the 21% against its actual time.
+  - **Every platform in CI (owner):** every CI job runs the full suite, so GCC 11 and 14, Clang 18, MSVC and both nvcc containers each check all three paths against the reference hashes. Their report steps print each kernel's hashes. A runner without a kernel reports its `unit_dgp_kernel_<name>` entry as skipped (exit 77, `SKIP_RETURN_CODE`), never as passed; checked on a build with AVX2 turned off.
+  - **Carries over to the GPU (R-1, M4):** the integer-threshold form needs only 32-bit integer multiplies, shifts and compares, which CUDA has natively. One Philox block per thread is the same shape as one block per lane, so the kernel's logic moves to the device as is, with no device floating point in the Bernoulli step. The DGP's Φ and Φ⁻¹ are still needed once per period (K-1, D-100).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
