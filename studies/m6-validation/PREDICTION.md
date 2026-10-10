@@ -40,12 +40,22 @@ can cause a genuine shortfall at T = 40 with a correct estimator).
 | W1 | **Checks before scoring** (as S-35's M6 arm; any failure stops scoring): every fit returns finite; its φ = 0 scan point's log-likelihood is at least the binomial MLE's on the same panel minus 1e-8; its maximum is at least the φ = 0 scan point's minus 1e-10 |
 | W2 | **φ = 0 against the binomial MLE, paired** (owner: the strongest correctness check). In each of the 15 credible T = 100 cells at φ = 0, the 95th percentile over replicates of \|logit PD̂ − logit PD̂_bin\| is at most 0.25 of the information's SE of logit PD̂; the same for ρ. PD̂_bin is the binomial MLE polished (the scan's φ = 0 point). *Theory:* at φ = 0 the expected information makes φ nearly orthogonal to (PD, ρ); the asymptotic SD of the paired difference, sqrt(v₃ − v₂), is 0.3–10% of the SE in these cells, so its 95th percentile is at most about 0.21 SE |
 | W3 | **The paired difference is the size theory says** (a Hausman-type comparison): pooled over the same 15 cells, the SD of (PD̂ − PD̂_bin)/sqrt(v₃ − v₂) is between 0.7 and 1.5, with v₃ and v₂ PD's variance from the full information and from its (PD, ρ) block; the same for ρ |
-| W4 | **Kendall's bias at φ = 0:** pooled over the 15 credible T = 100 cells, the median φ̂ is between −0.05 and +0.01 (Kendall's −(1 + 3φ)/T = −0.01 for the latent factor, plus the noise of estimating it through counts) |
-| W5 | **Coverage where asymptotics hold (strict):** pooled over the 51 credible T = 100 pairs, the 95% profile intervals cover PD, ρ and φ each with frequency in [0.93, 0.97] (5,100 intervals per parameter: SE 0.3 points). And no credible T = 100 pair has coverage below 0.86 for any parameter (four Monte Carlo SDs at 100 replicates). Per-pair coverages are reported beside the pooled ones (owner) |
-| W6 | **Coverage at T = 40 (expected range, not pass/fail):** pooled over the 13 credible T = 40 pairs, coverage of each parameter in [0.90, 0.97] |
+| W4 | **Kendall's bias at φ = 0, credible cells only:** pooled over the 15 credible T = 100 cells at φ = 0 (no T = 40 cell is credible at φ = 0), the median φ̂ is between −0.05 and +0.01: Kendall's −(1 + 3φ)/T = −0.01 for the latent factor, plus the noise of estimating it through counts. The other cells are excluded on purpose (owner): where φ is weakly identified the median φ̂ was near −0.4 on the exploratory panels (D-196), a property of the data, not a fault of the estimator, so pooling them would fail a correct estimator |
+| W5 | **Coverage where asymptotics hold (strict):** pooled over the 51 credible T = 100 pairs (5,100 intervals per parameter: SE 0.3 points), the 95% profile intervals cover **PD and ρ** each with frequency in [0.93, 0.97], with no pair below 0.86 (four Monte Carlo SDs at 100 replicates); and **φ** with frequency in [0.92, 0.97], with no pair below 0.82. φ's band is computed, not assumed (owner), below. Per-pair coverages are reported beside the pooled ones (owner) |
+| W6 | **Coverage at T = 40 (expected range, not pass/fail):** pooled over the 13 credible T = 40 pairs, coverage of PD and ρ in [0.90, 0.97], and of φ in [0.80, 0.97] (expected 0.920 at Kendall's bias, 0.821 at twice it; below) |
 | W7 | **PD's median bias:** in every credible T = 100 pair, \|median over replicates of (PD̂ − PD)/se_pd\| ≤ 0.5 |
 | W8 | **ρ's bias, judged against the iid MLE's (owner):** ρ̂ is biased low at small T in the iid binomial MLE already (M1). In at least 90% of the credible T = 100 pairs, the median standardised error of ρ̂, (ρ̂ − ρ)/se_rho, is within ±0.35 of the median standardised error of the binomial MLE's ρ̂ at φ = 0 in the same scenario (the correctly specified iid case, on the same factor draws) |
 | W9 | **Flags:** pooled over every fit, at most 1% carry the placement-check flag and at most 1% the doubled-rule flag; and no (scenario, φ) pair has more than 5% of its fits with either |
+
+**φ's coverage band, computed (owner).** φ̂ is biased low at finite T, which pulls the interval off the truth. For an
+interval of φ's information SE s centred at φ + b, coverage is P(|Z + b/s| ≤ 1.96). With Kendall's b = −(1 + 3φ)/T
+and s from the information file, the expected pooled coverage over the 51 credible T = 100 pairs is **0.945** (per
+φ: 0.949 at φ = 0, 0.947 at 0.3, 0.940 at 0.6; worst pair 0.935). Kendall's formula is for an observed series; here
+the factor is seen through counts, which can only add noise, so the band allows a bias of up to twice Kendall's:
+pooled expectation **0.929**, worst pair 0.889. The lower bound 0.92 is three Monte Carlo SEs below that; the floor
+0.82 is three per-pair SDs below the worst pair's. At T = 40 the same computation gives 0.920 (Kendall) and 0.821
+(twice). PD and ρ keep the strict band, as the owner's design sets it; ρ̂'s known small-T bias is judged separately,
+against the iid MLE's, in W8.
 
 **Reported without a prediction:** coverage outside the credible pairs; how often φ̂ lies at ±0.95; the number of
 local maxima along the scan and the gap to the second; profile intervals truncated at a bound; φ̂'s mean and median

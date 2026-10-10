@@ -10,6 +10,7 @@ standardise. W1 runs first and stops the scoring on any failure. Standard librar
 
 import argparse
 import csv
+import json
 import math
 import statistics
 import sys
@@ -19,9 +20,11 @@ ROOT = Path(__file__).resolve().parents[2]
 INFO = ROOT / "studies" / "lrpd-serial-correlation" / "information_m6.csv"
 SEED = "0x7A11DA7E"
 PHIS = (0.0, 0.3, 0.6)
-FLAG_QUAD = 1 << 2  # engine::kFlagQuadratureUnconverged (engine/refine.hpp): the doubled-rule check
-FLAG_PLACEMENT = 1 << 8  # ar1::kFlagPlacementCheck (benchmark_models/ar1/search.hpp)
-INTERVAL_NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed
+# Flag bits from the engine itself (tests/engine_flags.json, generated from the headers; D-200), never literals.
+_FLAGS = json.loads((ROOT / "tests" / "engine_flags.json").read_text(encoding="utf-8"))
+FLAG_QUAD = _FLAGS["estimate"]["kFlagQuadratureUnconverged"]["value"]  # the doubled-rule check
+FLAG_PLACEMENT = _FLAGS["estimate"]["kFlagPlacementCheck"]["value"]
+INTERVAL_NOT_COMPUTED = _FLAGS["interval"]["kIntervalNotComputed"]["value"]
 
 
 def read_csv(path):
@@ -77,10 +80,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("rows")
     ap.add_argument("--information", default=str(INFO))
+    ap.add_argument("--dry-run", action="store_true",
+                    help="any seed and shape, to check the plumbing on smoke rows; the output is not a result")
     a = ap.parse_args()
     with open(a.rows) as f:
         head = f.readline()
-    if SEED.lower() not in head.lower():
+    if a.dry_run:
+        print("DRY RUN: plumbing check only; nothing below is a result\n")
+    elif SEED.lower() not in head.lower():
         sys.exit(f"{a.rows}: not the validation run's rows (no seed {SEED} in its header)")
     rows = read_csv(a.rows)
     info = information(a.information)
@@ -88,7 +95,7 @@ def main():
     for r in rows:
         by_pair.setdefault((int(r["scenario"]), float(r["phi"])), []).append(r)
     expected = {(s, p) for s in range(81) for p in PHIS}
-    if set(by_pair) != expected or any(len(v) != 100 for v in by_pair.values()):
+    if not a.dry_run and (set(by_pair) != expected or any(len(v) != 100 for v in by_pair.values())):
         sys.exit("the rows are not 81 scenarios x 3 phi x 100 replicates")
 
     # W1: checks before scoring.
@@ -106,8 +113,8 @@ def main():
             print("   ", b)
         sys.exit("W1 failed: scoring stops")
 
-    cred100 = sorted(k for k, v in info.items() if v["credible"] and v["T"] == 100)
-    cred40 = sorted(k for k, v in info.items() if v["credible"] and v["T"] == 40)
+    cred100 = sorted(k for k, v in info.items() if v["credible"] and v["T"] == 100 and k in by_pair)
+    cred40 = sorted(k for k, v in info.items() if v["credible"] and v["T"] == 40 and k in by_pair)
     cred100_0 = [k for k in cred100 if k[1] == 0.0]
     held = {}
 
@@ -118,7 +125,7 @@ def main():
         inf = info[k]
         for ai, (est, ref) in enumerate((("pd", "phi0_pd"), ("rho", "phi0_rho"))):
             d_logit = sorted(abs(logit(float(r[est])) - logit(float(r[ref]))) / inf["se_logit"][ai] for r in by_pair[k])
-            q95 = d_logit[94]  # the 95th of 100, type 1
+            q95 = d_logit[min(len(d_logit) - 1, math.ceil(0.95 * len(d_logit)) - 1)]  # type 1; the 95th of 100
             worst[ai] = max(worst[ai], q95)
             sd = math.sqrt(max(inf["v3"][ai] - inf["v2"][ai], 0.0))
             haus[ai] += [(float(r[est]) - float(r[ref])) / sd for r in by_pair[k]]
@@ -132,22 +139,26 @@ def main():
     # W4: Kendall's bias at phi = 0.
     med_phi = statistics.median(float(r["phi_hat"]) for k in cred100_0 for r in by_pair[k])
     held["W4"] = -0.05 <= med_phi <= 0.01
-    print(f"W4 median phi-hat at phi = 0 (15 cells): {med_phi:+.4f} (-0.05 to +0.01) -> {verdict(held['W4'])}")
+    print(f"W4 median phi-hat at phi = 0 ({len(cred100_0)} credible T = 100 cells): {med_phi:+.4f} (-0.05 to +0.01) -> "
+          f"{verdict(held['W4'])}")
 
     # W5 and W6: coverage.
     def pooled(keys, a):
         return statistics.fmean(1.0 if covers(r, a) else 0.0 for k in keys for r in by_pair[k])
 
+    # PD and rho: [0.93, 0.97], no pair below 0.86. phi: [0.92, 0.97], no pair below 0.82 (PREDICTION.md, W5).
+    band = ((0.93, 0.97, 0.86), (0.93, 0.97, 0.86), (0.92, 0.97, 0.82))
     cov100 = [pooled(cred100, a) for a in range(3)]
     per_pair = {k: [pooled([k], a) for a in range(3)] for k in cred100}
-    low = [(k, c) for k, c in per_pair.items() if min(c) < 0.86]
-    held["W5"] = all(0.93 <= c <= 0.97 for c in cov100) and not low
-    print(f"W5 coverage, 51 credible T = 100 pairs: PD {cov100[0]:.4f}, rho {cov100[1]:.4f}, phi {cov100[2]:.4f} "
-          f"(0.93-0.97); pairs below 0.86: {len(low)} -> {verdict(held['W5'])}")
-    cov40 = [pooled(cred40, a) for a in range(3)]
-    in40 = all(0.90 <= c <= 0.97 for c in cov40)
-    print(f"W6 coverage, 13 credible T = 40 pairs: PD {cov40[0]:.4f}, rho {cov40[1]:.4f}, phi {cov40[2]:.4f} "
-          f"(expected range 0.90-0.97, not pass/fail): {'inside' if in40 else 'OUTSIDE'}")
+    low = [(k, a) for k, c in per_pair.items() for a in range(3) if c[a] < band[a][2]]
+    held["W5"] = all(band[a][0] <= cov100[a] <= band[a][1] for a in range(3)) and not low
+    print(f"W5 coverage, {len(cred100)} credible T = 100 pairs: PD {cov100[0]:.4f}, rho {cov100[1]:.4f} (0.93-0.97), "
+          f"phi {cov100[2]:.4f} (0.92-0.97); pairs below their floor: {len(low)} -> {verdict(held['W5'])}")
+    if cred40:
+        cov40 = [pooled(cred40, a) for a in range(3)]
+        in40 = all(0.90 <= c <= 0.97 for c in cov40[:2]) and 0.80 <= cov40[2] <= 0.97
+        print(f"W6 coverage, {len(cred40)} credible T = 40 pairs: PD {cov40[0]:.4f}, rho {cov40[1]:.4f} (0.90-0.97), "
+              f"phi {cov40[2]:.4f} (0.80-0.97); expected ranges, not pass/fail: {'inside' if in40 else 'OUTSIDE'}")
 
     # W7: PD's median bias.
     pd_bias = {k: statistics.median((float(r["pd"]) - float(r["pd_true"])) / info[k]["se"][0] for r in by_pair[k])
