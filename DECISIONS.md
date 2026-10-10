@@ -1189,6 +1189,40 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The AR(1) DGP** (S-35's panels, counted by `study_lrpd_serial --count-repeats`, D-190): 3.0%, 3.1% and 3.2% of panels repeat at φ = 0, 0.3 and 0.6, almost all at n = 100. The saving is at most about 0.6% of S-35's run, so the decision stands.
   - **Also recorded:** in the same timing sample, simulation is 31% of the S-10/S-4 run's projected thread-seconds (38–46% in the n = 10,000 cells). That is input to the SIMD Philox decision.
 
+## S-35 registered; the AR(1)-factor DGP variant, 2026-10-09
+
+- **D-190 (owner's order: S-35 registration and the AR(1) DGP variant) — The AR(1) factor reuses the base DGP's draws; S-35 is registered before any AR(1) panel is fitted.**
+  - **The variant** (`dgp::simulate_panel_ar1`, `docs/methodology/dgp.md`, "The AR(1) factor"):
+    - Z_0 = e_0 and Z_t = φ Z_{t−1} + √(1 − φ²) e_t, with e_t the base factor draw for period t. Every Bernoulli draw is the base DGP's.
+    - It starts in the stationary distribution, so every period's count has its φ = 0 distribution.
+    - Specified like the base DGP (D-149): prose, a line-for-line Python mirror (`tools/gen_dgp_tables.py`), and six reference panels with their own SHA-256, matched bit for bit by the C++.
+  - **No key domain of its own: an explicit exception to D-149 (owner-approved).** D-149 gives each new DGP variant its own key domain. This variant deliberately reuses the base DGP's draws instead (common random numbers).
+    - **Why D-149's rule does not apply:** the rule stops *independent* segments from sharing draws, which would create false dependence between them (S-24's second segment). Panels at different φ are not independent segments but versions of the same panel, so sharing their draws is the design, not a collision.
+    - **What it buys:** every comparison across φ is paired, which is exactly what S-35's question needs. φ = 0 reproduces the pinned run's panels bit for bit (tested), a correctness check in its own right.
+    - **The scale (checked at the owner's request):** the innovation is multiplied by √(1 − φ²) and Z_0 = e_0 has variance 1. So Var Z_t = φ² · 1 + (1 − φ²) · 1 = 1 at every t and φ by induction, and every period's Z_t is N(0, 1). PD and ρ therefore do not shift with φ; only the dependence between periods changes. The recursion test checks the computed Z_t bit for bit against this formula.
+    - **Scope:** S-11 shares the variant (D-188). Any future variant modelling independent segments still takes its own key domain.
+  - **S-35's registration** (`studies/lrpd-serial-correlation/PREDICTION.md`, L1–L11):
+    - **The setup:** the recovery matrix at φ ∈ {0, 0.3, 0.6}, paired. The estimators are the simple average with a t interval, the parity binomial MLE as the recovery harness fits it, and the Vasicek-rate MLE on the n → ∞ rates.
+    - **The targets:** the generating values. Under a stationary AR(1) factor the marginal is unchanged, so they are also the pseudo-true values (D-150, D-151).
+    - **The reference numbers** (`reference.py`) come from the model and pinned φ = 0 coverage only. They are the sandwich variance inflation of each estimator: Hermite expansion of the conditional score for the binomial MLE, closed forms for the rate MLE.
+    - **The central prediction:** intervals that assume independent periods lose coverage by a factor that does not shrink with T: PD profile coverage of about 0.86 at φ = 0.3 and 0.71–0.73 at φ = 0.6 in every informative group.
+    - **ρ:** it falls less, and its downward bias grows by about (f_μ − 1)/T.
+    - **The simple average:** unbiased in mean, but below PD more often as φ grows.
+  - **Not in this registration:** the AR(1)-aware MLE (M6); its predictions are appended before its run.
+  - **The tool:** `study_lrpd_serial` (`tests/studies/lrpd_serial.cpp`). The binomial fit is `recovery::fit_counts`, the recovery fit split from its panel draw, bit for bit the same.
+    - **The projection, recorded before the run (D-187):** 0.39 h, 90% range 0.35–0.43 h, from a 2-replicate sample (24 threads, efficiency 0.997).
+    - **The phases:** binomial MLE 97%, rate MLE 2%, simulation 1%.
+    - **A test of D-187's method on a second tool:** the sample's binomial phase includes the surface-row cache's first fills, which a full run amortises, so the projection may run high.
+  - **P-9 on the AR(1) DGP** (`study_lrpd_serial --count-repeats`): exact repeats are 3.0%, 3.1% and 3.2% of the 81,000 panels at φ = 0, 0.3 and 0.6 (cell scope; 2.4%, 2.5% and 2.7% within a scenario), almost all in the n = 100 cells at T ≤ 40.
+    - **Cross-check:** at φ = 0 they equal P-9's outer-panel count exactly (2,443).
+    - **The saving:** at most about 0.6% of S-35's run, less in practice since the bootstrap arm cannot be shared. D-189 stands: P-9 is not built.
+- **D-191 (owner's item 4: re-profile before deciding) — SIMD Philox goes after S-35's full run, before the first large parametric-bootstrap run.**
+  - **The profile:**
+    - **S-35's run:** simulation is 1% of the projected 0.39 h, so SIMD Philox could not shorten it measurably.
+    - **The S-10/S-4 run** (current code, D-189's timing sample): simulation is 31% of the projected thread-seconds, and 38–46% in the n = 10,000 cells, against 17% before P-14 and P-15.
+  - **Where it pays:** only where panels are simulated per fit. That means parametric-bootstrap runs: S-10-type reruns, S-12's double bootstrap, and M6's AR(1) MLE intervals, which are resampled through `dgp/` (D-043).
+  - **Conditions:** it is built and measured as a P-item before the first of those, and must reproduce the DGP's panels bit for bit: the same mirror, the same reference hashes.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

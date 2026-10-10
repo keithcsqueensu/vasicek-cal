@@ -249,14 +249,21 @@ class Mirror:
                 return v1 * math.sqrt((-2.0 * self.log(s)) / s)
         raise RuntimeError("factor stream exhausted")
 
-    def panel(self, seed: int, scenario: int, replicate: int, pd: float, rho: float, ns: list[int]):
+    def panel(self, seed: int, scenario: int, replicate: int, pd: float, rho: float, ns: list[int],
+              phi: float | None = None):
+        """The base DGP, or with phi the AR(1)-factor variant (D-190): Z_0 = e_0 and
+        Z_t = phi Z_{t-1} + sqrt(1 - phi^2) e_t, e_t the base factor draw; same Bernoulli draws."""
         key = (seed & MASK32, (seed >> 32) & MASK32)
         c = self.probit(pd)
         sr = math.sqrt(rho)
         s1 = math.sqrt(1.0 - rho)
+        se = math.sqrt(1.0 - phi * phi) if phi is not None else 1.0
+        z_prev = 0.0
         out = []
         for t, n in enumerate(ns):
-            z = self.factor(key, scenario, replicate, t)
+            e = self.factor(key, scenario, replicate, t)
+            z = phi * z_prev + se * e if phi is not None and t > 0 else e
+            z_prev = z
             p = self.ncdf((c - sr * z) / s1)
             d = 0
             w = (0, 0, 0, 0)
@@ -294,6 +301,17 @@ REFERENCE_PANELS = [  # (panel, scenario, replicate, pd, rho, n per period)
     (3, 1, 0, 1e-4, 0.3, [1000, 1000, 1000, 1000]),
     (4, 2, 0, 0.2, 0.05, [100, 100, 100]),
     (5, 3, 0, 0.5, 0.9, [0, 1, 2, 3]),
+]
+# The AR(1)-factor variant (D-190): (panel, scenario, replicate, pd, rho, phi, n per period). Panel 0 is base
+# panel 0 at phi = 0, which must equal it bit for bit; the others span the S-35 grid, a strong positive and a
+# negative phi, over enough periods for the recursion to matter.
+REFERENCE_PANELS_AR1 = [
+    (0, 0, 0, 0.01, 0.12, 0.0, [10, 50, 100, 500, 1000, 2000, 5000, 1000]),
+    (1, 0, 0, 0.01, 0.12, 0.3, [10, 50, 100, 500, 1000, 2000, 5000, 1000]),
+    (2, 0, 0, 0.01, 0.12, 0.6, [10, 50, 100, 500, 1000, 2000, 5000, 1000]),
+    (3, 4, 2, 0.001, 0.24, 0.6, [100] * 20),
+    (4, 5, 1, 0.05, 0.02, 0.95, [1000] * 12),
+    (5, 6, 0, 0.2, 0.3, -0.5, [50] * 10),
 ]
 
 
@@ -374,6 +392,20 @@ def golden_panels(m: Mirror) -> dict[str, str]:
     }
 
 
+def golden_panels_ar1(m: Mirror) -> dict[str, str]:
+    rows = [CSV_NOTE, "panel,seed_hex,scenario,replicate,pd_hex,rho_hex,phi_hex,period,n,d,z_hex,pd,rho,phi,z\n"]
+    blob = bytearray()
+    for panel, scenario, replicate, pd, rho, phi, ns in REFERENCE_PANELS_AR1:
+        for t, (n, d, z) in enumerate(m.panel(REFERENCE_SEED, scenario, replicate, pd, rho, ns, phi)):
+            rows.append(row(panel, f"{REFERENCE_SEED:016x}", scenario, replicate, pd.hex(), rho.hex(), phi.hex(), t, n,
+                            d, z.hex(), repr(pd), repr(rho), repr(phi), repr(z)))
+            blob += struct.pack("<q", d) + struct.pack("<d", z)
+    return {
+        f"{GOLDEN_DIR}/reference_panels_ar1.csv": "".join(rows),
+        f"{GOLDEN_DIR}/reference_panels_ar1.sha256": hashlib.sha256(bytes(blob)).hexdigest() + "\n",
+    }
+
+
 def golden_sha256_vectors() -> dict[str, str]:
     msgs = [b"", b"abc", b"a" * 55, b"a" * 56, b"a" * 63, b"a" * 64, b"a" * 65, bytes(range(256)) * 4]
     rows = [CSV_NOTE, "message_hex,sha256_hex\n"]
@@ -428,6 +460,7 @@ def build_outputs() -> dict[str, str]:
     out.update(golden_accuracy())
     out.update(golden_mirror(m))
     out.update(golden_panels(m))
+    out.update(golden_panels_ar1(m))
     out.update(golden_sha256_vectors())
     out.update(golden_resample())
     return out

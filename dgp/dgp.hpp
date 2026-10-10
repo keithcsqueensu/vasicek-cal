@@ -50,6 +50,14 @@ struct PanelSpec {
 // defaults[t] = d_t; factors[t] = Z_t if factors is non-null.
 Status simulate_panel(const PanelSpec& spec, std::int64_t* defaults, double* factors);
 
+// The AR(1)-factor variant (S-35, S-11; docs/methodology/dgp.md, "The AR(1) factor"; D-190):
+//   Z_0 = e_0,  Z_t = phi Z_{t-1} + sqrt(1 - phi^2) e_t  (t >= 1),
+// with e_t the base DGP's factor draw for period t (same key and counters) and every Bernoulli draw the
+// base DGP's, so Z_t ~ N(0, 1) in every period and the variant draws no stream of its own: panels at
+// different phi share their random numbers (common random numbers), and phi = 0 gives simulate_panel's
+// panel bit for bit. Requires -1 < phi < 1. factors[t] = Z_t, the AR(1) factor.
+Status simulate_panel_ar1(const PanelSpec& spec, double phi, std::int64_t* defaults, double* factors);
+
 // --- building blocks, exported for tests and the methodology's worked examples -----------------
 
 double det_log(double x);     // natural log

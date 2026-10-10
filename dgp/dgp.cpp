@@ -16,6 +16,49 @@ PhiloxKey key_of(std::uint64_t seed) {
     return {static_cast<std::uint32_t>(seed), static_cast<std::uint32_t>(seed >> 32)};
 }
 
+// The base DGP (ar1 false) and the AR(1)-factor variant (ar1 true), which differ only in Z_t.
+Status simulate(const PanelSpec& spec, bool ar1, double phi, std::int64_t* defaults, double* factors) {
+    if (!fp_environment_ok()) return Status::FpEnvironment;
+    if (!(spec.pd > 0.0 && spec.pd < 1.0 && spec.rho > 0.0 && spec.rho < 1.0)) return Status::InvalidSpec;
+    if (ar1 && !(phi > -1.0 && phi < 1.0)) return Status::InvalidSpec;
+    if (!(spec.periods >= 1 && spec.periods <= (std::int64_t{1} << 32)) || spec.obligors == nullptr ||
+        defaults == nullptr) {
+        return Status::InvalidSpec;
+    }
+    for (std::int64_t t = 0; t < spec.periods; ++t) {
+        if (!(spec.obligors[t] >= 0 && spec.obligors[t] <= kMaxObligors)) return Status::InvalidSpec;
+    }
+
+    const PhiloxKey key = key_of(spec.seed);
+    const double c = det_probit(spec.pd);
+    const double sr = std::sqrt(spec.rho);
+    const double s1 = std::sqrt(1.0 - spec.rho);
+    const double se = ar1 ? std::sqrt(1.0 - phi * phi) : 1.0;  // the innovation's scale
+    double z_prev = 0.0;
+    for (std::int64_t t = 0; t < spec.periods; ++t) {
+        const auto period = static_cast<std::uint32_t>(t);
+        double e = 0.0;
+        const Status st = factor_draw(spec.seed, spec.scenario, spec.replicate, period, kFactorBlocks, &e);
+        if (st != Status::Ok) return st;
+        const double z = ar1 && t > 0 ? phi * z_prev + se * e : e;
+        z_prev = z;
+        const double p = det_ncdf((c - sr * z) / s1);
+        std::int64_t d = 0;
+        PhiloxCounter w{};
+        for (std::int64_t i = 0; i < spec.obligors[t]; ++i) {
+            if (i % 2 == 0) {
+                const auto block = static_cast<std::uint32_t>(kFactorBlocks + static_cast<std::uint64_t>(i / 2));
+                w = philox4x32({spec.scenario, spec.replicate, period, block}, key);
+            }
+            const double u = i % 2 == 0 ? uniform_from_words(w[0], w[1]) : uniform_from_words(w[2], w[3]);
+            if (u < p) ++d;
+        }
+        defaults[t] = d;
+        if (factors != nullptr) factors[t] = z;
+    }
+    return Status::Ok;
+}
+
 }  // namespace
 
 Status factor_draw(std::uint64_t seed, std::uint32_t scenario, std::uint32_t replicate, std::uint32_t period,
@@ -35,40 +78,11 @@ Status factor_draw(std::uint64_t seed, std::uint32_t scenario, std::uint32_t rep
 }
 
 Status simulate_panel(const PanelSpec& spec, std::int64_t* defaults, double* factors) {
-    if (!fp_environment_ok()) return Status::FpEnvironment;
-    if (!(spec.pd > 0.0 && spec.pd < 1.0 && spec.rho > 0.0 && spec.rho < 1.0)) return Status::InvalidSpec;
-    if (!(spec.periods >= 1 && spec.periods <= (std::int64_t{1} << 32)) || spec.obligors == nullptr ||
-        defaults == nullptr) {
-        return Status::InvalidSpec;
-    }
-    for (std::int64_t t = 0; t < spec.periods; ++t) {
-        if (!(spec.obligors[t] >= 0 && spec.obligors[t] <= kMaxObligors)) return Status::InvalidSpec;
-    }
+    return simulate(spec, false, 0.0, defaults, factors);
+}
 
-    const PhiloxKey key = key_of(spec.seed);
-    const double c = det_probit(spec.pd);
-    const double sr = std::sqrt(spec.rho);
-    const double s1 = std::sqrt(1.0 - spec.rho);
-    for (std::int64_t t = 0; t < spec.periods; ++t) {
-        const auto period = static_cast<std::uint32_t>(t);
-        double z = 0.0;
-        const Status st = factor_draw(spec.seed, spec.scenario, spec.replicate, period, kFactorBlocks, &z);
-        if (st != Status::Ok) return st;
-        const double p = det_ncdf((c - sr * z) / s1);
-        std::int64_t d = 0;
-        PhiloxCounter w{};
-        for (std::int64_t i = 0; i < spec.obligors[t]; ++i) {
-            if (i % 2 == 0) {
-                const auto block = static_cast<std::uint32_t>(kFactorBlocks + static_cast<std::uint64_t>(i / 2));
-                w = philox4x32({spec.scenario, spec.replicate, period, block}, key);
-            }
-            const double u = i % 2 == 0 ? uniform_from_words(w[0], w[1]) : uniform_from_words(w[2], w[3]);
-            if (u < p) ++d;
-        }
-        defaults[t] = d;
-        if (factors != nullptr) factors[t] = z;
-    }
-    return Status::Ok;
+Status simulate_panel_ar1(const PanelSpec& spec, double phi, std::int64_t* defaults, double* factors) {
+    return simulate(spec, true, phi, defaults, factors);
 }
 
 }  // namespace vcal::dgp
