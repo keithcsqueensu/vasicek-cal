@@ -1142,6 +1142,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The default** is 2 replicates per scenario (owner-approved), with sampling continuing until the range is within ±10%, so that studies whose costs are more or less variable than S-10's get the sample they need.
   - **Next:** the next full study run records its projection and range before it starts and is compared with its actual wall time. If it lands in range again, the method is called validated.
   - **P-15's effect, before and after:** on the same projection method, the S-10/S-4 run projects at 6.13 h on its own binary (with P-14 and P-16) and at 4.03 h (3.86–4.19 h) on the current code, from a 114 s sample. That is about 34% off, from P-15 alone (`perf/p15_analytic_se.md`). P-14's own effect was 13 h → about 5 h (D-178).
+  - **Correction (same day, a miss):** the 4.03 h came from a sample taken in a faster machine state than the 6.13 h one (114 s against about 140 s of sample wall time for the same code). Interleaved runs of the two binaries (A, B, B, A) show P-15 takes about 20% off the projected thread-seconds (ratio 0.80; 0.74–0.87 across pairs), so about 4.9 h. A sample of the current code taken during those runs projects 5.07 h (4.81–5.31 h). The projection's range covers sampling noise only. The machine's speed varies by about 15% between sessions, so a projection's sample is taken immediately before its run, and binaries are compared interleaved (`perf/projection_s10.md`, "Machine state").
 
 ## Open
 

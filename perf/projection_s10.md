@@ -48,6 +48,16 @@ before the run starts and compared with the actual wall time after it ends. If t
 again, the method is called validated (D-187). The validation also re-measures the efficiency factor
 (0.997 here) and records it beside the projection.
 
-For reference, the current code (P-15, D-185) projects the same S-10/S-4 run at 4.03 h (90% range
-3.86–4.19 h, ±4%) from a 114 s sample at 2 replicates per scenario: `python perf/project_runtime.py --run
-"build/cpu-release/tests/study_parametric_bootstrap.exe"`.
+For reference, the current code (P-15, D-185) projects the same S-10/S-4 run at 5.07 h (90% range
+4.81–5.31 h, ±5%) from a 139 s sample at 2 replicates per scenario: `python perf/project_runtime.py --run
+"build/cpu-release/tests/study_parametric_bootstrap.exe"`. An earlier sample of the same code projected
+4.03 h; it ran at 114 s, in a faster machine state.
+
+## Machine state
+
+The range covers sampling noise, not changes in the machine's speed between the sample and the run. The
+same binary's 2-per-scenario sample has taken 135–156 s of wall time in different sessions on this machine,
+a spread of about 15%, and 114–142 s for the current code. So:
+- **Before a run:** take the sample immediately before it, on the same machine and power settings.
+- **When comparing two binaries:** interleave them (A, B, B, A) rather than comparing samples taken at
+  different times (`perf/p15_analytic_se.md`).
