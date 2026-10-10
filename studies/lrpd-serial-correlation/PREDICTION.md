@@ -151,3 +151,14 @@ serial correlation and granularity error combine.
 | L13 | **ρ coverage, pooled per n and φ,** is within ±0.04 of the reference means: n = 100: 0.51 / 0.51; n = 1,000: 0.69 / 0.65; n = 10,000: 0.84 / 0.76 |
 | L14 | **The two errors partly cancel for ρ:** at n = 100 the pooled ρ coverage at φ = 0.6 is within 0.03 of its φ = 0 value, while at n = 10,000 it is at least 0.06 below it |
 | L15 | **Serial correlation pulls ρ̂ down here too:** the paired mean of logit ρ̂ at φ = 0.6 is below its φ = 0 value in at least 45 of the 50 informative scenarios |
+
+## Addendum, 2026-10-09: scoring fixed before the subset run
+
+Appended before the subset run; no prediction, threshold or definition above changes.
+
+- **The scoring script** is [`compare.py`](compare.py), committed with this note. It runs the checks first and stops on any failure:
+  - the binomial and rate MLEs' φ = 0 counts against the pinned summaries;
+  - the observed-rate arm's φ = 0 rows against S-8's, bit for bit.
+- **Pooling:** per-scenario coverages are averaged over the scenarios pooled, R being equal. Wald and t coverage is among unflagged fits, as pinned; profile, bootstrap and every rate-MLE coverage is over all replicates, with a not-computed interval missing. "Below the band" is coverage below the scenario's pinned profile band (`profile_band_lo_hex`).
+- **The subset run** (the study subset of D-150, 9 scenarios × 1,000) is scored by the same script and reported as a subset, not as the study's result.
+- **Disclosure:** the tool was run on 3 replicates of every scenario at each φ, to check the code and the pipeline: the φ = 0 checks passed, and the script ran to completion. Only its exit code and row count were read; those rows are not results. Before that, replicates 0–2 at φ = 0 alone were compared with S-8's rows (243 of 243 identical), and 2 replicates at each φ ran for the timing sample, whose rows were not read.
