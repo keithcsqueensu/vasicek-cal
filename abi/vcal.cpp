@@ -40,6 +40,7 @@
 #include "engine/profile.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
+#include "resample/bartlett.hpp"
 #include "resample/bootstrap.hpp"
 #include "resample/weights.hpp"
 
@@ -73,6 +74,11 @@ static_assert(sizeof(vcal_dgp_spec) == 56);
 static_assert(sizeof(vcal_rate_series) == 32);
 static_assert(sizeof(vcal_moments_estimate) == 32);
 static_assert(sizeof(vcal_posterior) == 112);
+static_assert(sizeof(vcal_bartlett_spec) == 24);
+static_assert(sizeof(vcal_bartlett_intervals) == 120);
+static_assert(std::uint32_t{VCAL_BARTLETT_ON_BOUND} == std::uint32_t{vcal::resample::kBartlettOnBound});
+static_assert(std::uint32_t{VCAL_BARTLETT_TOO_FEW_FINITE} == std::uint32_t{vcal::resample::kBartlettTooFewFinite});
+static_assert(std::uint32_t{VCAL_BARTLETT_NOT_COMPUTED} == std::uint32_t{vcal::resample::kBartlettNotComputed});
 static_assert(std::uint32_t{VCAL_MOMENTS_REFUSED} == std::uint32_t{vcal::engine::kMomRefused});
 static_assert(std::uint32_t{VCAL_MOMENTS_RHO_AT_FLOOR} == std::uint32_t{vcal::engine::kMomRhoAtFloor});
 static_assert(std::uint32_t{VCAL_MOMENTS_RHO_AT_CAP} == std::uint32_t{vcal::engine::kMomRhoAtCap});
@@ -903,6 +909,77 @@ VCAL_API vcal_status VCAL_CALL vcal_resample_weights(vcal_context* context, cons
         std::vector<double> w_owned;
         const double* W = weights_of(r, w_owned);
         std::copy(W, W + r.replicates * n_periods, weights);
+    });
+}
+
+VCAL_API vcal_status VCAL_CALL vcal_calibrate_bartlett(vcal_context* context, const vcal_panel* panel,
+                                                       const vcal_grid* grid, const vcal_bartlett_spec* spec,
+                                                       vcal_estimate* estimate, vcal_bartlett_intervals* intervals) {
+    return guard("vcal_calibrate_bartlett", [&] {
+        const vcal_context& c = context_of(context);
+        if (c.profile != VCAL_PROFILE_NATIVE) {
+            invalid("the Bartlett-corrected profile interval is a native option (D-182): it needs a "
+                    "VCAL_PROFILE_NATIVE context");
+        }
+        const std::vector<Obs> obs = read_panel(panel);
+        const vcal::Grid<2> g = read_grid(grid);
+        const vcal_bartlett_spec s = read_in(spec, "spec");
+        check_size(estimate, "estimate");
+        check_size(intervals, "intervals");
+        const std::uint32_t B = s.panels == 0 ? vcal::resample::kBartlettPanels : s.panels;
+        if (std::uint64_t{s.first_panel} + B - 1 > 0xFFFFFFFFull) {
+            invalid("spec.first_panel + panels - 1 = " + num(std::uint64_t{s.first_panel} + B - 1) +
+                    ": the DGP's replicate field is 32 bits");
+        }
+        const auto T = static_cast<std::int64_t>(obs.size());
+        for (std::int64_t t = 0; t < T; ++t) {
+            if (obs[static_cast<std::size_t>(t)].n > vcal::dgp::kMaxObligors) {
+                invalid("panel n_obligors[" + num(t) + "] = " + num(obs[static_cast<std::size_t>(t)].n) +
+                        ": the bootstrap's DGP needs n <= 2^33 - 2^17");
+            }
+        }
+        surface_cells(T, g);
+
+        std::vector<double> L;
+        e::Estimate2 est{};
+        switch (e::calibrate(backend(c), Objective{}, primary_rule(), check_rule(), obs.data(), T, g, L, est)) {
+            case e::Status::Ok: break;
+            case e::Status::SurfaceUndefined:
+                throw AbiError(VCAL_E_NUMERIC, "the log-likelihood is not finite at any grid point");
+            default: throw std::logic_error("the engine rejected a grid or panel that the ABI accepted");
+        }
+        vcal::resample::BartlettIntervals2 r{};
+        switch (vcal::resample::bartlett_profile_intervals(backend(c), Objective{}, primary_rule(), check_rule(),
+                                                          obs.data(), T, g, L, est,
+                                                          {s.seed, s.stream, s.first_panel, B}, r)) {
+            case vcal::resample::BartlettStatus::Ok: break;
+            case vcal::resample::BartlettStatus::FpEnvironment:
+                throw AbiError(VCAL_E_FP_ENVIRONMENT,
+                               "flush-to-zero or denormals-are-zero is on in this thread; the bootstrap's DGP needs "
+                               "IEEE subnormals to be bitwise reproducible (D-109)");
+            case vcal::resample::BartlettStatus::FactorStreamExhausted:
+                throw AbiError(VCAL_E_NUMERIC, "a bootstrap panel's factor draw exhausted its Philox block range (D-109)");
+            default: throw std::logic_error("the Bartlett bootstrap rejected a spec that the ABI accepted");
+        }
+        vcal_bartlett_intervals out{};
+        out.pd_flags = r.intervals.flags[0];
+        out.rho_flags = r.intervals.flags[1];
+        out.pd_factor_flags = r.factor_flags[0];
+        out.rho_factor_flags = r.factor_flags[1];
+        out.pd_lo = r.intervals.lo[0];
+        out.pd_hi = r.intervals.hi[0];
+        out.rho_lo = r.intervals.lo[1];
+        out.rho_hi = r.intervals.hi[1];
+        out.pd_factor = r.factor[0];
+        out.rho_factor = r.factor[1];
+        out.pd_finite = r.finite[0];
+        out.rho_finite = r.finite[1];
+        out.panels = r.panels;
+        out.panels_quad_flagged = r.panels_quad_flagged;
+        out.residual_max = r.intervals.residual_max;
+        out.evaluations = r.intervals.evaluations;
+        write_out(estimate, estimate_out(est));
+        write_out(intervals, out);
     });
 }
 

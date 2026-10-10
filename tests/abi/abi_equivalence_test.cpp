@@ -17,6 +17,7 @@
 #include "engine/moments.hpp"
 #include "engine/posterior.hpp"
 #include "engine/profile.hpp"
+#include "resample/bartlett.hpp"
 #include "resample/bootstrap.hpp"
 #include "resample/weights.hpp"
 #include "tests/harness/vcal_test.hpp"
@@ -525,4 +526,59 @@ VCAL_TEST(abi_posterior_equals_the_engine) {
     VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &uneq, &grid, VCAL_PRIOR_JEFFREYS, &a) == VCAL_E_UNSUPPORTED);
     VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &uneq, &grid, VCAL_PRIOR_FLAT, &a) == VCAL_OK);
     VCAL_CHECK(vcal_calibrate_posterior(c.ctx, &p.abi, &grid, 5, &a) == VCAL_E_INVALID_ARGUMENT);
+}
+
+// ABI 0.4 (D-184): vcal_calibrate_bartlett is resample::bartlett_profile_intervals on the fit, bit for bit,
+// for any thread count, with per-period n_t carried into the bootstrap's DGP; parity refuses it.
+VCAL_TEST(abi_calibrate_bartlett_matches_engine) {
+    const auto grid = default_grid();
+    const vcal::Grid<2> g = vcal::recovery::grid();
+    const auto primary = vcal::quadrature::parity_rule();
+    const auto check = vcal::quadrature::parity_rule(true);
+    Panel p(63, 2);
+    p.n[3] += 7;  // unequal n_t: the bootstrap panels must use each period's own
+    p.obs[3].n = p.n[3];
+    std::vector<double> L;
+    e::Estimate2 est{};
+    VCAL_REQUIRE(e::calibrate(vcal::backends::CpuBackend{}, Objective{}, primary, check, p.obs.data(), p.periods(), g, L,
+                              est) == e::Status::Ok);
+    rs::BartlettIntervals2 r{};
+    VCAL_REQUIRE(rs::bartlett_profile_intervals(vcal::backends::CpuBackend{}, Objective{}, primary, check, p.obs.data(),
+                                                p.periods(), g, L, est, {77u, 5u, 300u, 9u}, r) == rs::BartlettStatus::Ok);
+    for (const std::int32_t threads : {1, 3}) {
+        auto o = sized<vcal_context_options>();
+        o.profile = VCAL_PROFILE_NATIVE;
+        o.n_threads = threads;
+        vcal_context* native = nullptr;
+        VCAL_REQUIRE(vcal_context_create(&o, &native) == VCAL_OK);
+        auto spec = sized<vcal_bartlett_spec>();
+        spec.panels = 9;
+        spec.seed = 77u;
+        spec.stream = 5u;
+        spec.first_panel = 300u;
+        auto a = sized<vcal_bartlett_intervals>();
+        auto ae = sized<vcal_estimate>();
+        VCAL_REQUIRE(vcal_calibrate_bartlett(native, &p.abi, &grid, &spec, &ae, &a) == VCAL_OK);
+        vcal_context_destroy(native);
+        VCAL_CHECK(bits_equal(ae.pd, est.value[0]) && bits_equal(ae.rho, est.value[1]));
+        VCAL_CHECK_EQ(a.pd_flags, r.intervals.flags[0]);
+        VCAL_CHECK_EQ(a.rho_flags, r.intervals.flags[1]);
+        VCAL_CHECK_EQ(a.pd_factor_flags, r.factor_flags[0]);
+        VCAL_CHECK_EQ(a.rho_factor_flags, r.factor_flags[1]);
+        VCAL_CHECK(bits_equal(a.pd_lo, r.intervals.lo[0]) && bits_equal(a.pd_hi, r.intervals.hi[0]));
+        VCAL_CHECK(bits_equal(a.rho_lo, r.intervals.lo[1]) && bits_equal(a.rho_hi, r.intervals.hi[1]));
+        VCAL_CHECK(bits_equal(a.pd_factor, r.factor[0]) && bits_equal(a.rho_factor, r.factor[1]));
+        VCAL_CHECK_EQ(a.pd_finite, r.finite[0]);
+        VCAL_CHECK_EQ(a.rho_finite, r.finite[1]);
+        VCAL_CHECK_EQ(a.panels, std::int64_t{9});
+        VCAL_CHECK_EQ(a.panels_quad_flagged, r.panels_quad_flagged);
+        VCAL_CHECK(bits_equal(a.residual_max, r.intervals.residual_max));
+        VCAL_CHECK_EQ(a.evaluations, r.intervals.evaluations);
+    }
+    Context parity;
+    auto spec = sized<vcal_bartlett_spec>();
+    spec.panels = 9;
+    auto a = sized<vcal_bartlett_intervals>();
+    auto ae = sized<vcal_estimate>();
+    VCAL_CHECK(vcal_calibrate_bartlett(parity.ctx, &p.abi, &grid, &spec, &ae, &a) == VCAL_E_INVALID_ARGUMENT);
 }

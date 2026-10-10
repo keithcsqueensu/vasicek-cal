@@ -127,6 +127,16 @@ add_test(NAME recovery_rate_replay COMMAND rate_recovery_harness)
 set_tests_properties(recovery_rate_replay PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_surface_cache SOURCES unit/surface_cache_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::resample vcal::dgp)
 vcal_add_test_executable(unit_resample SOURCES unit/resample_test.cpp LIBS vcal::resample vcal::backend_cpu)
+# S-4b, the Bartlett-corrected profile interval (D-182, D-184). One executable, two CTest entries: the
+# reproduction of the S-4 run (995 bootstrap fits) is labelled slow.
+add_executable(unit_bartlett unit/bartlett_test.cpp)
+target_link_libraries(unit_bartlett PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(unit_bartlett)
+add_test(NAME unit_bartlett COMMAND unit_bartlett bartlett_factor_is_the_mean_profile_statistic
+         bartlett_is_deterministic_and_independent_of_the_thread_count
+         bartlett_factor_on_the_bound_gives_the_profile_interval bartlett_rejects_an_invalid_spec)
+add_test(NAME bartlett_s4_run COMMAND unit_bartlett bartlett_reproduces_the_s4_run)
+set_tests_properties(bartlett_s4_run PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_ref SOURCES unit/ref_test.cpp LIBS vcal::ref)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 

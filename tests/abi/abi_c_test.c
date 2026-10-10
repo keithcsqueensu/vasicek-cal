@@ -41,6 +41,8 @@ VCAL_LAYOUT(vcal_dgp_spec, n_obligors, 56);
 VCAL_LAYOUT(vcal_rate_series, detection_limits, 32);
 VCAL_LAYOUT(vcal_moments_estimate, pd2, 32);
 VCAL_LAYOUT(vcal_posterior, rho_sd_logit, 112);
+VCAL_LAYOUT(vcal_bartlett_spec, first_panel, 24);
+VCAL_LAYOUT(vcal_bartlett_intervals, evaluations, 120);
 
 /* ---- a minimal runner ---- */
 
@@ -127,7 +129,7 @@ static void test_version_and_build_info(void) {
     CHECK_ERROR_MENTIONS("capacity 4");
     CHECK_STATUS(vcal_build_info(info, (int64_t)sizeof info, &again), VCAL_OK);
     CHECK((int64_t)strlen(info) + 1 == required);
-    CHECK(strstr(info, "abi_version=0.3\n") != NULL);
+    CHECK(strstr(info, "abi_version=0.4\n") != NULL);
     CHECK(strstr(info, "git_commit=") != NULL);
     CHECK(strstr(info, "profiles=parity,native\n") != NULL);
     printf("%s", info);
@@ -576,6 +578,48 @@ static void test_m3_estimators(vcal_context* parity) {
     }
 }
 
+/* ABI 0.4 (D-184): the Bartlett-corrected profile interval from C, with 5 bootstrap panels. Its numbers
+ * are checked against the engine in abi_engine_equivalence; here: native only, it runs and fills its
+ * outputs, it is deterministic, and its spec is checked. */
+static void test_bartlett(vcal_context* parity) {
+    vcal_panel p = make_panel();
+    vcal_grid g = default_grid();
+    vcal_estimate est;
+    vcal_bartlett_spec spec;
+    vcal_bartlett_intervals bi, bj;
+    vcal_context_options o;
+    vcal_context* native = NULL;
+    memset(&est, 0, sizeof est);
+    est.struct_size = sizeof est;
+    memset(&spec, 0, sizeof spec);
+    spec.struct_size = sizeof spec;
+    spec.panels = 5;
+    spec.seed = 42u;
+    memset(&bi, 0, sizeof bi);
+    bi.struct_size = sizeof bi;
+    bj = bi;
+
+    CHECK_STATUS(vcal_calibrate_bartlett(parity, &p, &g, &spec, &est, &bi), VCAL_E_INVALID_ARGUMENT);
+    CHECK_ERROR_MENTIONS("VCAL_PROFILE_NATIVE");
+    memset(&o, 0, sizeof o);
+    o.struct_size = sizeof o;
+    o.profile = VCAL_PROFILE_NATIVE;
+    CHECK_STATUS(vcal_context_create(&o, &native), VCAL_OK);
+    if (native == NULL) return;
+    CHECK_STATUS(vcal_calibrate_bartlett(native, &p, &g, &spec, &est, &bi), VCAL_OK);
+    CHECK(bi.panels == 5 && bi.pd_finite <= 5 && bi.rho_finite <= 5);
+    CHECK(est.pd > 0.0 && bi.pd_lo <= est.pd && est.pd <= bi.pd_hi && bi.rho_lo <= bi.rho_hi);
+    CHECK(bi.pd_factor_flags != 0u || (bi.pd_factor > 0.0 && isfinite(bi.pd_factor)));
+    CHECK(bi.reserved == 0u);
+    CHECK_STATUS(vcal_calibrate_bartlett(native, &p, &g, &spec, &est, &bj), VCAL_OK);
+    CHECK(memcmp(&bi, &bj, sizeof bi) == 0);
+    spec.first_panel = 0xFFFFFFFFu;
+    CHECK_STATUS(vcal_calibrate_bartlett(native, &p, &g, &spec, &est, &bi), VCAL_E_INVALID_ARGUMENT);
+    CHECK_ERROR_MENTIONS("first_panel + panels - 1");
+    CHECK_STATUS(vcal_calibrate_bartlett(native, &p, &g, NULL, &est, &bi), VCAL_E_INVALID_ARGUMENT);
+    CHECK_STATUS(vcal_context_destroy(native), VCAL_OK);
+}
+
 int main(int argc, char** argv) {
     vcal_context* ctx = NULL;
     if (argc != 2) {
@@ -589,6 +633,7 @@ int main(int argc, char** argv) {
         test_dgp_reference_panels(ctx, argv[1]);
         test_calibrate_resample(ctx);
         test_m3_estimators(ctx);
+        test_bartlett(ctx);
         CHECK_STATUS(vcal_context_destroy(ctx), VCAL_OK);
     }
     printf("abi_c_test: %d checks, %d failed\n", g_checks, g_failures);

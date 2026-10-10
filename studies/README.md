@@ -447,8 +447,10 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 
   H3 held on PD by a small margin: S-4b kept 51% of the oracle's gain, where at least 50% was predicted.
 - **Mitigation:** where small-T coverage matters more than 4–5% of width, the Bartlett-corrected profile
-  interval is the most accurate interval tested (see "Interval methods compared"). It becomes a
-  `native` option (D-182); the default interval stays Jeffreys equal-tailed.
+  interval is the most accurate interval tested (see "Interval methods compared"). It is a `native`
+  option (D-182, D-184): `vcal_calibrate_bartlett` in C ABI 0.4, `resample::bartlett_profile_intervals`
+  in C++, described in `docs/methodology/bartlett_profile.md`. The default interval stays Jeffreys
+  equal-tailed.
 - **Monitoring implication:** at T ≈ 20 the plain profile interval is about 1.3 points short for ρ.
   A band that must hold its nominal rate there should use the corrected threshold. The factor's size is
   itself a diagnostic: k_b well above 1 says the history is too short for the χ² threshold.
