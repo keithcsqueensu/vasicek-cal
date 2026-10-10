@@ -292,9 +292,15 @@ add_executable(study_lrpd_serial_m6 studies/lrpd_serial_m6.cpp)
 target_link_libraries(study_lrpd_serial_m6 PRIVATE vcal_test_harness vcal::benchmark_models vcal::resample vcal::backend_cpu
                                                    vcal::dgp)
 vcal_target_defaults(study_lrpd_serial_m6)
+target_include_directories(study_lrpd_serial_m6 PRIVATE "${PROJECT_BINARY_DIR}")  # the checkpoint's source commit
+add_dependencies(study_lrpd_serial_m6 vcal_git_info)
 add_test(NAME study_lrpd_serial_m6_smoke
          COMMAND study_lrpd_serial_m6 --scenarios 72 --replicates 2 --phis 0,0.6 --seed 0x5AFE --comparator --boot-panels 3
                  --out m6_smoke.csv)
+add_test(NAME study_lrpd_serial_m6_resume
+         COMMAND "${CMAKE_COMMAND}" "-DTOOL=$<TARGET_FILE:study_lrpd_serial_m6>"
+                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/m6_resume_test" -P "${CMAKE_CURRENT_SOURCE_DIR}/studies/m6_resume_test.cmake")
+set_tests_properties(study_lrpd_serial_m6_resume PROPERTIES LABELS slow)
 
 # The AR(1) likelihood goldens (tests/golden/ar1/likelihood.csv; D-195): engine and ref at fixed parameters on
 # hand-made panels, no fits. Run by hand to regenerate; unit_ar1_filter checks the engine against them.
