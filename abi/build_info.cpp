@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <string>
 
+#include "dgp/dgp.hpp"
 #include "vcal/vcal.h"
 #include "vcal_git_info.h"  // generated at build time: VCAL_GIT_COMMIT, VCAL_GIT_DIRTY
 
@@ -55,6 +56,9 @@ std::string make() {
     s += "backends=cpu\n";
     s += "profiles=parity,native\n";
     s += "fp_contract=off\n";
+    // The DGP's Bernoulli kernel in this process (D-194). Every kernel gives the same panels bit for bit;
+    // this records which one ran.
+    s += std::string("dgp_kernel=") + vcal::dgp::bernoulli_kernel_name(vcal::dgp::bernoulli_kernel_selected()) + "\n";
     return s;
 }
 

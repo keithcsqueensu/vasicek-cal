@@ -132,6 +132,7 @@ static void test_version_and_build_info(void) {
     CHECK(strstr(info, "abi_version=0.4\n") != NULL);
     CHECK(strstr(info, "git_commit=") != NULL);
     CHECK(strstr(info, "profiles=parity,native\n") != NULL);
+    CHECK(strstr(info, "dgp_kernel=") != NULL);
     printf("%s", info);
 }
 

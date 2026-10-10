@@ -36,6 +36,7 @@
 
 #include "core/objectives/vasicek_rate.hpp"
 #include "engine/conditional_pd.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
@@ -240,6 +241,7 @@ std::vector<double> parse_list(const char* p) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_lrpd_serial")) return 2;
     std::vector<double> phis = {0.0, 0.3, 0.6};
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;

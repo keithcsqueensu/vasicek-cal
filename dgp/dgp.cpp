@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Panel simulation (see dgp/dgp.hpp and docs/methodology/dgp.md). Mirrors Mirror.factor and
-// Mirror.panel in tools/gen_dgp_tables.py operation for operation. Compiled with strict FP
-// semantics and FP contraction off (D-056).
+// Mirror.panel in tools/gen_dgp_tables.py operation for operation, the Bernoulli count through
+// count_defaults (dgp/bernoulli.cpp; its vector kernels equal the mirror's loop bit for bit, P-17).
+// Compiled with strict FP semantics and FP contraction off (D-056).
 #include <cmath>
 #include <cstdint>
 
@@ -29,7 +30,8 @@ Status simulate(const PanelSpec& spec, bool ar1, double phi, std::int64_t* defau
         if (!(spec.obligors[t] >= 0 && spec.obligors[t] <= kMaxObligors)) return Status::InvalidSpec;
     }
 
-    const PhiloxKey key = key_of(spec.seed);
+    const BernoulliKernel kernel = bernoulli_kernel_selected();
+    if (!bernoulli_kernel_available(kernel)) return Status::KernelUnavailable;
     const double c = det_probit(spec.pd);
     const double sr = std::sqrt(spec.rho);
     const double s1 = std::sqrt(1.0 - spec.rho);
@@ -43,17 +45,7 @@ Status simulate(const PanelSpec& spec, bool ar1, double phi, std::int64_t* defau
         const double z = ar1 && t > 0 ? phi * z_prev + se * e : e;
         z_prev = z;
         const double p = det_ncdf((c - sr * z) / s1);
-        std::int64_t d = 0;
-        PhiloxCounter w{};
-        for (std::int64_t i = 0; i < spec.obligors[t]; ++i) {
-            if (i % 2 == 0) {
-                const auto block = static_cast<std::uint32_t>(kFactorBlocks + static_cast<std::uint64_t>(i / 2));
-                w = philox4x32({spec.scenario, spec.replicate, period, block}, key);
-            }
-            const double u = i % 2 == 0 ? uniform_from_words(w[0], w[1]) : uniform_from_words(w[2], w[3]);
-            if (u < p) ++d;
-        }
-        defaults[t] = d;
+        defaults[t] = count_defaults(spec.seed, spec.scenario, spec.replicate, period, spec.obligors[t], p, kernel);
         if (factors != nullptr) factors[t] = z;
     }
     return Status::Ok;

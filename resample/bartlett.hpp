@@ -73,6 +73,7 @@ enum class BartlettStatus : std::int32_t {
     InvalidSpec = 1,    // panels == 0, an n_t above the DGP's limit, or first_panel + panels - 1 >= 2^32
     FpEnvironment = 2,  // flush-to-zero or denormals-are-zero is on (the DGP refuses)
     FactorStreamExhausted = 3,  // the DGP's factor draw ran out of its Philox block range
+    KernelUnavailable = 4,      // VCAL_DGP_KERNEL names a Bernoulli kernel this CPU or build lacks (D-194)
 };
 
 // est and L are the panel's own fit (calibrate's outputs on the same grid and rules). The bootstrap panels'
@@ -115,6 +116,7 @@ BartlettStatus bartlett_profile_intervals(const Backend& backend, const Objectiv
             case dgp::Status::Ok: break;
             case dgp::Status::FpEnvironment: return BartlettStatus::FpEnvironment;
             case dgp::Status::FactorStreamExhausted: return BartlettStatus::FactorStreamExhausted;
+            case dgp::Status::KernelUnavailable: return BartlettStatus::KernelUnavailable;
             default: return BartlettStatus::InvalidSpec;
         }
         for (std::size_t t = 0; t < n.size(); ++t) obs_b[t] = {n[t], d[t]};

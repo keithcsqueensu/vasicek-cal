@@ -42,6 +42,31 @@ void append_le(std::vector<std::uint8_t>& out, std::uint64_t v) {
     for (int i = 0; i < 8; ++i) out.push_back(static_cast<std::uint8_t>(v >> (8 * i)));
 }
 
+constexpr dgp::BernoulliKernel kAllKernels[] = {dgp::BernoulliKernel::Scalar, dgp::BernoulliKernel::Sse2,
+                                                dgp::BernoulliKernel::Avx2};
+
+// The selection as the process started, read during static initialisation, before any test changes it.
+const dgp::BernoulliKernel kInitialSelection = dgp::bernoulli_kernel_selected();
+
+// Runs fn(kernel) with each Bernoulli kernel this CPU and build have selected in turn (P-17, D-194), so every
+// code path runs on one machine, not only the one CPUID picks; the selection is restored afterwards. On an
+// x86-64 CPU with AVX2 (every CI runner) that is all three. A kernel this machine lacks is noted, not failed.
+template <class F>
+void for_each_kernel(F fn) {
+    struct Restore {
+        dgp::BernoulliKernel saved = dgp::bernoulli_kernel_selected();
+        ~Restore() { dgp::select_bernoulli_kernel(saved); }
+    } restore;
+    for (const auto kernel : kAllKernels) {
+        if (!dgp::select_bernoulli_kernel(kernel)) {
+            vcal::test::note(std::string("Bernoulli kernel ") + dgp::bernoulli_kernel_name(kernel) + " not available here");
+            continue;
+        }
+        VCAL_REQUIRE(dgp::bernoulli_kernel_selected() == kernel);
+        fn(kernel);
+    }
+}
+
 }  // namespace
 
 // --- Philox and the building blocks ------------------------------------------------------------
@@ -95,6 +120,172 @@ VCAL_TEST(uniform_is_strictly_inside_the_unit_interval) {
 }
 
 VCAL_TEST(fp_environment_keeps_subnormals) { VCAL_CHECK(dgp::fp_environment_ok()); }
+
+// --- the Bernoulli kernels (P-17, D-194) -------------------------------------------------------
+
+
+// The threshold K(p) at its edges (docs/methodology/dgp.md, "An equivalent integer form of step 3").
+// U(k) = (k + 1/2) 2^-52 is key k's uniform and K(p) counts the keys with U(k) < p, so K steps from k
+// to k + 1 just above p = U(k): K(U(k)) = k and K(the next double above U(k)) = k + 1. Confusing "<"
+// with "<=" anywhere would move every one of these by one.
+VCAL_TEST(bernoulli_threshold_at_its_edges) {
+    const std::uint64_t kAll = std::uint64_t{1} << 52;
+    const auto K = [](double p) { return dgp::bernoulli_threshold(p); };
+    // Nothing defaults at or below the smallest uniform, U(0) = 2^-53.
+    for (const double p : {0.0, -0.0, std::numeric_limits<double>::quiet_NaN(), DBL_TRUE_MIN, DBL_MIN, 1e-300, 0x1p-54,
+                           0x1p-53}) {
+        VCAL_CHECK_EQ(K(p), std::uint64_t{0});
+    }
+    // The smallest p that changes K: the next double above U(0).
+    VCAL_CHECK_EQ(K(std::nextafter(0x1p-53, 1.0)), std::uint64_t{1});
+    // The largest p that changes K is the next double above U(2^52 - 1) = 1 - 2^-53, which is 1.
+    VCAL_CHECK_EQ(K(1.0 - 0x1p-53), kAll - 1);
+    VCAL_CHECK_EQ(std::nextafter(1.0 - 0x1p-53, 2.0), 1.0);
+    for (const double p : {1.0, std::nextafter(1.0, 2.0), 2.0, std::numeric_limits<double>::infinity()}) {
+        VCAL_CHECK_EQ(K(p), kAll);
+    }
+    // Steps: chosen keys (the ends, and either side of the 2^26 boundary between the two words) and
+    // pseudo-random ones. For each, p exactly on U(k) and one ulp either side, and the comparison itself
+    // on the words that give k (with junk in the 6 discarded low bits): U < p iff k < K(p).
+    std::vector<std::uint64_t> keys = {0, 1, 2, 3, (1u << 26) - 1, 1u << 26, (1u << 26) + 1, (kAll >> 1) - 1, kAll >> 1,
+                                       kAll - 2, kAll - 1};
+    std::uint64_t x = 0x9E3779B97F4A7C15ull;
+    for (int i = 0; i < 20000; ++i) {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        keys.push_back(x >> 12);  // uniform over [0, 2^52)
+    }
+    for (const std::uint64_t k : keys) {
+        const double u = (static_cast<double>(k) + 0.5) * 0x1p-52;  // exact: k + 1/2 has at most 53 bits
+        const std::uint32_t junk = static_cast<std::uint32_t>(k * 0x2545F491u) & 63u;
+        const auto a = static_cast<std::uint32_t>((k >> 26) << 6) | junk;
+        const auto b = static_cast<std::uint32_t>((k & ((1u << 26) - 1)) << 6) | (63u - junk);
+        VCAL_CHECK(bits_equal(dgp::uniform_from_words(a, b), u));
+        const double below = std::nextafter(u, 0.0);
+        const double above = std::nextafter(u, 1.0);
+        VCAL_CHECK_EQ(K(u), k);
+        VCAL_CHECK_EQ(K(below), k);
+        VCAL_CHECK_EQ(K(above), k + 1);
+        for (const double p : {below, u, above}) VCAL_CHECK_EQ(u < p, k < K(p));
+    }
+    vcal::test::note(std::to_string(keys.size()) + " threshold steps checked");
+}
+
+// Every vector kernel this CPU and build have returns the scalar kernel's count, which is the specification's
+// loop. The cases are chosen to be hard for the vector kernels: every n from 0 to 80 (each tail length
+// after the 16-block vector steps, and odd n), p at the threshold's edges (0, 1, the smallest and largest
+// p that change it, beyond either end), and p exactly on obligors' uniforms, which are threshold steps,
+// and one ulp either side.
+VCAL_TEST(bernoulli_kernels_equal_the_specification_bit_for_bit) {
+    vcal::test::note(std::string("selected Bernoulli kernel ") + dgp::bernoulli_kernel_name(dgp::bernoulli_kernel_selected()));
+    std::vector<std::int64_t> ns;
+    for (std::int64_t n = 0; n <= 80; ++n) ns.push_back(n);
+    ns.insert(ns.end(), {255, 256, 257, 1000, 10001, (std::int64_t{1} << 20) + 3});
+    const std::uint64_t seed = 0xC0FFEE1234567890ull;
+    long long compared = 0;
+    for (const auto kernel : kAllKernels) {
+        if (kernel == dgp::BernoulliKernel::Scalar) continue;  // the reference
+        if (!dgp::bernoulli_kernel_available(kernel)) {
+            vcal::test::note(std::string("Bernoulli kernel ") + dgp::bernoulli_kernel_name(kernel) + " not available here");
+            continue;
+        }
+        for (std::size_t c = 0; c < ns.size(); ++c) {
+            const std::int64_t n = ns[c];
+            const auto scenario = static_cast<std::uint32_t>(c);
+            const std::uint32_t replicate = 0xFFFFFFF0u + static_cast<std::uint32_t>(c % 16);
+            const std::uint32_t period = 7u * static_cast<std::uint32_t>(c);
+            std::vector<double> ps = {0.0,
+                                      -0.0,
+                                      1.0,
+                                      2.0,
+                                      std::numeric_limits<double>::infinity(),
+                                      std::numeric_limits<double>::quiet_NaN(),
+                                      DBL_TRUE_MIN,
+                                      1e-300,
+                                      0x1p-53,
+                                      std::nextafter(0x1p-53, 1.0),
+                                      0x1p-52,
+                                      0x3p-53,
+                                      1e-4,
+                                      0.02,
+                                      0.5,
+                                      0.97,
+                                      std::nextafter(1.0 - 0x1p-53, 0.0),
+                                      1.0 - 0x1p-53};
+            // p on the uniforms of the period's first, middle and last obligors, and one ulp either side.
+            const dgp::PhiloxKey key{static_cast<std::uint32_t>(seed), static_cast<std::uint32_t>(seed >> 32)};
+            for (std::int64_t i : {std::int64_t{0}, n / 2, n - 1}) {
+                if (i < 0 || i >= n) continue;
+                const auto block = static_cast<std::uint32_t>(dgp::kFactorBlocks + static_cast<std::uint64_t>(i / 2));
+                const auto w = dgp::philox4x32({scenario, replicate, period, block}, key);
+                const double u = i % 2 == 0 ? dgp::uniform_from_words(w[0], w[1]) : dgp::uniform_from_words(w[2], w[3]);
+                ps.insert(ps.end(), {u, std::nextafter(u, 0.0), std::nextafter(u, 1.0)});
+            }
+            if (n > (std::int64_t{1} << 16)) ps = {0.02, 0.5};  // the large n: two values keep it quick
+            for (const double p : ps) {
+                const std::int64_t want =
+                    dgp::count_defaults(seed, scenario, replicate, period, n, p, dgp::BernoulliKernel::Scalar);
+                const std::int64_t got = dgp::count_defaults(seed, scenario, replicate, period, n, p, kernel);
+                ++compared;
+                if (got != want) {
+                    vcal::test::report_failure(__FILE__, __LINE__,
+                                               std::string("kernel ") + dgp::bernoulli_kernel_name(kernel) + ", n " +
+                                                   std::to_string(n) + ", p " + describe(p) + ": " +
+                                                   std::to_string(got) + " against " + std::to_string(want));
+                }
+            }
+        }
+    }
+    vcal::test::note(std::to_string(compared) + " counts compared");
+    // The specification's own boundary behaviour, which the comparisons above inherit.
+    VCAL_CHECK_EQ(dgp::count_defaults(seed, 1, 2, 3, 1001, 1.0, dgp::BernoulliKernel::Scalar), 1001);
+    VCAL_CHECK_EQ(dgp::count_defaults(seed, 1, 2, 3, 1001, 0.0, dgp::BernoulliKernel::Scalar), 0);
+}
+
+// The selection at start-up follows VCAL_DGP_KERNEL (CTest runs this executable under each value, and
+// under an invalid one); unset, it is the fastest available. An unavailable selection makes the
+// simulations refuse rather than fall back to another kernel.
+VCAL_TEST(bernoulli_kernel_selection_follows_vcal_dgp_kernel) {
+    const std::string env = vcal::test::env_or_empty("VCAL_DGP_KERNEL");
+    dgp::BernoulliKernel want = dgp::BernoulliKernel::Scalar;
+    if (env.empty()) {
+        if (dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Sse2)) want = dgp::BernoulliKernel::Sse2;
+        if (dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Avx2)) want = dgp::BernoulliKernel::Avx2;
+    } else {
+        want = dgp::BernoulliKernel::Unavailable;
+        for (const auto k : kAllKernels) {
+            if (env == dgp::bernoulli_kernel_name(k) && dgp::bernoulli_kernel_available(k)) want = k;
+        }
+    }
+    vcal::test::note("VCAL_DGP_KERNEL '" + env + "': selected at start-up " +
+                     dgp::bernoulli_kernel_name(kInitialSelection));
+    VCAL_CHECK(kInitialSelection == want);
+#if defined(__x86_64__) || defined(_M_X64)
+    VCAL_CHECK(dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Sse2));  // SSE2 is part of x86-64
+#endif
+
+    struct Restore {
+        dgp::BernoulliKernel saved = dgp::bernoulli_kernel_selected();
+        ~Restore() { dgp::select_bernoulli_kernel(saved); }
+    } restore;
+    VCAL_REQUIRE(dgp::select_bernoulli_kernel(dgp::BernoulliKernel::Unavailable));
+    const std::int64_t n[] = {100, 100};
+    std::int64_t d[2];
+    VCAL_CHECK(dgp::simulate_panel({1, 0, 0, 0.02, 0.1, n, 2}, d, nullptr) == dgp::Status::KernelUnavailable);
+    VCAL_CHECK(dgp::simulate_panel_ar1({1, 0, 0, 0.02, 0.1, n, 2}, 0.5, d, nullptr) == dgp::Status::KernelUnavailable);
+}
+
+VCAL_TEST(bernoulli_kernels_refuse_bad_input) {
+    VCAL_CHECK(dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Scalar));
+    VCAL_CHECK(!dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Unavailable));
+    VCAL_CHECK(!dgp::select_bernoulli_kernel(static_cast<dgp::BernoulliKernel>(7)));
+    VCAL_CHECK_EQ(dgp::count_defaults(1, 0, 0, 0, -1, 0.5, dgp::BernoulliKernel::Scalar), std::int64_t{-1});
+    VCAL_CHECK_EQ(dgp::count_defaults(1, 0, 0, 0, dgp::kMaxObligors + 1, 0.5, dgp::BernoulliKernel::Scalar),
+                  std::int64_t{-1});
+    VCAL_CHECK_EQ(dgp::count_defaults(1, 0, 0, 0, 10, 0.5, dgp::BernoulliKernel::Unavailable), std::int64_t{-1});
+    VCAL_CHECK_EQ(dgp::count_defaults(1, 0, 0, 0, 10, 0.5, static_cast<dgp::BernoulliKernel>(7)), std::int64_t{-1});
+}
 
 // --- accuracy against mpmath (target 1e-12 relative, D-052) ------------------------------------
 
@@ -158,28 +349,30 @@ VCAL_TEST(reference_panels_are_bitwise_identical_to_the_mirror) {
         p.d.push_back(parse_int(r[t.column("d")]));
         p.z.push_back(parse_double(r[t.column("z_hex")]));
     }
-    std::vector<std::uint8_t> blob;
-    for (const auto& p : panels) {
-        const auto T = static_cast<std::int64_t>(p.n.size());
-        std::vector<std::int64_t> d(p.n.size());
-        std::vector<double> z(p.n.size());
-        const dgp::PanelSpec spec{p.seed, p.scenario, p.replicate, p.pd, p.rho, p.n.data(), T};
-        VCAL_REQUIRE(dgp::simulate_panel(spec, d.data(), z.data()) == dgp::Status::Ok);
-        for (std::size_t i = 0; i < p.n.size(); ++i) {
-            VCAL_CHECK_EQ(d[i], p.d[i]);
-            VCAL_CHECK(bits_equal(z[i], p.z[i]));
-            std::uint64_t zb = 0;
-            std::memcpy(&zb, &z[i], sizeof zb);
-            append_le(blob, static_cast<std::uint64_t>(d[i]));
-            append_le(blob, zb);
-        }
-    }
     std::ifstream in(vcal::test::golden_path("dgp/reference_panels.sha256"));
     std::string want;
     in >> want;
-    const std::string got = vcal::test::sha256_hex(blob);
-    vcal::test::note("reference-panel SHA-256 " + got);
-    VCAL_CHECK_EQ(got, want);
+    for_each_kernel([&](dgp::BernoulliKernel kernel) {
+        std::vector<std::uint8_t> blob;
+        for (const auto& p : panels) {
+            const auto T = static_cast<std::int64_t>(p.n.size());
+            std::vector<std::int64_t> d(p.n.size());
+            std::vector<double> z(p.n.size());
+            const dgp::PanelSpec spec{p.seed, p.scenario, p.replicate, p.pd, p.rho, p.n.data(), T};
+            VCAL_REQUIRE(dgp::simulate_panel(spec, d.data(), z.data()) == dgp::Status::Ok);
+            for (std::size_t i = 0; i < p.n.size(); ++i) {
+                VCAL_CHECK_EQ(d[i], p.d[i]);
+                VCAL_CHECK(bits_equal(z[i], p.z[i]));
+                std::uint64_t zb = 0;
+                std::memcpy(&zb, &z[i], sizeof zb);
+                append_le(blob, static_cast<std::uint64_t>(d[i]));
+                append_le(blob, zb);
+            }
+        }
+        const std::string got = vcal::test::sha256_hex(blob);
+        vcal::test::note(std::string(dgp::bernoulli_kernel_name(kernel)) + ": reference-panel SHA-256 " + got);
+        VCAL_CHECK_EQ(got, want);
+    });
 }
 
 // The AR(1)-factor variant (D-190): every platform reproduces the mirror's AR(1) reference panels bit for
@@ -209,28 +402,30 @@ VCAL_TEST(ar1_reference_panels_are_bitwise_identical_to_the_mirror) {
         p.z.push_back(parse_double(r[t.column("z_hex")]));
     }
     VCAL_REQUIRE(panels.size() == 6);
-    std::vector<std::uint8_t> blob;
-    for (const auto& p : panels) {
-        const auto T = static_cast<std::int64_t>(p.n.size());
-        std::vector<std::int64_t> d(p.n.size());
-        std::vector<double> z(p.n.size());
-        const dgp::PanelSpec spec{p.seed, p.scenario, p.replicate, p.pd, p.rho, p.n.data(), T};
-        VCAL_REQUIRE(dgp::simulate_panel_ar1(spec, p.phi, d.data(), z.data()) == dgp::Status::Ok);
-        for (std::size_t i = 0; i < p.n.size(); ++i) {
-            VCAL_CHECK_EQ(d[i], p.d[i]);
-            VCAL_CHECK(bits_equal(z[i], p.z[i]));
-            std::uint64_t zb = 0;
-            std::memcpy(&zb, &z[i], sizeof zb);
-            append_le(blob, static_cast<std::uint64_t>(d[i]));
-            append_le(blob, zb);
-        }
-    }
     std::ifstream in(vcal::test::golden_path("dgp/reference_panels_ar1.sha256"));
     std::string want;
     in >> want;
-    const std::string got = vcal::test::sha256_hex(blob);
-    vcal::test::note("AR(1) reference-panel SHA-256 " + got);
-    VCAL_CHECK_EQ(got, want);
+    for_each_kernel([&](dgp::BernoulliKernel kernel) {
+        std::vector<std::uint8_t> blob;
+        for (const auto& p : panels) {
+            const auto T = static_cast<std::int64_t>(p.n.size());
+            std::vector<std::int64_t> d(p.n.size());
+            std::vector<double> z(p.n.size());
+            const dgp::PanelSpec spec{p.seed, p.scenario, p.replicate, p.pd, p.rho, p.n.data(), T};
+            VCAL_REQUIRE(dgp::simulate_panel_ar1(spec, p.phi, d.data(), z.data()) == dgp::Status::Ok);
+            for (std::size_t i = 0; i < p.n.size(); ++i) {
+                VCAL_CHECK_EQ(d[i], p.d[i]);
+                VCAL_CHECK(bits_equal(z[i], p.z[i]));
+                std::uint64_t zb = 0;
+                std::memcpy(&zb, &z[i], sizeof zb);
+                append_le(blob, static_cast<std::uint64_t>(d[i]));
+                append_le(blob, zb);
+            }
+        }
+        const std::string got = vcal::test::sha256_hex(blob);
+        vcal::test::note(std::string(dgp::bernoulli_kernel_name(kernel)) + ": AR(1) reference-panel SHA-256 " + got);
+        VCAL_CHECK_EQ(got, want);
+    });
 }
 
 // The variant's definition, checked against the base DGP directly rather than through the mirror: phi = 0

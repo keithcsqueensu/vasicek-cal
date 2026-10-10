@@ -40,6 +40,7 @@
 
 #include "core/objectives/vasicek_rate.hpp"
 #include "engine/conditional_pd.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/golden.hpp"
 #include "tests/recovery/recovery.hpp"
 #include "tests/tolerances.hpp"
@@ -221,6 +222,7 @@ int compare(const std::string& got_text, const std::string& path) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("rate_recovery")) return 2;
     std::uint32_t R = rc::kReplicates;
     std::string write, replay_out;
     for (int i = 1; i < argc; ++i) {

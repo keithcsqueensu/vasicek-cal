@@ -139,6 +139,17 @@ add_test(NAME bartlett_s4_run COMMAND unit_bartlett bartlett_reproduces_the_s4_r
 set_tests_properties(bartlett_s4_run PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_ref SOURCES unit/ref_test.cpp LIBS vcal::ref)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
+# The Bernoulli kernel forced at start-up through VCAL_DGP_KERNEL (P-17, D-194), and once with an invalid value:
+# the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their
+# kernel explicitly run here (the others would refuse on a machine lacking the forced kernel); the plain
+# unit_dgp entry already runs the reference panels and the count comparison under every available kernel.
+foreach(_k scalar sse2 avx2 none-such)
+    add_test(NAME unit_dgp_kernel_${_k}
+             COMMAND unit_dgp bernoulli_kernel_selection_follows_vcal_dgp_kernel
+                     reference_panels_are_bitwise_identical_to_the_mirror
+                     ar1_reference_panels_are_bitwise_identical_to_the_mirror)
+    set_tests_properties(unit_dgp_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_DGP_KERNEL=${_k}")
+endforeach()
 
 # --- M1.7 cross-reference (D-107, D-115) -----------------------------------------------------------
 # One executable, three CTest entries. Estimates against ref take seconds per fit, so that entry is
@@ -203,6 +214,12 @@ add_test(NAME study_argmax_check COMMAND study_argmax_check --replicates 40)
 add_executable(p9_repeat_rate ${PROJECT_SOURCE_DIR}/perf/p9_repeat_rate.cpp)
 target_link_libraries(p9_repeat_rate PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(p9_repeat_rate)
+# P-17's benchmark (perf/p17_simd_philox.md): panel simulation with each Bernoulli kernel, every panel
+# checked against simulate_panel. Run by hand; a short run is a test, so the check runs in CI.
+add_executable(p17_simd_philox ${PROJECT_SOURCE_DIR}/perf/p17_simd_philox.cpp)
+target_link_libraries(p17_simd_philox PRIVATE vcal::dgp)
+vcal_target_defaults(p17_simd_philox)
+add_test(NAME p17_simd_philox_identity COMMAND p17_simd_philox --seconds 0.04)
 set_tests_properties(study_argmax_check PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)

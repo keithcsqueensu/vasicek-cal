@@ -12,9 +12,9 @@
 // few jobs projects too high (S-35, D-192). A tool measures each job's fills with FillMeter and records
 // them in a phase with share "once", subtracted from the phase they happened in.
 //
-// File format (CSV): '#' comment lines, including one "# share,<phase>,<share>" line per phase and a
-// "# tool,<name>" line; then the header scenario,periods,obligors,replicate,<phase>,...; one row per
-// job, seconds as %.6f.
+// File format (CSV): '#' comment lines, including one "# share,<phase>,<share>" line per phase, a
+// "# tool,<name>" line and a "# dgp_kernel,<name>" line (D-194); then the header
+// scenario,periods,obligors,replicate,<phase>,...; one row per job, seconds as %.6f.
 #pragma once
 
 #include <algorithm>
@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "engine/surface_cache.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 
 namespace vcal::test {
 
@@ -66,6 +67,7 @@ public:
         if (!f) return false;
         f << "# timing sample (D-187): thread-seconds per job and phase\n";
         f << "# tool," << tool_ << '\n';
+        f << "# dgp_kernel," << dgp_kernel() << '\n';  // provenance only (D-194); the projection ignores it
         for (std::size_t p = 0; p < phases_.size(); ++p) f << "# share," << phases_[p] << ',' << shares_[p] << '\n';
         f << "scenario,periods,obligors,replicate";
         for (const auto& p : phases_) f << ',' << p;

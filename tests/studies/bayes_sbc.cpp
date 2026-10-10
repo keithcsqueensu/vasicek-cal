@@ -32,6 +32,7 @@
 
 #include "dgp/philox.hpp"
 #include "engine/posterior.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/recovery/recovery.hpp"
 
 namespace {
@@ -137,6 +138,7 @@ Row sbc_one(std::uint32_t setting, std::uint32_t prior_id, std::uint32_t draw, c
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_bayes_sbc")) return 2;
     std::uint32_t N = 1000;
     std::string out_path;
     unsigned threads = std::thread::hardware_concurrency();

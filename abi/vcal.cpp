@@ -959,6 +959,10 @@ VCAL_API vcal_status VCAL_CALL vcal_calibrate_bartlett(vcal_context* context, co
                                "IEEE subnormals to be bitwise reproducible (D-109)");
             case vcal::resample::BartlettStatus::FactorStreamExhausted:
                 throw AbiError(VCAL_E_NUMERIC, "a bootstrap panel's factor draw exhausted its Philox block range (D-109)");
+            case vcal::resample::BartlettStatus::KernelUnavailable:
+                throw AbiError(VCAL_E_UNSUPPORTED,
+                               "the environment variable VCAL_DGP_KERNEL names a Bernoulli kernel this CPU or build "
+                               "does not have (scalar, sse2 or avx2; D-194)");
             default: throw std::logic_error("the Bartlett bootstrap rejected a spec that the ABI accepted");
         }
         vcal_bartlett_intervals out{};
@@ -1011,6 +1015,10 @@ VCAL_API vcal_status VCAL_CALL vcal_dgp_simulate(vcal_context* context, const vc
                                "subnormals to be bitwise reproducible (D-109)");
             case vcal::dgp::Status::FactorStreamExhausted:
                 throw AbiError(VCAL_E_NUMERIC, "the factor draw exhausted its Philox block range (D-109)");
+            case vcal::dgp::Status::KernelUnavailable:
+                throw AbiError(VCAL_E_UNSUPPORTED,
+                               "the environment variable VCAL_DGP_KERNEL names a Bernoulli kernel this CPU or build "
+                               "does not have (scalar, sse2 or avx2; D-194)");
             default: throw std::logic_error("the DGP rejected a spec that the ABI accepted");
         }
     });

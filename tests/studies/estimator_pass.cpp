@@ -42,6 +42,7 @@
 
 #include "core/objectives/vasicek_rate.hpp"
 #include "engine/moments.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/timing_sample.hpp"
 #include "tests/recovery/recovery.hpp"
 
@@ -183,6 +184,7 @@ Row pass_fit(const rc::Scenario& s, std::uint32_t replicate, engine::SurfaceRowC
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_estimator_pass")) return 2;
     std::string timing_path;  // --timing-out: a runtime timing sample (perf/README.md, D-187)
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;

@@ -38,6 +38,12 @@ changes any existing draw.
    65536 + ⌊i/2⌋: words (0, 1) if i is even, (2, 3) if odd. These blocks never overlap the
    factor's, so the number of rejections in step 1 cannot shift them.
 
+**An equivalent integer form of step 3,** which the vectorised kernels use (P-17, D-194); a
+reproduction may use either. A uniform is U = (k + ½)·2⁻⁵² with k = ⌊a/64⌋·2²⁶ + ⌊b/64⌋ for words
+(a, b). Let K be the number of integers k in [0, 2⁵²) with (k + ½)·2⁻⁵² < p, that is
+K = ⌈p·2⁵² − ½⌉ clipped to [0, 2⁵²]. Both floating-point steps are exact for 0 ≤ p ≤ 1. Then U < p
+exactly when k < K, so d_t counts the obligors with k < K, and no uniform is formed.
+
 ## Arithmetic
 
 Only operations that IEEE 754 makes exact or correctly rounded are used: + − × ÷, square root,

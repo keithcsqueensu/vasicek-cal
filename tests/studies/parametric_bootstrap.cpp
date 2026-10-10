@@ -59,6 +59,7 @@
 #include "engine/posterior.hpp"
 #include "generated/vcal_git_info.h"
 #include "tests/harness/checkpoint.hpp"
+#include "tests/harness/dgp_provenance.hpp"
 #include "tests/harness/timing_sample.hpp"
 #include "resample/bootstrap.hpp"
 #include "tests/recovery/recovery.hpp"
@@ -366,6 +367,7 @@ void unpack(const std::vector<std::uint8_t>& bytes, std::uint32_t id, Row* rows,
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (!vcal::test::announce_dgp_kernel("study_parametric_bootstrap")) return 2;
     std::uint32_t R = rc::kReplicates;
     std::vector<std::uint32_t> ids;
     std::string out_path, checkpoint_dir, timing_path;
@@ -426,7 +428,8 @@ int main(int argc, char** argv) {
     for (std::size_t k = 0; k < ids.size(); ++k) cfg << (k ? "," : "") << ids[k];
     cfg << "\nB=" << kB << "\nbartlett_panels=" << kBartlettPanels << "\njeffreys_check=" << kJeffreysCheck
         << "\nwidth_replicates=" << kWidthReplicates << "\nquad_check_every=" << kQuadCheckEvery << "\nboot_seed=" << kBootSeed << "\ngit_commit=" << VCAL_GIT_COMMIT
-        << "\ngit_dirty=" << VCAL_GIT_DIRTY << "\nexecutable_sha256=" << exe << "\n";
+        << "\ngit_dirty=" << VCAL_GIT_DIRTY << "\nexecutable_sha256=" << exe << "\ndgp_kernel=" << vcal::test::dgp_kernel()
+        << "\n";
     if (!checkpoint_dir.empty() && exe.empty()) {
         std::fprintf(stderr, "--checkpoint: cannot read the executable %s to hash it\n", argv[0]);
         return 2;
