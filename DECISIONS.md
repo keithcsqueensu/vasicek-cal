@@ -1437,6 +1437,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **If a prediction fails:** the cause is diagnosed before the arm runs, a fix is validated again on a fresh seed, and the arm's registration is not amended.
   - **`score.py`** was exercised only on a fabricated rows file (truth plus noise) to check its code paths; it failed W3 there, as it should on arbitrary paired differences.
 
+## Manifest hashes checked, 2026-10-10
+
+- **D-201 (owner, from the Copilot audit) — Every SHA-256 recorded in a `MANIFEST.json` is checked in CI** (`tools/check_manifests.py`, in the `plan` job beside D-183's check, so it runs on every event, prose-only commits included).
+  - **The check:** each hash, in any of the three forms the manifests use (text "sha256 <hash>", a key ending in `sha256`, a bare hex value), is exactly 64 lowercase hex characters; where its key names a committed file, it matches that file's blob. Files outside the repo (release attachments, executables) are checked for form only. A `--self-test` runs first and must catch each malformed form, including the case below.
+  - **Why:** S-35's manifest recorded `rows.csv` with a 63-character hash (the first character dropped), and nothing caught it. A wrong digest makes a release attachment unverifiable, which defeats D-163.
+  - **The fix:** recomputed, not guessed. `rows.csv` itself was never attached to the release (only the Parquet files are), so the hash was computed from the run's own output, kept on the machine that ran it; that output is identified as the run's because its companion `rate_rows.csv` and the two Parquet files exported from them match the hashes already recorded (and, for the Parquet files, the release's). The correct hash is the recorded one with a leading `b`.
+  - **Not covered:** a hash of a file outside the repo can be checked only for form; the release attachments are verified by hand when a release is made.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
