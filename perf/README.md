@@ -27,7 +27,7 @@ paired verdicts. Only the runtime projection changes.
 
 1. **Sample every cell.** Run the tool on a few replicates of every scenario of the full matrix with
    `--timing-out FILE` (`study_parametric_bootstrap`, `study_bayes_coverage`, `study_estimator_pass`,
-   `study_severe_period` and `study_jackknife_run` take it). Each (scenario, replicate) job's thread-seconds
+   `study_severe_period`, `study_jackknife_run` and `study_lrpd_serial` take it). Each (scenario, replicate) job's thread-seconds
    are recorded by phase (`tests/harness/timing_sample.hpp`).
 2. **Follow the phase schedule.** Each phase carries its share of a full run's replicates: `1` for every
    replicate, a fraction for an arm run on the first replicates only (S-10's Jeffreys check on 0–49 of
@@ -42,8 +42,10 @@ paired verdicts. Only the runtime projection changes.
    the default (`--efficiency`). Each validation re-measures it, and a run that falls below it says so.
 4. **Report a range, and sample until it is tight.** The range is the 5th–95th percentile of a bootstrap over
    jobs within each cell. `perf/project_runtime.py --run "<tool>"` starts at 2 replicates per scenario and
-   doubles until the range is within ±10% of the projection (`--target`), up to `--max`. It prints the
-   subset-based projection alongside for comparison.
+   doubles until the range is within ±10% of the projection (`--target`) **and** the projection agrees with
+   the previous sample size's within the same ±10% (D-192), up to `--max`. It prints the subset-based
+   projection alongside for comparison. The agreement check catches a bias the range cannot: a one-time
+   cost that a tool does not time as a `once` phase is charged to too few jobs in a small sample.
 
 **Calibrated on S-10, not yet validated** (`perf/projection_s10.md`). With 2 replicates per scenario
 (18 jobs per cell) the projection was 6.13 h (90% range 5.70–6.56 h) against the actual 6.44 h. With 1 per
@@ -52,6 +54,12 @@ replicates' costs are skewed (0.44–2.53× their scenario's mean). The bootstra
 only, and it under-covered at 9 jobs per cell. The method was tuned against this one run, so its next
 full run is a test: the projection is recorded before the run and compared with the actual wall time after
 it. If the actual lands in range again, the method is called validated.
+
+**Second test, S-35 (D-192): a miss.** Its projection, recorded before the run from a 2-replicate sample,
+was 0.39 h (0.35–0.43 h); the run took 0.293 h at efficiency 1.00. The sample charged the surface-row
+cache's first fills, which `study_lrpd_serial` does not time as a `once` phase, to too few jobs: 8 and 32
+replicates project 0.28 h. The agreement rule above was added for it, and stops at 16 replicates with
+0.29 h (0.28–0.30 h). The method stays calibrated, not validated.
 
 ## Benchmarks
 
