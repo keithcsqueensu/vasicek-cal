@@ -1179,6 +1179,16 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **A lifetime PD term structure** conditional on a scenario path with user-supplied scenario weights (after M7).
   - **Open:** S-47's public-data part depends on a separate data repository with pinned releases, which no decision yet records. It needs its own D-entry, under D-163's data policy.
 
+## P-9 measured, not built, 2026-10-09
+
+- **D-189 (owner's order: P-9's measurement only, building it only if the repeat rate projects a real saving) — P-9 is not built.**
+  - **The measurement** (`perf/p9_repeat_rate.cpp`, `perf/p9_repeat_rate.md`) regenerates every panel of the recovery harness and of S-10's parametric bootstrap and counts repeats. Its estimates for the bootstrap panels equal S-10's rows bit for bit (checked on 200 replicates).
+  - **The key:** only the ordered default-count vector keeps a memoised fit bit for bit the fit it replaces, since the log-likelihood sums periods in order. The sorted key that P-9's entry named would change results within rounding, and is wrong for any estimator that uses period order (the AR(1)-aware MLE of M6).
+  - **The result:** under the ordered key, 32% of the (T = 20, n = 100) cell's bootstrap panels repeat, 21% at (40, 100), and at most 2% elsewhere; none at n = 10,000. The projected saving is 4,313 of 436,676 thread-seconds, **1.0%** of the S-10/S-4 run. The sorted key would save 6.3%, not bit for bit. The recovery harness's shareable repeats (2.4% of outer fits, all at n = 100 and PD 0.001) are a few seconds.
+  - **Why so little:** the repeats are panels with almost no defaults, in the cheapest cells. The n = 100 cells are 10% of the run's cost and the n = 10,000 cells 64%, and those never repeat.
+  - **The AR(1) DGP** (S-35's panels, counted by `study_lrpd_serial --count-repeats`, D-190): 3.0%, 3.1% and 3.2% of panels repeat at φ = 0, 0.3 and 0.6, almost all at n = 100. The saving is at most about 0.6% of S-35's run, so the decision stands.
+  - **Also recorded:** in the same timing sample, simulation is 31% of the S-10/S-4 run's projected thread-seconds (38–46% in the n = 10,000 cells). That is input to the SIMD Philox decision.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
