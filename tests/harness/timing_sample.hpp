@@ -7,6 +7,11 @@
 // ("1" for every replicate, "0.05" for replicates 0-49 of 1,000, or "once" for a one-time cost such
 // as filling a surface-row cache, counted once rather than per replicate).
 //
+// One-time costs are recorded apart from per-replicate ones (D-193). A surface-row cache fill is paid once
+// per distinct observation for the whole run, not per replicate, so a small sample that charges it to its
+// few jobs projects too high (S-35, D-192). A tool measures each job's fills with FillMeter and records
+// them in a phase with share "once", subtracted from the phase they happened in.
+//
 // File format (CSV): '#' comment lines, including one "# share,<phase>,<share>" line per phase and a
 // "# tool,<name>" line; then the header scenario,periods,obligors,replicate,<phase>,...; one row per
 // job, seconds as %.6f.
@@ -22,7 +27,20 @@
 #include <utility>
 #include <vector>
 
+#include "engine/surface_cache.hpp"
+
 namespace vcal::test {
+
+// The calling thread's surface-row cache fills since construction: wrap the part of a job that may fill
+// rows, then move seconds() from that phase into the job's "cache fill" phase.
+class FillMeter {
+public:
+    FillMeter() : s0_(engine::SurfaceRowCache::thread_fills().seconds) {}
+    double seconds() const { return engine::SurfaceRowCache::thread_fills().seconds - s0_; }
+
+private:
+    double s0_;
+};
 
 class TimingSample {
 public:

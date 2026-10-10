@@ -17,6 +17,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -113,6 +114,18 @@ std::string surface_configuration(const Objective& objective, const Integrator& 
 
 class SurfaceRowCache {
 public:
+    // Fills by the calling thread, across every cache (D-193): the seconds spent computing rows on first
+    // request, and how many. Timing instrumentation for runtime projections, which count a fill once
+    // rather than per replicate; no result depends on it.
+    struct FillTally {
+        double seconds = 0.0;
+        std::int64_t rows = 0;
+    };
+    static FillTally& thread_fills() {
+        thread_local FillTally tally;
+        return tally;
+    }
+
     // The row for observation y under this configuration (config = surface_configuration(...)),
     // computed on first request with the backend's parallel_for over grid points.
     template <class Backend, class Objective, class Integrator, int D>
@@ -133,6 +146,7 @@ public:
         }
         bool computed = false;
         std::call_once(e->once, [&] {
+            const auto t0 = std::chrono::steady_clock::now();
             const std::int64_t K = grid.size();
             e->row.assign(static_cast<std::size_t>(K), 0.0);
             backend.parallel_for(K, [&](std::int64_t k) {
@@ -141,6 +155,9 @@ public:
                 e->row[static_cast<std::size_t>(k)] = objective.log_contrib(y, Objective::theta(v), integrator);
             });
             computed = true;
+            FillTally& tally = thread_fills();
+            tally.seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+            ++tally.rows;
         });
         (computed ? misses_ : hits_).fetch_add(1, std::memory_order_relaxed);
         return e->row;
