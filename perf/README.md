@@ -44,8 +44,25 @@ paired verdicts. Only the runtime projection changes.
    jobs within each cell. `perf/project_runtime.py --run "<tool>"` starts at 2 replicates per scenario and
    doubles until the range is within ±10% of the projection (`--target`) **and** the projection agrees with
    the previous sample size's within the same ±10% (D-192), up to `--max`. It prints the subset-based
-   projection alongside for comparison. The agreement check catches a bias the range cannot: a one-time
-   cost that a tool does not time as a `once` phase is charged to too few jobs in a small sample.
+   projection alongside for comparison. The agreement check is a safety net for biases the range cannot
+   see.
+5. **Count fixed costs once (D-193).** A surface-row cache fill is paid once per distinct observation for
+   the whole run. Every tool with `--timing-out` measures each job's fills (`FillMeter`, from the cache's
+   per-thread tally) and records them in a `cache fill` phase with share `once`, subtracted from the phase
+   they happened in. The projection is then the fixed part once plus the per-replicate part × the count.
+   The fixed part is the sample's fills, which cover only the rows the sample met. In S-35 that was about
+   half of the full run's 205 s of fills: 1% of the run.
+6. **Sample at sustained clocks (D-193).** A short sample runs at boost clocks and projects low. S-35's
+   32-replicate sample cost 0.215 s per job cold and 0.279 s straight after sustained load, against 0.275 s
+   in the full run. So `--run` first discards `--warmup` seconds of runs (default 120). It then accepts a
+   sample only if the sample itself ran at least `--min-wall` seconds (default 120), as well as meeting the
+   range and agreement checks (step 4).
+7. **State the machine-state allowance.** The 90% range covers sampling noise only. Two 128-replicate S-35
+   samples, taken on different occasions, projected 24,059 and 25,990 thread-seconds, about ±4% apart. The
+   report therefore also prints the range widened by `--allowance` (default ±5%). On S-35, run from cold,
+   the method stopped at 128 replicates per scenario (a 134 s sample): 0.28 h, and 0.27–0.29 h with the
+   allowance, against 0.293 h actual. That is a check on the run the rules were built from, not a
+   validation.
 
 **Calibrated on S-10, not yet validated** (`perf/projection_s10.md`). With 2 replicates per scenario
 (18 jobs per cell) the projection was 6.13 h (90% range 5.70–6.56 h) against the actual 6.44 h. With 1 per
