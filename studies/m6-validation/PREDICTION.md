@@ -78,3 +78,12 @@ so all of them are listed: W1 729 of 729; W2 worst 95th percentile 0.038 (PD), 0
 2.045 (ρ), against the band 0.7–1.5, over 45 paired differences**; W4 median φ̂ −0.0144; W5 pooled 0.922 (PD),
 0.954 (ρ), 0.967 (φ), 22 pairs below a floor (three intervals per pair); W6 0.923, 0.872, 0.974; W7 worst +1.05
 (medians of three); W8 66.7%; W9 0%. No prediction was changed after seeing them.
+
+**After the dry run (owner): W3 kept as registered, and a descriptive diagnostic added (not a prediction).** If W3
+fails, the likely cause is its denominator: sqrt(v₃ − v₂) is 0.3–10% of an SE in these cells, so finite-sample
+effects that the asymptotic Hausman variance ignores can dominate the ratio, while W2 still checks the same paired
+difference in absolute terms. `score.py` therefore also prints, per credible φ = 0 cell, the paired difference's
+empirical SD and the asymptotic sqrt(v₃ − v₂) (both in SE units), their ratio, and the correlation across cells of
+the log ratio with the log denominator, so the write-up can say how much of any excess the denominator explains.
+It changes no verdict. Its plumbing was checked on the same smoke rows, where it showed correlations of −0.84 (PD)
+and −0.54 (ρ) at three replicates per pair; those are disclosed here and are not results.

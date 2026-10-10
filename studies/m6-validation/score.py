@@ -195,6 +195,30 @@ def main():
         c = [pooled([k], a) for a in range(3)]
         extra = (f" | {pd_bias[k]:+.3f} | {diffs[k]:+.3f}" if k in pd_bias else "")
         print(f"  {k[0]:2d} {k[1]:.1f} {info[k]['T']:3d}: {c[0]:.2f} {c[1]:.2f} {c[2]:.2f}{extra}")
+    # Descriptive, not a prediction (added after the dry run, owner; PREDICTION.md): W3 divides by sqrt(v3 - v2),
+    # 0.3-10% of an SE in these cells, so finite-sample effects the asymptotic variance ignores may dominate. Per
+    # cell, the paired difference's empirical SD and the asymptotic one, both in units of the information's SE, and
+    # whether the ratio grows as the denominator shrinks. It changes no verdict.
+    print("\ndescriptive (added after the dry run; not a prediction): W3's denominator per credible phi = 0 cell")
+    print("  scenario: PD empirical SD / asymptotic sqrt(v3 - v2) (both in SE) = ratio | the same for rho")
+    pts = [[], []]
+    for k in cred100_0:
+        inf = info[k]
+        parts = []
+        for ai, (est, ref) in enumerate((("pd", "phi0_pd"), ("rho", "phi0_rho"))):
+            d = [(float(r[est]) - float(r[ref])) / inf["se"][ai] for r in by_pair[k]]
+            emp = statistics.pstdev(d)
+            asym = math.sqrt(max(inf["v3"][ai] - inf["v2"][ai], 0.0)) / inf["se"][ai]
+            ratio = emp / asym if asym > 0 else math.inf
+            pts[ai].append((asym, ratio))
+            parts.append(f"{emp:.4f} / {asym:.4f} = {ratio:.2f}")
+        print(f"  {k[0]:2d}: {parts[0]} | {parts[1]}")
+    for ai, name in enumerate(("PD", "rho")):
+        xs = [math.log(a_) for a_, r_ in pts[ai] if a_ > 0 and 0 < r_ < math.inf]
+        ys = [math.log(r_) for a_, r_ in pts[ai] if a_ > 0 and 0 < r_ < math.inf]
+        if len(xs) > 2:
+            print(f"  {name}: correlation of log ratio with log denominator across cells {statistics.correlation(xs, ys):+.2f}")
+
     strict = ("W2", "W3", "W4", "W5", "W7", "W8", "W9")
     n_held = sum(held[w] for w in strict) + 1  # W1 held to get here
     print(f"\n{n_held} of 8 strict predictions held (W1-W5, W7-W9); W6 reported against its range")
