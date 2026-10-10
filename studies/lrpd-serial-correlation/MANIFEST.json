@@ -1,0 +1,34 @@
+{
+  "study": "S-35, long-run PD under an AR(1) factor (D-188, D-190, D-192)",
+  "prediction": "studies/lrpd-serial-correlation/PREDICTION.md: L1-L11 registered in 56b3266 (D-190) before any AR(1) panel was fitted; L12-L15 (the observed-rate arm, owner) appended in af9de79 before any run; the scoring addendum and compare.py in 2b6aed3, before the subset run (ids on s35-observed)",
+  "provenance": "Commit ids here are on the branch s35-observed, kept unchanged as the run's record: the registration 56b3266, the observed-rate addendum af9de79, the tool 161b788 and the scoring 2b6aed3, which the runs used. For merging, the same commits (same messages) were rebased onto main, plus one value-preserving cast in the tool for clang 18; the rebased ids are not cited because they change with each rebase",
+  "scoring": "compare.py, committed in 2b6aed3 before the subset run, unchanged since. Run as: uv run --no-project --with scipy==1.16.2 --with pyarrow==25.0.1 python studies/lrpd-serial-correlation/compare.py rows.csv rate_rows.csv --summary-out summary.csv",
+  "compiler": "MSVC 1951, Release",
+  "runs": {
+    "subset": {
+      "command": "study_lrpd_serial --scenarios 29,37,72,4,68,49,7,43,51 (1,000 replicates, phi 0, 0.3, 0.6, 24 threads)",
+      "commit": "2b6aed3 on s35-observed (the tool's source as of 161b788)",
+      "wall_seconds": 80,
+      "checks": "binomial and rate MLE phi = 0 counts against the pinned summaries: 0 failures; observed-rate arm: 9,000 rows equal S-8's bit for bit"
+    },
+    "full": {
+      "command": "study_lrpd_serial --out rows.csv --rate-out rate_rows.csv --timing-out timing.csv (81 scenarios x 1,000 replicates x phi 0, 0.3, 0.6; 27 rate cells; 24 threads)",
+      "commit": "2b6aed3 on s35-observed (tree clean; the tool's source as of 161b788)",
+      "executable_sha256": "041f69ddffede6a126b30888f4ed7311c06c471fec4c0f121905c0c389a6c4fe",
+      "wall_seconds": 1056,
+      "cpu_seconds": 25317,
+      "efficiency": "25,317 / (24 x 1,055) = 1.00",
+      "phase_split": "binomial MLE 89%, observed-rate MLE 5%, rate MLE 4%, simulate 2%",
+      "projection": "0.39 h (90% range 0.35-0.43 h) from a 2-replicate sample, recorded before the run (D-190); took 0.293 h, outside the range (projection / actual 1.33). The sample charged the surface-row cache's first fills to too few jobs; 8 and 32 replicates project 0.28 h. D-192 adds an agreement check between successive sample sizes, which stops at 16 replicates with 0.29 h (0.28-0.30 h)",
+      "checks": "binomial MLE phi = 0: Wald, t, profile and bootstrap covered counts and flagged counts equal the pinned summary's in all 81 scenarios; rate MLE phi = 0: PD, rho and q covered counts equal the pinned rate summary's in all 27 cells; observed-rate arm phi = 0: 81,000 rows equal S-8's (studies/mle-vs-mom/fits.parquet) bit for bit"
+    }
+  },
+  "files": {
+    "summary.csv": "sha256 6ac449b677e76ec08d69828d211704dafe1d0ca6fca0b5340e9f4b428e4737ee; compare.py --summary-out (one row per phi and scenario)",
+    "reference.csv, reference_rate.csv, reference_observed.csv": "the registered reference numbers (reference.py, reference_observed.py), from the model and pinned results only",
+    "rows.parquet (not committed, D-163)": "sha256 20f331bf6a390b962a6c11ffb954a2f93ab7494d06943d1883f71c501ae331b8, 11,959,495 bytes; from rows.csv (sha256 855b5abcf7b0915e66f5b56d5334d3fed396b7f20feb981893a874c62b8b5e5, 54,884,780 bytes) by export_rows.py (pyarrow 25.0.1, zstd 19); every value equal to the CSV's (checked bitwise)",
+    "rate_rows.parquet (not committed, D-163)": "sha256 805451ecfbb92cb8ffc57ef1f2e7192422be587d5880e54b6fd400f8f6148b56, 1,567,594 bytes; from rate_rows.csv (sha256 21e0543ee73625bc01fb6fb42af13c0ee4c567782ee93acff4982aafa86a6b62, 7,671,503 bytes)",
+    "release": "https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s35-data-2026-10-09"
+  },
+  "result": "12 of 15 held. Not held: L2 (direction held, 47 of 50; group B's mean 0.558 against 0.56-0.70), L7 (the iid bootstrap's rho interval at T = 20, phi = 0.6 fell 0.067 more than the profile's; every other method, group and phi within 0.04), L8 (binomial PD profile, B against D at phi = 0.6: 0.041 apart against < 0.04; the rate MLE's T = 20 against T = 100 held at 0.025)"
+}

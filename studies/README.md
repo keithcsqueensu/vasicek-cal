@@ -135,7 +135,7 @@ not delay M3.
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
 | S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
-| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | **registered** (D-190; the AR(1)-aware MLE arm with M6) |
+| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | **finished** (D-192): 12 of 15 held; the AR(1)-aware MLE arm with M6 |
 | S-36 | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
 | S-37 | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
 | S-38 | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
@@ -1423,9 +1423,110 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
 - **Cost:** about the baseline per φ. The subset at three φ takes a few minutes, and the full matrix
   about 15–30 minutes.
 - **Prediction:** registered (`lrpd-serial-correlation/PREDICTION.md`, D-190), L1–L11, before any AR(1)
-  panel was fitted. The AR(1)-aware MLE's predictions are appended before its run. **Result:** not run.
-  **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+  panel was fitted. L12–L15, a second rate-MLE arm on the observed rates (owner), were appended before any
+  run. The AR(1)-aware MLE's predictions are appended before its run.
+- **Status:** run 2026-10-09 (D-192), without the AR(1)-aware MLE, which comes with M6. Files are in
+  `lrpd-serial-correlation/`: `summary.csv` and `MANIFEST.json`. The per-replicate rows are on the release
+  `s35-data-2026-10-09` (D-163).
+- **Result:** three findings, in order of weight.
+  1. **A longer history does not fix it.** Under serial correlation, intervals that assume independent
+     periods are too narrow by the same factor at T = 20, 40 and 100. PD profile coverage is 0.86–0.88 at
+     φ = 0.3 and 0.69–0.73 at φ = 0.6 in every informative group. This contradicts the common intuition
+     that enough data rescues an independence assumption. The interval narrows like 1/√T, but so does the
+     estimate's true spread, and their ratio stays √f ≈ √((1 + φ)/(1 − φ)). The size was predicted from the
+     model and the pinned φ = 0 coverage alone, to within 0.03 in every registered cell.
+  2. **The plain MLE does not rescue the long-run PD; only the AR(1) model can.** The binomial MLE that
+     assumes independent periods understates PD in the median almost as much as simple averaging does
+     (−3.4% against −3.8% at φ = 0.6, from −1.1% and −1.5% at φ = 0), and its intervals are just as narrow.
+     So the improvement Miu and Ozdemir (2008) report comes from modelling the serial correlation, not from
+     maximum likelihood as such. S-35's M6 arm, the AR(1)-aware MLE on these same paired panels, is the
+     direct test of their claim.
+  3. **At n = 100, a stable coverage figure is a trap.** The observed-rate MLE's ρ coverage there is about
+     0.52 at every φ. That is two errors offsetting, not evidence of independence: granularity biases ρ̂ up
+     and serial correlation pulls it down. The level itself is also poor at φ = 0 (0.51), with n·PD at most
+     5. This reinforces S-27's threshold: the rate MLE matches counts only once n·PD reaches about
+     500–1,000.
+
+  The detail:
+  - **The binomial MLE's profile interval** for PD covers 0.86–0.88 at φ = 0.3 and 0.69–0.73 at φ = 0.6, in
+    every informative group (T = 20, 40, 100). Its ρ interval covers 0.92–0.93 and 0.82–0.86. At φ = 0.6
+    all 100 informative PD and ρ profile verdicts are below the band; at φ = 0.3, all 50 PD and 24 of 50 ρ.
+  - **Wald and t fall as the profile does,** within 0.02. The iid bootstrap does too for PD, but its ρ
+    interval falls further at small T: 0.067 more than the profile's at T = 20 and 0.038 more at T = 40, at
+    φ = 0.6 (L7).
+  - **The rate MLE on the n → ∞ rates** falls as the closed forms say. Its mean σ̂²/σ² equals 1 − f_μ/T
+    within Monte Carlo error in all 54 (cell, φ) pairs. Its PD coverage is 0.85–0.87 and 0.68–0.70, and its
+    ρ coverage 0.91–0.93 and 0.79–0.82.
+  - **ρ is biased further down:** the mean relative bias of the binomial MLE's ρ̂ moves by −0.115 at
+    T = 20 and −0.028 at T = 100 from φ = 0 to φ = 0.6, as the closed form predicts.
+  - **The simple average** is unbiased in mean at every φ (162 of 162 within 3 MCSE). It falls below PD more
+    often as φ grows (47 of 50), and its median relative error goes from −1.5% at φ = 0 to −3.8% at φ = 0.6.
+    Its t interval covers 0.66–0.71 at φ = 0.6.
+  - **Averaging against the MLE (Miu and Ozdemir's comparison):** the binomial MLE that ignores serial
+    correlation understates in the median almost as much as the average does: −1.1% at φ = 0, −3.4% at
+    φ = 0.6. On its own, an MLE that assumes independent periods does not fix the understatement; it needs
+    the AR(1) model (M6).
+  - **The observed-rate arm** (censored rate MLE on d/n): PD coverage in the informative groups is
+    0.87–0.89 at φ = 0.3 and 0.71–0.75 at φ = 0.6 (group A: 0.85 and 0.79). For ρ the two errors combine as registered (L14):
+    - **n = 100:** coverage stays about 0.52 at every φ. Granularity's upward bias and serial correlation's
+      downward pull partly cancel. It looks unchanged, but for the wrong reason.
+    - **n = 10,000:** coverage falls from 0.85 to 0.77.
+  - **q** (the 99.9% conditional PD): pooled profile coverage over the informative groups is 0.945, 0.917
+    and 0.819 at φ = 0, 0.3 and 0.6.
+- **Comparison with the predictions:** 12 of 15 held. The reference numbers, from the model and the pinned
+  φ = 0 coverage alone, matched the pooled coverage to within 0.03 in every registered cell of L4, L5,
+  L12 and L13.
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | L1 | the average within 3 MCSE of PD in ≥ 160 of 162 | 162 of 162 | yes |
+  | L2 | P(ā < PD) higher at φ = 0.6 in ≥ 40 of 50; group B's mean 0.56–0.70 | 47 of 50; group B **0.558** | **no** |
+  | L3 | rate MLE σ̂²/σ² within 3 MCSE of 1 − f_μ/T in ≥ 50 of 54 | 54 of 54 | yes |
+  | L4 | rate MLE pooled coverage per T and φ within ±0.03 | largest gap 0.026 (PD, T = 20, φ = 0.6) | yes |
+  | L5 | binomial pooled profile coverage per group and φ within ±0.03 | largest gap 0.022 (PD, B, φ = 0.6) | yes |
+  | L6 | group A falls less than group D | −0.028 vs −0.068; −0.093 vs −0.219 | yes |
+  | L7 | Wald, t, bootstrap falls within ±0.04 of the profile's | largest **0.067** (bootstrap ρ, B, φ = 0.6) | **no** |
+  | L8 | φ = 0.6: B against D within 0.04 (binomial PD); T = 20 against 100 (rate PD) | **0.041**; 0.025 | **no** |
+  | L9 | below the band: φ = 0.3 all 50 PD and 15–40 ρ; φ = 0.6 all 50 PD and ≥ 45 ρ | 50, 24; 50, 50 | yes |
+  | L10 | ρ̂ relative bias change: B −0.17 to −0.06, D −0.05 to −0.01 | −0.115, −0.028 | yes |
+  | L11 | the average's t interval within ±0.04 of its mapping | largest gap 0.011 | yes |
+  | L12 | observed-rate PD per group and φ within ±0.04 | largest gap 0.020 | yes |
+  | L13 | observed-rate ρ per n and φ within ±0.04 | largest gap 0.028 | yes |
+  | L14 | observed ρ, 0 to 0.6: n = 100 within 0.03, n = 10,000 at least 0.06 lower | +0.017; −0.080 | yes |
+  | L15 | observed mean logit ρ̂ lower at φ = 0.6 in ≥ 45 of 50 | 50 of 50 | yes |
+
+  - **L2's miss** is in size, by 0.002; the direction held in 47 of 50. The registered range came from a
+    rough skewness heuristic, which was centred well (0.62) but its lower edge was too tight: the effect at
+    T = 20 is real, but smaller than guessed.
+  - **L7's miss** is one cell: the iid bootstrap's ρ interval at T = 20 and φ = 0.6, which fell 0.067 more
+    than the profile's. Every other method, group and φ is within 0.04, and Wald and t within 0.02. The
+    bootstrap's ρ excess shrinks with T: 0.067, 0.038 and 0.017 at T = 20, 40 and 100.
+    Diagnosed after the run, not registered: a percentile interval counts the estimator's bias twice
+    (S-10's "shift" mechanism, D-181), and serial correlation adds a downward bias to ρ̂ that is largest at
+    small T (L10).
+  - **L8's miss** is by 0.001: group B's PD coverage at φ = 0.6 is 0.688 against D's 0.729. The reference
+    itself put them 0.021 apart, because at T = 20 the pinned φ = 0 coverage already starts lower. The
+    registered "less than 0.04" left too little room for that. The claim it tested holds in substance: from
+    T = 20 to T = 100 the coverage at φ = 0.6 rises by 0.04 for the binomial MLE and 0.025 for the rate MLE,
+    against an inflation factor that barely moves (3.2 to 3.1). A longer history does not repair it.
+- **Mitigation:**
+  1. **Check for serial correlation before reporting an interval.** The lag-1 autocorrelation of the probit
+     default rates estimates φ well enough to read the size of the problem: f ≈ (1 + φ)/(1 − φ).
+  2. **The AR(1)-aware MLE (M6)** is the structural fix, to be tested against this run's φ = 0.3 and 0.6
+     arms. Its intervals come by parametric bootstrap through `dgp/` (D-043).
+  3. **A sandwich (HAC) SE** that inflates the iid SE by an estimated √f is a cheaper candidate `native`
+     option. It is not tested here, and would need its own registration.
+  4. **On observed rates at small n,** an unchanged ρ coverage under serial correlation is not evidence of
+     independence: the granularity bias masks it. Below S-27's n·PD threshold, use counts.
+- **Monitoring implication (D-152), confirmed:** a PD interval computed on serially correlated default
+  history is too narrow by up to about √((1 + φ)/(1 − φ)): 1.36 at φ = 0.3 and 2 at φ = 0.6. This does not
+  shrink with the length of the history. A monitoring report that shows a PD interval should show the
+  residual lag-1 autocorrelation of the probit default rates beside it, and flag it when it is material
+  (at φ = 0.3 the PD interval's coverage is already about 0.87).
+  - **An apparently stable coverage figure can hide offsetting biases.** At n = 100 the observed-rate ρ
+    coverage does not move with φ, because two errors cancel. A backtest that sees coverage hold steady as
+    conditions change has not shown that the model holds. It must also check each error source on its
+    own: the serial correlation of the residuals, and n·PD against S-27's threshold.
 
 ### S-36 Rating philosophy and fitted correlation (`pit-ttc-rho`)
 

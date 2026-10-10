@@ -1223,6 +1223,46 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Where it pays:** only where panels are simulated per fit. That means parametric-bootstrap runs: S-10-type reruns, S-12's double bootstrap, and M6's AR(1) MLE intervals, which are resampled through `dgp/` (D-043).
   - **Conditions:** it is built and measured as a P-item before the first of those, and must reproduce the DGP's panels bit for bit: the same mirror, the same reference hashes.
 
+## S-35 run: serial correlation and the long-run PD, 2026-10-09
+
+- **D-192 (owner's order: scoring script, subset, full run) — S-35's result: intervals that assume independent periods are too narrow under an AR(1) factor, by a factor a longer history does not reduce; 12 of 15 predictions held.** Full entry: `studies/README.md`, S-35; files in `studies/lrpd-serial-correlation/`; the rows on the release `s35-data-2026-10-09` (D-163).
+  - **Order kept:**
+    - the observed-rate arm registered (L12–L15, owner);
+    - `compare.py` committed;
+    - the subset run;
+    - the full run (81 × 1,000 × φ ∈ {0, 0.3, 0.6}, 1,056 s).
+  - **Checks:** every φ = 0 check passed. The binomial and rate MLEs' counts equal the pinned summaries'. The observed-rate arm's 81,000 rows equal S-8's bit for bit.
+  - **The main result:** the binomial MLE's PD profile interval covers 0.86–0.88 at φ = 0.3 and 0.69–0.73 at φ = 0.6, at T = 20, 40 and 100 alike. Its ρ interval covers 0.92–0.93 and 0.82–0.86.
+    - **The reference numbers predicted the pooled coverage within 0.03 everywhere,** for the binomial, rate and observed-rate arms. They were computed before the run from the model and pinned φ = 0 results alone: the sandwich variance inflation, and closed forms for the rate MLE.
+    - **The rate MLE's σ̂² bias** is the closed form 1 − f_μ/T in all 54 (cell, φ) pairs.
+  - **Averaging against the MLE:**
+    - **The average:** unbiased in mean, but its median falls (−1.5% to −3.8% from φ = 0 to 0.6).
+    - **The binomial MLE that ignores serial correlation** understates in the median almost as much (−1.1% to −3.4%). The improvement Miu and Ozdemir (2008) report needs the AR(1) model, M6's arm.
+  - **The two errors combine on observed rates:** at n = 100 the censored rate MLE's ρ coverage stays about 0.52 at every φ, because granularity's upward bias and serial correlation's downward pull partly cancel. At n = 10,000 it falls from 0.85 to 0.77.
+  - **Misses, recorded:**
+    - **L2:** group B's mean P(ā < PD) at φ = 0.6 was 0.558, against 0.56–0.70. The direction held in 47 of 50.
+    - **L7:** the iid bootstrap's ρ interval at T = 20 and φ = 0.6 fell 0.067 more than the profile's, against ±0.04. A post-hoc diagnosis: a percentile interval double-counts the extra downward bias.
+    - **L8:** binomial PD coverage at φ = 0.6 was 0.041 apart between T = 20 and T = 100, against < 0.04. The reference itself put them 0.021 apart; the threshold was too tight. The substance held: the inflation barely moves with T.
+  - **The runtime projection missed (a second test of D-187).** S-35's projection, recorded before the run, was 0.39 h (0.35–0.43 h); the run took 0.293 h at efficiency 1.00.
+    - **Cause, diagnosed:** the 2-replicate sample charged the surface-row cache's first fills to too few jobs. This tool does not time them as a "once" phase. 8 and 32 replicates project 0.28 h.
+    - **The range could not see it:** it measures sampling noise, not bias.
+  - **Change to D-187's method, for the owner's review:**
+    - **The rule:** `perf/project_runtime.py --run` now stops only when the range is within the target **and** the projection agrees with the previous sample size's within the target.
+    - **On S-35:** it stops at 16 replicates per scenario with 0.29 h (0.28–0.30 h), with the actual 0.293 h in range.
+    - **On S-10:** the calibration predates this rule. Its tool times the cache fill as a "once" phase, so the bias should be smaller there. The next S-10-type run rechecks it under the new rule.
+    - **The method's status** stays "calibrated, not validated": on its second test, the registered sampling rule missed.
+  - **Monitoring implication (D-152), confirmed:**
+    - **The size:** a PD interval on serially correlated default history is too narrow by up to √((1 + φ)/(1 − φ)), whatever the history's length.
+    - **The report:** a monitoring report that shows a PD interval should show the residual lag-1 autocorrelation of the probit default rates beside it.
+  - **Next for S-35:** M6's AR(1)-aware MLE, its predictions appended before its run. A HAC (sandwich) SE is a cheaper candidate `native` option, not yet registered.
+  - **Owner's review (same day):**
+    - **The D-187 amendment is approved,** with one addition: tools record fixed and per-replicate costs separately, and the projection adds the fixed part once (D-193). The agreement check stays as a safety net, and the label stays "calibrated, not validated" until a run lands in range.
+    - **The write-up leads with three findings:**
+      - a longer history does not fix it;
+      - the plain MLE does not rescue the long-run PD, which makes S-35's M6 arm the test of Miu and Ozdemir's (2008) claim;
+      - at n = 100 the stable observed-rate ρ coverage is two errors offsetting. Its level (0.51 at φ = 0) reinforces S-27's n·PD threshold.
+    - **The monitoring implication now says plainly** that an apparently stable coverage figure can hide offsetting biases.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

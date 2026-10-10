@@ -116,3 +116,49 @@ verdicts it could change" (D-149) for every PD and ρ verdict of every interval.
 computed on default history is too narrow by up to about √((1 + φ)/(1 − φ)) when the history is serially
 correlated, whatever its length. A residual autocorrelation check belongs before any interval is
 reported.
+
+## Addendum, 2026-10-09: a second rate-MLE arm on the observed rates (owner), registered before any run
+
+Appended before any run of S-35; nothing above changes. The rate MLE on the n → ∞ rates stays the
+primary rate arm: it isolates serial correlation. The owner asked for a second arm on the rates as a
+practitioner observes them, as Miu and Ozdemir's (2009) first step applies the rate model. It shows how
+serial correlation and granularity error combine.
+
+- **The arm:** the Vasicek-rate MLE on the observed rates d_t/n of the same count panels, with S-28's
+  censored treatment of zero-default periods (detection limit 1/(2n), D-044). It is fitted exactly as the S-8
+  pass fitted it (`study_estimator_pass`): one refusing fit where no period has d = 0 or d = n, since the
+  two likelihoods are the same there, and otherwise the censored likelihood. The estimate is the polished
+  maximum, the interval is the profile interval, and coverage is of the generating PD and ρ.
+- **Check before scoring:** at φ = 0 the arm's estimates and coverage indicators must equal the pinned S-8
+  rows (`studies/mle-vs-mom/fits.parquet`, the `censor_*` columns) bit for bit, replicate by replicate.
+- **Reference numbers** ([`reference_observed.py`](reference_observed.py), `reference_observed.csv`) come
+  from those pinned rows only. Unlike the n → ∞ arm, this estimator is biased at φ = 0: S-28 found ρ̂
+  biased up where n·PD is small, because binomial noise is read as factor variance. So the mapping
+  carries each scenario's own φ = 0 bias b₀ and spread s₀ (logit) forward:
+  - the interval's half-width w is the one that reproduces the pinned coverage c₀ for a normal estimate
+    with bias b₀ and spread s₀;
+  - at φ the spread becomes s₀√f, with f the binomial MLE's inflation for the parameter (`reference.csv`);
+  - ρ's bias moves down by (f_PD − 1)/T in logit, the extra downward bias of a variance about the mean of T
+    dependent periods;
+  - PD's bias does not move.
+- **What it implies:** where granularity error dominates (n = 100, ρ̂ biased up by about 2.7 spreads at
+  φ = 0), serial correlation's downward pull on ρ̂ offsets its wider spread, and ρ coverage barely
+  moves. Where granularity error is small (n = 10,000) ρ coverage falls as in the n → ∞ arm.
+
+| # | Prediction |
+|---|---|
+| L12 | **PD coverage follows the inflation from its own starting point:** pooled per group and φ, within ±0.04 of `reference_observed.csv`'s means: A 0.84 / 0.77, B 0.87 / 0.73, C 0.89 / 0.74, D 0.88 / 0.74 (φ = 0.3 / 0.6) |
+| L13 | **ρ coverage, pooled per n and φ,** is within ±0.04 of the reference means: n = 100: 0.51 / 0.51; n = 1,000: 0.69 / 0.65; n = 10,000: 0.84 / 0.76 |
+| L14 | **The two errors partly cancel for ρ:** at n = 100 the pooled ρ coverage at φ = 0.6 is within 0.03 of its φ = 0 value, while at n = 10,000 it is at least 0.06 below it |
+| L15 | **Serial correlation pulls ρ̂ down here too:** the paired mean of logit ρ̂ at φ = 0.6 is below its φ = 0 value in at least 45 of the 50 informative scenarios |
+
+## Addendum, 2026-10-09: scoring fixed before the subset run
+
+Appended before the subset run; no prediction, threshold or definition above changes.
+
+- **The scoring script** is [`compare.py`](compare.py), committed with this note. It runs the checks first and stops on any failure:
+  - the binomial and rate MLEs' φ = 0 counts against the pinned summaries;
+  - the observed-rate arm's φ = 0 rows against S-8's, bit for bit.
+- **Pooling:** per-scenario coverages are averaged over the scenarios pooled, R being equal. Wald and t coverage is among unflagged fits, as pinned; profile, bootstrap and every rate-MLE coverage is over all replicates, with a not-computed interval missing. "Below the band" is coverage below the scenario's pinned profile band (`profile_band_lo_hex`).
+- **The subset run** (the study subset of D-150, 9 scenarios × 1,000) is scored by the same script and reported as a subset, not as the study's result.
+- **Disclosure:** the tool was run on 3 replicates of every scenario at each φ, to check the code and the pipeline: the φ = 0 checks passed, and the script ran to completion. Only its exit code and row count were read; those rows are not results. Before that, replicates 0–2 at φ = 0 alone were compared with S-8's rows (243 of 243 identical), and 2 replicates at each φ ran for the timing sample, whose rows were not read.

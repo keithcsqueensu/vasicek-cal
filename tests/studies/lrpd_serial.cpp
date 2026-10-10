@@ -10,7 +10,8 @@
 //     functions;
 // and per (PD, rho, T) cell and replicate, the Vasicek-rate MLE on the n -> infinity rates
 // r_t = p(Z_t) of the AR(1) factor of the cell's n = 10,000 scenario, fitted as rate_recovery_harness's
-// rate_fit fits them (refuse; calibrate, profile intervals, q's interval).
+// rate_fit fits them (refuse; calibrate, profile intervals, q's interval); and per panel the observed-rate
+// arm, the rate MLE on d_t / n with S-28's censored treatment, as study_estimator_pass fits it.
 // Nothing is scored here: studies/lrpd-serial-correlation/compare.py scores the rows, after checking that
 // the phi = 0 rows reproduce the pinned summaries' counts.
 //
@@ -46,9 +47,10 @@ namespace o = vcal::objectives;
 namespace e = vcal::engine;
 using Clock = std::chrono::steady_clock;
 using RateObjective = o::VasicekRate<PrecisionF64, o::ZeroRates::Refuse>;
+using CensorObjective = o::VasicekRate<PrecisionF64, o::ZeroRates::Censor>;
 
-enum Phase { kSimulate, kBinomial, kRate, kPhases };
-const char* const kPhaseNames[kPhases] = {"simulate", "binomial MLE", "rate MLE"};
+enum Phase { kSimulate, kBinomial, kRate, kObserved, kPhases };
+const char* const kPhaseNames[kPhases] = {"simulate", "binomial MLE", "rate MLE", "observed-rate MLE"};
 
 struct Timer {
     double* acc;
@@ -66,6 +68,46 @@ struct Row {
     std::int8_t wald[2], t[2], prof[2], boot[2], q_prof;
     std::uint32_t prof_flags[2];
 };
+
+// The observed-rate arm (PREDICTION.md, addendum: L12-L15): the rate MLE on d_t / n, fitted exactly as
+// study_estimator_pass fits its censored treatment, so that phi = 0 reproduces the pinned S-8 rows.
+struct ObservedRow {
+    double pd = std::nan(""), rho = std::nan("");
+    std::uint32_t flags = 0;
+    std::int8_t cover[2] = {-1, -1};  // -1 not estimated (an engine error); a not-computed interval misses
+};
+
+template <class O>
+ObservedRow observed_fit(const rc::Scenario& s, const std::vector<o::RateObs>& obs) {
+    static const auto primary = quadrature::parity_rule();
+    static const auto check = quadrature::parity_rule(true);
+    const Grid<2> g = rc::grid();
+    const auto T = static_cast<std::int64_t>(obs.size());
+    std::vector<double> L;
+    e::Estimate2 est{};
+    ObservedRow out;
+    if (e::calibrate(backends::CpuBackend{1}, O{}, primary, check, obs.data(), T, g, L, est) != e::Status::Ok) return out;
+    const auto prof = e::profile_intervals(O{}, primary, obs.data(), T, g, L, est);
+    out.pd = prof.max_at[0];
+    out.rho = prof.max_at[1];
+    out.flags = est.flags;
+    const double truth[2] = {s.pd, s.rho};
+    for (int a = 0; a < 2; ++a) {
+        out.cover[a] = static_cast<std::int8_t>(!(prof.flags[a] & e::kIntervalNotComputed) && prof.lo[a] <= truth[a] &&
+                                                truth[a] <= prof.hi[a]);
+    }
+    return out;
+}
+
+ObservedRow observed_row(const rc::Scenario& s, const std::vector<std::int64_t>& d) {
+    std::vector<o::RateObs> rates(d.size());
+    bool boundary = false;
+    for (std::size_t t = 0; t < d.size(); ++t) {
+        rates[t] = o::rate_obs(s.obligors, d[t]);
+        boundary = boundary || o::is_boundary_rate(rates[t]);
+    }
+    return boundary ? observed_fit<CensorObjective>(s, rates) : observed_fit<RateObjective>(s, rates);
+}
 
 struct RateRow {
     double pd, rho;
@@ -238,6 +280,7 @@ int main(int argc, char** argv) {
     const std::size_t S = ids.size();
     std::vector<Row> rows(S * R * P);
     std::vector<RateRow> rate_rows(S * R * P);
+    std::vector<ObservedRow> observed_rows(S * R * P);
     std::vector<char> has_rate(S, 0);
     for (std::size_t k = 0; k < S; ++k) has_rate[k] = rc::scenario(ids[k]).obligors == 10000 ? 1 : 0;
     std::vector<double> seconds(S * R * kPhases, 0.0);
@@ -261,6 +304,10 @@ int main(int argc, char** argv) {
                     Timer t{&sec[kBinomial]};
                     rows[job * P + p] = binomial_row(s, r, d, cache);
                 }
+                {
+                    Timer t{&sec[kObserved]};
+                    observed_rows[job * P + p] = observed_row(s, d);
+                }
                 if (has_rate[k]) {
                     Timer t{&sec[kRate]};
                     rate_rows[job * P + p] = rate_row(s, r, phis[p]);
@@ -278,7 +325,7 @@ int main(int argc, char** argv) {
                        "# coverage indicators: 1 covers, 0 misses, -1 not computed (Wald and t: flagged fit)\n"
                        "phi,scenario,replicate,pd_true,rho_true,periods,obligors,avg,avg_lo,avg_hi,pd,rho,flags,"
                        "wald_pd,wald_rho,t_pd,t_rho,prof_pd,prof_rho,boot_pd,boot_rho,q_prof,prof_flags_pd,"
-                       "prof_flags_rho\n";
+                       "prof_flags_rho,obs_pd,obs_rho,obs_flags,obs_cover_pd,obs_cover_rho\n";
     std::string rtext = "# S-35 rate MLE on the n -> infinity rates: one row per (phi, PD, rho, T, replicate)\n"
                         "phi,z_source_scenario,replicate,pd_true,rho_true,periods,pd,rho,flags,cover_pd,cover_rho,"
                         "cover_q\n";
@@ -288,13 +335,15 @@ int main(int argc, char** argv) {
             for (std::uint32_t r = 0; r < R; ++r) {
                 const std::size_t job = k * R + r;
                 const Row& w = rows[job * P + p];
+                const ObservedRow& ob = observed_rows[job * P + p];
                 std::snprintf(buf, sizeof buf,
                               "%.17g,%u,%u,%.17g,%.17g,%lld,%lld,%.17g,%.17g,%.17g,%.17g,%.17g,%u,%d,%d,%d,%d,%d,%d,%d,%d,"
-                              "%d,%u,%u\n",
+                              "%d,%u,%u,%.17g,%.17g,%u,%d,%d\n",
                               phis[p], s.id, r, s.pd, s.rho, static_cast<long long>(s.periods),
                               static_cast<long long>(s.obligors), w.avg, w.avg_lo, w.avg_hi, w.pd, w.rho, w.flags,
                               w.wald[0], w.wald[1], w.t[0], w.t[1], w.prof[0], w.prof[1], w.boot[0], w.boot[1],
-                              w.q_prof, w.prof_flags[0], w.prof_flags[1]);
+                              w.q_prof, w.prof_flags[0], w.prof_flags[1], ob.pd, ob.rho, ob.flags, ob.cover[0],
+                              ob.cover[1]);
                 text += buf;
                 if (!has_rate[k]) continue;
                 const RateRow& q = rate_rows[job * P + p];
@@ -318,7 +367,8 @@ int main(int argc, char** argv) {
     for (std::size_t j = 0; j < S * R; ++j) {
         for (int ph = 0; ph < kPhases; ++ph) total[ph] += seconds[j * kPhases + static_cast<std::size_t>(ph)];
     }
-    const double all = total[0] + total[1] + total[2];
+    double all = 0.0;
+    for (int ph = 0; ph < kPhases; ++ph) all += total[ph];
     std::printf("%u replicates x %zu scenarios x %zu phi in %.0f s (%u threads; %zu cached surface rows); CPU s %.0f:",
                 R, S, P, wall, threads, cache.size(), all);
     for (int ph = 0; ph < kPhases; ++ph) std::printf(" %s %.0f (%.0f%%);", kPhaseNames[ph], total[ph], 100.0 * total[ph] / all);

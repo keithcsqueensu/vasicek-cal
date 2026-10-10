@@ -28,8 +28,12 @@ To be called validated after it lands in range on the next full run.
         [--start 2] [--target 0.10] [--max 32] [--threads 24] [--subset ...]
 
 With --run the tool is run with --replicates K (K = --start, then doubled) and --timing-out, until the
-range is within +/- target of the projection or K reaches --max; each run starts from replicate 0, so the
-samples cost at most twice the last one. Standard library only.
+range is within +/- target of the projection AND the projection agrees with the previous K's within the
+same target, or K reaches --max; each run starts from replicate 0, so the samples cost at most twice the
+last one. The agreement check (D-192) catches a bias the range cannot: S-35's 2-replicate sample projected
+0.40 h (range +/-10%) against 0.28 h at 8 and 32 replicates and 0.293 h actual, because one-time costs (the
+surface-row cache's first fills) that a tool does not time as a "once" phase were charged to too few jobs.
+Standard library only.
 """
 
 from __future__ import annotations
@@ -145,6 +149,7 @@ def main():
     if not a.run:
         ap.error("give a SAMPLE file or --run")
     k = a.start
+    previous = None  # the last sample's projection: a bias check the range cannot give (D-192)
     with tempfile.TemporaryDirectory() as d:
         while True:
             out = Path(d) / f"timing_{k}.csv"
@@ -158,12 +163,16 @@ def main():
             tool, shares, jobs = read_sample(out)
             s = summarise(jobs, shares, a.replicates_full, a.threads, a.efficiency, subset)
             report(tool, s)
-            if s["half"] <= a.target:
+            drift = abs(s["point"] - previous) / s["point"] if previous is not None else None
+            if drift is not None:
+                print(f"  against {k // 2} replicates per scenario: {100 * drift:.0f}% apart")
+            if s["half"] <= a.target and drift is not None and drift <= a.target:
                 return 0
             if 2 * k > a.max:
-                print(f"  range still wider than +/-{100 * a.target:.0f}% at {k} replicates per scenario: "
-                      "report the projection with its range", file=sys.stderr)
+                print(f"  range or agreement still wider than +/-{100 * a.target:.0f}% at {k} replicates per "
+                      "scenario: report the projection with its range", file=sys.stderr)
                 return 3
+            previous = s["point"]
             k *= 2
 
 
