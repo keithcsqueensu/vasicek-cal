@@ -135,6 +135,19 @@ not delay M3.
 | S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
 | S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
+| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | not registered (D-188; highest priority of the addendum) |
+| S-36 | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
+| S-37 | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
+| S-38 | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
+| S-39 | `plug-in-factor` | Do grade parameters' intervals cover when the factor is estimated, not known? | M6 with M7 | not registered (D-188) |
+| S-40 | `correlation-choice-stress` | Fixed, common or grade-specific correlation: effect on stressed PDs? | M6 | not registered (D-188) |
+| S-41 | `external-internal-factor` | How large is the stressed-PD error when the internal factor is not the external one? | M6 with M7 | not registered (D-188) |
+| S-42 | `spec-search-rules` | How often does each specification-selection rule recover a known true model? | M7 | not registered (D-188) |
+| S-43 | `overlapping-series-ar1` | How much do overlapping series inflate the AR(1) coefficient? | M6 (methodology note) | not registered (D-188) |
+| S-44 | `lrpd-bootstrap-vs-closed-form` | Is bootstrapping the macro variables needed for the long-run PD? | M7 (likely a numerical check) | not registered (D-188) |
+| S-45 | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
+| S-46 | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
+| S-47 | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
 
 Costs below are estimates from the subset measurement above unless marked measured, and are
 refined in each study's `PREDICTION.md`.
@@ -1363,3 +1376,270 @@ scales in the order L, M, H.
   listed in CLAUDE.md, so this needs a scope decision first.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
+## Addendum: published-method questions (S-35 to S-47; D-188)
+
+Questions raised by published work on long-run PD, stress testing and lifetime losses
+(`docs/references.md`). The papers are public motivation only: each study asks its question on synthetic
+data first (and public data where stated), under D-148's rules.
+- **Before any run:** each study is pre-registered.
+- **Subset first:** it is explored on the study subset.
+- **Every verdict:** it is judged on every verdict its variant could change.
+
+**Cost basis.** The costs below are planning estimates, against the current baseline: the full recovery
+matrix (81 × 1,000, binomial fits with profile and bootstrap intervals) runs in about 5 minutes on 24 threads
+(285 s, with P-15), and the subset in under 1. Before any full run, its runtime is projected from a timing
+sample (D-187). Studies that need machinery not yet built (M6's multi-grade and multi-segment calibration,
+M7's macro pipeline) have only an order of magnitude until that tool exists.
+
+None is registered: **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+**Monitoring implication:** to be filled in when the study finishes (D-152).
+
+### S-35 Long-run PD under serial correlation (`lrpd-serial-correlation`)
+
+- **Question:** when the systematic factor is serially correlated, how biased are the long-run PD by simple
+  averaging of default rates and the binomial MLE that assumes independent periods, and do their intervals
+  cover? Does an MLE that models the serial correlation fix it?
+- **Motivation:** Miu and Ozdemir (2008), who find that the simple average tends to understate the long-run
+  PD and that an MLE with serial correlation does better.
+- **Experiment:**
+  - **The DGP:** an AR(1) factor, Z_t = φ Z_{t−1} + √(1 − φ²) ε_t, keeping Z_t ~ N(0, 1) marginally, with
+    φ ∈ {0, 0.3, 0.6}. φ = 0 is the existing DGP and pairs with the pinned run.
+  - **Estimators:** the simple average of d_t/n_t; the parity binomial MLE; the Vasicek-rate MLE; and an MLE
+    with an AR(1) factor (M6).
+  - **What is reported:** bias, RMSE and coverage of PD (and ρ) for each.
+- **Verdicts it could change:** every PD and ρ verdict of the paired φ = 0 scenarios, for each interval.
+  Serial correlation lengthens the effective sample, which every interval assumes is T independent periods.
+- **Overlaps:**
+  - **S-11:** its misspecification study already includes an AR(1)-factor DGP for the standard fit. S-35
+    shares that DGP variant: one key domain, prose, Python mirror and hash (D-149). It adds the long-run-PD
+    framing and the simple-average estimator.
+  - **M6:** the MLE with an AR(1) factor is M6's AR(1) factor.
+  - **S-13:** its finding that profile intervals are a point short at T = 20 is the baseline that serial
+    correlation would worsen.
+- **Placement:** two parts.
+  - **Now (highest priority of this addendum, owner):** the DGP variant, and the simple average and the
+    existing MLEs.
+  - **With M6:** the AR(1)-aware MLE.
+- **Cost:** about the baseline per φ. The subset at three φ takes a few minutes, and the full matrix
+  about 15–30 minutes.
+
+### S-36 Rating philosophy and fitted correlation (`pit-ttc-rho`)
+
+- **Question:** how does the ρ fitted to a grade's default history change as the rating system moves from
+  through-the-cycle (TTC) to point-in-time (PIT)?
+- **Motivation:** Miu and Ozdemir (2005), who argue that the correlation implied by a grade's history is
+  higher under TTC. That direction is the candidate prediction.
+- **Experiment:**
+  - **The DGP:** an obligor-level population, each obligor with a latent PD, and a rating rule with a
+    PIT-ness parameter λ ∈ [0, 1]:
+    - λ = 0 (TTC): grades stay fixed through the cycle, so default rates move with Z;
+    - λ = 1 (PIT): obligors are re-rated each period so that grade PDs track Z.
+  - **What is reported:** the single-grade binomial fit to each grade's default history, as a function of λ.
+- **Verdicts it could change:** none of the pinned verdicts. It is a new DGP with its own reference values,
+  ρ̂ against λ.
+- **Overlaps:**
+  - **S-29 and S-30:** both study grade scales. Their per-grade DGP is the natural base for the population.
+  - **S-33:** it models rating assignment.
+- **Placement:** M6, which has multi-grade calibration and the grade scenario matrix. The obligor-level
+  rating rule is new generator code and needs D-149's artifacts.
+- **Cost:** dominated by the obligor-level simulation (n × T draws per panel), not the fits: an order of
+  magnitude above the baseline.
+
+### S-37 The asymptotic rate MLE as least squares (`rate-mle-least-squares`)
+
+- **Question:** is the infinitely granular (asymptotic) MLE of the Vasicek rate model equal to least
+  squares on the probit-transformed default rates, with and without covariates? If so, document the
+  least-squares form as a replication aid.
+- **Motivation:** Yang (2013).
+- **Assessment: recommended as documentation, not a study.**
+  - **Without covariates, the equivalence is already this library's closed form:** the Vasicek-rate MLE is
+    the sample mean and 1/T variance of Φ⁻¹(R_t) (`docs/methodology/vasicek_rate_mle.md`, D-164). That is
+    least squares on an intercept, and the recovery runs check the closed form already.
+  - **With covariates,** it is the first step of the published-method track (`STATE.md`) in the
+    infinitely granular limit. It belongs there, as an identity stated and unit-tested against the
+    likelihood, not as a study with verdicts.
+- **Placement:** with the published-method track (M7). **Cost:** negligible.
+
+### S-38 Granularity error in factor extraction (`granularity-factor-extraction`)
+
+- **Question:** when a systematic factor is extracted from finite-portfolio default rates as if they were
+  infinitely granular, how large is the error, and how does it carry through to stressed PDs? Where does
+  the error become material, compared with S-27's threshold?
+- **Motivation:** Miu and Ozdemir (2009), Step 1, which assumes infinite granularity. The paper notes the
+  approximation fails below about 100 borrowers, citing Miu and Ozdemir (2008).
+- **Experiment:** the existing DGP with known Z_t. Each period's factor is extracted two ways:
+  - by inverting the rate, as in the rate model;
+  - by E[Z_t | d_t] under the binomial model.
+
+  The resulting stressed PDs are compared with those from the true Z_t, across n.
+- **Verdicts it could change:** none pinned. It reports errors against known factors.
+- **Overlaps:**
+  - **S-19:** Z_t extraction, E[Z_t | d_t], is the binomial half of this.
+  - **S-27:** the rate MLE against the binomial MLE, with its n·PD threshold. S-38 is the factor-level
+    version of S-27.
+- **Placement:**
+  - **Now, or with S-19:** the factor-extraction error, which needs nothing new.
+  - **With M7:** the stressed-PD propagation, which needs a factor model.
+- **Cost:** minutes. Extraction is per period and closed form or a one-dimensional integral.
+
+### S-39 The estimated factor plugged into the second step (`plug-in-factor`)
+
+- **Question:** when grade parameters (default points, the correlation) are estimated given an
+  *estimated* factor series, as if it were known, do their intervals still cover? This is the
+  generated-regressor problem.
+- **Motivation:** Miu and Ozdemir (2009), Step 2.
+- **Experiment:** multi-grade panels with known factors. The grade parameters are fitted twice, once
+  given the true factor series and once given the factor estimated in a first step. The coverage of the
+  grade default points is compared, and a corrected interval (a bootstrap over both steps) is tested.
+- **Verdicts it could change:** new verdicts on the grade parameters, both arms reported.
+- **Overlaps:**
+  - **S-19:** the factor estimate.
+  - **M6:** multi-grade calibration.
+  - **S-35:** if the factor is AR(1).
+- **Placement:** M6 (multi-grade, given a factor series) with M7's factor model. **Cost:** on the order of
+  the baseline per arm, once M6 exists.
+
+### S-40 Fixed, estimated or grade-specific correlation (`correlation-choice-stress`)
+
+- **Question:** how much do stressed PDs depend on the correlation choice: fixed at a stated value, estimated
+  in common across grades, or grade-specific? How much does each misstate them when the truth is another?
+- **Motivation:**
+  - **Miu and Ozdemir (2009):** their worked example fixes R² = 0.20, while the general method estimates it.
+  - **Yang and Du (2015):** they give each grade its own correlation.
+- **Experiment:** multi-grade DGPs with a common ρ and with grade-specific ρ_k. Each is fitted with the three
+  correlation choices, and stressed PDs are compared under a set of scenarios.
+- **Verdicts it could change:** the M6 multi-grade verdicts on ρ and on stressed PDs.
+- **Overlaps:**
+  - **S-30:** its shared-ρ calibration across buckets is one of the three arms.
+  - **M6:** a shared ρ (D-151) is M6's model, and grade-specific ρ would extend it.
+- **Placement:** fold into M6's multi-grade work (owner). **Cost:** about the baseline per arm, once M6
+  exists.
+
+### S-41 External factor against internal factor (`external-internal-factor`)
+
+- **Question:** the method's core assumption is that the internal portfolio's systematic factor is
+  *identical* to the factor extracted from external data. How large is the stressed-PD error as the
+  correlation between the two factors falls below 1?
+- **Motivation:** Miu and Ozdemir (2009), Step 2.
+- **Experiment:** two correlated factors, an external one Z^e and an internal one Z^i, with
+  corr(Z^e, Z^i) ∈ {1, 0.9, 0.7, 0.5}. The internal grades are fitted assuming Z^i = Z^e, and the stressed
+  internal PDs are compared with the truth under scenarios on Z^e.
+- **Verdicts it could change:** new verdicts on the stressed PDs.
+- **Overlaps:**
+  - **M6:** the correlated two-factor DGP is M6's multi-segment correlated factors.
+  - **S-47:** its synthetic part is the same experiment with regional or sector factors. **Run S-41 and
+    S-47's synthetic part as one experiment** with two readouts.
+- **Placement:** M6 (multi-segment) with M7's factor model. **Cost:** about the baseline per correlation
+  level, once M6 exists.
+
+### S-42 Specification-search rules (`spec-search-rules`)
+
+- **Question:** given a set of candidate macro specifications, how often does each selection rule recover a
+  known true model, and how large is the stressed-PD error when it does not? The rules:
+  - the summed ranks of McFadden's adjusted pseudo-R² and the leave-one-out median RMSE (2009);
+  - AIC and BIC;
+  - walk-forward out-of-sample error;
+  - the bootstrap selection frequency.
+- **Motivation:** Miu and Ozdemir (2009), whose selection ranks 154 specifications by the summed ranks.
+- **Experiment:** synthetic factor series driven by a known subset of synthetic macro variables, with
+  decoys correlated with them. Each rule is applied, and the true-model recovery rate and the stressed-PD
+  error are reported, at T = 20, 40 and 100.
+- **Verdicts it could change:** none pinned. These are new verdicts on selection.
+- **Overlaps:**
+  - **M7:** its batched specification fits, pluggable scorers and config-driven ranker are the tool. This
+    study is their test bed.
+  - **S-18:** the macro sign filters.
+- **Placement:** M7. **Cost:** specifications × replicates × fits, batched as the B dimension (M7). Likely
+  hours on the full matrix, to be projected once the ranker exists.
+
+### S-43 Overlapping series and the AR(1) coefficient (`overlapping-series-ar1`)
+
+- **Question:** how much does using overlapping series (quarterly-observed 12-month default rates) inflate
+  the estimated AR(1) coefficient of the factor, and what correction recovers it?
+- **Motivation:** Miu and Ozdemir (2009), who note that overlapping series give a higher estimate.
+- **Experiment:** an AR(1) factor at quarterly frequency; 12-month default rates observed quarterly and
+  annually; φ estimated from each. The answer is largely analytic: overlap of three quarters induces
+  moving-average autocorrelation.
+- **Assessment: small; a methodology note with a simulation check rather than a full study.**
+- **Overlaps:** S-35 (the AR(1) DGP) and M6 (the AR(1) estimator).
+- **Placement:** with M6's AR(1) factor. **Cost:** minutes.
+
+### S-44 Long-run PD by bootstrapping macro variables (`lrpd-bootstrap-vs-closed-form`)
+
+- **Question:** the long-run PD and migration rates can be evaluated by simulation, bootstrapping the
+  explanatory variables, or in closed form under a stationary distribution for the factor. Is the
+  resampling necessary within tolerance?
+- **Motivation:** Miu and Ozdemir (2009).
+- **Experiment:** factor models with Gaussian and with skewed or heavy-tailed macro variables. Compare the
+  bootstrap long-run PD with the closed-form stationary one (a one-dimensional integral over the
+  stationary factor distribution), against a long-simulation reference.
+- **Assessment: likely a numerical check.** Under a Gaussian stationary factor the two agree by
+  construction, so the study's content is the non-Gaussian case. It may reduce to a statement and a test in
+  the published-method track.
+- **Placement:** M7 (needs the factor model). **Cost:** minutes.
+
+### S-45 Lifetime PD: convexity adjustment, scenario weighting, full integration (`lifetime-pd-scenarios`)
+
+- **Question:** for a lifetime PD conditional on a factor path, how close are a convexity adjustment to a
+  base path and the weighting of a few scenarios to full integration over the factor's distribution, as
+  horizon, PD and ρ vary?
+- **Motivation:** Miu and Ozdemir (2017) and Chawla, Forest and Aguais (2017).
+- **Experiment:** term structures from a factor process (iid and AR(1)), computed three ways:
+  - full integration, as the reference;
+  - a convexity adjustment;
+  - weighting 3–5 scenarios.
+
+  The error is reported by horizon, PD and ρ.
+- **Verdicts it could change:** none pinned. These are new verdicts on the approximations' error.
+- **Overlaps:** S-35 and M6 (the AR(1) factor), and the lifetime PD feature (`STATE.md`), which is the tool.
+- **Placement:** after M7, with the lifetime PD feature. **Cost:** small; integrals, not fits.
+
+### S-46 Tail loss with fixed LGD and EAD (`fixed-lgd-ead-tail`)
+
+- **Question:** how much is the tail of the credit-loss distribution understated when LGD and EAD are held
+  fixed rather than linked to the systematic factor?
+- **Motivation:** Miu and Ozdemir (2006, 2023).
+- **Scope:** study tier only (owner). The engine has no LGD or EAD models and gains none. The study uses the
+  engine's default model and a stated, synthetic factor link for LGD and EAD, so that the comparison is
+  replicable in a short script.
+- **Experiment:** portfolio losses from the default model with LGD and EAD either fixed at their means or
+  linked to Z_t. The 99.9% loss quantile and expected loss are compared across link strengths.
+- **Assessment: the furthest from this library's scope.** It is worth keeping only as a bound on what a PD
+  model leaves out, and it ranks last.
+- **Placement:** after M5 (it needs the loss quantile machinery of S-23 and S-30). **Cost:** minutes.
+
+### S-47 Regional and sector factors (`regional-sector-factors`)
+
+- **Question:** for a regional or sector segment more sensitive to commodity prices than the national
+  portfolio, how different are stressed PDs under a national factor specification and under a
+  segment-specific one, for an oil-price shock?
+- **Motivation:** Miu and Ozdemir (2009). Its argument for calibrating to portfolios that resemble the one
+  being stressed is illustrated by the Province of Alberta, a motivating remark rather than a worked
+  example.
+- **Experiment, in two parts:**
+  - **Synthetic first:** two segment factors with a known correlation and different loadings on a
+    commodity driver; national against segment-specific specifications; the stressed-PD gap under a
+    commodity shock. This is S-41's experiment, and runs with it.
+  - **Public data:**
+    - **Segments:** Alberta against the rest of Canada, and an agriculture segment.
+    - **Default proxy:** business insolvency counts (the Office of the Superintendent of Bankruptcy's insolvency statistics, OSB).
+    - **Counts and macro:** StatCan's business counts and macro series.
+    - **Commodities:** WTI and commodity price indices.
+- **Caveats:**
+  - **Insolvency is a default proxy,** with its own reporting conventions.
+  - **Cell sufficiency** is checked against S-2's sample-size table before any fit. A province-by-sector
+    cell can have too few events for ρ.
+  - **The data source:** the owner's plan is a separate data repository with pinned releases. No decision
+    records that repository yet, so it needs its own D-entry before this part starts, and D-163's data
+    policy applies.
+- **Verdicts it could change:** none pinned. These are new verdicts on the specification gap.
+- **Overlaps:**
+  - **S-41:** the synthetic part.
+  - **M7:** the macro pipeline.
+  - **M8:** the public-data demonstrations, where the real-data part belongs.
+- **Placement:**
+  - **The synthetic part:** with S-41 (M6/M7).
+  - **The real-data part:** M8.
+- **Cost:**
+  - **Synthetic:** about the baseline per specification.
+  - **Real data:** small fits, dominated by data preparation.
