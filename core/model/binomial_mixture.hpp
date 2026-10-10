@@ -40,6 +40,12 @@ struct BinomialLogIntegrand {
     VCAL_HD double operator()(double z) const {
         const double x = model.threshold(z);
         double v = 0.0;
+        if (defaults > 0.0 && survivors > 0.0) {  // 0 < d < n: both tails from one erfcx (P-7, bit for bit)
+            const special::LogPhiPair lp = special::log_phi_pair(x);
+            v += defaults * lp.at_x;
+            v += survivors * lp.at_neg_x;
+            return v;
+        }
         if (defaults > 0.0) v += defaults * special::log_phi(x);
         if (survivors > 0.0) v += survivors * special::log_phi(-x);
         return v;

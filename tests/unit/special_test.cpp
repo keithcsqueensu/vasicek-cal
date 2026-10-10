@@ -3,8 +3,10 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "core/special/erfcx.hpp"
 #include "core/special/inverse_mills.hpp"
@@ -89,6 +91,35 @@ VCAL_TEST(log_phi_special_values) {
     VCAL_CHECK(std::isnan(sp::log_phi(kNaN)));
     VCAL_CHECK_EQ(sp::log_phi(-kInf), -kInf);
     VCAL_CHECK_EQ(sp::log_phi(kInf), 0.0);
+}
+
+// log_phi_pair (P-7, D-199) is the two log_phi calls bit for bit: on every golden argument and its negation, a
+// fine sweep of [-40, 40], the square split's cut at 2^16, the signed zeros, subnormals, the infinities and NaN.
+VCAL_TEST(log_phi_pair_is_two_log_phi_calls_bit_for_bit) {
+    const auto same = [](double a, double b) {
+        std::uint64_t ua, ub;
+        std::memcpy(&ua, &a, sizeof a);
+        std::memcpy(&ub, &b, sizeof b);
+        return ua == ub || (std::isnan(a) && std::isnan(b));
+    };
+    std::vector<double> xs;
+    const auto t = vcal::test::read_golden_csv("special/log_phi.csv");
+    const auto cx = t.column("x_hex");
+    for (const auto& r : t.rows) xs.push_back(parse_double(r[cx]));
+    for (int i = -400000; i <= 400000; ++i) xs.push_back(i * 1e-4);
+    for (const double e : {0.0, -0.0, 65536.0, -65536.0, std::nextafter(65536.0, 0.0), DBL_MIN, -DBL_MIN, 5e-324,
+                           -5e-324, 1e-300, -1e-300, 38.5, -38.5, 1e300, -1e300, kInf, -kInf, kNaN}) {
+        xs.push_back(e);
+    }
+    std::size_t bad = 0;
+    for (const double x : xs) {
+        const sp::LogPhiPair p = sp::log_phi_pair(x);
+        if (!same(p.at_x, sp::log_phi(x)) || !same(p.at_neg_x, sp::log_phi(-x))) {
+            if (++bad <= 5) vcal::test::report_failure(__FILE__, __LINE__, "log_phi_pair(" + vcal::test::describe(x) + ")");
+        }
+    }
+    VCAL_CHECK_EQ(bad, std::size_t{0});
+    vcal::test::note(std::to_string(xs.size()) + " arguments bit for bit");
 }
 
 // --- inverse_mills ------------------------------------------------------------------
