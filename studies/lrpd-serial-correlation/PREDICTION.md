@@ -284,3 +284,19 @@ in S-35's full run.
 Reported without a prediction: the number of local maxima along the scan and the gap to the second (owner's
 diagnostic); the placement- and doubled-check flag counts; the q interval; and φ̂'s mean and median per
 scenario and φ.
+
+## Addendum, 2026-10-10: the M6 arm's runtime projection (a fact, not a prediction)
+
+Appended after the M6 registration above; no prediction, threshold, scope or definition changes. The
+registration estimated the full M6 run at about 18 h on 24 threads. A timing sample (D-187, D-193) projects
+it far higher:
+
+- **Projected:** 3,968,311 thread-seconds, **46.1 h** on 24 threads at efficiency 0.997; 90% range
+  42.4–50.0 h, 40.3–52.5 h with the ±5% machine-state allowance.
+- **Method:** `perf/project_runtime.py --run` on `study_lrpd_serial_m6` (D-198) as of d68c364, with its
+  warm-up and minimum sample wall time; accepted at 4 replicates per scenario (10% from the 2-replicate
+  sample). The comparator was sampled at 8 refits per job, its seconds scaled to B = 199 (`--boot-sample`,
+  which writes no rows). The sample's rows were never read.
+- **Next:** P-18 (the filter's transition, with the shared in-house exp) is re-projected the same way. The
+  arm's scale is decided after that number and before the validation run, since any reduction in replicates
+  or scope would be an amendment, and amendments are allowed only before the validation run (D-197).

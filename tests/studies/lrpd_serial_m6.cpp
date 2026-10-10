@@ -27,8 +27,9 @@
 //
 // --seed S runs the same design on another seed (the validation run, D-197: 0x7A11DA7E); the comparator is
 // S-35's only and is not run then, unless --comparator (with --boot-panels B, for smoke tests). --boot-sample K,
-// for runtime timing samples only (perf/README.md, D-187): K refits per comparator, their seconds scaled by B/K;
-// the comparator's intervals in those rows are not results.
+// for runtime timing samples only (perf/README.md, D-187): K refits per comparator, their seconds scaled by B/K.
+// Its comparator intervals would be wrong as results, so in that mode the tool writes no rows at all, only the
+// timing sample (owner). --stop-after-units needs --checkpoint and exits before any output is written.
 //
 //   study_lrpd_serial_m6 [--phis 0,0.3,0.6] [--replicates R] [--scenarios ID,...] [--seed S] [--out FILE]
 //                        [--threads N] [--timing-out FILE] [--boot-sample K] [--checkpoint DIR]
@@ -292,6 +293,10 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "--boot-sample K is for timing samples: it needs --timing-out and K <= B\n");
         return 2;
     }
+    if (stop_after > 0 && checkpoint_dir.empty()) {
+        std::fprintf(stderr, "--stop-after-units N needs --checkpoint DIR (it is the resume test's kill)\n");
+        return 2;
+    }
     const bool boot = seed == rc::kSeed || force_comparator;  // the comparator belongs to S-35's run
     const std::uint32_t refits_per_job = boot_sample > 0 ? boot_sample : boot_panels;
     const auto P = static_cast<std::uint32_t>(phis.size());
@@ -358,9 +363,11 @@ int main(int argc, char** argv) {
     const auto finish_job = [&](std::uint32_t job) {  // with m unlocked, once per job
         const std::size_t k = job / R;
         const auto r = static_cast<std::uint32_t>(job % R);
+        // Saved under the lock, so --stop-after-units N leaves exactly N units on disk: with the save outside it,
+        // two threads could both save before either reached the exit (Copilot's finding on PR 37's S-10 tool).
+        const std::lock_guard<std::mutex> lock(m);
         ck->save("s" + std::to_string(ids[k]) + "_r" + std::to_string(r),
                  pack(ids[k], r, &rows[static_cast<std::size_t>(job) * P], P));
-        const std::lock_guard<std::mutex> lock(m);
         --jobs_left;
         if (stop_after > 0 && ck->enabled() && ++written == stop_after) {
             std::fprintf(stderr, "stopping after %zu replicates (--stop-after-units)\n", written);
@@ -464,11 +471,6 @@ int main(int argc, char** argv) {
     std::snprintf(buf, sizeof buf, "# S-35 M6 arm (D-196, D-198): one row per (phi, scenario, replicate); seed 0x%llX; dgp_kernel %s\n",
                   static_cast<unsigned long long>(seed), vcal::test::dgp_kernel().c_str());
     std::string text = buf;
-    if (boot_sample > 0) {
-        std::snprintf(buf, sizeof buf, "# --boot-sample %u: a timing sample; the comparator's intervals are not results\n",
-                      boot_sample);
-        text += buf;
-    }
     text += "# profile flags: engine kInterval*; phi's interval on the study subset only; boot_*: the comparator "
             "(subset, replicates 0-99, phi = 0.6, S-35's seed only)\n"
             "phi,scenario,replicate,pd_true,rho_true,periods,obligors,binom_pd,binom_rho,binom_loglik,binom_flags,"
@@ -499,7 +501,9 @@ int main(int argc, char** argv) {
             }
         }
     }
-    {
+    if (boot_sample > 0) {  // a timing sample: its comparator intervals are wrong as results, so no rows at all
+        std::printf("--boot-sample %u: a timing sample; no rows written (%s untouched)\n", boot_sample, out.c_str());
+    } else {
         std::ofstream f(out, std::ios::binary);
         f << text;
         f.close();
