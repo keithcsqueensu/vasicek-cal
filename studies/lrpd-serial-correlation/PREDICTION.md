@@ -162,3 +162,121 @@ Appended before the subset run; no prediction, threshold or definition above cha
 - **Pooling:** per-scenario coverages are averaged over the scenarios pooled, R being equal. Wald and t coverage is among unflagged fits, as pinned; profile, bootstrap and every rate-MLE coverage is over all replicates, with a not-computed interval missing. "Below the band" is coverage below the scenario's pinned profile band (`profile_band_lo_hex`).
 - **The subset run** (the study subset of D-150, 9 scenarios × 1,000) is scored by the same script and reported as a subset, not as the study's result.
 - **Disclosure:** the tool was run on 3 replicates of every scenario at each φ, to check the code and the pipeline: the φ = 0 checks passed, and the script ran to completion. Only its exit code and row count were read; those rows are not results. Before that, replicates 0–2 at φ = 0 alone were compared with S-8's rows (243 of 243 identical), and 2 replicates at each φ ran for the timing sample, whose rows were not read.
+
+## Addendum, 2026-10-10: the M6 arm, the AR(1)-aware binomial MLE, registered before any of its fits on S-35's panels
+
+Appended before the M6 arm has fitted any of S-35's panels; nothing above changes. This arm tests Miu and
+Ozdemir's (2008) claim directly: with the serial correlation modelled, does the long-run PD stop being
+understated, and do the intervals cover again?
+
+- **The estimator** (D-195, D-196; `benchmark_models/ar1/`): the binomial-mixture likelihood under an AR(1)
+  factor, by a forward filter over each period's parity nodes placed for the law of Z_t given its
+  neighbours (forward, backward, forward). It is maximised over (PD, ρ, φ) in the recovery box, with
+  |φ| ≤ 0.95: a φ scan {−0.6, −0.3, 0, 0.3, 0.6, 0.9} with 2-D quasi-Newton in (PD, ρ), then a 3-D
+  polish from each local maximum. Profile intervals are 3-D, with D-129's threshold and truncation at
+  bounds (D-130).
+- **What is run:**
+  - **Full matrix**, the same panels (81 scenarios × 1,000 replicates × φ ∈ {0, 0.3, 0.6}): the point
+    estimate, its flags and checks, and profile intervals for PD and ρ.
+  - **The study subset** (D-150: 29, 37, 72, 4, 68, 49, 7, 43, 51), the same replicates: also the profile
+    interval for φ (owner: secondary to PD; if its χ² calibration fails, that becomes its own registered
+    study).
+  - **The parametric-bootstrap comparator** (owner; D-043), on the study subset, replicates 0–99, φ = 0.6
+    only: B = 199 panels drawn from the AR(1) DGP at the panel's own estimate (PD̂, ρ̂, φ̂). Panel b of
+    (scenario s, replicate r) uses seed 0xB0071A61, scenario s and replicate 256 r + b. Each is refitted for
+    the point estimate only; the intervals are percentile intervals for PD and ρ.
+- **Checks before scoring.** Any failure stops the scoring.
+  - Every fit's log-likelihood at the φ = 0 scan point is at least the binomial MLE's on the same panel
+    minus 1e-8, the same function being maximised continuously.
+  - Every fit's maximum is at least its φ = 0 scan point's minus 1e-10.
+  - The placement and doubled-rule checks are reported. The number of fits flagged by either is a
+    result, not a filter.
+- **Runtime:** projected from a timing sample before the full run (D-187, D-193). The projection is
+  recorded here before the run starts; the estimate is about 18 h on 24 threads.
+
+### Disclosure: what was seen before this was written
+
+The AR(1) MLE was run during its development, on panels from seeds disjoint from S-35's panels, the
+validation run and the information computation. Exactly:
+- **The search trial:** seed 0xA11CE5EED, scenario 900, replicates 0–3. Fits at PD 1%, ρ 0.12 for n ∈
+  {100, 1,000} × T ∈ {20, 100} × true φ ∈ {0, 0.6}. These are the parameters of S-35's scenarios 36 (A),
+  37 (B), 42 (D) and 43 (D). Seen: the mean φ̂ per cell: at n = 100, T = 20, −0.40 (true 0) and −0.16
+  (true 0.6), one fit in each at the −0.95 bound; at n = 100, T = 100, −0.19 and 0.39; at n = 1,000, T =
+  20, −0.25 and 0.15; at n = 1,000, T = 100, −0.03 and 0.55. Also seen: run time and evaluation counts.
+- **The profile trial:** seed 0xA11CE5EED, scenario 901, replicates 0–2, the same four cells at true
+  φ = 0.6. Seen: profile intervals for PD, ρ and φ. The true value was inside 32 of 36 intervals; the φ
+  intervals of several short panels ran to a bound.
+- **The owner's check** of the n = 100, T = 20 cell: the 8 panels of the search trial against ref's
+  independent profile. ref's profile maximum was at core's φ̂ in all 8, so the search is right. The profiles
+  were nearly flat: 0.01 to 2.4 nats between φ = 0 and the maximum, and the 95% profile set spanned all of
+  [−0.95, 0.95] in two panels. In 2 of the 4 panels at true φ = 0.6 the set excluded 0.6.
+- **Likelihood only, no fits:** the filter's accuracy cases (adjacent periods with very different modes,
+  D-195) and its timing.
+
+The predictions below rest on the theory stated with them, not on these panels. Where a prediction concerns
+a cell above (the φ̂ < 0 and bound-hit rates at short T, and the φ interval's calibration there), it was
+written knowing what is listed here.
+
+### Model-based reference numbers: where asymptotics can be trusted
+
+[`information_m6.csv`](information_m6.csv) is the expected Fisher information at the true parameters of
+every scenario and φ (`study_ar1_information`, committed before it was run). It is the mean of the score's
+outer product over 500 panels per cell, from a fresh seed 0x1F020261010. It contains no fits and no
+estimates. The credibility thresholds were stated in the tool before its first run:
+- **φ:** credible where the information-based SE ≤ 0.15;
+- **PD and ρ:** credible where 1.96 SE in logit units ≤ the logit distance to the nearer box bound.
+
+Where a parameter is not credible, its predictions below are qualitative (owner).
+
+- **PD** is credible in every scenario at every φ; **ρ** in 17 of group A's 31 and in all of B–D.
+- **φ** is credible in no scenario at T = 20, whatever n. Even at n = 10,000 its SE is 0.18–0.23, about the
+  observed-factor value √((1 − φ²)/T); at small n·PD it reaches 11. At T = 40 it is credible in 1 of 17
+  (group C) at φ = 0.3 and 11 of 17 at φ = 0.6. At T = 100 it is credible in 15–20 of group D's 21.
+- **The score's sample mean** is within 3.0 Monte Carlo SEs of 0 in all 729 entries, as at the truth it
+  must be.
+
+### Mechanism
+
+- **PD coverage returns where φ is estimated well.** With the dependence modelled, the profile interval is
+  asymptotically correct. Its width now carries the variance factor (1 + φ̂)/(1 − φ̂), which the binomial
+  MLE's interval lacks; that factor was 4.0 at φ = 0.6.
+- **At short T the return is partial.** φ̂ is biased down: Kendall's −(1 + 3φ)/T is −0.14 at T = 20 and
+  φ = 0.6, before the extra attenuation of a factor seen through binomial noise. A smaller φ̂ gives a
+  narrower PD interval. At φ̂ ≈ 0.46 the factor is 2.7 against 4.0, and the width ratio √(2.7/4) = 0.82
+  maps a nominal 0.95 to about 0.89. φ̂'s spread at T = 20 (SE ≥ 0.18) lowers it further: φ̂ near 0 halves
+  the width.
+- **The point estimate barely moves (Grenander).** For a mean with AR(1) errors, the equal-weight mean is
+  asymptotically as efficient as generalised least squares; the efficient weights differ only near the
+  ends of the series. PD̂ is driven by an average of period-level information, so the AR(1) MLE's PD̂ stays
+  close to the binomial MLE's. Its median understatement, which comes from the skewness of a mean over
+  few effective periods, is a property of the data, not of the weights, and remains. The model fixes the
+  interval, not the point.
+- **φ̂ at small n·PD is weakly identified.** About one default per period carries almost no information
+  about Z_t, so the profile in φ is flat (the information above), and φ̂ is often at a bound.
+- **The χ² calibration of the φ interval** needs the information to be large; where it is not, the profile
+  set is set by a flat profile and coverage is not nominal.
+
+### Predictions
+
+Pooling, groups and the band are as above. "Binomial" means the binomial MLE's result on the same panels
+in S-35's full run.
+
+| # | Prediction |
+|---|---|
+| L16 | **PD coverage returns at T = 100:** the AR(1) MLE's pooled PD profile coverage in group D is 0.92–0.96 at both φ = 0.3 and φ = 0.6 |
+| L17 | **Partly at short T:** pooled PD profile coverage at φ = 0.6 is 0.82–0.92 in group B and 0.87–0.95 in group C; at φ = 0.3, 0.88–0.95 in B and 0.90–0.96 in C |
+| L18 | **Above the binomial MLE's wherever it matters:** at φ = 0.6, pooled PD profile coverage exceeds the binomial MLE's by at least 0.10 in each of groups B, C and D |
+| L19 | **Little cost when there is no correlation:** at φ = 0, pooled PD profile coverage is within −0.03 to +0.01 of the binomial MLE's in each of groups B, C and D |
+| L20 | **ρ coverage returns too:** pooled ρ profile coverage at φ = 0.6 is 0.88–0.96 in each of groups B, C and D |
+| L21 | **The point estimate does not rescue the median (Grenander):** at φ = 0.6, the AR(1) MLE's median relative error of PD̂ is closer to 0 than the binomial MLE's in between 19 and 31 of the 50 informative scenarios, and differs from it by less than 0.01 in at least 40 of the 50. So Miu and Ozdemir's improvement is predicted not to appear in the point estimate. The claim would be supported by 32 or more of 50 (a one-sided sign test at about 3%) |
+| L22 | **φ̂ < 0 at true φ = 0, where φ is credible:** over the credible scenarios of group D, the pooled share of φ̂ < 0 is 0.50–0.60 (Kendall's bias −1/T against an SE of about 0.11 gives 0.54) |
+| L23 | **φ̂ < 0 at true φ = 0, short T (qualitative; φ not credible):** over group B the pooled share is above 0.5 (0.55–0.80), and over group A's T = 20 scenarios it is higher than over group B's |
+| L24 | **φ̂ < 0 at true φ = 0.6:** in group D's credible scenarios under 0.5% (φ̂ ≈ 0.57 ± 0.10); in group B (qualitative) between 1% and 15% |
+| L25 | **φ̂ at a bound (±0.95), reported apart from the sign:** in group D's credible scenarios under 0.5% at both φ = 0 and φ = 0.6. Qualitative where φ is not credible: in group B between 1% and 20% at each φ, and in group A's T = 20 scenarios at least 10% at each φ |
+| L26 | **The φ interval (study subset), where φ is credible** (φ = 0.6: 68, 49, 43, 51; φ = 0 and 0.3: 43): coverage at least 0.92 in each (R = 1,000, Monte Carlo SE 0.007) |
+| L27 | **The φ interval where φ is not credible (qualitative):** at φ = 0.6 its coverage is below 0.93 in at least 2 of the three T = 20 subset scenarios (29, 37, 72). The χ² calibration fails at short T |
+| L28 | **The bootstrap comparator** (study subset, replicates 0–99, φ = 0.6): its percentile PD coverage is within ±0.05 of the profile interval's on the same replicates in at least 7 of the 9 scenarios. At 100 replicates a coverage near 0.95 has a Monte Carlo SE of 0.022 (about ±2.2 points), so differences under 0.044 are not read as results (owner) |
+
+Reported without a prediction: the number of local maxima along the scan and the gap to the second (owner's
+diagnostic); the placement- and doubled-check flag counts; the q interval; and φ̂'s mean and median per
+scenario and φ.

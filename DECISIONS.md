@@ -1328,6 +1328,29 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Cost, measured on one thread:** a forward pass takes 1.3–2.1 ms at T = 20 and 6.9–11.5 ms at T = 100, more at n = 100, where zero-default periods use the 256-node composite rule; the three passes take 3.8–33 ms. The S-35 M6 arm is projected from a timing sample before it runs (D-187, D-193).
   - **Layering:** `benchmark_models/` may use core/ and engine/, and must not include dgp/, abi/, ref/ or tests/ (`cmake/LayeringCheck.cmake`).
 
+## S-35's M6 arm: the search, the early φ̂ signal, and the registration, 2026-10-10
+
+- **D-196 (owner's decisions on the registration) — The AR(1) MLE's search and profile intervals; the early φ̂ signal checked against ref; the S-35 M6 arm registered before any of its fits, with the exploratory look disclosed and model-based information marking where asymptotics hold.** Registration: `studies/lrpd-serial-correlation/PREDICTION.md`, the 2026-10-10 addendum (L16–L28).
+  - **The search** (`benchmark_models/ar1/search.hpp`):
+    - **The scan:** φ ∈ {−0.6, −0.3, 0, 0.3, 0.6, 0.9}, a 2-D quasi-Newton in (PD, ρ) at each point, warm-started outward from the binomial fit at φ = 0.
+    - **The polish:** a 3-D quasi-Newton from each local maximum, the best kept.
+    - **The steps:** the gradient is the analytic score. The Hessian is central differences of the score, refreshed when the active set changes or the line search keeps backtracking, with BFGS updates in between. The active set is box-projected, so φ̂ can sit at ±0.95 without cycling.
+    - **Cost:** about 90 evaluations and 80 scores per fit, against about 230 and 185 with a fresh Hessian at every step (2.5×).
+  - **Profile intervals:** 3-D, with the engine's threshold, flags and truncation. Each endpoint is found by Newton on the profile using the envelope derivative (the score's component at the inner maximum). Residuals are at most 7e-13.
+  - **The early φ̂ signal (owner: make sure it is real).** On scratch panels (n = 100, T = 20), mean φ̂ was −0.40 at true φ = 0, far beyond Kendall's −0.05. On those 8 panels, ref's independent φ-profile, maximised over (PD, ρ) by its own golden-section search, peaks at core's φ̂ in every case, at the two −0.95 boundary maxima too. The profiles are nearly flat (0.01 to 2.4 nats), so this is weak identification at n·PD ≈ 1, not a search bug.
+  - **The registration (owner's conditions):**
+    - **Predictions from theory:** Kendall's bias, a weak-identification argument, and Grenander's efficiency of the mean under AR(1) errors, which predicts that the model fixes the interval but not the median understatement. They are not based on the scratch panels.
+    - **The exploratory look disclosed:** every scratch fit's seed, cells and scenarios (36, 37, 42 and 43 by parameters), and what was seen.
+    - **No AR(1) fit on any panel** between the owner's instruction and this registration's merge. The search's recovery tests follow the merge.
+  - **Expected Fisher information as model-based theory (owner: yes, with conditions).** `study_ar1_information` was committed with its credibility thresholds before its first run:
+    - **What it computes:** only scores at the true parameters, on a fresh seed 0x1F020261010; no fit and no estimate.
+    - **The thresholds:** φ credible where SE ≤ 0.15; PD and ρ where 1.96 logit SEs reach no box bound.
+    - **What it shows:** φ is credible nowhere at T = 20, so every short-T φ̂ prediction is qualitative.
+    - **Output:** `information_m6.csv`.
+  - **φ intervals on the study subset only (owner):** the full run stays at about 18 h. If the χ² calibration fails, that is a new study with its own registration.
+  - **The bootstrap comparator (owner):** study subset, replicates 0–99, φ = 0.6, B = 199, seed 0xB0071A61. The Monte Carlo SE at 100 replicates is registered (±2.2 points), so smaller differences are not read as results.
+  - **Seeds reserved:** the validation run uses 0x7A11DA7E, disjoint from S-35's, the information's and the scratch seed 0xA11CE5EED.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
