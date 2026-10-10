@@ -39,9 +39,12 @@ S-10's checkpoint configuration, and on stderr by every tool that simulates pane
   - p exactly on the first, middle and last obligors' uniforms, which are threshold steps, and one ulp
     either side.
 
-  CI runners have AVX2, so all three paths run on every CI job. `unit_dgp_kernel_{scalar,sse2,avx2,none-such}`
-  rerun the panel checks with the kernel forced through `VCAL_DGP_KERNEL`, and check that the start-up
-  selection follows it, including refusal for an invalid value.
+  Every CI job runs the full suite, and the runners have AVX2. So GCC 11 and 14, Clang 18, MSVC and both
+  nvcc containers each run all three paths against the reference hashes, and their report steps print each
+  kernel's hashes. `unit_dgp_kernel_{scalar,sse2,avx2,none-such}` rerun the panel checks with the kernel
+  forced through `VCAL_DGP_KERNEL`, and check that the start-up selection follows it, including refusal for
+  an invalid value. On a machine without a kernel, its entry exits 77 and CTest reports it as skipped, with
+  the reason, never as passed. This was checked on a build with `-DVCAL_DGP_AVX2=OFF`.
 - **The threshold at its edges.** `bernoulli_threshold_at_its_edges` checks:
   - K = 0 at and below U(0) = 2⁻⁵³;
   - K = 1 one ulp above, the smallest p that changes K;
@@ -89,6 +92,8 @@ S-10/S-4 run (`perf/project_runtime.py`, 24 threads, efficiency 0.997):
 | A | 119 | 1,262 | 241 | 4.40 h (4.19–4.59) |
 
 The simulate phase falls 3.2×, and the projected run 21% (381,839 → 299,703 thread-s on the means). The
+21% is a projection, calibrated and not validated (D-187): the next parametric-bootstrap full run records
+its projection before it starts and confirms or corrects it against the actual time. The
 other phases are unchanged within noise. W* (S-4b) also draws panels, but its cost is the fits. These are
 projections from the sampled tool, not a full run. D-193's fill split is on another branch, so these
 absolute hours are not comparable with D-193's; the A/B ratio is the result.

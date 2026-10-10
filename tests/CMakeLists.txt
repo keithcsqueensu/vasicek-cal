@@ -143,12 +143,14 @@ vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 # the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their
 # kernel explicitly run here (the others would refuse on a machine lacking the forced kernel); the plain
 # unit_dgp entry already runs the reference panels and the count comparison under every available kernel.
+# A kernel the machine lacks (AVX2 on an older CPU, SSE2 off x86-64) makes its entry exit 77: reported as
+# skipped, never as passed.
 foreach(_k scalar sse2 avx2 none-such)
     add_test(NAME unit_dgp_kernel_${_k}
              COMMAND unit_dgp bernoulli_kernel_selection_follows_vcal_dgp_kernel
                      reference_panels_are_bitwise_identical_to_the_mirror
                      ar1_reference_panels_are_bitwise_identical_to_the_mirror)
-    set_tests_properties(unit_dgp_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_DGP_KERNEL=${_k}")
+    set_tests_properties(unit_dgp_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_DGP_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
 
 # --- M1.7 cross-reference (D-107, D-115) -----------------------------------------------------------

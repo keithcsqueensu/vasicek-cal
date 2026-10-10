@@ -6,6 +6,8 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -50,7 +52,8 @@ const dgp::BernoulliKernel kInitialSelection = dgp::bernoulli_kernel_selected();
 
 // Runs fn(kernel) with each Bernoulli kernel this CPU and build have selected in turn (P-17, D-194), so every
 // code path runs on one machine, not only the one CPUID picks; the selection is restored afterwards. On an
-// x86-64 CPU with AVX2 (every CI runner) that is all three. A kernel this machine lacks is noted, not failed.
+// x86-64 CPU with AVX2 (every CI runner) that is all three. A kernel this machine lacks is noted here, and
+// the CTest entry forcing it (unit_dgp_kernel_<name>) reports it as skipped.
 template <class F>
 void for_each_kernel(F fn) {
     struct Restore {
@@ -248,6 +251,15 @@ VCAL_TEST(bernoulli_kernels_equal_the_specification_bit_for_bit) {
 // simulations refuse rather than fall back to another kernel.
 VCAL_TEST(bernoulli_kernel_selection_follows_vcal_dgp_kernel) {
     const std::string env = vcal::test::env_or_empty("VCAL_DGP_KERNEL");
+    // A real kernel this CPU or build lacks: the CTest entry forcing it is skipped, visibly (exit code 77,
+    // SKIP_RETURN_CODE in tests/CMakeLists.txt), rather than passing without having run that path.
+    for (const auto k : kAllKernels) {
+        if (env == dgp::bernoulli_kernel_name(k) && !dgp::bernoulli_kernel_available(k)) {
+            std::printf("SKIPPED: VCAL_DGP_KERNEL=%s, but this CPU or build has no %s kernel\n", env.c_str(), env.c_str());
+            std::fflush(stdout);
+            std::exit(77);
+        }
+    }
     dgp::BernoulliKernel want = dgp::BernoulliKernel::Scalar;
     if (env.empty()) {
         if (dgp::bernoulli_kernel_available(dgp::BernoulliKernel::Sse2)) want = dgp::BernoulliKernel::Sse2;
