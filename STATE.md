@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-10-09 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181; S-4b a native option and D-163's named exceptions, D-182, D-183; S-4b implemented, ABI 0.4, D-184; P-15 and the runtime miss, D-185, D-186; the runtime projection, D-187)
+Last updated: 2026-10-09 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181; S-4b a native option and D-163's named exceptions, D-182, D-183; S-4b implemented, ABI 0.4, D-184; P-15 and the runtime miss, D-185, D-186; the runtime projection, D-187; the roadmap addendum, D-188)
 
 ## Current status
 
@@ -241,7 +241,7 @@ and resume) to protect the run; P-10 and P-9 after. The run's tool already hands
 - **P-15 done (D-185):** calibrate's SEs are now analytic. It is a correction as well as a speed-up (the calibrate phase is 2.7× faster on the S-10 workload). No verdict changes; goldens refreshed.
 - **The runtime miss (D-186):** not hybrid-core scheduling. The subset had no scenario in the costliest (T, n) cell; the projection fix is queued.
 - **The runtime projection (D-187):** a timing sample per (T, n) cell with phase shares, sampled until its 90% range is within ±10% (`perf/project_runtime.py`). Wall time uses a measured efficiency factor (0.997 on S-10). It is calibrated on S-10 (6.13 h, 5.70–6.56 h, against 6.44 h), not yet validated: the next full run records its projection before starting and is compared after. Its range covers sampling noise only; the machine's speed varies by about 15% between sessions, so the sample is taken immediately before the run. P-15 takes about 20% off the S-10 run's projection (interleaved A/B/B/A; an earlier 34% compared samples from different machine states, a miss recorded in D-187).
-- **Queued (owner, 2026-10-09):** the roadmap addendum: `docs/references.md`, study stubs a–m, the features, and a D-entry. Planning only, then stop for review.
+- **Roadmap addendum (D-188), for the owner's review:** `docs/references.md` (nine papers, citations verified); study stubs S-35 to S-47; the published-method track and the lifetime PD term structure as features. Placement and costs are in "Roadmap addendum" below. Planning only: nothing is registered or run.
 
   After those, P-9 (measure the repeat rate first), then SIMD Philox.
 
@@ -283,6 +283,47 @@ and resume) to protect the run; P-10 and P-9 after. The run's tool already hands
    - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
    - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;
    - the stationary bootstrap and a data-driven block length (Politis–White); moving-block coverage is studied in M6 with AR(1) data.
+
+## Roadmap addendum: published-method studies and features (D-188)
+
+Planning only, recorded for the owner's review. The motivating papers are in `docs/references.md`, cited as
+public motivation only, and the stubs are in `studies/README.md`. Every study follows D-148: pre-registered,
+explored on the study subset, and judged on every verdict its variant could change. Costs are planning
+estimates against the current baseline: the full recovery matrix runs in about 5 minutes on 24 threads, the
+subset in under 1. Before any full run, its runtime is projected from a timing sample (D-187).
+
+| # | Study | Placement | Subset | Full matrix | Overlaps | Assessment |
+|---|---|---|---|---|---|---|
+| S-35 | Long-run PD by averaging against MLE under an AR(1) factor | **now** (AR(1) DGP variant; the average, parity and rate MLEs); M6 (AR(1)-aware MLE) | minutes | 15–30 min (3 φ) | S-11 (shares its AR(1) DGP variant), S-13, M6 AR(1) | highest priority (owner) |
+| S-36 | Fitted ρ as the rating philosophy moves from TTC to PIT | M6 | tens of minutes | hours (obligor-level simulation) | S-29, S-30, S-33 | worth doing; new generator code (D-149 artifacts) |
+| S-37 | Asymptotic rate MLE as least squares | M7, as documentation | — | — | D-164's closed form | **not worth a study:** without covariates it is already the closed form; with covariates it is an identity for the published-method track |
+| S-38 | Granularity error in factor extraction, propagated to stressed PDs | now (extraction, with S-19); M7 (stressed PDs) | minutes | minutes | S-19, S-27 | worth doing; cheap |
+| S-39 | The estimated factor plugged into the second step | M6 with M7 | once M6 exists | about the baseline per arm | S-19, S-35, M6 | worth doing |
+| S-40 | Fixed, common or grade-specific correlation in stressed PDs | M6 (folded into multi-grade, owner) | once M6 exists | about the baseline per arm | S-30, M6 | worth doing, as part of M6 |
+| S-41 | External factor against internal factor | M6 with M7 | once M6 exists | about the baseline per correlation level | M6 multi-segment, S-47 | worth doing; **runs with S-47's synthetic part** |
+| S-42 | Specification-search rules against a known true model | M7 | once the ranker exists | likely hours | M7 ranker and scorers, S-18 | worth doing; M7's test bed |
+| S-43 | Overlapping series and the AR(1) coefficient | M6 | minutes | minutes | S-35, M6 AR(1) | **small:** a methodology note with a simulation check |
+| S-44 | Long-run PD by bootstrapping the macro variables | M7 | minutes | minutes | the published-method track | **likely a numerical check:** equal by construction when the factor is Gaussian |
+| S-45 | Lifetime PD: convexity adjustment, scenario weighting, full integration | after M7 | minutes | minutes | S-35, M6 AR(1), the lifetime PD feature | worth doing, with the feature |
+| S-46 | Tail loss with fixed LGD and EAD | after M5, study tier only | minutes | minutes | S-23, S-30 | **lowest priority:** the furthest from the library's scope; kept as a bound on what a PD model leaves out |
+| S-47 | Regional and sector factors (national against segment-specific specifications) | synthetic with S-41 (M6/M7); public data M8 | — | — | S-41, M7, M8, S-2 | worth doing; the real-data part needs a data-repository decision first |
+
+**Mis-placed or not worth doing, and why:**
+- **S-37:** it is an identity, partly already in D-164. It becomes documentation of the published-method
+  track.
+- **S-43 and S-44:** likely notes or checks rather than studies, kept as stubs until their registrations
+  decide.
+- **S-46:** outside the engine's scope by design (no LGD or EAD models); last.
+- **S-41 and S-47's synthetic part:** one experiment with two readouts, not two runs.
+- **S-47's public-data part** depends on a separate data repository with pinned releases. No decision
+  records that repository yet; it needs its own D-entry, and D-163's data policy applies.
+
+**Features (generic and parameterised, never one paper's fixed configuration):**
+
+| Feature | What it is | Placement | Builds on |
+|---|---|---|---|
+| Published-method track | The three-step method of Miu and Ozdemir (2009) as a `native` composition of separately callable steps: (1) factor extraction from default rates with covariates and an optional AR(1) residual; (2) grade parameters given a factor series; (3) conditioning on a scenario. Every fixed choice in the paper is a parameter: the correlation fixed or estimated, f linear or quadratic, the lag, AR(1) on or off, infinite or finite granularity. Variable lists, groups, transforms and ranking weights are configuration inputs (parsed outside the core, D-045) | M6 (step 2: multi-grade given a factor series) and M7 (steps 1 and 3: the macro pipeline) | M6 multi-grade, M7, S-19 (Z_t extraction), S-20 (the conditional migration matrix of step 3 for migrations); S-37's identity documented here |
+| Lifetime PD term structure | A PD term structure conditional on a factor path, with user-supplied scenario weights; full integration as the reference, with the convexity adjustment and few-scenario weighting as options | after M7 | M6 AR(1) factor, M7 scenarios; S-45 tests it |
 
 ## Milestones
 
@@ -433,6 +474,12 @@ distributions, Pluto–Tasche and window/influence analysis.
 | S-30 | Buckets calibrated with a shared ρ; K crossed with S-29's crosswalk error |
 | S-31 | The inflow calibrated as a separate segment |
 | S-33 | Late rating assignment (selection per grade) |
+| S-35 | The AR(1)-aware MLE arm (the rest runs now; D-188) |
+| S-36 | Rating philosophy and fitted correlation (D-188) |
+| S-39 | The estimated factor plugged into the second step, with M7 (D-188) |
+| S-40 | Fixed, common or grade-specific correlation, folded into multi-grade (D-188) |
+| S-41 | External factor against internal factor, with S-47's synthetic part (D-188) |
+| S-43 | Overlapping series and the AR(1) coefficient: a note with a simulation check (D-188) |
 
 
 ### M7 — Macro pipeline
@@ -450,7 +497,12 @@ Deferred item R-2 (DECISIONS.md): the Z sign convention and macro sign filters. 
 | S-19 | Z_t extraction, E[Z_t given d_t], as a standard output |
 | S-20 | A reference Belkin–Suchower–Forest apply function (TTC migration matrix + ρ + z → conditional matrix) with a conventions test; needs a scope decision first |
 
+**Studies and features with M7 (D-188):** S-38's stressed-PD part, S-42 (specification-search rules: M7's
+test bed), S-44 (likely a numerical check), S-37 as documentation, and the published-method track's steps
+1 and 3. After M7: S-45 with the lifetime PD term structure. See "Roadmap addendum" above.
+
 ### M8 — Public-data demonstrations + replication pack + ABI 1.0
 
+S-47's public-data part (regional and sector factors; needs a data-repository decision first, D-188).
 FDIC failed-bank counts as the binomial showcase; FRED/StatCan rate series via Vasicek-rate/MoM (D-046), end-to-end worked examples, a complete scipy replication
 set, and an ABI freeze at 1.0.

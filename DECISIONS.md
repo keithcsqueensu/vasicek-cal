@@ -1144,6 +1144,41 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **P-15's effect, before and after:** on the same projection method, the S-10/S-4 run projects at 6.13 h on its own binary (with P-14 and P-16) and at 4.03 h (3.86–4.19 h) on the current code, from a 114 s sample. That is about 34% off, from P-15 alone (`perf/p15_analytic_se.md`). P-14's own effect was 13 h → about 5 h (D-178).
   - **Correction (same day, a miss):** the 4.03 h came from a sample taken in a faster machine state than the 6.13 h one (114 s against about 140 s of sample wall time for the same code). Interleaved runs of the two binaries (A, B, B, A) show P-15 takes about 20% off the projected thread-seconds (ratio 0.80; 0.74–0.87 across pairs), so about 4.9 h. A sample of the current code taken during those runs projects 5.07 h (4.81–5.31 h). The projection's range covers sampling noise only. The machine's speed varies by about 15% between sessions, so a projection's sample is taken immediately before its run, and binaries are compared interleaved (`perf/projection_s10.md`, "Machine state").
 
+## Roadmap addendum: published-method studies and features, 2026-10-09
+
+- **D-188 (owner; planning only, for review) — A references file, thirteen study stubs (S-35 to S-47) and two features motivated by published work on long-run PD, stress testing and lifetime losses are added to the roadmap. Nothing is registered or run.** It follows D-148 (pre-registration, the study subset, every verdict a variant could change) and D-146's wording (replication language, no institution-specific terms).
+  - **References** (`docs/references.md`): nine papers.
+    - **Each entry gives:** the full citation and DOI, a summary in the project's own words, and the studies or features it motivates. The papers are cited as public motivation only; no organisation is described as using a method.
+    - **Checking:** every citation was checked against the publisher's page or the DOI's Crossref record, and Miu and Ozdemir (2009) also against its full text.
+    - **Corrected:** Yang and Du (2015), whose volume, issue and DOI were filled in (9(2), 10.21314/JRMV.2015.137); its subject is rating-migration stress testing.
+    - **Marked as secondary:** two page ranges (the JRMFI papers), taken from RePEc.
+  - **Two corrections to the brief, from the 2009 paper's full text:**
+    - **Alberta** is a motivating remark (a model calibrated to all corporations in Canada is unlikely to suit Alberta's), not a worked example. The worked example is the oil and gas sector.
+    - **R² = 0.20** is fixed only in that example; the general method estimates it. S-47 and S-40 are worded accordingly.
+  - **Studies** (stubs in `studies/README.md`; placement, costs, overlaps and assessments in `STATE.md`, "Roadmap addendum"):
+    - **S-35** long-run PD under serial correlation: now, the highest priority. It shares S-11's AR(1) DGP variant, and its AR(1)-aware MLE arm waits for M6.
+    - **S-36** rating philosophy and fitted ρ (M6).
+    - **S-37** the asymptotic rate MLE as least squares (documentation).
+    - **S-38** granularity in factor extraction (now with S-19; M7).
+    - **S-39** the plug-in factor (M6 with M7).
+    - **S-40** fixed, common or grade-specific correlation (folded into M6's multi-grade work).
+    - **S-41** external against internal factor (M6 with M7).
+    - **S-42** specification-search rules (M7).
+    - **S-43** overlapping series (M6, a note).
+    - **S-44** long-run PD by bootstrapping macro variables (M7, a check).
+    - **S-45** lifetime PD approximations (after M7).
+    - **S-46** tail loss with fixed LGD and EAD (after M5, study tier only).
+    - **S-47** regional and sector factors (synthetic with S-41; public data in M8).
+  - **Flagged as mis-placed or not worth doing:**
+    - **S-37** is not a study: without covariates it is D-164's closed form already, and with covariates it is an identity for the published-method track.
+    - **S-43 and S-44** are likely notes or checks.
+    - **S-46** is the furthest from scope and ranks last.
+    - **S-41 and S-47's synthetic part** are one experiment.
+  - **Features (generic and parameterised, never one paper's fixed configuration):**
+    - **The published-method track:** the 2009 three-step method as a `native` composition of separately callable steps, every fixed choice a parameter, and lists and weights as configuration (M6 and M7).
+    - **A lifetime PD term structure** conditional on a scenario path with user-supplied scenario weights (after M7).
+  - **Open:** S-47's public-data part depends on a separate data repository with pinned releases, which no decision yet records. It needs its own D-entry, under D-163's data policy.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
