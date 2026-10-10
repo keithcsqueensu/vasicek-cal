@@ -12,6 +12,7 @@
 #   resample/  : must not include abi/ ref/
 #   abi/       : must not include ref/ tests/ (the independent reference stays out of the library)
 #   ref/       : may include only standard headers (no '/') and ref/... (D-031)
+#   benchmark_models/ : must not include dgp/ abi/ ref/ tests/ (D-195)
 
 if(NOT DEFINED ROOT)
     message(FATAL_ERROR "LayeringCheck: pass -DROOT=<source tree>")
@@ -25,6 +26,9 @@ set(_forbid_dgp    "core/;engine/;backends/;abi/;ref/")
 set(_forbid_resample "abi/;ref/")
 # abi/ (M2c) wraps everything above for C callers, but never the independent reference or tests.
 set(_forbid_abi "ref/;tests/")
+# benchmark_models/ (M6) builds on core/ and engine/; the DGP stays in the study tools that resample through
+# it (D-043), and like abi/ it never reaches the independent reference or tests.
+set(_forbid_benchmark "dgp/;abi/;ref/;tests/")
 
 set(_violations 0)
 
@@ -72,6 +76,7 @@ _vcal_scan(dgp    dgp)
 _vcal_scan(resample resample)
 _vcal_scan(abi    abi)
 _vcal_scan(ref    ref)
+_vcal_scan(benchmark_models benchmark)
 
 if(_violations GREATER 0)
     message(FATAL_ERROR "found ${_violations} layering violation(s)")

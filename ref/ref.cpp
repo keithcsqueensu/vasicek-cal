@@ -415,4 +415,69 @@ ProfileInterval profile_interval(const std::vector<Period>& panel, const Fit& es
     return r;
 }
 
+double ar1_loglik(double pd, double rho, double phi, const std::vector<Period>& panel, double step) {
+    if (!(pd > 0.0 && pd < 1.0 && rho > 0.0 && rho < 1.0 && phi > -1.0 && phi < 1.0) || panel.empty()) return kNaN;
+    std::int64_t n_max = 0;
+    for (const auto& y : panel) {
+        if (!(y.n >= 1 && y.d >= 0 && y.d <= y.n)) return kNaN;
+        n_max = std::max(n_max, y.n);
+    }
+    if (!(step > 0.0)) step = std::min(0.02, 0.4 / std::sqrt(static_cast<double>(n_max)));
+    const double z_max = 10.0;
+    const auto G = static_cast<std::size_t>(std::ceil(2.0 * z_max / step)) + 1;
+    const double h = 2.0 * z_max / static_cast<double>(G - 1);
+    std::vector<double> z(G), log_w(G);
+    for (std::size_t i = 0; i < G; ++i) {
+        z[i] = -z_max + h * static_cast<double>(i);
+        log_w[i] = std::log(i == 0 || i + 1 == G ? 0.5 * h : h);
+    }
+    const double c = ncdf_inv(pd);
+    const double sr = std::sqrt(rho);
+    const double s1 = std::sqrt(1.0 - rho);
+    const double var = 1.0 - phi * phi;
+    const double log_norm = -kLogSqrt2Pi - 0.5 * std::log(var);  // the transition density's constant
+
+    // lf[i]: log of the period's binomial term at z[i]; filt[i]: log filtered probability mass at z[i] (density times
+    // the grid weight) for the previous period, normalised to log-sum 0.
+    std::vector<double> lf(G), filt(G), next(G), log_k(G);
+    Sum total;
+    for (std::size_t t = 0; t < panel.size(); ++t) {
+        const double dd = static_cast<double>(panel[t].d);
+        const double ss = static_cast<double>(panel[t].n - panel[t].d);
+        for (std::size_t i = 0; i < G; ++i) {
+            const double x = (c - sr * z[i]) / s1;
+            double v = 0.0;
+            if (dd > 0.0) v += dd * log_ncdf(x);
+            if (ss > 0.0) v += ss * log_ncdf(-x);
+            lf[i] = v;
+        }
+        for (std::size_t i = 0; i < G; ++i) {
+            double log_pred;  // log of the predictive density of Z_t at z[i]
+            if (t == 0) {
+                log_pred = -0.5 * z[i] * z[i] - kLogSqrt2Pi;
+            } else {
+                double mx = -kInf;
+                for (std::size_t j = 0; j < G; ++j) {
+                    const double e = z[i] - phi * z[j];
+                    log_k[j] = filt[j] - 0.5 * e * e / var;
+                    mx = std::max(mx, log_k[j]);
+                }
+                double s = 0.0;
+                for (std::size_t j = 0; j < G; ++j) s += std::exp(log_k[j] - mx);
+                log_pred = mx + std::log(s) + log_norm;
+            }
+            next[i] = log_w[i] + lf[i] + log_pred;
+        }
+        double mx = -kInf;
+        for (const double x : next) mx = std::max(mx, x);
+        if (mx == -kInf) return -kInf;
+        double s = 0.0;
+        for (const double x : next) s += std::exp(x - mx);
+        const double lse = mx + std::log(s);
+        total.add(lchoose(panel[t].n, panel[t].d) + lse);
+        for (std::size_t i = 0; i < G; ++i) filt[i] = next[i] - lse;  // log filtered mass at z[i]
+    }
+    return total.value();
+}
+
 }  // namespace vcalref

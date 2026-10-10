@@ -248,6 +248,17 @@ The grid posterior with its resolution rule (`engine/posterior.hpp`; `docs/metho
 | `TOL_POSTERIOR_HPD_END_SD` | 0.13 | 0.071 | HPD interval ends on the same posteriors | The HPD of the cell-uniform (step) density is the shortest interval under it, which can sit up to half a cell from the smooth HPD while its width is right: half a cell at 4 points per SD is 0.125 SD. Set from that bound. | same |
 | `TOL_POSTERIOR_REFERENCE_REL` | 1e-10 | 0 (MinGW GCC vs MSVC) | The committed grid-posterior reference results recomputed, relative | Sums of exponentials of the surface and central differences; a platform's libm last digits move them by far less. | `unit_posterior: posterior_reference_results_reproduce` |
 | `TOL_POSTERIOR_JEFFREYS_ABS` | 1e-9 | 2.85e-10 over 117 points (Linux glibc vs Windows UCRT) | The committed Jeffreys table recomputed, absolutely | The error is absolute, about 1–3·10⁻¹⁰ whatever the value (−11.4 to +0.03): the score's central differences divide last-bit differences in log P(d) by 2e-4. 1e-9 leaves a factor of 3.5. | `unit_posterior: posterior_reference_results_reproduce` |
+## AR(1)-factor likelihood (M6)
+
+The forward filter over each period's own nodes, placed for the law of Z_t given its neighbours
+(`benchmark_models/ar1/filter.hpp`; D-195). Its oracle is ref's dense filter, which shares no node placement.
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_AR1_REFERENCE_REL` | 1e-12 | 4.4e-14 over 128 cases | The filter's log-likelihood against `vcalref::ar1_loglik`, relative to max(1, \|l\|), on adjacent periods with very different modes (n 20 to 10⁴, φ −0.6 to 0.95) | Both resolve the integrals to rounding; held at the per-period goldens' 1e-12. The prior-centred placement missed by 0.9 nats here. | `unit_ar1_filter: ar1_matches_the_dense_reference_on_adversarial_panels` |
+| `TOL_AR1_SMOOTH_D2_REL` | 1e-11 | 6.4e-13 | Second differences of core minus ref along lines in φ and ρ, as a fraction of core's own largest | The node placement moves with θ; a clamp, branch or floor in it would put a kink into the likelihood (owner's condition, as Q16's test). Rounding alone gives 5e-14 to 6.4e-13. | `unit_ar1_filter_smooth` (slow) |
+| `TOL_AR1_SCORE_REL` | 1e-8 | 6.8e-10 | The analytic score against Richardson-extrapolated central differences, relative to max(1, \|derivative\|) | The differences' own noise: last-bit noise in l over steps of 1e-3 relative. | `unit_ar1_filter: ar1_score_matches_richardson_differences` |
+
 ## Conditional PD (S-23)
 
 The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and
