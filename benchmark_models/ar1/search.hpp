@@ -312,7 +312,7 @@ public:
                 }
             }
             if (ok) {
-                double y[3], x[3];
+                double y[3] = {0.0, 0.0, 0.0}, x[3] = {0.0, 0.0, 0.0};  // every entry read is written first; GCC cannot see it
                 for (int a = 0; a < m; ++a) {
                     double sum = g[idx[a]];
                     for (int k = 0; k < a; ++k) sum -= L[a][k] * y[k];
