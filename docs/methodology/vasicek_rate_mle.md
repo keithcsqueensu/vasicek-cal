@@ -70,6 +70,34 @@ agrees with it within 5.4·10⁻⁸ in logit units, and its log-likelihood withi
 (`TOL_VASICEK_RATE_POLISH_U`). Where the closed form lies outside the box, the grid path reports
 the box's constrained maximum and flags it, as for the binomial fit.
 
+**The least-squares form (S-37).** Yang (2013) states that the asymptotic (infinitely granular) MLE
+is least squares on the probit-transformed rates. That holds, and it is the closed form above:
+
+- **Without covariates,** x_t = μ + s·e_t with e_t independent N(0, 1), μ = c/√(1 − ρ) and
+  s² = ρ/(1 − ρ). The log-likelihood in (μ, s²) is that of a normal sample, so μ̂ is the least-squares
+  intercept, the sample mean, and ŝ² is the residual sum of squares over T (not T − 1). The map
+  (PD, ρ) → (μ, s²) is one-to-one on the box's interior, so by invariance the MLE of (PD, ρ) is the
+  transform of the least-squares fit: the closed form above, with v̂ = ŝ². This is why ρ̂ is biased low
+  by the factor (T − 1)/T (section 4).
+- **With covariates,** suppose a model in which x_t = a + bᵀw_t + s·e_t, with w_t the period's
+  covariates, e_t independent N(0, 1) and independent of w_t, and the model's parameters a one-to-one
+  function of (a, b, s²). Then the MLE of (a, b) is ordinary least squares of x_t on (1, w_t), ŝ² is
+  the residual sum of squares over T, and the model's parameters follow by invariance. How (a, b, s²)
+  map to PD, ρ and the covariates' loadings depends on the model's convention (for example, whether the
+  covariates are part of the systematic factor, and how the factor's variance is split), so it is
+  stated with each model on the published-method track (M7), not here.
+- **Where it stops holding.** The identity is for the density term alone:
+  - a zero or one rate under the censored treatment contributes a CDF term, which turns least squares
+    into a censored (Tobit-type) regression, with no closed form (section 2);
+  - for count data, d/n is not the conditional PD, and least squares inherits the rate model's upward
+    bias in ρ̂ (section 1; S-27);
+  - under serial correlation in e_t the least-squares point estimate is still the MLE of the model that
+    assumes independence, but its standard errors and intervals are too narrow (S-35).
+- **Replicating it** takes one call: `numpy.linalg.lstsq` of `scipy.stats.norm.ppf(r)` on a column of
+  ones (and the covariates), then v̂ = RSS/T and the transform above. Without covariates this is what
+  `validation/scipy/vasicek_rate_mle.py` already checks, as the closed form. With covariates, a unit
+  test of the identity against the likelihood comes with the first covariate model (M7).
+
 **Accuracy of the terms.** Against mpmath at 50 digits, every log density and every censored or
 substituted boundary term is within 2.9 ε times the size of its terms (the terms are added in
 double, and √(1 − ρ)·x − c can cancel). The tolerance is `TOL_VASICEK_RATE_LOGLIK_EPS`; the goldens

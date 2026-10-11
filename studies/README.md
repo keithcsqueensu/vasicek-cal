@@ -13,7 +13,7 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
   S-34, S-35 (main arms), and the M6 validation run.
 - **Running:** S-35's AR(1)-aware MLE arm (D-199, D-203).
-- **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37.
+- **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
 - **The interval recommendation** that the finished studies support is in
   [Interval methods compared](#interval-methods-compared-d-176-d-181): Jeffreys equal-tailed preferred,
@@ -63,7 +63,7 @@ they exist.
 | [S-35](#s-35-long-run-pd-under-serial-correlation-lrpd-serial-correlation) | [`lrpd-serial-correlation`](lrpd-serial-correlation/) | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | main arms **finished** (D-192): 12 of 15 held. AR(1) MLE arm **running** in checkpointed segments; scorer merged blind (D-203) |
 | [M6-V](#m6-validation-run-m6-validation) | [`m6-validation`](m6-validation/) | Does the AR(1)-aware MLE work on its own model, before S-35 uses it? | M6 | **finished** (D-202): 7 of 8 strict held; W3 NOT HELD (wrong premise, diagnosed) |
 | [S-36](#s-36-rating-philosophy-and-fitted-correlation-pit-ttc-rho) | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
-| [S-37](#s-37-the-asymptotic-rate-mle-as-least-squares-rate-mle-least-squares) | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
+| [S-37](#s-37-the-asymptotic-rate-mle-as-least-squares-rate-mle-least-squares) | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | **documented** (methodology note, §3); covariate unit test with M7 |
 | [S-38](#s-38-granularity-error-in-factor-extraction-granularity-factor-extraction) | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
 | [S-39](#s-39-the-estimated-factor-plugged-into-the-second-step-plug-in-factor) | `plug-in-factor` | Do grade parameters' intervals cover when the factor is estimated, not known? | M6 with M7 | not registered (D-188) |
 | [S-40](#s-40-fixed-estimated-or-grade-specific-correlation-correlation-choice-stress) | `correlation-choice-stress` | Fixed, common or grade-specific correlation: effect on stressed PDs? | M6 | not registered (D-188) |
@@ -1607,6 +1607,10 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
     infinitely granular limit. It belongs there, as an identity stated and unit-tested against the
     likelihood, not as a study with verdicts.
 - **Placement:** with the published-method track (M7). **Cost:** negligible.
+- **Status:** documented (2026-10-11): `docs/methodology/vasicek_rate_mle.md`, section 3, "The
+  least-squares form", states the identity with and without covariates and where it stops holding. The
+  covariate identity's unit test comes with the first covariate model (M7).
+- **Monitoring implication:** none.
 
 ### S-38 Granularity error in factor extraction (`granularity-factor-extraction`)
 
