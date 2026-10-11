@@ -1462,9 +1462,12 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Tests:** it is tested only on a synthetic fixture (`--self-test`, in CI's `plan` job), never on the arm's partial output.
   - **Order:** it is merged as its own PR before the arm's final segment starts. Its merge commit, the arm's build commit and the engine and study-tool sources compared with the validation build go in the arm's manifest.
   - **Timing notes:** the work is logged in the run's timing notes.
-  - **Two choices to confirm at review:**
-    - A panel that was not fitted fails the checks, as in the validation run's W1.
-    - The binomial fits are checked against S-35's per-cell `summary.csv`, so L18, L19 and L21 compare the same fits on the same panels.
+  - **The scoring choices (owner, approved 2026-10-11):**
+    - **Unfitted panels:** a panel that was not fitted fails the checks, as in the validation run's W1. Every prediction is still reported, with the failed cells named; their intervals count as misses.
+    - **The binomial fits** are checked against S-35's per-cell `summary.csv`, so L18, L19 and L21 compare the same fits on the same panels.
+    - **L23** is held only inside its 0.55–0.80 range.
+    - **"Credible"** is `credible_phi` at the cell's true φ.
+  - **Deviation from the registration:** the M6 addendum lists the q interval as reported without a prediction, but `study_lrpd_serial_m6` does not compute it, so the arm cannot report it. The registration is not amended (D-197); the deviation is recorded here and in PREDICTION.md's 2026-10-11 addendum.
 
 ## Open
 

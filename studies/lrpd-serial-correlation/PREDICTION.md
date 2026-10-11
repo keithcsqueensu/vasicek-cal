@@ -314,11 +314,13 @@ files and the exit status were seen (owner's rules).
 
 - **The scoring script** is [`score_m6.py`](score_m6.py), committed with this note and merged before the
   arm's last segment starts. It was tested only on its synthetic fixture (`--self-test`, also run in CI).
-- **Checks, any failure stopping the scoring:**
-  - **The two log-likelihood checks** above, with a panel that was not fitted counting as a failure (as in the
-    validation run's W1).
-  - **The binomial fits are S-35's:** per φ and scenario, the median relative error of the arm's `binom_pd`
-    equals `summary.csv`'s at its six significant digits. "Binomial" in L18, L19 and L21 therefore means the
+- **Checks** (the owner's choices, approved 2026-10-11):
+  - **A panel that was not fitted fails the checks** (as in the validation run's W1), but does not stop the
+    scoring. Every prediction is still reported, and the failed cells are named with their replicates. An
+    unfitted panel's intervals count as misses; the φ̂ and PD̂ statistics use the fitted panels.
+  - **The two log-likelihood checks** above, on the fitted panels: any failure stops the scoring.
+  - **The binomial fits are S-35's** (a failure stops the scoring): per φ and scenario, the median relative error of the arm's `binom_pd`
+    over every panel equals `summary.csv`'s at its six significant digits. "Binomial" in L18, L19 and L21 therefore means the
     same fits on the same panels. L18 and L19 take the binomial MLE's PD profile coverage from `summary.csv`,
     whose SHA-256 is checked against `MANIFEST.json`.
 - **Readings:**
@@ -337,5 +339,6 @@ files and the exit status were seen (owner's rules).
   - **L25:** the qualitative parts hold at each of φ = 0, 0.3 and 0.6; the strict part at φ = 0 and 0.6.
   - **Separate verdicts:** L24's and L25's strict parts (group D, credible) and their qualitative parts
     each get their own verdict.
-- **Not computable:** the q interval, listed above as reported without a prediction, is not computed by
-  `study_lrpd_serial_m6`. The scorer reports that it is absent.
+- **Deviation from the registration (owner):** the M6 addendum lists the q interval as reported without a
+  prediction, but `study_lrpd_serial_m6` does not compute it, so the arm cannot report it. The registration is
+  not amended (D-197); the deviation is recorded here and in D-203, and the scorer prints it as not reported.

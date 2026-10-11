@@ -12,12 +12,15 @@ Inputs: the arm's rows (study_lrpd_serial_m6 --out, S-35's seed) and committed f
                        against MANIFEST.json first
   tests/engine_flags.json   the flag bits
 
-Checks (any failure stops the scoring):
-  - every panel is fitted with a finite log-likelihood (a panel not fitted fails, as in the validation's W1); its
-    log-likelihood at the phi = 0 scan point is at least the binomial MLE's minus 1e-8, and its maximum at least the
-    phi = 0 point's minus 1e-10 (PREDICTION.md, "Checks before scoring");
-  - the binomial fits are S-35's: per phi and scenario, the median relative error of binom_pd equals summary.csv's
-    pd_median_rel at its six significant digits (so "binomial" means the same fits on the same panels).
+Checks:
+  - every panel is fitted with a finite log-likelihood. A panel not fitted fails the checks, as in the validation's
+    W1, but every prediction is still reported and the failed cells are named (owner, D-203); its intervals miss,
+    and the phi-hat and PD-hat statistics are over the fitted panels. The exit status is then 1;
+  - stopping the scoring: a fitted panel's log-likelihood at the phi = 0 scan point is at least the binomial MLE's
+    minus 1e-8, and its maximum at least the phi = 0 point's minus 1e-10 (PREDICTION.md, "Checks before scoring");
+  - stopping the scoring: the binomial fits are S-35's: per phi and scenario, the median relative error of binom_pd
+    (every panel) equals summary.csv's pd_median_rel at its six significant digits (so "binomial" means the same
+    fits on the same panels).
 Reported, not checks: the placement and doubled-rule flag counts, and the comparator's panel counts.
 
 Readings:
@@ -31,6 +34,8 @@ Readings:
     "differs by less than 0.01" is |M6 - binomial| < 0.01, the two relative errors;
   - L25's qualitative parts hold at each of phi = 0, 0.3 and 0.6; its strict part at phi = 0 and 0.6;
   - L24 and L25 get one verdict for the strict part (group D, credible) and one for the qualitative parts.
+Deviation from the registration (D-203): the q interval, registered as reported without a prediction, is not
+computed by study_lrpd_serial_m6, so it cannot be reported.
 
     python studies/lrpd-serial-correlation/score_m6.py ROWS.csv [--summary-out FILE]
     python studies/lrpd-serial-correlation/score_m6.py --self-test
@@ -94,6 +99,10 @@ def mean(xs):
     return sum(xs) / len(xs) if xs else float("nan")
 
 
+def median(xs):
+    return st.median(xs) if xs else float("nan")  # a cell with no fitted panel
+
+
 def summary_sha256_ok() -> tuple[bool, str]:
     """summary.csv against its MANIFEST.json entry, hashed as committed (LF; a Windows checkout may hold CRLF)."""
     entry = json.loads((HERE / "MANIFEST.json").read_text(encoding="utf-8"))["files"]["summary.csv"]
@@ -129,12 +138,14 @@ class Cell:
         self.gap: list[float] = []
         self.flag_placement = 0
         self.flag_quad = 0
+        self.not_fitted = 0
 
 
 def load(path: str):
-    """Stream the rows: (cells, row count, check failures)."""
+    """Stream the rows: (cells, row count, check failures that stop the scoring, panels not fitted)."""
     cells: dict[tuple[float, int], Cell] = {}
     bad: list[str] = []
+    unfit: list[tuple[float, int, int]] = []
     n = 0
     with open(path, newline="") as fh:
         for r in csv.DictReader(line for line in fh if not line.startswith("#")):
@@ -143,19 +154,25 @@ def load(path: str):
             c = cells.get(key)
             if c is None:
                 c = cells[key] = Cell(float(r["pd_true"]), float(r["rho_true"]), int(r["periods"]), int(r["obligors"]))
-            c.seen.append(int(r["replicate"]))
+            rep = int(r["replicate"])
+            c.seen.append(rep)
+            c.binom_pd.append(float(r["binom_pd"]))
+            boot_slot = key[0] == BOOT_PHI and key[1] in SUBSET and rep < BOOT_REPLICATES
             where = f"phi {r['phi']} scenario {r['scenario']} replicate {r['replicate']}"
             if r["fitted"] != "1" or not math.isfinite(float(r["loglik"])):
-                bad.append(f"{where}: not fitted")
+                unfit.append((key[0], key[1], rep))
+                c.not_fitted += 1
+                for name in ("pd", "rho", "phi"):
+                    c.cov[name].append(False)  # every replicate counts: an unfitted panel's intervals miss
+                if boot_slot:
+                    c.boot.append((rep, False, False))
                 continue
             if float(r["phi0_loglik"]) < float(r["binom_loglik"]) - 1e-8:
                 bad.append(f"{where}: the phi = 0 point below the binomial MLE")
             elif float(r["loglik"]) < float(r["phi0_loglik"]) - 1e-10:
                 bad.append(f"{where}: the maximum below the phi = 0 point")
-            rep = int(r["replicate"])
             c.reps.append(rep)
             c.pd_hat.append(float(r["pd"]))
-            c.binom_pd.append(float(r["binom_pd"]))
             c.phi_hat.append(float(r["phi_hat"]))
             c.cov["pd"].append(covers(r, "pd", c.pd))
             c.cov["rho"].append(covers(r, "rho", c.rho))
@@ -165,7 +182,7 @@ def load(path: str):
             used, excluded = int(r["boot_used"]), int(r["boot_excluded"])
             if used + excluded > 0:
                 c.boot_panels.append((used, excluded))
-            if key[0] == BOOT_PHI and key[1] in SUBSET and rep < BOOT_REPLICATES:
+            if boot_slot:
                 pct = used > 0 and float(r["boot_lo_pd"]) <= c.pd <= float(r["boot_hi_pd"])
                 c.boot.append((rep, pct, c.cov["pd"][-1]))
             c.maxima.append(int(r["scan_local_maxima"]))
@@ -173,7 +190,7 @@ def load(path: str):
             flags = int(r["flags"])
             c.flag_placement += bool(flags & FLAG_PLACEMENT)
             c.flag_quad += bool(flags & FLAG_QUAD)
-    return cells, n, bad
+    return cells, n, bad, unfit
 
 
 def verdict(ok: bool, complete: bool) -> str:
@@ -207,7 +224,7 @@ def main(argv=None) -> int:
     info = {(int(r["scenario"]), float(r["phi"])): r["credible_phi"] == "1" for r in read_csv(INFO)}
     s35 = {(float(r["phi"]), int(r["scenario"])): r for r in read_csv(SUMMARY)}
 
-    cells, n_rows, bad = load(a.rows)
+    cells, n_rows, bad, unfit = load(a.rows)
     scen = sorted({s for (_, s) in cells})
     sizes = {len(c.seen) for c in cells.values()}
     full = (len(scen) == SCENARIOS and set(cells) == {(p, s) for p in PHIS for s in scen}
@@ -230,13 +247,21 @@ def main(argv=None) -> int:
         print(f"dry run: the binomial fits differ from S-35's in {len(mismatch)} cells")
     else:
         bad += mismatch
-    print(f"checks: {len(bad)} failures (the log-likelihood checks on {n_rows} panels; the binomial fits against "
-          f"S-35's summary in {len(cells)} cells)")
+    print(f"checks: {len(bad)} failures that stop the scoring (the log-likelihood checks on {n_rows - len(unfit)} "
+          f"fitted panels; the binomial fits against S-35's summary in {len(cells)} cells); panels not fitted "
+          f"{len(unfit)}")
     for b in bad[:20]:
         print("  " + b)
     if bad:
         print("CHECKS FAILED: not scored", file=sys.stderr)
         return 1
+    if unfit:
+        failed = sorted({(p, s) for p, s, _ in unfit})
+        print(f"CHECKS FAILED: {len(unfit)} panels not fitted, in {len(failed)} cells; every prediction is still "
+              "reported (owner, D-203): their intervals miss, phi-hat and PD-hat statistics are over fitted panels")
+        for p, s in failed:
+            print(f"  failed cell: phi {p} scenario {s}: {cells[(p, s)].not_fitted} of {len(cells[(p, s)].seen)} "
+                  f"not fitted (replicates {', '.join(str(r) for q, t, r in unfit if (q, t) == (p, s))})")
     n_place = sum(c.flag_placement for c in cells.values())
     n_quad = sum(c.flag_quad for c in cells.values())
     print(f"reported: placement check flagged {n_place} of {n_rows} fits, doubled rule {n_quad}; either is a result, "
@@ -255,13 +280,13 @@ def main(argv=None) -> int:
             "prof_pd": mean(c.cov["pd"]), "prof_rho": mean(c.cov["rho"]),
             "prof_phi": mean(c.cov["phi"]) if c.phi_computed else float("nan"),
             "phi_neg": mean(v < 0 for v in c.phi_hat), "phi_bound": mean(abs(v) == PHI_BOUND for v in c.phi_hat),
-            "phi_mean": mean(c.phi_hat), "phi_median": st.median(c.phi_hat),
-            "pd_median_rel": st.median(c.pd_hat) / c.pd - 1, "binom_median_rel": st.median(c.binom_pd) / c.pd - 1,
+            "phi_mean": mean(c.phi_hat), "phi_median": median(c.phi_hat),
+            "pd_median_rel": median(c.pd_hat) / c.pd - 1, "binom_median_rel": st.median(c.binom_pd) / c.pd - 1,
             "binom_prof_pd": float(s35[(phi, s)]["prof_pd"]),
             "boot_pd": mean(p for _, p, _ in c.boot) if c.boot else float("nan"),
             "boot_prof_pd": mean(q for _, _, q in c.boot) if c.boot else float("nan"),
             "local_maxima_mean": mean(c.maxima), "multiple_maxima": mean(m > 1 for m in c.maxima),
-            "flag_placement": c.flag_placement, "flag_quad": c.flag_quad,
+            "flag_placement": c.flag_placement, "flag_quad": c.flag_quad, "not_fitted": c.not_fitted,
         }
         summ[(phi, s)] = x
 
@@ -363,7 +388,8 @@ def main(argv=None) -> int:
                f"{s} {summ[(0.6, s)]['boot_pd']:.2f} vs {summ[(0.6, s)]['boot_prof_pd']:.2f}" for s in SUBSET),
            within >= 7)
 
-    print(f"\nstrict: {sum(strict)} of {len(strict)} held; qualitative: {sum(qual)} of {len(qual)} held")
+    print(f"\nstrict: {sum(strict)} of {len(strict)} held; qualitative: {sum(qual)} of {len(qual)} held"
+          + (f"; CHECKS FAILED: {len(unfit)} panels not fitted (named above)" if unfit else ""))
     print("\nReported without a prediction, per phi (informative groups B-D unless stated):")
     for phi in PHIS:
         sel = in_group("B", "C", "D")
@@ -376,7 +402,8 @@ def main(argv=None) -> int:
     gaps = [g for c in cells.values() for g in c.gap if math.isfinite(g)]
     if gaps:
         print(f"  gap to the second maximum where there is one: {len(gaps)} fits, median {st.median(gaps):.4g}")
-    print("  the q interval: not computed by study_lrpd_serial_m6 (no column in its rows)")
+    print("  the q interval: NOT REPORTED, a deviation from the registration (D-203): study_lrpd_serial_m6 does not "
+          "compute it")
     print("  per-scenario phi-hat mean and median: --summary-out")
 
     if a.summary_out:
@@ -386,7 +413,7 @@ def main(argv=None) -> int:
             w.writerow(["phi", "scenario", *keys])
             for (phi, s), x in sorted(summ.items()):
                 w.writerow([phi, s, *[f"{x[k]:.6g}" if isinstance(x[k], float) else x[k] for k in keys]])
-    return 0
+    return 1 if unfit else 0
 
 
 # ---- self-test: a synthetic fixture only, never the arm's rows ---------------------------------------------
@@ -491,7 +518,11 @@ def self_test() -> int:
             unfit = Path(tmp) / "unfit.csv"
             fixture(unfit, REPLICATES, tweak=lambda v: v.update(fitted=0) if v["replicate"] == 3 else None)
             rc, text = run([str(unfit)])
-            expect("a panel not fitted stops", rc == 1 and "not fitted" in text)
+            expect("a panel not fitted fails the checks", rc == 1 and "CHECKS FAILED: 243 panels not fitted" in text)
+            expect("its cells are named", "failed cell: phi 0.0 scenario 0: 1 of 100 not fitted (replicates 3)" in text)
+            expect("every prediction still reported", all(f"| L{k} |" in text for k in range(16, 29)))
+            expect("an unfitted panel's interval misses", "phi 0.3 0.9400; phi 0.6 0.9400" in text)
+            expect("the q interval a deviation", "NOT REPORTED, a deviation from the registration" in text)
             other = Path(tmp) / "other.csv"
             fixture(other, REPLICATES, tweak=lambda v: v.update(binom_pd=v["binom_pd"] * 1.01))
             rc, text = run([str(other)])
