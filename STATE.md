@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-10-10
+Last updated: 2026-10-11
 
 The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
 detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
@@ -14,23 +14,28 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     `docs/methodology/ar1_binomial_mle.md`; D-197), the tool `study_lrpd_serial_m6` (D-198), P-18 and
     the order of the performance pass (D-199), and the validation run's registration (W1–W9 and
     `score.py` committed before the run; D-200, PR #54).
-  - **Running:** the M6 validation run (seed 0x7A11DA7E, every recovery scenario at φ ∈ {0, 0.3, 0.6},
-    replicates 0–99; projected 3.5 h; D-200).
-  - **Then:** the S-35 M6 arm at its registered scale, no amendment, in checkpointed segments
+  - **The M6 validation run: done (D-202).** 7 of 8 strict predictions held; **W3 NOT HELD**, and the
+    verdict stands. D-202 explains the miss without changing it: at φ = 0 the cross-information is
+    exactly zero, so W3's denominator, sqrt(v₃ − v₂), was Monte Carlo noise in the information file;
+    the paired difference itself is second order, as theory says. No estimator fix is indicated. The
+    arm's registration has no prediction with an information-based denominator, so it is unchanged.
+    `rows.csv` is on the release `m6-validation-data-2026-10-10`.
+  - **Then:** the S-35 M6 arm at its registered scale, no amendment, in three checkpointed segments
     (projected 34.9 h, 32.9–37.0 h; D-199, D-198). Its registration may not be amended after the
     validation run (D-197).
 
 ## Next
 
-1. **Score the M6 validation run** (`studies/m6-validation/score.py`, W1–W9; D-200). If a prediction
-   fails: diagnose before the arm runs, validate the fix again on a fresh seed, do not amend the arm's
-   registration.
-2. **The S-35 M6 arm** at its registered scale, in checkpointed segments (D-199); then score it against
-   the 2026-10-10 addendum of `studies/lrpd-serial-correlation/PREDICTION.md` (D-196).
+1. **The S-35 M6 arm** at its registered scale, in three checkpointed segments (D-199); then score it
+   against the 2026-10-10 addendum of `studies/lrpd-serial-correlation/PREDICTION.md` (D-196).
+2. **The arm's scorer (L16–L28),** written blind during the run (owner): the arm's rows, checkpoints and
+   timing output are never opened; it is tested only on a synthetic fixture or the validation run's
+   released rows; it is merged as its own PR before the final segment starts, and that merge commit goes
+   in the arm's manifest.
 3. **Copilot-audit fix PRs**, one each:
    - **A, correctness;**
-   - **B, data integrity and docs accuracy,** including a check that every MANIFEST `sha256` is 64 hex
-     characters;
+   - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
+     D-201, PR #55);
    - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
 4. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
    golden refresh.
@@ -104,15 +109,16 @@ refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design
 change, not a performance item). Runtimes are projected from a timing sample before every full run
-(D-187, D-193).
+(D-187, D-193); the method is **validated** on the M6 validation run (3.499 h against 3.3–3.7 h; D-202).
 
 ## Studies
 
 The index, registrations and results are in [studies/README.md](studies/README.md) (D-148, D-153).
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27,
-  S-28, S-34, S-35 (without its M6 arm).
-- **Registered, not yet run:** the S-35 M6 arm (D-196); the M6 validation run (`m6-validation`, D-200).
+  S-28, S-34, S-35 (without its M6 arm), the M6 validation run (`m6-validation`: 7 of 8 strict held,
+  W3 NOT HELD; D-200, D-202).
+- **Registered, not yet run:** the S-35 M6 arm (D-196).
 - **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
   S-26, S-29 to S-33, S-36, S-38 to S-47; S-37 is documentation, not a study (D-188).
 
@@ -141,6 +147,8 @@ Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifet
 
 - **R-1:** GPU-side DGP, revisit at M6 (large AR(1) parametric bootstraps; D-043).
 - **R-2:** Z sign convention and macro sign filters, revisit at M7 (S-18).
+- **PR B (queued):** `tools/check_manifests.py` lists files from the index but reads them at HEAD, so a
+  staged, uncommitted manifest crashes it; it should read what it lists. CI is unaffected.
 - **Toolchain floors:** a portability goal: CUDA ≥ 11.8, GCC 11, MSVC 14.39, device-visible code in
   C++17 (D-094); the development machine needs a CUDA toolkit before M4.
 
