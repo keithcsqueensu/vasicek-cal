@@ -57,6 +57,9 @@ jobs:
         run: |
           python3 tools/check_manifests.py --self-test
           python3 tools/check_manifests.py
+      # D-203: the S-35 M6 arm's scorer on its synthetic fixture (standard library only).
+      - name: M6 arm scorer self-test (D-203)
+        run: python3 studies/lrpd-serial-correlation/score_m6.py --self-test
       - id: plan
         shell: bash
         run: |
