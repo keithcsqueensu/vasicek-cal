@@ -55,10 +55,12 @@ def entries(doc: object) -> Iterator[tuple[tuple[str, ...], str, bool]]:
     """(key path, hash, whether the hash is the key's own file's) for every SHA-256 in a manifest."""
     for path, value in leaves(doc):
         key = path[-1] if path else ""
-        if key.lower().endswith("sha256"):
-            yield path, value.strip(), False
-        elif BARE.fullmatch(value.strip()) and "commit" not in key.lower():
+        # Bare hashes first: a key that is a committed file named *.sha256 is still that file's hash and is
+        # compared with it; a field such as "executable_sha256" names no file and stays form-only.
+        if BARE.fullmatch(value.strip()) and "commit" not in key.lower():
             yield path, value.strip(), True
+        elif key.lower().endswith("sha256"):
+            yield path, value.strip(), False
         else:
             for m in IN_TEXT.finditer(value):
                 yield path, m.group(1), m.start() == 0
