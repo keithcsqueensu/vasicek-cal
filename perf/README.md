@@ -1,8 +1,46 @@
 # perf/: performance measurement
 
-Performance benchmarks for the P-items of the performance track (`STATE.md`, "Performance"; D-177).
-They measure speed; they are not studies, and they never decide a result. The studies' performance
-questions (S-16 FP32 search, S-17 GPU scaling) stay studies, registered in `studies/`.
+Every performance item (P-item) of the performance track (D-177), its benchmark and its write-up, plus
+the runtime-projection method used before every full run. P-items change how results are computed,
+never what; they measure speed and never decide a result. The studies' own performance questions
+(S-16 FP32 search, S-17 GPU scaling) stay studies, registered in [`studies/`](../studies/README.md).
+
+Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-item-d-177) ·
+[Projecting a full run](#projecting-a-full-run-d-187) · [Benchmarks](#benchmarks)
+
+## P-items
+
+| ID | Item | Status | Decision | Changes results? | Write-up |
+|---|---|---|---|---|---|
+| P-1 | Surface rows cached by (n, d) | done | D-167 | no | `study_surface_cache_spike` (benchmarks below) |
+| P-2 | Profile and q solves by safeguarded Newton | done | D-170 | within solver tolerance; 0 flips | `study_surface_cache_spike` |
+| P-3 | Study fits compute only scored arms | done | D-171 | no | `study_surface_cache_spike` |
+| P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips | `study_surface_cache_spike` |
+| P-5 | Bounded argmax, full-grid fallback | done | D-172 | no | `study_surface_cache_spike`, `study_argmax_check` |
+| P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no | — |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no | — |
+| P-8 | GPU backend | M4 | D-168 | within tolerance | — |
+| P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no | [p9_repeat_rate.md](p9_repeat_rate.md) |
+| P-10 | Dynamic scheduling across threads | planned | D-186 | no | — |
+| P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no | [p11_checkpoint.md](p11_checkpoint.md) |
+| P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — | — |
+| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no | — |
+| P-14 | Calibrate's checks per distinct observation | done | D-178 | no | [p14_calibrate_distinct.md](p14_calibrate_distinct.md) |
+| P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) | [p15_analytic_se.md](p15_analytic_se.md) |
+| P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no | [p16_sampled_check.md](p16_sampled_check.md) |
+| P-17 | SIMD Philox for the DGP's Bernoulli draws | done | D-194 | no | [p17_simd_philox.md](p17_simd_philox.md) |
+| P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) | [p18_ar1_transition.md](p18_ar1_transition.md) |
+| P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
+| P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
+
+- **Order of the open items (D-199):** P-7 next, then P-13 (third) and P-6 (fourth); P-19 with the next golden
+  refresh; P-20 later, with its own flip check.
+- **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
+  would make results platform-independent).
+- **Rejected:** P-12 (above), and sequential stopping of Monte Carlo runs (a design change, not a
+  performance item).
+- **The runtime projection** ([below](#projecting-a-full-run-d-187)) is **validated** on the M6 validation run
+  (3.499 h against 3.3–3.7 h; D-202).
 
 ## Rules for every P-item (D-177)
 

@@ -1,9 +1,87 @@
 # Studies
 
-The index of this project's studies of its own estimators, and how each came out. Every research
-study and every `native` variant gets one entry here, which states the study's own research
-question. A study's files live beside this index, in `studies/<slug>/` (D-153). The rules for
-running studies are in D-148:
+The index of this project's studies of its own estimators, and how each came out. A study's files live
+beside this index, in `studies/<slug>/` (D-153). Performance work is not here: see
+[`perf/README.md`](../perf/README.md).
+
+Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run](#how-studies-are-run) ·
+[The study subset](#the-study-subset-approved-d-150) · [Priority order](#priority-order-d-151) ·
+[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-47 and M6-V, below.
+
+## At a glance
+
+- **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
+  S-34, S-35 (main arms), and the M6 validation run.
+- **Running:** S-35's AR(1)-aware MLE arm (D-199, D-203).
+- **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37.
+- **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
+- **The interval recommendation** that the finished studies support is in
+  [Interval methods compared](#interval-methods-compared-d-176-d-181): Jeffreys equal-tailed preferred,
+  S-4b a `native` option (D-176, D-182).
+
+## Index
+
+Every study, in number order. The number links to its entry below; the slug links to its files where
+they exist.
+
+| # | Slug | Question (short) | Milestone | Status |
+|---|---|---|---|---|
+| [S-1](#s-1-z-sign-invariance-calibration-half-z-sign-invariance) | [`z-sign-invariance`](z-sign-invariance/) | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
+| [S-2](#s-2-sample-size-planning-table-sample-size-table) | [`sample-size-table`](sample-size-table/) | How many years are needed for a given accuracy? | now / M3 | finished (D-304) |
+| [S-3](#s-3-jackknife-bias-correction-for-ρ̂-jackknife-bias-rho) | [`jackknife-bias-rho`](jackknife-bias-rho/) | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
+| [S-4](#s-4-bartlett-corrected-profile-threshold-bartlett-profile) | [`bartlett-profile`](bartlett-profile/) | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
+| [S-5](#s-5-bca-intervals-bca-intervals) | [`bca-intervals`](bca-intervals/) | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
+| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
+| [S-7](#s-7-grid-resolution-against-accuracy-and-runtime-grid-resolution) | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
+| [S-8](#s-8-mle-against-method-of-moments-mle-vs-mom) | [`mle-vs-mom`](mle-vs-mom/) | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
+| [S-9](#s-9-frequentist-coverage-of-grid-bayesian-credible-intervals-bayes-coverage) | [`bayes-coverage`](bayes-coverage/) | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
+| [S-10](#s-10-parametric-bootstrap-intervals-parametric-bootstrap) | [`parametric-bootstrap`](parametric-bootstrap/) | Do parametric bootstrap intervals cover? | on the CPU after the M3 folded studies, full matrix (D-168) | finished (D-181): 2 of 5 held |
+| [S-11](#s-11-misspecification-misspecification) | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
+| [S-12](#s-12-double-iterated-bootstrap-double-bootstrap) | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
+| [S-13](#s-13-r--10000-recovery-re-run-recovery-r10000) | [`recovery-r10000`](recovery-r10000/) | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
+| [S-14](#s-14-backtest-power-backtest-power) | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
+| [S-15](#s-15-simulation-based-calibration-of-the-bayesian-estimator-bayes-sbc) | [`bayes-sbc`](bayes-sbc/) | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | finished (D-175) |
+| [S-16](#s-16-fp32-search-fp64-finalisation-fp32-search) | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
+| [S-17](#s-17-performance-across-gpu-generations-gpu-scaling) | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
+| [S-18](#s-18-z-sign-convention-and-macro-sign-filters-z-sign-macro) | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
+| [S-19](#s-19-z_t-extraction-z-extraction) | `z-extraction` | Z_t extraction, E[Z_t given d_t], as a standard output | M7 (deferred) | deferred; not started |
+| [S-20](#s-20-belkinsuchowerforest-apply-function-bsf-apply) | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
+| [S-21](#s-21-period-influence-period-influence) | [`period-influence`](period-influence/) | How much do one or two extreme periods drive ρ̂? | now | finished (D-159) |
+| [S-22](#s-22-box-sensitivity-box-sensitivity) | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
+| [S-23](#s-23-intervals-for-derived-quantities-derived-quantity-intervals) | [`derived-quantity-intervals`](derived-quantity-intervals/) | Are intervals for the 99.9% conditional PD reliable? | first batch | finished (D-156) |
+| [S-24](#s-24-pd-heterogeneity-pd-heterogeneity) | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
+| [S-25](#s-25-pd-trend-pd-trend) | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
+| [S-26](#s-26-varying-portfolio-size-varying-n) | `varying-n` | Does anything assume a stable n? | now | not registered |
+| [S-27](#s-27-large-portfolio-approximation-large-portfolio) | [`large-portfolio`](large-portfolio/) | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | finished (D-174) |
+| [S-28](#s-28-zero-default-treatments-for-rate-based-estimators-zero-default-rates) | [`zero-default-rates`](zero-default-rates/) | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | finished (D-174) |
+| [S-29](#s-29-rating-scale-version-changes-scale-version-change) | `scale-version-change` | How much crosswalk error before ρ̂ inflation is material? | now (two-grade part); M6 (full) | not registered |
+| [S-30](#s-30-grade-granularity-grade-granularity) | `grade-granularity` | Which number of grades K minimises error, given T and scale stability? | now (per-bucket part); M6 (shared ρ) | not registered |
+| [S-31](#s-31-composition-shock-composition-shock) | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
+| [S-32](#s-32-default-measurement-error-default-misrecording) | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
+| [S-33](#s-33-survivorship-and-backfilled-history-survivorship-backfill) | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
+| [S-34](#s-34-sensitivity-to-severe-new-periods-severe-period-sensitivity) | [`severe-period-sensitivity`](severe-period-sensitivity/) | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
+| [S-35](#s-35-long-run-pd-under-serial-correlation-lrpd-serial-correlation) | [`lrpd-serial-correlation`](lrpd-serial-correlation/) | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | main arms **finished** (D-192): 12 of 15 held. AR(1) MLE arm **running** in checkpointed segments; scorer merged blind (D-203) |
+| [M6-V](#m6-validation-run-m6-validation) | [`m6-validation`](m6-validation/) | Does the AR(1)-aware MLE work on its own model, before S-35 uses it? | M6 | **finished** (D-202): 7 of 8 strict held; W3 NOT HELD (wrong premise, diagnosed) |
+| [S-36](#s-36-rating-philosophy-and-fitted-correlation-pit-ttc-rho) | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
+| [S-37](#s-37-the-asymptotic-rate-mle-as-least-squares-rate-mle-least-squares) | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
+| [S-38](#s-38-granularity-error-in-factor-extraction-granularity-factor-extraction) | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
+| [S-39](#s-39-the-estimated-factor-plugged-into-the-second-step-plug-in-factor) | `plug-in-factor` | Do grade parameters' intervals cover when the factor is estimated, not known? | M6 with M7 | not registered (D-188) |
+| [S-40](#s-40-fixed-estimated-or-grade-specific-correlation-correlation-choice-stress) | `correlation-choice-stress` | Fixed, common or grade-specific correlation: effect on stressed PDs? | M6 | not registered (D-188) |
+| [S-41](#s-41-external-factor-against-internal-factor-external-internal-factor) | `external-internal-factor` | How large is the stressed-PD error when the internal factor is not the external one? | M6 with M7 | not registered (D-188) |
+| [S-42](#s-42-specification-search-rules-spec-search-rules) | `spec-search-rules` | How often does each specification-selection rule recover a known true model? | M7 | not registered (D-188) |
+| [S-43](#s-43-overlapping-series-and-the-ar1-coefficient-overlapping-series-ar1) | `overlapping-series-ar1` | How much do overlapping series inflate the AR(1) coefficient? | M6 (methodology note) | not registered (D-188) |
+| [S-44](#s-44-long-run-pd-by-bootstrapping-macro-variables-lrpd-bootstrap-vs-closed-form) | `lrpd-bootstrap-vs-closed-form` | Is bootstrapping the macro variables needed for the long-run PD? | M7 (likely a numerical check) | not registered (D-188) |
+| [S-45](#s-45-lifetime-pd-convexity-adjustment-scenario-weighting-full-integration-lifetime-pd-scenarios) | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
+| [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
+| [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
+
+Costs in the entries are estimates from the study subset's measurement (below) unless marked
+measured, and are refined in each study's `PREDICTION.md`.
+
+## How studies are run
+
+Every research study and every `native` variant gets one entry here, which states the study's own
+research question. The rules for running studies are in D-148:
 
 - **A variant never changes parity.** It is a `native` option or a standalone study.
 - **Every study is pre-registered.** Before any run, `studies/<slug>/PREDICTION.md` is committed,
@@ -96,61 +174,6 @@ not delay M3.
       PD and costs little (D-152).
 2. **Then M3 itself,** with S-8, S-9, S-15, S-27 and S-28 folded into it (S-15 moves from after M4).
 3. **Everything else** keeps its placement and is ordered when M3 ends.
-
-## Index
-
-| # | Slug | Question (short) | Milestone | Status |
-|---|---|---|---|---|
-| S-1 | `z-sign-invariance` | Is calibration invariant under z → −z? | now / M3 | finished: finding, reviewed (D-301) |
-| S-2 | `sample-size-table` | How many years are needed for a given accuracy? | now / M3 | finished (D-304) |
-| S-3 | `jackknife-bias-rho` | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
-| S-4 | `bartlett-profile` | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
-| S-5 | `bca-intervals` | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
-| S-6 | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
-| S-7 | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
-| S-8 | `mle-vs-mom` | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
-| S-9 | `bayes-coverage` | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
-| S-10 | `parametric-bootstrap` | Do parametric bootstrap intervals cover? | on the CPU after the M3 folded studies, full matrix (D-168) | finished (D-181): 2 of 5 held |
-| S-11 | `misspecification` | How wrong is standard Vasicek under a misspecified DGP? | subset now, full after M4 | not registered |
-| S-12 | `double-bootstrap` | Does an iterated bootstrap calibrate interval coverage? | after M4 | not registered |
-| S-13 | `recovery-r10000` | Do borderline verdicts survive R = 10,000? | now, targeted (first batch); full matrix after M4 | targeted part finished (D-158) |
-| S-14 | `backtest-power` | How many years detect a misstated PD? | M5 | not registered |
-| S-15 | `bayes-sbc` | Is the Bayesian estimator calibrated (SBC)? | M3 (D-151) | finished (D-175) |
-| S-16 | `fp32-search` | Does FP32 search with FP64 finalisation match pure FP64? | after M4 | not registered |
-| S-17 | `gpu-scaling` | How does performance scale across GPU generations? | after M4 | not registered |
-| S-18 | `z-sign-macro` | Are macro sign filters mapped to the Z convention correctly? | M7 (deferred) | deferred; not started |
-| S-19 | `z-extraction` | Z_t extraction, E[Z_t given d_t], as a standard output | M7 (deferred) | deferred; not started |
-| S-20 | `bsf-apply` | A reference Belkin–Suchower–Forest apply function | M7 (deferred) | deferred; not started |
-| S-21 | `period-influence` | How much do one or two extreme periods drive ρ̂? | now | finished (D-159) |
-| S-22 | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
-| S-23 | `derived-quantity-intervals` | Are intervals for the 99.9% conditional PD reliable? | first batch | finished (D-156) |
-| S-24 | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
-| S-25 | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
-| S-26 | `varying-n` | Does anything assume a stable n? | now | not registered |
-| S-27 | `large-portfolio` | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | finished (D-174) |
-| S-28 | `zero-default-rates` | Refuse, drop or censor zero-default periods in rate-based estimators? | M3 | finished (D-174) |
-| S-29 | `scale-version-change` | How much crosswalk error before ρ̂ inflation is material? | now (two-grade part); M6 (full) | not registered |
-| S-30 | `grade-granularity` | Which number of grades K minimises error, given T and scale stability? | now (per-bucket part); M6 (shared ρ) | not registered |
-| S-31 | `composition-shock` | How biased are PD̂ and ρ̂ when a riskier segment joins in a stress year? | now (bias, exclusion, indicator); M6 (separate segment) | not registered |
-| S-32 | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
-| S-33 | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
-| S-34 | `severe-period-sensitivity` | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
-| S-35 | `lrpd-serial-correlation` | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | **finished** (D-192): 12 of 15 held; the AR(1)-aware MLE arm with M6 |
-| S-36 | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
-| S-37 | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | recommended as documentation, not a study (D-188) |
-| S-38 | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
-| S-39 | `plug-in-factor` | Do grade parameters' intervals cover when the factor is estimated, not known? | M6 with M7 | not registered (D-188) |
-| S-40 | `correlation-choice-stress` | Fixed, common or grade-specific correlation: effect on stressed PDs? | M6 | not registered (D-188) |
-| S-41 | `external-internal-factor` | How large is the stressed-PD error when the internal factor is not the external one? | M6 with M7 | not registered (D-188) |
-| S-42 | `spec-search-rules` | How often does each specification-selection rule recover a known true model? | M7 | not registered (D-188) |
-| S-43 | `overlapping-series-ar1` | How much do overlapping series inflate the AR(1) coefficient? | M6 (methodology note) | not registered (D-188) |
-| S-44 | `lrpd-bootstrap-vs-closed-form` | Is bootstrapping the macro variables needed for the long-run PD? | M7 (likely a numerical check) | not registered (D-188) |
-| S-45 | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
-| S-46 | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
-| S-47 | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
-
-Costs below are estimates from the subset measurement above unless marked measured, and are
-refined in each study's `PREDICTION.md`.
 
 ---
 
@@ -579,7 +602,7 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 
   - **F1's miss:** the mechanism was half right. Where the posterior is much narrower than a cell (PD 5%, n = 10⁴) the grid overcovers; where it is about a cell wide the grid's lumping also shifts the interval, and coverage falls instead. The rule fixes both.
   - **F4's miss:** the premise, that the flat prior's pull towards larger ρ offsets ρ̂'s small-T bias, did not hold. At T = 20 Jeffreys covers ρ at 0.934–0.952 (all 12 PASS), flat at 0.917–0.958 (10 PASS). The flat prior's pull helps where ρ is high and hurts where it is low; Jeffreys is steadier.
-- **Mitigation:** for a Bayesian interval on PD or ρ, **use the Jeffreys prior with equal-tailed intervals and the resolution rule** (the estimator's default behaviour; the rule should never be switched off except as a diagnostic). Against the profile and BCa intervals, see [Interval methods compared](#interval-methods-compared-d-176): Jeffreys is now the preferred interval where small-T accuracy matters (D-176). Do not use the flat prior where the data are thin (PD near 0.1% or ρ near the floor), and prefer equal-tailed to HPD for ρ.
+- **Mitigation:** for a Bayesian interval on PD or ρ, **use the Jeffreys prior with equal-tailed intervals and the resolution rule** (the estimator's default behaviour; the rule should never be switched off except as a diagnostic). Against the profile and BCa intervals, see [Interval methods compared](#interval-methods-compared-d-176-d-181): Jeffreys is now the preferred interval where small-T accuracy matters (D-176). Do not use the flat prior where the data are thin (PD near 0.1% or ρ near the floor), and prefer equal-tailed to HPD for ρ.
 - **Monitoring implication:** a Jeffreys equal-tailed credible interval can stand in for the profile interval in a monitoring check (it agrees within 0.015 in coverage across groups B–D and did not undercover ρ); a flat-prior interval should not be used at low PD, where it sits too high.
 
 ## Subset now, full matrix after M4 (new data per replicate)
@@ -1425,7 +1448,8 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
 - **Prediction:** registered (`lrpd-serial-correlation/PREDICTION.md`, D-190), L1–L11, before any AR(1)
   panel was fitted. L12–L15, a second rate-MLE arm on the observed rates (owner), were appended before any
   run. The AR(1)-aware MLE's predictions are appended before its run.
-- **Status:** run 2026-10-09 (D-192), without the AR(1)-aware MLE, which comes with M6. Files are in
+- **Status:** run 2026-10-09 (D-192), without the AR(1)-aware MLE, which comes with M6. The M6 arm (L16–L28)
+  is running in checkpointed segments; its scorer was written blind and merged before the last segment (D-203). Files are in
   `lrpd-serial-correlation/`: `summary.csv` and `MANIFEST.json`. The per-replicate rows are on the release
   `s35-data-2026-10-09` (D-163).
 - **Result:** three findings, in order of weight.
@@ -1527,6 +1551,25 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
     coverage does not move with φ, because two errors cancel. A backtest that sees coverage hold steady as
     conditions change has not shown that the model holds. It must also check each error source on its
     own: the serial correlation of the residuals, and n·PD against S-27's threshold.
+
+### M6 validation run (`m6-validation`)
+
+- **Question:** does the AR(1)-aware MLE (`benchmark_models/ar1/`, D-195 to D-199) behave as theory says on its
+  own model, before S-35's M6 arm uses it? A correctness check, not a research question; it cannot change S-35's
+  registration (D-197).
+- **Experiment:** every recovery scenario at φ ∈ {0, 0.3, 0.6}, replicates 0–99, seed 0x7A11DA7E
+  (`study_lrpd_serial_m6`); binomial MLE, M6 estimate with its checks, and 3-D profile intervals.
+- **Prediction:** registered with its scorer before the run, W1–W9 (`m6-validation/PREDICTION.md`, D-200).
+- **Status:** run 2026-10-10 (D-202), 3.499 h against a projected 3.5 h (3.3–3.7 h): the first in-range test
+  of the runtime projection (`perf/README.md`). `rows.csv` is on the release `m6-validation-data-2026-10-10`,
+  its SHA-256 in `m6-validation/MANIFEST.json` (D-163).
+- **Result:** 7 of 8 strict predictions held; **W3 NOT HELD**. W3's Hausman-type ratio divided by
+  √(v₃ − v₂), which is exactly zero in theory at φ = 0, so the ratio measured Monte Carlo noise in the
+  information file. The paired difference itself is 0.01–0.03 SE and grows with |φ̂|, the second-order
+  effect theory predicts. The diagnosis (post-hoc, `posthoc_w3.py`) explains the miss and changes no verdict.
+- **Lesson recorded (D-202):** a ratio prediction needs a denominator bounded away from zero; where theory
+  makes it zero, test on the numerator's own scale.
+- **Monitoring implication:** none.
 
 ### S-36 Rating philosophy and fitted correlation (`pit-ttc-rho`)
 

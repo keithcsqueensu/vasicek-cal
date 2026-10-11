@@ -81,7 +81,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 A track separate from the studies (D-177): P-items change how results are computed, never what. Each has
 a decision, a benchmark in `perf/` and an identity or tolerance test; result changes need a golden
-refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the decisions.
+refresh with a flip check. Every item with its benchmark and write-up: [perf/README.md](perf/README.md).
 
 | ID | Item | Status | Decision | Changes results? |
 |---|---|---|---|---|
