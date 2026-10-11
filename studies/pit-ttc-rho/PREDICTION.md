@@ -81,7 +81,7 @@ reference-panel hash (D-149, D-110 to D-112), before this study runs.
   units from a heteroskedasticity- and autocorrelation-consistent (HAC) sandwich SE: V = H⁻¹ S H⁻¹, with H
   the observed information of the fit and S the Newey–West long-run variance of the per-period scores
   (each period's gradient of its log-likelihood at the estimate), Bartlett kernel, lag
-  L = ⌊4·(T/100)^(2/9)⌋ (3 at T = 20 and 40, 4 at T = 100), fixed now. The Bartlett kernel keeps S positive
+  L = ⌊4·(T/100)^(2/9)⌋ (2 at T = 20, 3 at T = 40, 4 at T = 100), fixed now. The Bartlett kernel keeps S positive
   semi-definite, so a negative autocorrelation shrinks the SE without making it undefined. Fits at the box's
   bound or flagged near-bound get no HAC interval (counted). This is the candidate `native` option S-35
   named (D-192): it needs its own decision, a methodology note, a scipy replication and a unit test against
