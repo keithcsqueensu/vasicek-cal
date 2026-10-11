@@ -52,6 +52,11 @@ jobs:
       # In plan, so it runs on every event, prose-only changes included, and a failure fails ci-ok.
       - name: Committed data files (D-163, D-183)
         run: python3 tools/check_data_files.py
+      # D-201: every SHA-256 in every MANIFEST.json is 64 lowercase hex characters and, for a committed file, matches.
+      - name: Manifest hashes (D-201)
+        run: |
+          python3 tools/check_manifests.py --self-test
+          python3 tools/check_manifests.py
       - id: plan
         shell: bash
         run: |
