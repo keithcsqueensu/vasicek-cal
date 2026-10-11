@@ -1,0 +1,24 @@
+{
+  "study": "M6 validation: the AR(1)-aware MLE on its own model (D-197, D-200, D-202)",
+  "prediction": "studies/m6-validation/PREDICTION.md: W1-W9 and score.py committed in c22c6a5 before any row of the run existed (D-200); the dry-run disclosure (cf479f4) and the descriptive W3 diagnostic (c3acb7b) before the run; all on main at 1a97b4d",
+  "scoring": "score.py, unchanged since c3acb7b. Run as: python studies/m6-validation/score.py rows.csv (standard library only); its output is results.txt",
+  "posthoc": "posthoc_w3.py, written after the run to diagnose W3's miss (D-202); not a prediction, changes no verdict. Run as: python studies/m6-validation/posthoc_w3.py rows.csv; its output is posthoc_w3.txt",
+  "compiler": "MSVC 1951, Release",
+  "run": {
+    "command": "study_lrpd_serial_m6 --seed 0x7A11DA7E --replicates 100 --phi-intervals all --checkpoint ckpt --out rows.csv (81 scenarios x 3 phi x 100 replicates, 24 threads, dgp_kernel avx2)",
+    "commit": "1a97b4d1b58eb3a04b3b69e5b04be1dd7f7ba50a (main, tree clean)",
+    "executable_sha256": "77f5fcf71f5efdae55ec5ffef0cea7510d95ae948f1aef78e18967a626633b99",
+    "started": "2026-10-10T18:57:11-04:00",
+    "finished": "2026-10-10T22:27:07-04:00",
+    "wall_seconds": 12596,
+    "interruptions": "none: one uninterrupted process (the checkpoint was not resumed); system sleep held off for its duration",
+    "machine_load": "otherwise idle except about 19:10-19:30: single-threaded, short work on PR #55 (two file searches, about 1-2 min of disk reads in total; hashing four files of 55 MB or less; small Python scripts). No build or test run",
+    "projection": "303,708 thread-seconds, 3.5 h (90% range 3.3-3.7 h; 3.2-3.9 h with the machine-state allowance), from a timing sample on seed 0x5AFE, recorded in PREDICTION.md before the run (D-187, D-193). Took 3.499 h: in range, projection / actual 1.005. A full run in range after the method's last amendment, D-193 (D-202)"
+  },
+  "files": {
+    "results.txt": "sha256 b8bb946d441708ed62cf1582363788c6ffa5c926b3b7008e2b28975965f019f7; score.py's output",
+    "posthoc_w3.txt": "sha256 b767db4485db55852119c4603f0be9fb769fb410008545fec49dec6e893bf0bb; posthoc_w3.py's output",
+    "rows.csv (not committed, D-163)": "sha256 52e8e97f08c05fcae0716060d67919e1f14bbb0c5df7826f23d40223d9fde929, 13,180,147 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/m6-validation-data-2026-10-10; regenerable exactly by the command above at its commit"
+  },
+  "result": "7 of 8 strict predictions held (W1, W2, W4, W5, W7, W8, W9); W6 inside its expected range. Not held: W3 (the SD of the paired difference over sqrt(v3 - v2): PD 1.689, rho 1.592, against 0.7-1.5). Diagnosed after the run (D-202): at phi = 0 the cross-information is zero in theory, so v3 - v2 = 0, and W3's denominator was Monte Carlo noise in the information's cross terms; the difference itself is second order, as theory says"
+}

@@ -78,6 +78,12 @@ cache's first fills, which `study_lrpd_serial` does not time as a `once` phase, 
 replicates project 0.28 h. The agreement rule above was added for it, and stops at 16 replicates with
 0.29 h (0.28–0.30 h). The method stays calibrated, not validated.
 
+**Third test, M6 validation (D-202): in range.** With D-193's rules (warm-up, doubling with the agreement
+check, a minimum sample wall time, fixed costs added once), the projection recorded before the run was 3.5 h
+(3.3–3.7 h; 3.2–3.9 h with the machine-state allowance), from a sample on another seed. The run took 3.499 h,
+projection / actual 1.005, on an otherwise idle machine. The method is now validated, for tools whose phases
+it times.
+
 ## Benchmarks
 
 | P-item | Benchmark | What it reports |
