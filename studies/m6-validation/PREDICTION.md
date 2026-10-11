@@ -87,3 +87,50 @@ empirical SD and the asymptotic sqrt(v₃ − v₂) (both in SE units), their ra
 the log ratio with the log denominator, so the write-up can say how much of any excess the denominator explains.
 It changes no verdict. Its plumbing was checked on the same smoke rows, where it showed correlations of −0.84 (PD)
 and −0.54 (ρ) at three replicates per pair; those are disclosed here and are not results.
+
+## Results (appended after the run, 2026-10-10; nothing above was edited)
+
+The run: main at 1a97b4d, MSVC Release, 24 threads, 24,300 fits, one uninterrupted process; `rows.csv` attached to
+the release `m6-validation-data-2026-10-10` (SHA-256 in [`MANIFEST.json`](MANIFEST.json)). Scored by `score.py`
+unchanged; its full output, with the per-pair table, is [`results.txt`](results.txt).
+
+**7 of 8 strict predictions held; W3 NOT HELD. W6 is inside its expected range.** The diagnosis below explains
+W3's miss; it does not change the verdict.
+
+| # | Result | Verdict |
+|---|---|---|
+| W1 | 24,300 of 24,300 fits pass the checks | held |
+| W2 | worst 95th percentile of \|logit difference\| / SE: PD 0.056, ρ 0.099 (≤ 0.25) | held |
+| W3 | SD of the paired difference / sqrt(v₃ − v₂): PD 1.689, ρ 1.592 (0.7–1.5) | **not held** |
+| W4 | median φ̂ at φ = 0 over the 15 credible cells: −0.0188 (−0.05 to +0.01) | held |
+| W5 | pooled coverage over 51 pairs: PD 0.9465, ρ 0.9418 (0.93–0.97), φ 0.9435 (0.92–0.97); no pair below its floor | held |
+| W6 | pooled coverage over 13 T = 40 pairs: PD 0.9323, ρ 0.9315 (0.90–0.97), φ 0.9292 (0.80–0.97) | inside |
+| W7 | worst PD median bias: −0.378 SE (\|·\| ≤ 0.5) | held |
+| W8 | 98.0% of pairs within 0.35 SE of the iid MLE's ρ bias (≥ 90%) | held |
+| W9 | placement flag 0.00%, doubled-rule flag 0.00%; worst pair 0% | held |
+
+**W3, with the descriptive diagnostic registered before the run.** Per cell, the ratio of the paired difference's
+empirical SD to sqrt(v₃ − v₂) ranges from 0.14 to 5.05 for PD and from 0.03 to 5.70 for ρ, and is below 1 in 12 of
+15 cells for each. The pooled SD exceeds the band because of the cells with the smallest
+denominators (scenario 52: 0.0045 SE for PD, ratio 5.05; scenario 61: 0.0034 SE, ratio 3.58). The log ratio's
+correlation with the log denominator across cells is −0.96 for PD and −0.60 for ρ. Meanwhile the empirical SD
+itself is nearly constant, 0.010–0.032 SE for PD, whatever the denominator.
+
+**Diagnosis, after the run (not a prediction; changes no verdict; [`posthoc_w3.py`](posthoc_w3.py), output
+[`posthoc_w3.txt`](posthoc_w3.txt)).** W3's premise does not hold at φ = 0, and the estimator behaves as theory says:
+
+- *Theory:* at φ = 0 the periods are independent, so the φ score is a sum of products of adjacent periods'
+  posterior factor means, each with mean zero. Its covariance with the PD and ρ scores and its expected derivative
+  vanish, so the cross-information is exactly zero and v₃ − v₂ = 0. The Hausman first-order term is absent.
+- *The denominator was noise:* the information is a Monte Carlo average over 500 panels per cell. At φ = 0 its
+  cross-correlations average +0.005 (PD) and +0.010 (ρ), with a spread of 1.25 and 0.96 sampling SEs: zero plus
+  noise. At φ = 0.6, by contrast, ρ's is −0.49, with every cell beyond two SEs.
+- *The difference is second order:* within cells it does not move with φ̂ (R² 0.00–0.23; slopes near zero against
+  the noise-based β), nor with φ̂², but its size does: corr(|difference|, |φ̂|) averages +0.63 for PD and +0.62 for
+  ρ. That is φ̂ times a mean-zero coupling, the second-order term, and not a numerical floor, which would not
+  scale with |φ̂|. φ̂'s own spread matches the information's SE (0.83–1.02 of it).
+
+W2, which checks the same paired difference in absolute terms, held with room: its worst cell's 95th percentile is 0.1 SE (logit scale), against 0.25.
+
+**Runtime: the projection held.** 12,596 s = 3.499 h against 3.5 h (3.3–3.7 h), projection / actual 1.005. The
+machine was otherwise idle apart from about 20 minutes of light single-threaded work (`MANIFEST.json`).
