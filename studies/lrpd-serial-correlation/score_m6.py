@@ -299,6 +299,11 @@ def main(argv=None) -> int:
     def cred_d(s, x):
         return x["group"] == "D" and x["credible_phi"] == 1
 
+    def excluded(phis, sel):
+        """Panels left out of a fitted-panels-only statistic: those not fitted in the cells it uses (owner)."""
+        n = sum(summ[(p, s)]["not_fitted"] for p in phis for s in scen if sel(s, summ[(p, s)]))
+        return f"; panels excluded (not fitted): {n}"
+
     rows_out = []
     strict, qual = [], []
 
@@ -338,35 +343,36 @@ def main(argv=None) -> int:
     closer = sum(abs(summ[(0.6, s)]["pd_median_rel"]) < abs(summ[(0.6, s)]["binom_median_rel"]) for s in inf)
     near = sum(abs(summ[(0.6, s)]["pd_median_rel"] - summ[(0.6, s)]["binom_median_rel"]) < 0.01 for s in inf)
     report("L21", "phi 0.6: median relative error of PD-hat closer to 0 than the binomial's in 19-31 of 50; "
-           "differs by < 0.01 in >= 40 of 50", f"closer in {closer} of {len(inf)}; within 0.01 in {near}",
+           "differs by < 0.01 in >= 40 of 50", f"closer in {closer} of {len(inf)}; within 0.01 in {near}"
+           + excluded((0.6,), in_group("B", "C", "D")),
            19 <= closer <= 31 and near >= 40)
     # L22
     n22 = sum(cred_d(s, summ[(0.0, s)]) for s in scen)
     s22 = pooled(0.0, "phi_neg", cred_d)
     report("L22", "phi 0: share of phi-hat < 0 over group D's credible scenarios in 0.50-0.60",
-           f"{s22:.4f} ({n22} scenarios)", inside(s22, 0.50, 0.60))
+           f"{s22:.4f} ({n22} scenarios)" + excluded((0.0,), cred_d), inside(s22, 0.50, 0.60))
     # L23
     a20 = lambda s, x: x["group"] == "A" and x["periods"] == 20
     b23, a23 = pooled(0.0, "phi_neg", in_group("B")), pooled(0.0, "phi_neg", a20)
     report("L23", "phi 0: share of phi-hat < 0 over group B in 0.55-0.80; group A's T = 20 higher than B's",
-           f"B {b23:.4f}; A T = 20 {a23:.4f}", inside(b23, 0.55, 0.80) and a23 > b23, "qualitative")
+           f"B {b23:.4f}; A T = 20 {a23:.4f}" + excluded((0.0,), lambda s, x: in_group("B")(s, x) or a20(s, x)), inside(b23, 0.55, 0.80) and a23 > b23, "qualitative")
     # L24
     d24, b24 = pooled(0.6, "phi_neg", cred_d), pooled(0.6, "phi_neg", in_group("B"))
     n24 = sum(cred_d(s, summ[(0.6, s)]) for s in scen)
     report("L24", "phi 0.6: share of phi-hat < 0 under 0.5% in group D's credible scenarios",
-           f"{d24:.4%} ({n24} scenarios)", d24 < 0.005)
-    report("L24 (B)", "phi 0.6: share of phi-hat < 0 in group B in 1%-15%", f"{b24:.4%}", inside(b24, 0.01, 0.15),
+           f"{d24:.4%} ({n24} scenarios)" + excluded((0.6,), cred_d), d24 < 0.005)
+    report("L24 (B)", "phi 0.6: share of phi-hat < 0 in group B in 1%-15%", f"{b24:.4%}" + excluded((0.6,), in_group("B")), inside(b24, 0.01, 0.15),
            "qualitative")
     # L25
     d25 = {phi: pooled(phi, "phi_bound", cred_d) for phi in (0.0, 0.6)}
     b25 = {phi: pooled(phi, "phi_bound", in_group("B")) for phi in PHIS}
     a25 = {phi: pooled(phi, "phi_bound", a20) for phi in PHIS}
     report("L25", "phi-hat at +/-0.95 under 0.5% in group D's credible scenarios at phi 0 and 0.6",
-           "; ".join(f"phi {p} {v:.4%} ({sum(cred_d(s, summ[(p, s)]) for s in scen)} scenarios)" for p, v in d25.items()),
-           all(v < 0.005 for v in d25.values()))
+           "; ".join(f"phi {p} {v:.4%} ({sum(cred_d(s, summ[(p, s)]) for s in scen)} scenarios)" for p, v in d25.items())
+           + excluded((0.0, 0.6), cred_d), all(v < 0.005 for v in d25.values()))
     report("L25 (B, A)", "phi-hat at +/-0.95: group B in 1%-20% at each phi; group A's T = 20 at least 10% at each phi",
-           "; ".join(f"phi {p}: B {b25[p]:.2%}, A T = 20 {a25[p]:.2%}" for p in PHIS),
-           all(inside(b25[p], 0.01, 0.20) and a25[p] >= 0.10 - EPS for p in PHIS), "qualitative")
+           "; ".join(f"phi {p}: B {b25[p]:.2%}, A T = 20 {a25[p]:.2%}" for p in PHIS)
+           + excluded(PHIS, lambda s, x: in_group("B")(s, x) or a20(s, x)), all(inside(b25[p], 0.01, 0.20) and a25[p] >= 0.10 - EPS for p in PHIS), "qualitative")
     # L26
     got26 = {(p, s): summ[(p, s)]["prof_phi"] for p, ss in PHI_CREDIBLE.items() for s in ss}
     listed = {p: sorted(s for s in SUBSET if summ[(p, s)]["credible_phi"]) for p in PHIS}
@@ -505,6 +511,7 @@ def self_test() -> int:
             expect("L17 0.95 at B phi 0.6 not held", "phi 0.6 B 0.9500" in text and
                    re.search(r"\| L17 \|.*\| NOT HELD \|", text) is not None)
             expect("L21 all within 0.01", "within 0.01 in 50" in text)
+            expect("zero excluded printed", "panels excluded (not fitted): 0" in text)
             expect("L22 share 0.5", re.search(r"\| L22 \|.*\| 0\.5000 \(", text) is not None)
             expect("L25 bound share 1%", "phi 0.0 1.0000% (" in text)
             expect("L26 0.96", "43 at 0.6 0.9600" in text)
@@ -522,6 +529,8 @@ def self_test() -> int:
             expect("its cells are named", "failed cell: phi 0.0 scenario 0: 1 of 100 not fitted (replicates 3)" in text)
             expect("every prediction still reported", all(f"| L{k} |" in text for k in range(16, 29)))
             expect("an unfitted panel's interval misses", "phi 0.3 0.9400; phi 0.6 0.9400" in text)
+            expect("excluded panels counted", "within 0.01 in 50; panels excluded (not fitted): 50 |" in text
+                   and "(15 scenarios); panels excluded (not fitted): 15 |" in text)
             expect("the q interval a deviation", "NOT REPORTED, a deviation from the registration" in text)
             other = Path(tmp) / "other.csv"
             fixture(other, REPLICATES, tweak=lambda v: v.update(binom_pd=v["binom_pd"] * 1.01))

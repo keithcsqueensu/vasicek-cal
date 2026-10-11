@@ -316,8 +316,10 @@ files and the exit status were seen (owner's rules).
   arm's last segment starts. It was tested only on its synthetic fixture (`--self-test`, also run in CI).
 - **Checks** (the owner's choices, approved 2026-10-11):
   - **A panel that was not fitted fails the checks** (as in the validation run's W1), but does not stop the
-    scoring. Every prediction is still reported, and the failed cells are named with their replicates. An
-    unfitted panel's intervals count as misses; the φ̂ and PD̂ statistics use the fitted panels.
+    scoring. Every prediction is still reported, and the failed cells are named with their replicates.
+  - **Unfitted panels' intervals count as misses** (a fifth choice, accepted by the owner as the conservative
+    option). The φ̂ and PD̂ statistics (L21–L25) use the fitted panels only. Each of those predictions prints
+    the number of panels it excludes, zero included, so any selection is visible.
   - **The two log-likelihood checks** above, on the fitted panels: any failure stops the scoring.
   - **The binomial fits are S-35's** (a failure stops the scoring): per φ and scenario, the median relative error of the arm's `binom_pd`
     over every panel equals `summary.csv`'s at its six significant digits. "Binomial" in L18, L19 and L21 therefore means the

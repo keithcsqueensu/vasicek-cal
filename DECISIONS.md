@@ -1463,7 +1463,8 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Order:** it is merged as its own PR before the arm's final segment starts. Its merge commit, the arm's build commit and the engine and study-tool sources compared with the validation build go in the arm's manifest.
   - **Timing notes:** the work is logged in the run's timing notes.
   - **The scoring choices (owner, approved 2026-10-11):**
-    - **Unfitted panels:** a panel that was not fitted fails the checks, as in the validation run's W1. Every prediction is still reported, with the failed cells named; their intervals count as misses.
+    - **Unfitted panels:** a panel that was not fitted fails the checks, as in the validation run's W1. Every prediction is still reported, with the failed cells named.
+    - **Unfitted panels' intervals count as misses,** accepted by the owner as the conservative option. The φ̂ and PD̂ statistics (L21–L25) use the fitted panels only, and each of those predictions prints how many panels it excludes, zero included.
     - **The binomial fits** are checked against S-35's per-cell `summary.csv`, so L18, L19 and L21 compare the same fits on the same panels.
     - **L23** is held only inside its 0.55–0.80 range.
     - **"Credible"** is `credible_phi` at the cell's true φ.
