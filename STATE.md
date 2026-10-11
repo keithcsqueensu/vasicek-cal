@@ -81,7 +81,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 A track separate from the studies (D-177): P-items change how results are computed, never what. Each has
 a decision, a benchmark in `perf/` and an identity or tolerance test; result changes need a golden
-refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the decisions.
+refresh with a flip check. Every item with its benchmark and write-up: [perf/README.md](perf/README.md).
 
 | ID | Item | Status | Decision | Changes results? |
 |---|---|---|---|---|
@@ -128,7 +128,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 |---|---|---|
 | S-35 | now; M6 arm | finished (D-192), M6 arm next |
 | S-36 | M6 | new generator code |
-| S-37 | M7, documentation | an identity (D-164's closed form) |
+| S-37 | M7, documentation | an identity (D-164's closed form); **documented** in the rate MLE note, §3 |
 | S-38 | now (with S-19); M7 | cheap |
 | S-39 | M6 with M7 | plug-in factor |
 | S-40 | M6, in multi-grade | |
