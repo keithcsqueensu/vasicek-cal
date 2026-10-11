@@ -94,7 +94,8 @@ The run: main at 1a97b4d, MSVC Release, 24 threads, 24,300 fits, one uninterrupt
 the release `m6-validation-data-2026-10-10` (SHA-256 in [`MANIFEST.json`](MANIFEST.json)). Scored by `score.py`
 unchanged; its full output, with the per-pair table, is [`results.txt`](results.txt).
 
-**7 of 8 strict predictions held; W3 did not. W6 is inside its expected range.**
+**7 of 8 strict predictions held; W3 NOT HELD. W6 is inside its expected range.** The diagnosis below explains
+W3's miss; it does not change the verdict.
 
 | # | Result | Verdict |
 |---|---|---|
