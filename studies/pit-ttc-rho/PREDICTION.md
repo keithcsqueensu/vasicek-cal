@@ -77,6 +77,15 @@ reference-panel hash (D-149, D-110 to D-112), before this study runs.
   all on every replicate (common random numbers).
 - **Fits:** the parity binomial-mixture MLE, per grade (17 per rule), with profile intervals for PD and ρ;
   and once per replicate, the portfolio-level fit to all grades together.
+- **A HAC interval beside the profile (owner, 2026-10-11).** For every grade fit, a Wald interval in logit
+  units from a heteroskedasticity- and autocorrelation-consistent (HAC) sandwich SE: V = H⁻¹ S H⁻¹, with H
+  the observed information of the fit and S the Newey–West long-run variance of the per-period scores
+  (each period's gradient of its log-likelihood at the estimate), Bartlett kernel, lag
+  L = ⌊4·(T/100)^(2/9)⌋ (3 at T = 20 and 40, 4 at T = 100), fixed now. The Bartlett kernel keeps S positive
+  semi-definite, so a negative autocorrelation shrinks the SE without making it undefined. Fits at the box's
+  bound or flagged near-bound get no HAC interval (counted). This is the candidate `native` option S-35
+  named (D-192): it needs its own decision, a methodology note, a scipy replication and a unit test against
+  a hand-computed panel before this study runs, and it changes no parity result.
 - **Informative grades (fixed now, from the model):** grades 2–16 whose expected defaults per period under
   TTC, n·share_k·PD_k, are at least 5: grades 9–14 of L, 8–16 of M and 9–16 of H (23 grades). The edge
   grades 1 and 17, and the thin grades, are reported, not predicted.
@@ -147,11 +156,14 @@ Strict pass/fail unless marked. "Median" is over replicates; coverage is against
 | Q6 | **Fast PIT sits at the floor:** at T = 100, at λ = 1 and θ = 1, pooled over the informative grades, the share of fits with ρ̂ at the box's lower bound (flagged) is between 0.35 and 0.65 (a pseudo-true value below the bound puts about half the estimates on it) |
 | Q7 | **The interval no longer covers the asset correlation:** at T = 100, θ = 1 and λ ≥ 0.5, in every informative grade, the ρ profile interval covers the generating ρ in under half of the replicates |
 | Q8 | **Coverage of the pseudo-true value, at T = 100 (expected ranges, not pass/fail):** pooled over the informative grades, (a) without momentum, at λ = 0.25 and 0.5, the ρ profile interval covers ρ_g with frequency 0.90–0.97; (b) with momentum, at θ = 0.5 and λ ≥ 0.5, the PD profile interval covers PD_g with frequency above 0.95: the negative autocorrelation makes the mean default rate less variable than an iid fit assumes (the factor part of its variance shrinks to about 0.4 of the iid value; the binomial part, independent across periods, does not shrink, so the overcoverage is smaller where defaults are few) |
+| Q10 | **The HAC interval, at T = 100 (expected ranges, not pass/fail):** pooled over the informative grades, (a) with momentum, at θ = 0.5 and λ ≥ 0.5, the HAC interval for PD covers PD_g with frequency 0.90–0.97, closer to 0.95 than the profile interval's (Q8b): it sees the negative autocorrelation the iid likelihood misses; (b) under TTC, where periods are independent, its PD and ρ coverage of the generating values is within 0.03 of the profile interval's, at most 0.03 below it (the cost of estimating S with T = 100 periods) |
 | Q9 | **The grade's long-run PD, at T = 100:** in every informative grade under every rule, median PD̂ / PD_g(λ, θ) (the pseudo-true PD in `reference.csv`) is between 0.95 and 1.05 |
 
 **Reported without a prediction:** everything at T = 20 and 40 (where ρ̂'s small-T bias and the floor
 dominate); the edge and thin grades; the share of empty grade-periods by rule; the generating-ρ distance per
-grade; the realised autocorrelation of each grade's default rates against the closed form; and, for capital,
+grade; the realised autocorrelation of each grade's default rates against the closed form; the HAC interval
+at T = 20 and 40, its width against the profile interval's, and its ρ coverage under every rule; and, for
+capital,
 each grade's 99.9% conditional PD from its fitted (PD̂, ρ̂) beside the one from the generating ρ and the
 master-scale PD (S-23's interval), the practical consequence of reading a grade's ρ̂ as an asset correlation.
 
@@ -170,4 +182,5 @@ grade's realised default rate against its label, which a lagging rating moves.
 1. The momentum form: the smoothed-factor rule above (momentum through the systematic part, obligors
    redrawn), or obligor-level partial adjustment with persistent obligors (adds migrations and survivorship,
    overlaps S-33, and costs a persistent-population generator).
-2. The informative-grade rule and the bands in Q2 to Q9.
+2. The informative-grade rule and the bands in Q2 to Q10.
+3. The HAC interval's settings (Bartlett kernel, the lag rule, Wald in logit units).
