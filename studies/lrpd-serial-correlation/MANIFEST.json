@@ -26,7 +26,7 @@
   "files": {
     "summary.csv": "sha256 6ac449b677e76ec08d69828d211704dafe1d0ca6fca0b5340e9f4b428e4737ee; compare.py --summary-out (one row per phi and scenario)",
     "reference.csv, reference_rate.csv, reference_observed.csv": "the registered reference numbers (reference.py, reference_observed.py), from the model and pinned results only",
-    "rows.parquet (not committed, D-163)": "sha256 20f331bf6a390b962a6c11ffb954a2f93ab7494d06943d1883f71c501ae331b8, 11,959,495 bytes; from rows.csv (sha256 855b5abcf7b0915e66f5b56d5334d3fed396b7f20feb981893a874c62b8b5e5, 54,884,780 bytes) by export_rows.py (pyarrow 25.0.1, zstd 19); every value equal to the CSV's (checked bitwise)",
+    "rows.parquet (not committed, D-163)": "sha256 20f331bf6a390b962a6c11ffb954a2f93ab7494d06943d1883f71c501ae331b8, 11,959,495 bytes; from rows.csv (sha256 b855b5abcf7b0915e66f5b56d5334d3fed396b7f20feb981893a874c62b8b5e5, 54,884,780 bytes; corrected 2026-10-10, D-201: first recorded with its first character dropped, recomputed from the run's output) by export_rows.py (pyarrow 25.0.1, zstd 19); every value equal to the CSV's (checked bitwise)",
     "rate_rows.parquet (not committed, D-163)": "sha256 805451ecfbb92cb8ffc57ef1f2e7192422be587d5880e54b6fd400f8f6148b56, 1,567,594 bytes; from rate_rows.csv (sha256 21e0543ee73625bc01fb6fb42af13c0ee4c567782ee93acff4982aafa86a6b62, 7,671,503 bytes)",
     "release": "https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s35-data-2026-10-09"
   },
