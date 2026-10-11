@@ -11,8 +11,9 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
 > **Status: pre-alpha research software, not for production use.**
 > - **M1, the parity sign-off for the binomial-mixture MLE, is complete** and tagged
 >   `v0.1.0-parity-binomial`.
-> - **M2 is done:** profile-likelihood intervals, the resampling engine and the C ABI v0.1.
-> - **Not yet built:** the other single-factor estimators (M3) and the CUDA backend (M4).
+> - **M2 and M3 are done:** profile-likelihood intervals, the resampling engine, the Vasicek-rate
+>   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.4.
+> - **In progress:** M6's AR(1)-aware binomial MLE. The CUDA backend (M4) comes after M6 (D-168).
 
 ## What it does today
 
@@ -27,8 +28,13 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
 - **Grid search, then refinement.** The log-likelihood surface is evaluated on a (PD, ρ) grid, so
   there are no optimiser convergence failures. The maximum is refined with a 2-D quadratic,
   including the PD–ρ cross term. Standard errors come from the Hessian at the estimate.
-- **Profile-likelihood intervals** (95%, χ²₁). They are truncated at the search box and flagged,
-  never extrapolated, which makes them the right interval near ρ = 0 or with very few defaults.
+- **Profile-likelihood intervals** (95%, χ²₁), truncated at the search box and flagged, never
+  extrapolated; also for the 99.9% conditional PD q (D-156). The Bartlett-corrected profile interval
+  (S-4b) is a `native` option (`vcal_calibrate_bartlett`, D-184).
+- **More estimators (M3):** the Vasicek-rate MLE with explicit zero-default treatments (refuse,
+  censor, substitute; D-164), the joint-default-probability method of moments, exact in finite n
+  (D-165), and the grid-Bayesian estimator with flat or Jeffreys priors and the resolution rule
+  (D-166).
 - **Resampling as weights (W × L).** The costly integrals run once per panel, and each replicate is
   a weighted re-sum of them, so 999 bootstrap replicates cost 15–30% of one fit. Schemes:
   - the iid and moving-block bootstrap, with their own random-number key domain;
@@ -36,21 +42,20 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
   - index matrices supplied by the caller, to reproduce another tool's replicates exactly.
 
   Bootstrap percentile intervals are also computed.
-- **Flags instead of silent fixes:**
-  - grid edge;
-  - flat surface;
-  - refinement rejected;
-  - quadrature unconverged;
-  - numeric;
-  - near a bound;
-  - interval truncated.
-- **A synthetic data generator** (Philox4x32-10 with its own elementary functions). Its panels are
-  bitwise identical on every platform and match a pure-Python mirror.
+- **Flags instead of silent fixes:** grid edge, flat surface, refinement rejected, quadrature
+  unconverged, numeric, near a bound, interval truncated, and ρ not identified (no period with
+  n ≥ 2; D-302).
+- **A synthetic data generator** (Philox4x32-10 with its own elementary functions), with SIMD
+  kernels that give the same panels bit for bit (D-194) and an AR(1)-factor variant (D-190). Its
+  panels are bitwise identical on every platform and match a pure-Python mirror.
+- **Surface rows cached by (n, d)** across panels, bit for bit (D-167), so studies refit thousands
+  of panels cheaply.
 - **Deterministic results.** They are bitwise identical for any thread count, and agree across
   platforms within documented tolerances.
-- **A flat C ABI** (`include/vcal/vcal.h`, plain C99): calibrate with profile intervals,
-  resample, surface, simulate and build provenance. It is tested from a C11 program, and every
-  number it returns is bitwise what the engine gives.
+- **A flat C ABI** (`include/vcal/vcal.h`, plain C99, version 0.4): calibrate with profile
+  intervals, the M3 estimators, the S-4b interval, resample, surface, simulate and build
+  provenance. It is tested from a C11 program, and every number it returns is bitwise what the
+  engine gives.
 
 ## Accuracy and replication evidence
 
@@ -77,8 +82,30 @@ Known statistical behaviour, all reported rather than corrected:
 - conservative profile intervals in near-uninformative settings;
 - bootstrap percentile intervals that undercover: they break down near a bound and correct neither bias nor skewness.
 
-**Profile-likelihood intervals are the recommended method for inference in this model.**
-Bootstrap percentile intervals are provided for comparison and are not recommended for ρ.
+**Which interval to use.** The preferred interval for PD and ρ is the Jeffreys equal-tailed
+grid-Bayesian interval with the resolution rule on (D-176, D-182). Profile-likelihood intervals
+remain valid, and the Bartlett-corrected profile interval (S-4b) is a native option. Bootstrap
+percentile intervals are provided for comparison and are not recommended for ρ (BCa does better
+than the percentile interval for ρ, D-159).
+
+## Key findings
+
+Each from a pre-registered study; details in [studies/README.md](studies/README.md).
+
+- **Percentile bootstrap undercovers for ρ at every T** (M2b): 125 of 162 verdicts below the band.
+- **The Jeffreys equal-tailed interval, with the resolution rule, is the preferred interval**: it
+  closes about half of the profile interval's small-T shortfall at no cost in width (S-9; D-175,
+  D-176). The Bartlett-corrected profile (S-4b) covers best at T = 20, at 4–5% extra width, and is
+  a `native` option (D-181, D-182).
+- **The profile interval undercovers by about one point at T = 20**, systematically (S-13, D-158).
+- **Serial correlation makes iid intervals too narrow at every T**: PD profile coverage 0.86–0.88 at
+  φ = 0.3 and 0.69–0.73 at φ = 0.6 (S-35, D-192).
+- **The censored rate MLE matches the binomial MLE only from n·PD ≈ 500–1,000**; with counts, use
+  the binomial MLE (S-27, S-28; D-174).
+- **Delta-method Wald intervals fail for the 99.9% conditional PD**: q̂ inherits ρ̂'s downward bias
+  and its SE shrinks with it; one scenario still fails at T = 100 (S-23, D-156).
+- **Typical 20–30 year histories do not pin ρ down**: ρ within ±0.05 takes about 35–40 years at
+  ρ = 0.12 with n·PD ≥ 50 (S-2, D-304).
 
 These are documented with evidence in [recovery.md](docs/methodology/recovery.md), and the M1
 sign-off is in [parity_signoff.md](docs/methodology/parity_signoff.md).
@@ -100,7 +127,7 @@ Start with the methodology note. It is self-contained.
 
 [DECISIONS.md](DECISIONS.md) records every design decision and its rationale (D-nnn).
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the design, and [STATE.md](STATE.md) the current
-status and the full plan.
+status and next steps.
 
 ## Build and test
 
@@ -235,7 +262,7 @@ python tools/gen_tolerances.py --check
 # the plain scipy replication (about five minutes)
 uv run --no-project --with scipy==1.18.1 --with numpy==2.5.3 python validation/scipy/binomial_mixture_mle.py
 
-# the recovery harness: 81 scenarios x 1,000 replicates, about 70 minutes on 24 threads
+# the recovery harness: 81 scenarios x 1,000 replicates, about 5 minutes on 24 threads
 build/cpu-release/tests/recovery_harness --replicates 50   # a quick look, writes nothing
 build/cpu-release/tests/recovery_harness --write           # regenerate the recovery goldens
 ```
@@ -248,24 +275,20 @@ build/cpu-release/tests/recovery_harness --write           # regenerate the reco
 | M2a | Profile-likelihood intervals; recovery re-run with profile, Wald and t(T − 1) side by side | **Done** |
 | M2b | Resampling engine: iid and moving-block bootstrap, jackknife, walk-forward and supplied index matrices as weight matrices W × L; percentile intervals; bootstrap coverage study | **Done** |
 | M2c | C ABI v0.1: calibrate with profile intervals, resample, surface, DGP, build info; tested from C and bitwise against the engine | **Done** |
-| M3 | Vasicek-rate MLE, method of moments, grid Bayesian; `native` profile options | Next |
-| M4 | CUDA backend and CPU↔GPU parity suite. Today CI only compiles device code with nvcc 11.8 and 12.8 | Planned |
+| M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 with S-4b | **Done** |
+| M4 | CUDA backend and CPU↔GPU parity suite. Today CI only compiles device code with nvcc 11.8 and 12.8 | Planned, after M6 (D-168) |
 | M5 | Monitoring: backtests, run ledger, report data | Planned |
-| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | Planned |
+| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | **In progress:** the AR(1)-aware MLE |
 | M7 | Macro pipeline: transforms with lineage, pre-screens, batched fits, scorers, ranker | Planned |
 | M8 | Public-data demonstrations (FDIC, FRED, StatCan), the full scipy replication set, ABI 1.0 | Planned |
 
 ## Design principles
 
-- **Replicability over cleverness.**
-  - Anything needed to replicate a result is describable in prose and in a short scipy script.
-  - Tolerances are named, documented and set from measured errors. Tests use the name, never a
-    literal.
-  - Each kind of comparison has its own tolerances: mpmath, `ref/`, cross-platform, recovery replay
-    and scipy (D-107).
-- **Independent checking.**
-  - `ref/` shares no code or algorithm with the core, and a layering check enforces it.
-  - The goldens are generated by mpmath or `ref/`, never by the engine certifying itself.
+- **Replicability over cleverness.** Anything needed to replicate a result is describable in prose
+  and in a short scipy script. Tolerances are named, documented and set from measured errors, with
+  separate kinds for mpmath, `ref/`, cross-platform, recovery replay and scipy (D-107).
+- **Independent checking.** `ref/` shares no code or algorithm with the core (a layering check
+  enforces it), and goldens come from mpmath or `ref/`, never from the engine certifying itself.
 - **Log-space numerics.** Log Φ is the core primitive, integrals are computed as log ∫ exp, and
   sums are compensated, so tail PDs and periods with 10⁶ obligors neither underflow nor cancel.
 - **Determinism.** Parallelism is only over independent outputs, with fixed summation order and

@@ -1,519 +1,152 @@
 # State
 
-Last updated: 2026-10-10 (research roadmap D-148 to D-152; S-23 prediction registered; study index moved to `studies/README.md`, D-153; S-1 finished, D-300, D-301; unidentified-ρ flag, D-302; S-2 finished, D-303 to D-305; S-13 and the shared jackknife run registered, D-154, D-155; S-23 finished, D-156; S-1 bounds for the Windows libm, D-157; S-13 targeted finished, D-158; the shared jackknife run finished, D-159; S-34 registered, D-160; S-34 finished, D-162; S-34 follow-up, data policy and CI gate, D-163; S-8, S-9, S-15, S-27, S-28 registered, D-161; M3.1 Vasicek-rate MLE, D-164; M3.2 method of moments, D-165; M3.3 grid Bayesian, D-166; the surface-row cache, D-167; roadmap to v0.2 and M6 before M4, D-168; C ABI 0.3, D-169; performance, D-170 to D-172; S-8, S-27, S-28 finished, D-174; S-9 and S-15 tools, D-173; S-9 and S-15 finished, D-175; interval methods compared, S-4 and S-10 registered, D-176; the performance track and the priority order, D-177; P-14, P-11, P-16, D-178 to D-180; S-10 and S-4 finished, D-181; S-4b a native option and D-163's named exceptions, D-182, D-183; S-4b implemented, ABI 0.4, D-184; P-15 and the runtime miss, D-185, D-186; the runtime projection, D-187; the roadmap addendum, D-188; P-17 SIMD Philox, D-194; the AR(1) likelihood, D-195; the S-35 M6 registration, D-196)
+Last updated: 2026-10-10
 
-## Current status
+The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
+detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
 
-- **M0 (design): done.** Q1–Q13 answered and recorded as D-025–D-046. ARCHITECTURE.md updated to match.
-- **M1.1 (build skeleton): done.** Verified locally on Windows and in CI on Linux + Windows.
-  - Git repository on `main`. Contains LICENSE (the Apache-2.0 text, verbatim from apache.org), NOTICE, `.gitattributes` (LF) and `.gitignore`.
-  - CMake ≥ 3.25 with presets `cpu-debug` and `cpu-release` (Ninja), warnings-as-errors in presets, FP contraction off (D-048), and the CUDA option/arch logic (D-026, D-030, D-040).
-  - In-house test runner under CTest, plus self-tests: passing semantics, and a deliberately failing suite whose exit code and failure count are both asserted.
-  - `layering_check` enforces the ARCHITECTURE §2 rules; `layering_check_fires` proves it catches all 5 fixture violations.
-  - `core/precision.hpp` holds the precision policies and the `Precision` concept, which enforces FP64 accumulation (D-039).
-  - **Verified locally:** 7/7 tests pass on MSVC 19.51 (both presets) and the MSVC 14.44 toolset (Release) with `/WX`. Verified by assembly that MSVC `/fp:precise` emits no FMA even with `/arch:AVX2`, and `/fp:contract` does.
-  - **CI:** `.github/workflows/ci.yml` (GCC 11 floor, GCC 14, Clang 18, MSVC 2025 runner; both presets). The first run was green on all 8 jobs. This machine has no Linux toolchain, so CI is the only GCC/Clang check.
-  - **Not exercised:** `cmake/VcalCuda.cmake`. The development machine has an NVIDIA driver and a Blackwell (sm_120) GPU, but **no CUDA toolkit installed**. That's fine for M1–M3; install CUDA ≥ 12.8 before M4.
-- **Q14 resolved** (D-052–D-057): `dgp/` gets its own minimal math and a cross-OS panel-hash check. **C++17 zone** for device-visible code decided (D-058).
-- **M1.1b (C++17 zone): done** (D-061–D-065).
-  - `core/precision.hpp` now uses traits plus per-clause `static_assert` messages instead of concepts.
-  - `cxx17_header_check` compiles every header in core/, engine/ and backends/cuda/ as C++17. The `vcal_core` target now requires only C++17.
-  - Two compile-fail tests prove that the check and the messages fire.
-  - `VcalCuda.cmake`: CUDA is C++17, with an nvcc floor of 11.8 and the host-compiler range documented.
-  - **Verified locally:** 9/9 tests pass on MSVC 19.51 (both presets) and 14.44 (Release).
-- **M1.2 (core/special): done** (D-066–D-079).
-  - Functions: `log_phi`, `erfcx`, `probit` / `probit_upper`, `log_add_exp`, `lbinom` and `stirling_error`, all header-only and C++17.
-  - `tools/gen_special_tables.py` (mpmath 1.4.1, 50 digits) writes every coefficient, constant and table into `core/special/generated/`, plus the golden CSVs and `MANIFEST.json`. `--check` proves it regenerates them exactly.
-  - Worst observed error against mpmath (MSVC 19.51):
+## Now
 
-    | Function | Worst error |
-    |---|---|
-    | `erfcx` | 2 ulp |
-    | `log_phi` | 4 ulp relative, both tails |
-    | `probit` | 6 ulp |
-    | `lbinom` | 2 ulp (lgamma difference: 14,823 ulp at n = 10⁶) |
-    | `stirling_error` | 2 ulp |
-    | `log_add_exp` | 1 ulp |
+- **M6, the AR(1)-aware binomial MLE: in progress.**
+  - Merged: the likelihood (forward–backward–forward filter, φ = 0 bit for bit; D-195), the search and
+    3-D profile intervals with the S-35 M6 arm registered first (D-196, PR #50), the validation
+    (likelihood goldens, a two-formulation scipy replication, the search's recovery tests,
+    `docs/methodology/ar1_binomial_mle.md`; D-197), the tool `study_lrpd_serial_m6` (D-198), P-18 and
+    the order of the performance pass (D-199), and the validation run's registration (W1–W9 and
+    `score.py` committed before the run; D-200, PR #54).
+  - **Running:** the M6 validation run (seed 0x7A11DA7E, every recovery scenario at φ ∈ {0, 0.3, 0.6},
+    replicates 0–99; projected 3.5 h; D-200).
+  - **Then:** the S-35 M6 arm at its registered scale, no amendment, in checkpointed segments
+    (projected 34.9 h, 32.9–37.0 h; D-199, D-198). Its registration may not be amended after the
+    validation run (D-197).
 
-  - Tolerance register started (`docs/methodology/tolerances.md` ↔ `tests/tolerances.hpp`, sync-checked).
-  - **Verified locally:** 11/11 tests pass on MSVC 19.51 (Debug + Release, identical errors) and 14.44.
-- **M1.3 (quadrature): done** (D-080–D-087).
-  - GH tables for N ∈ {8, …, 128} generated from mpmath. They are checked at 50 digits for symmetry, all moments to degree 2N−1, and the closed-form weights, and stored as log-weights.
-  - `GaussHermiteFixed` and `GaussHermiteAdaptive` are C++17, device-visible and deterministic.
-  - The binomial-mixture log-integrand and its deterministic mode/scale hint are in core/model; `inverse_mills` joins core/special.
-  - Shared generator machinery lives in `tools/tablegen.py`.
-  - **Results against mpmath:**
-    - Moments are relative-exact to 2.04·(m+1)·ε.
-    - The adaptive rule is exact for Gaussian log-integrands (1.6 ε).
-    - Adaptive GH is at full precision (≤ 4 ε) for N ≥ 64 and ρ ≤ 0.5, from n = 1 to 10⁶. ρ = 0.9 with n ≤ 2 converges slowly (5.6e-14 at N = 128).
-    - Fixed GH is wrong by ~12 in log-likelihood at n = 10⁶.
-  - Review fixes: the stale ARCHITECTURE header is gone, `VCAL_CHECK_ULP_STATS` reports the caller's line, and device math is recorded as known M4 risk K-1.
-- **M1.3b: done** (D-088–D-091).
-  - Parity N = 128 with a 256-node table for the twice-the-nodes check; the moment checks now run in log space.
-  - Golden cases extended to ρ = 0.95/0.99 and to low-default periods.
-  - That exposed a correction to D-086: zero-default periods need N = 128 at ρ = 0.5 (4.4e-13). Above ρ = 0.5 they are not at full precision at any tabulated N (7e-5 at ρ = 0.9, n = 50, N = 128).
-  - The claims are stated as measured regimes A and B, and the rest is open item Q15.
-  - A split-at-mode half-range rule was prototyped and rejected (D-091).
-- **Q15 and O-1 resolved** (D-092–D-094). Parity claims precision for ρ ≤ 0.5, with a separate materiality statement above it, and the 128-vs-256 check is proven never to miss a golden period. Composite Gauss–Legendre for d ∈ {0, n} is a native enhancement for later. CUDA floor 11.8 + MSVC 14.39 is confirmed, so the C++17 device zone is required.
-- **M1.4 (engine, CPU): done** (D-095–D-098).
-  - `core/grid`: four axis scales, with the ρ bound configurable (default 0.5).
-  - The `BinomialMixture` objective, and the `ArgMax` reducer, which merges identically in any order.
-  - `engine/`: surface, compensated weighted sums, fixed-tile reduction, 3×3 quadratic refinement with delta-method SEs, and calibrate with the per-run quadrature check.
-  - `backends/cpu`: OpenMP `parallel for` only.
-  - **Measured:**
-    - Surface and estimate are bitwise identical for 1, 2, 3 and 8 threads.
-    - The quadratic stencil recovers the vertex and covariance to 9e-16.
-    - On the test panel the coarse-grid refinement is within 0.010 SE of a 10×-finer grid, and the SEs agree to within 1%.
-    - Edge estimates (no defaults; extreme clustering above ρ = 0.5) are flagged, never clamped.
-  - 15/15 tests pass on MSVC 19.51 (Debug, Release) and 14.44.
-- **K-1 retired** (D-100). nvcc 11.8 and 12.8 compile-only CI jobs (Linux containers, GCC 11) compile every device-visible function as real device code: cubins for sm_89 (+ sm_120 on 12.8) and compute_80 PTX, with host-only calls from device code as errors, proven by a compile-fail fixture. The Windows nvcc/14.39 job is deferred (D-101).
-- Owner follow-ups recorded: 2-D refinement kept (D-103); golden-estimate tolerance 1e-12 relative (D-102); the ×5 quadrature-check factor is labelled as an empirical bound.
-- **Publication hygiene** (D-104). Committed docs use neutral wording; machine specifics live in gitignored `*.local.md` notes. The public repository is published from a single squashed snapshot.
-- **M1.5 (ref/): done.** Independent FP64 reference, standard library only, no core code or algorithm.
-  - Measured against the mpmath goldens: `log_ncdf` 11 ulp, `ncdf_inv` 4 ulp, `lchoose` 1 ulp.
-  - `log_mixture` is at 7.5 ε on every golden case, including ρ = 0.99 and zero-default periods, so it is a valid oracle exactly where core's adaptive GH is weakest.
-  - `fit` uses nested golden-section search in logit coordinates, with SEs from a finite-difference Hessian. About 8 s on a 20-period, 1000-obligor panel.
-  - Plain-prose description for replication: `docs/methodology/reference_implementation.md`.
-- **Build compatibility** (D-105, D-106).
-  - CMake minimum ≤ 3.26 and presets schema ≤ 6, with CI pinning CMake 3.25.x and 3.26.x in the nvcc jobs.
-  - CMake versions in CI (verified prior to public release): Linux runners 3.31.6, Windows runner 4.4.3, nvcc jobs 3.25.2 and 3.26.4.
-  - CUDA architectures must be explicit numbers (all/all-major/native rejected at configure).
-  - CUDA builds require Ninja (a Visual Studio generator is rejected).
-  - Machine-specific notes moved to gitignored `*.local.md` notes.
-- **M1.6 (dgp/): done** (D-110–D-112).
-  - Philox4x32-10 matches Random123's known answers.
-  - Own `log`/`exp` (1 ulp), Φ (≤ 1.1e-13) and AS241 Φ⁻¹ (6 ulp), from exact or correctly rounded operations only.
-  - Polar factor on blocks 0 … 2¹⁶−1 and Bernoulli sums from block 2¹⁶; uniforms (k + ½)·2⁻⁵².
-  - A line-for-line Python mirror produces six reference panels and their SHA-256. C++ matches the mirror bit for bit, and CI checks the hash on every platform.
-  - Stream addressing is proven: more periods or a changed n elsewhere leaves every other period unchanged.
-  - The moments agree with the model over 40,000 panels (batch-means SEs).
-  - Prose description: `docs/methodology/dgp.md`.
-  - Follow-ups done: Φ uses fixed iteration counts (128 Lentz, 32 series; D-113); the reference-panel hash is unchanged (recorded in D-113); every CI job prints the hash (D-114).
-- **M1.7 (cross-reference): done** (D-116, D-117).
-  - Core vs ref, per period, 0 < d < n: within 35 ε (term-scaled) over 1,704 points up to ρ = 0.9.
-  - Estimates within 0.024 SE; SEs within 10.4% (Q17). Cross-platform regression values at 1e-12.
-  - **Finding:** zero-default periods with few expected defaults are imprecise in core at any ρ (up to 1.9e-5 absolute at ρ ≤ 0.5, 6e-3 at ρ = 0.9). The precision claim is restated to 0 < d < n; the 128-vs-256 check catches every period above threshold. Q16 proposes the dedicated rule in parity.
-- **M1.7b (Q16 and Q17): done** (D-118–D-120; D-107 amended).
-  - **Parity rule (D-118):** adaptive GH (N = 128) for 0 < d < n; composite Gauss–Legendre, 16 panels × 16 points under a sinh map centred on the survival factor's half-point, for d ∈ {0, n}. Fixed panel count and placement. The per-run check is the same rule doubled.
-    - Against mpmath: every golden case is within 11.7 ε, including ρ = 0.99.
-    - Against ref: 4,296 points (all periods) within 35.2 ε, term-scaled.
-    - Zero-default surfaces are smooth: second differences of core vs ref at 3.7e-14.
-    - The D-116 exclusion and its materiality statement are withdrawn.
-  - **SEs (D-119):** the objective's own Hessian at the refined estimate, step 0.15 × the stencil SE (sensitivity 0.10–0.20: 4.7e-5). New flag `kFlagNearBound` within 2 SEs of a bound; profile-likelihood intervals are due in M2. Core vs ref SEs: within 1.56% (was 10.4%), near-bound panels reported only.
-  - **Check threshold (D-120):** max(1e-10, 64·ε·term size), so rounding at n = 10⁶ is not flagged. Detection is tested on a deliberately coarse rule of the same family (ratio 0.99998).
-  - **Fourth cross-platform tolerance:** SEs at 1e-10 (D-107). Regression values were regenerated.
-- **M1.8 (recovery harness): done** (D-121–D-124).
-  - **Setup:** 81 scenarios × R = 1000 DGP replicates, each fitted exactly as a user would. Goldens in `tests/golden/recovery/` with provenance; generated tables in `docs/methodology/recovery_results.md`; design and interpretation in `recovery.md`.
-  - **Engine correctness holds:** RMSE falls with T everywhere, and no fit of the 81,000 is flagged for quadrature or numerics.
-  - **Coverage (Wald, conditional on unflagged):** 81 PASS, 62 DEFERRED (at least 5% flagged; waits for M2's profile intervals), 19 KNOWN FINDING, 0 UNREVIEWED. The findings are 14 small-T undercoverage and 5 ρ overcoverage on skewed estimates, each listed with its diagnosis and the SE-ratio evidence.
-  - **D-122:** the surface evaluates repeated observations once, with bit-identical results. It speeds fits 3–4× on low-default panels.
-  - **CI:** replays 162 fits on every platform, and enforces the exit criteria and the pinned findings on the committed summary. `recovery_harness --check` does the full comparison (exact on the writing platform, counts ±2 elsewhere).
-- **M1.9 (methodology and scipy replication): done** (D-125–D-127).
-  - `docs/methodology/binomial_mixture_mle.md`: everything needed to replicate the fit, in one place.
-  - `validation/scipy/binomial_mixture_mle.py`: 125 lines of plain scipy. It agrees with the engine to 4.1e-13 on 702 surface points, its own optimum is within 3.9e-4 of log-likelihood of the engine's estimate, and the estimates agree within 0.026 SE. It runs in CI.
-  - Tolerances now live in `tests/tolerances.toml`, from which the C++ header is generated; the TOL_SCIPY_* entries are a fifth, named kind of comparison.
-  - `docs/methodology/parity_signoff.md` lists the D-123 items, the 19 known findings and the 31 deferred scenarios.
-- **M1 exit: parity sign-off**, verified in CI prior to public release: all 12 jobs green, and the scipy job on Linux reproduced the Windows figures exactly. In the public repository the tag `v0.1.0-parity-binomial` marks the initial release snapshot, which contains M1.
-- **M2a (profile-likelihood intervals): done** (D-128–D-131).
-  - `engine/profile.hpp`:
-    - polished off-grid maximum;
-    - crossing bracketed from the grid, then solved against the objective (residual ≤ 1e-7, asserted on every recovery fit; worst 1.7e-8);
-    - truncated at the box with flags, never extrapolated;
-    - χ²₁ threshold with truncation (D-129), with the boundary mixture for testing ρ = 0 documented.
-  - An independent `ref/` implementation agrees to 1.5e-10 in logit units, and on every truncation.
-  - **Recovery re-run:** profile, Wald and t(T−1) reported side by side. Profile: 136 PASS, 20 CONSERVATIVE (safe side, truncation in near-uninformative settings), 6 KNOWN FINDING (small-T undercoverage 0.920–0.927). It fixes 15 of the 19 Wald findings and 41 of the 62 deferred verdicts.
-- **M2b (resampling engine): done** (D-132–D-137).
-  - `resample/`:
-    - Philox in its own key domain, checked bit for bit against a Python mirror;
-    - iid and moving-block bootstrap, jackknife, walk-forward, and external index matrices;
-    - a fused reduction, never B × K, bitwise equal to a materialised one;
-    - percentile intervals.
-  - **Coverage study** (full matrix, iid, B = 999; predictions committed before the run): 37 PASS and 125 below the band, all pinned.
-    - Boundary breakdown near bounds; no bias or skewness correction elsewhere; ρ undercovers at every T.
-    - **Conclusion:** profile-likelihood intervals are the recommended method for inference; bootstrap percentile intervals are not recommended for ρ.
-    - Moving-block coverage moves to M6; BCa was studied in S-5 (D-159): for ρ it beats the percentile interval.
-- **M2c (C ABI v0.1): done** (D-138–D-144). M2 is complete.
-  - `include/vcal/vcal.h`, plain C99, and `abi/`, the shared library `vcal`.
-  - **Functions:** calibrate (with profile intervals), surface, resample (six W sources, percentile intervals, the implied W), DGP simulate, grid helpers, build info, errors and the context.
-  - **Conventions:**
-    - a caller-set `struct_size` on every struct; unknown nonzero fields are refused;
-    - no implicit padding;
-    - caller-owned buffers with size queries;
-    - a status from every call and a thread-local message naming the field;
-    - a catch-all at every entry point;
-    - `__cdecl`, and `vcal_*` exports only (version script on Linux, checked against the header on Linux and MSVC).
-  - **Tests:**
-    - `abi_c` (C11): 866 checks, including the DGP reference panels bit for bit;
-    - a C99 `-pedantic-errors` header check;
-    - `abi_engine_equivalence`: every number bitwise equal to direct engine calls, all six schemes;
-    - `abi_exports` and `abi_exports_fires`.
-  - **Verified locally:** MSVC 19.51 Release 32/32 and Debug 29/29. The README's C example compiles with `/W4 /WX` and reproduces the C++ example.
-- **CI economy (D-145):**
-  - the full 12 jobs run on pushes to `main` and on pull requests;
-  - other branches get a reduced set of 3 jobs;
-  - the slow tests run nightly (only if `main` moved) and on `workflow_dispatch`;
-  - prose-only commits start no run. The Markdown files the code reads are re-included, and `ci_path_filter_sync` derives and checks that list: today `tolerances.md`, `recovery_results.md` and README.md, whose C example `readme_c_example` compiles, runs and compares with its documented output;
-  - newer pushes cancel older runs, except on `main`.
-  - **Why:** faster feedback and fewer redundant runs. Each Release job had spent 7–8 minutes on the slow tests, and the accuracy step ran `recovery_replay` a second time.
-- **Pre-publication pass (D-146):**
-  - `ci-economy` (D-145) merged;
-  - the project is described as an independent credit-risk research library for practitioners, researchers and students, designed so every result can be independently replicated, and a personal open-source project; NOTICE names Keith Yip, and LICENSE is the unmodified Apache-2.0 text;
-  - toolchain floors restated as portability goals, with every technical detail kept;
-  - ARCHITECTURE.md §3.0 gives each layer a language-agnostic contract;
-  - `ci_path_filter_sync` also scans CUDA, TOML and JSON test inputs and `CMakePresets.json`.
-  - CI run numbers and commit hashes from before the public release are replaced by neutral wording ("verified in CI prior to public release");
-  - the public repository is published from a single squashed snapshot, tagged `v0.1.0-parity-binomial`.
-  - **Verified locally (Linux, GCC 13.3, cpu-release):** 35/35 tests pass, slow tests included.
-- **Public release.** The repository is public, starting from a single squashed snapshot.
-- **Enforced green main (D-147):**
-  - `main` changes only through a pull request whose single required check, `ci-ok`, passed on a head up to date with `main` (ruleset `.github/rulesets/main.json`);
-  - the workflow-level path filters are gone: `plan` detects prose-only diffs and skips the other jobs, and `ci-ok` always reports;
-  - `ci_path_filter_sync` checks `plan`'s `code_md` list and rejects any workflow-level path filter.
-- **Research studies and variants roadmap (D-148): planned, nothing implemented.** Thirty-four studies, S-1 to S-34 (addenda: S-21 to S-28 in D-149; S-29 to S-33, data and population instability, in D-150; S-34 in D-152), are placed in the milestones below and indexed in `studies/README.md` (moved from `docs/methodology/questions.md`, D-153), one entry each (question, experiment, prediction, result, mitigation, monitoring implication).
-  - **S-1 finished (D-300, D-301):** z → −z invariance holds at the ε level on 34 panels (surfaces, hints, flags; the wrong-hint control is caught). One reviewed finding: at n = 1 in every period ρ is not identified and rounding picks ρ̂. Such fits are now flagged `kFlagRhoNotIdentified`, with their numbers still reported (D-302; C ABI 0.2). `study_z_sign_invariance` (slow) guards the invariance.
-  - **S-2 finished (D-303 to D-305):** a sample-size planning table from the recovery summary. ρ within ±0.05 takes about 35–40 years at ρ = 0.12 with n·PD ≥ 50, and is not met by T = 100 at ρ = 0.24. Against ±25% relative (post hoc, D-305), ρ = 0.24 is the easiest: 76–83 years. PD within ±25% takes 38–39 years at 5% PD and ρ = 0.12. Six of ten predictions held.
-  - **S-23 finished (D-156).** `engine/conditional_pd.hpp` gives the 99.9% conditional PD q and its profile-likelihood interval, cross-checked by a scipy script. Pinned over the full matrix: profile 64 PASS, 15 CONSERVATIVE, 2 KNOWN FINDING (the recommended interval); delta-method Wald 18 KNOWN FINDING (low estimates with narrow intervals: q̂ inherits ρ̂'s bias, and its SE shrinks with it); bootstrap 73 KNOWN FINDING. Predictions: 7 held, 4 did not, every miss recorded. The study entry carries a mitigation list and the monitoring implication. Existing goldens are bitwise unchanged.
-  - **Ground rules:** variants are `native` options or standalone studies, never parity changes; every study commits `studies/<slug>/PREDICTION.md` before any run, and misses are reported; exploration on the study subset, full matrix only to pin verdicts; verdicts PASS / CONSERVATIVE / KNOWN FINDING / DEFERRED with a diagnosis; each variant judged on every verdict it could change; new DGP variants get a prose description, a Python mirror and a hash; misspecification studies report the pseudo-true value (primary) and the distance from the generating parameter.
-  - **Study subset (approved, D-150):** scenarios 29, 37, 72, 4, 68, 49, 7, 43, 51 at R = 1,000; measured at 4.6 thread-hours (about 7–12 minutes on 24 threads). The full matrix measured 50.6 thread-hours.
-  - **Decided (D-151):**
-    - multi-grade calibration becomes an M6 item;
-    - the pseudo-true value is defined;
-    - one DGP observation layer;
-    - the grade scenario matrix: 9 scenarios, seed "GRADESCN";
-    - S-33's redesign;
-    - scipy and `ref/` oracles for S-32;
-    - a priority order (Next steps).
-- **Open:** R-1 is deferred to M6 and R-2 to M7. The toolchain floor is a portability goal: CUDA ≥ 11.8 and older host compilers (GCC 11, MSVC 14.39), with device-visible code in C++17 (D-094).
+## Next
 
-## Performance
+1. **Score the M6 validation run** (`studies/m6-validation/score.py`, W1–W9; D-200). If a prediction
+   fails: diagnose before the arm runs, validate the fix again on a fresh seed, do not amend the arm's
+   registration.
+2. **The S-35 M6 arm** at its registered scale, in checkpointed segments (D-199); then score it against
+   the 2026-10-10 addendum of `studies/lrpd-serial-correlation/PREDICTION.md` (D-196).
+3. **Copilot-audit fix PRs**, one each:
+   - **A, correctness;**
+   - **B, data integrity and docs accuracy,** including a check that every MANIFEST `sha256` is 64 hex
+     characters;
+   - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
+4. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
+   golden refresh.
+5. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
+   (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
+   S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
+6. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
+   selection rule fixed in advance. Not started.
+7. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
+   from M7; D-177). Not started.
+8. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
+9. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
+   factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
+   R-1. Then M4 (D-168).
 
-A track separate from the studies (D-177). P-items change how results are computed, never what is
-computed; each has a decision entry, a benchmark in `perf/`, and an identity or tolerance test.
-Anything that changes results gets a golden refresh with a coverage-flip check, one commit per item.
-P-items are not studies: S-16 (FP32 search) and S-17 (GPU scaling) stay studies.
+**Backlog** (`native` options, each judged against the pinned recovery verdicts; D-131, D-137):
+- a bias-corrected ρ̂ from exact delete-one refits, reported beside ρ̂ (S-3, D-159);
+- BCa intervals: better than the percentile interval for ρ, no gain for PD, no fix near a bound (S-5,
+  D-159); not recommended over Jeffreys or profile (D-176);
+- the stationary bootstrap and a data-driven block length (Politis–White), with M6's AR(1) data;
+- P-11 part 2 (pinning runs write goldens directly; D-179); P-20 and the in-house `log`/`exp` for
+  `log_phi`, each a decision of its own (D-199).
 
-| ID | Item | Status | Decision | Changes results? | Benchmark; test |
-|---|---|---|---|---|---|
-| P-1 | Surface rows cached by (n, d) across panels | done | D-167 | no (bit for bit) | `study_surface_cache_spike`; `unit_surface_cache: cached_surfaces_equal_evaluate_surface_bit_for_bit`, `recovery_fits_through_the_cache_are_identical` |
-| P-2 | Profile and q solves by safeguarded Newton with analytic derivatives | done | D-170 | within solver tolerance (ends moved ≤ 8.8e-9 in logit; 0 coverage flips over 81,000 fits; goldens refreshed) | `study_surface_cache_spike --profile`; `unit_profile: profile_newton_matches_nested_brent` (`TOL_PROFILE_SOLVER_AGREEMENT_U`) |
-| P-3 | Study fits compute only the interval arms they score | done | D-171 | no (each arm bit for bit) | `study_surface_cache_spike --profile`; `recovery_test: recovery_fit_arms_compute_only_what_is_requested` |
-| P-4 | Bootstrap reduction over distinct rows with multiplicities, in (n, d) order | done | D-172 | within rounding (bootstrap ends ≤ 2.2e-11 in logit; 0 flips; goldens refreshed) | `study_surface_cache_spike --profile`; `resample_test: compact_replicates_match_the_period_reduction_to_rounding` (`TOL_RESAMPLE_VS_REFIT_REL`), `compact_replicates_do_not_depend_on_period_order_or_threads` |
-| P-5 | Coarse-to-fine (bounded) argmax, full-grid fallback | done | D-172 | no (equal to the full grid's argmax by construction; 9.47M rows checked) | `study_argmax_check` (slow CTest, R = 40, every CI run with slow tests); `resample_test: bounded_argmax_equals_the_full_grid_on_hard_panels`, `bounded_argmax_guard_falls_back_to_the_full_grid` |
-| P-6 | SIMD reduction across grid points | planned: fourth in the owner's order (D-199); the S-10 re-profile puts the grid reduction at 5-7% of the run | to be recorded | no: one lane per grid point, each lane's operations in the scalar order, so bitwise identical | to be added in `perf/`; bit-for-bit identity against the scalar reduction |
-| P-7 | SIMD `erfcx`, narrowed from "special functions" by the S-10 re-profile (D-199): `log_phi` is about 70% of a Gauss–Hermite evaluation and `erfcx` 62% of `log_phi`, pure arithmetic, so vectorisable bit for bit; `log_phi`'s libm calls are not. Extension done first: `log_phi_pair` and the composite rule's bisection stop (`log_contrib` 14% faster at 0 < d < n, 4% at d = 0) | next after P-18 (D-199) | D-199 | no: bit for bit with FMA contraction controlled, all three kernel paths tested as P-17 | to be added in `perf/`; `unit_special: log_phi_pair_is_two_log_phi_calls_bit_for_bit`; S-10 rows byte-identical |
-| P-8 | GPU backend | M4 | D-168 (M4 after M6) | within a stated tolerance (the GPU must match the CPU within tolerance) | S-17 measures it across architectures; CPU/GPU agreement tests |
-| P-9 | Memoise identical panels: complete fits keyed by the sorted default-count vector with n and the full configuration, so identical replicate panels are fitted once | **measured; not built** (D-189) | exactly repeated panels would save 1.0% of the S-10/S-4 run (4,313 of 436,676 thread-s), all in the n = 100 cells; the sorted key 6.3%, but not bit for bit (`perf/p9_repeat_rate.md`) | no (bitwise identical) | the AR(1) DGP too: at most about 0.6% of S-35's run (D-189) |
-| P-10 | Dynamic scheduling across threads (small chunks handed out as threads free up), for CPUs mixing fast and slow cores | planned (second); not the cause of the S-10 runtime miss (D-186) | to be recorded | no (bitwise identical by construction) | a test running the same work under different schedules and thread counts, outputs compared bit for bit |
-| P-11 | Checkpoint and resume for long runs: each completed scenario written as it finishes; on restart the run's configuration and code-version hash is validated and completed scenarios are skipped. Pinning runs write goldens directly, reviewed verdict labels kept in a separate file, so no second `--write` pass is needed | part 1 done (checkpoint and resume, adopted by `study_parametric_bootstrap`); part 2 open (pinning runs write goldens directly, reviewed labels in a separate file) | D-179 | no (a resumed run's output identical to an uninterrupted one) | `perf/p11_checkpoint.md`; `study_parametric_bootstrap_resume` (slow: a run stopped after one scenario and resumed, byte-identical; a different configuration refused), and one real kill (taskkill /F) resumed, identical |
-| P-12 | Warm-started search for bootstrap replicates: a neighbourhood of the original estimate first, the full grid if the best point is on the neighbourhood's edge | **rejected** (D-199): it competes with P-6 for the same 5-7% of the run (the grid reduction) and adds a fallback path to maintain | D-199 | — | — |
-| P-13 | Link-time and profile-guided optimisation for local study builds (optionally `-march=native`; never for CI or release builds) | planned: third in the owner's order (D-199) | to be recorded | no (verified: study outputs unchanged) | the study outputs compared with a standard build's |
-| P-14 | Calibrate's quadrature check and D-119 Hessian evaluated per distinct observation (each distinct (n, d) integrated once per evaluation point, the per-period values then used in period order, as the surface (D-122) and the profile (D-170) do) | done | D-178 | no (bitwise identical; verified on the S-10 bootstrap path: 2,000 rows byte-identical) | `perf/p14_calibrate_distinct.md`; `unit_engine: calibrate_integrates_each_distinct_observation_once_bitwise_identically` |
-| P-15 | Calibrate's SEs from the analytic Hessian (D-170's derivatives) instead of D-119's central differences, where the objective gives them (the rate MLE keeps D-119) | done | D-185 | within a stated tolerance: a correction too (D-119 was off by up to 0.9% in the interior and 96% near a bound); flip check over every recovery fit: no verdict changes; goldens refreshed | `perf/p15_analytic_se.md`; `unit_profile: calibrate_se_is_the_analytic_observed_information` |
-| P-16 | A deterministic sample of the quadrature check on bootstrap fits, reported rather than skipped (`calibrate_from_surface(..., quadrature_check)`; the S-10/S-4 tool checks b = 0, 20, ..., 980 and the original fits, and `compare.py` prints the flagged counts) | done | D-180 | no (every field but the check's own bit for bit; the tool's rows byte-identical on every shared column) | `perf/p16_sampled_check.md`; `unit_engine: calibrate_without_the_quadrature_check_is_otherwise_identical` |
-| P-18 | The AR(1) filter's transition sums through kernels (scalar, SSE2, AVX2; `VCAL_AR1_KERNEL`), with the in-house `det_exp` shared from `common/detmath` with the DGP; exact fast paths; the score's pair terms vectorised; the owner's items 1-6 (skipped-exp counter: 0.1-0.6% of terms; skip below exp's zero; hoisting; `weighted_moments` once; `fit()` reusing its evaluation; buffers in `FilterWork`) | done (D-199) | D-199 | within rounding against the libm filter (goldens: 10 of 66 rows moved, at most 7.2e-15; ref, scipy, smoothness and score checks unchanged); every kernel bit for bit, and items 1-6 bit for bit against the `det_exp` filter | `perf/p18_ar1_transition.md`; `unit_ar1_transition`, `unit_ar1_kernel_*`, `unit_ar1_filter_kernel_*`, `ar1_filter_is_the_same_under_every_kernel` |
-| P-19 | Calibrate's analytic Hessian shared with the bootstrap's studentised SE (the 13.5% "analytic SE" phase of the S-10 run), by passing calibrate's own scaled coordinates instead of a probability round trip | planned, with the next golden refresh (owner, D-199) | D-199 | within rounding: about 25% of bootstrap SEs move by an ulp (the round trip is inexact in 13% of PD and 25% of ρ coordinates); flip check required | to be added |
-| P-20 | Warm-starting S-4b's W* refits (the largest phase of the S-10 run, 40%) | future (owner, D-199); out of this pass | D-199 | yes: moves results; needs its own flip-check P-item | to be added |
-| P-17 | SIMD Philox for the DGP's Bernoulli count: scalar, SSE2 and AVX2 kernels (AVX2 chosen at run time; `VCAL_DGP_KERNEL` forces one; the kernel recorded in `vcal_build_info`, timing samples and tool logs), comparing integer keys against a threshold | done | D-194 | no (bit for bit under every kernel; S-10 tool rows byte-identical) | `perf/p17_simd_philox.md`; `unit_dgp`: both reference-panel hashes under every kernel, `bernoulli_kernels_equal_the_specification_bit_for_bit`, `bernoulli_threshold_at_its_edges`; `unit_dgp_kernel_*`; `p17_simd_philox_identity` |
+## Waiting on the owner
 
-**Rejected:** sequential stopping of Monte Carlo runs (stopping a run early once a verdict looks
-settled). It changes a study's statistical design (the number of replicates would depend on the
-results), so it would need its own pre-registration logic; not a performance item.
-
-**Order for P-9 to P-11:** P-11 first, then P-10, then P-9 after its measurement, fitted around the
-S-10/S-4 work: if the S-10 decision point says to run as is, P-11 and P-10 come before the full run,
-since they protect and speed exactly that run. One PR per item.
-
-## Next steps
-
-**S-10/S-4 decision point (2026-09-29).** The study subset (9 scenarios × 1,000, B = 999; the tool and
-scoring script committed first, fcd7e13) took 5,217 s wall on 24 threads (124,109 CPU s). Scaled to the
-81 scenarios the full run projects to **about 13 h**. The phase split: calibrate's work after the argmax on
-the 999 bootstrap panels per replicate (the quadrature check at the estimate and the D-119 central-difference
-Hessian, each integrating every period rather than every distinct observation) 81%; S-4b's W* 9%; panel
-simulation 6%; the analytic SE 3%; surface assembly 1%; profile, W0, Jeffreys and the S-4 widths under 1%
-each. **Recommendation:** not run as is; first P-14 (above; bitwise identical,
-aimed at the 81% phase: at the subset's 16.4 distinct observations per 53.3 periods it cuts that phase about
-3.2×, most where T = 100 and n is small, projecting the full run to about 5–6 h), then P-11 (checkpoint
-and resume) to protect the run; P-10 and P-9 after. The run's tool already hands out replicates dynamically. **Decision (owner):** P-14, then P-11, then the full run overnight; also the owner's item 1 (overlapping scenarios, with P-11) and a sampled, reported quadrature check on bootstrap fits (P-16) instead of skipping it. P-14 is done (D-178): byte-identical rows on the bootstrap path, and the full run projects to about 5 h.
-
-**S-10/S-4 finished (D-181).** The full run took 6.4 h (23,190 s; projected about 5 h, a miss), and the subset's rows reproduce byte for byte.
-- **S-4:** held 6 of 6. S-4b, the Bartlett-corrected profile interval with a parametric-bootstrap factor, covers ρ at 0.947 and PD at 0.945 at T = 20, puts no verdict below the band in groups B–D, and is 4–5% wider than the profile interval.
-- **S-10:** held 2 of 5. K1, K2 and K3 missed; K2 is diagnosed in `studies/README.md`.
-- **Owner's decisions (2026-10-09):**
-  - **The interval (D-182):** the default stays Jeffreys equal-tailed. S-4b is a `native` option: `vcal_calibrate_bartlett`, ABI 0.4 (D-184). A change to the default needs a new registered study.
-  - **Data files (D-183):** the committed data files are named exceptions to D-163, and CI fails on any other file above 1 MiB.
-- **P-15 done (D-185):** calibrate's SEs are now analytic. It is a correction as well as a speed-up (the calibrate phase is 2.7× faster on the S-10 workload). No verdict changes; goldens refreshed.
-- **The runtime miss (D-186):** not hybrid-core scheduling. The subset had no scenario in the costliest (T, n) cell; the projection fix is queued.
-- **The runtime projection (D-187):** a timing sample per (T, n) cell with phase shares, sampled until its 90% range is within ±10% (`perf/project_runtime.py`). Wall time uses a measured efficiency factor (0.997 on S-10). It is calibrated on S-10 (6.13 h, 5.70–6.56 h, against 6.44 h), not yet validated: the next full run records its projection before starting and is compared after. Its range covers sampling noise only; the machine's speed varies by about 15% between sessions, so the sample is taken immediately before the run. P-15 takes about 20% off the S-10 run's projection (interleaved A/B/B/A; an earlier 34% compared samples from different machine states, a miss recorded in D-187). **D-193 (owner-approved amendment):** tools record cache fills as a one-time phase; `--run` warms up, requires a sample of at least 120 s (short samples run at boost clocks and projected S-35 up to 30% low), and prints a ±5% machine-state allowance. On S-35 from cold: 0.28 h (0.27–0.29 h) against 0.293 h. Still calibrated, not validated.
-- **Roadmap addendum (D-188), for the owner's review:** `docs/references.md` (nine papers, citations verified); study stubs S-35 to S-47; the published-method track and the lifetime PD term structure as features. Placement and costs are in "Roadmap addendum" below. Planning only: nothing is registered or run.
-- **S-35 (D-190, D-192): finished.** 12 of 15 held. Intervals that assume independent periods are too narrow under an AR(1) factor (PD profile coverage 0.86–0.88 at φ = 0.3, 0.69–0.73 at φ = 0.6, at every T); the reference numbers, from the model and pinned φ = 0 results, matched within 0.03. The runtime projection missed (0.39 h against 0.293 h); `project_runtime.py --run` now also requires successive sample sizes to agree (D-192, for the owner's review). Next for S-35: M6's AR(1)-aware MLE. **SIMD Philox (D-191): done as P-17 (D-194)**: bit for bit under scalar, SSE2 and AVX2 kernels (every path tested on one machine; the kernel recorded); 4.1× per panel at n = 10,000; the S-10/S-4 run projects 21% shorter (a projection; the next parametric-bootstrap full run confirms it).
-- **Next (owner, 2026-10-10): M6's AR(1)-aware MLE,** as the M6 arm of S-35. It tests one mechanism behind Miu and Ozdemir's (2008) comparison: whether modelling the serial correlation, on top of an MLE that already handles the nonlinearity, stops the long-run PD being understated (D-196). Its intervals resample through the DGP (no W × L), which is where P-17 pays.
-- **M6's AR(1)-aware MLE, in progress (D-195, D-196):**
-  - **Done:** the likelihood (forward–backward–forward filter over neighbour-placed parity nodes; φ = 0 bit for bit), `vcalref::ar1_loglik` as its oracle, the analytic score, the search and 3-D profile intervals, and `study_ar1_information`.
-  - **The S-35 M6 arm** is registered (PREDICTION.md, L16–L28, with the exploratory look disclosed); merged in PR #50.
-  - **Validation (D-197):** likelihood goldens; the scipy replication in two formulations (transition densities, and the explicit Toeplitz joint density; all within 3e-14); the search's recovery tests (`unit_ar1_search`), which found and fixed a Hessian-refresh defect from cold starts; `docs/methodology/ar1_binomial_mle.md`.
-  - **Next:** the S-35 M6 arm's scale, decided by the owner from the post-P-18 projection before the validation run (any reduction is an amendment, allowed only before it, D-197); then the validation run (seed 0x7A11DA7E, its predictions committed first); then the arm. The performance pass, in the owner's order (D-199): P-18 done; then P-7 (`erfcx`), P-13, P-6; P-12 rejected.
-
-  After those, P-9 (measure the repeat rate first), then SIMD Philox. **P-9: measured, not built** (D-189): memoising exactly repeated panels would save about 1% of the S-10/S-4 run. In the same timing sample the simulation is 31% of the projected run (38–46% in the n = 10,000 cells), which bears on SIMD Philox.
-
-**Priority order (owner, 2026-09-29):**
-
-1. **The S-10/S-4 run** (registered, D-176): **done** (D-181). Next, in the owner's order: P-15 (analytic
-   Hessian SEs in calibrate), then P-9 (measure the repeat rate first), then SIMD Philox.
-2. **The remaining P-items:** P-11, P-10 and P-9 (after its measurement), before the S-10/S-4 full run if its decision point says to run as is; then P-6 and P-7; P-12 and P-13 planned, not now; P-8 with M4.
-3. **The rate MLE as a first-class estimator:** an analytic score and Hessian and Newton solves; interval
-   coverage; an n·PD adequacy flag from S-27; rate-vs-count disagreement as a data diagnostic; its own
-   data-sufficiency table.
-4. **`docs/methodology/estimator_selection.md`:** a comparison matrix, tiers with reasons, and a
-   selection rule fixed in advance. The skeleton now, filled as results report.
-5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, as a documented output in adverse/benign terms
-   (pulled forward from M7; another project will consume it).
-6. **Consolidation:** tag v0.2; the README with the study results.
-7. **M6** (multi-grade, misspecification, data instability); M4 (GPU) later (D-168).
-
-**Done so far (the record):**
-1. **First batch of studies (D-151), in this order, before M3:**
-   1. S-23 (done, D-156): profile-likelihood intervals for the 99.9% conditional PD;
-   2. S-13 targeted (done, D-158): at T = 20 the profile interval undercovers by about one point, systematically (coverage about 0.94 at R = 10,000); the six findings are real but not special;
-   3. the shared jackknife run (done, D-159): BCa beats the percentile interval for ρ (20 of 21 in the band at T = 100) but not for PD; jackknife bias correction removes ρ̂'s bias only with exact delete-one refits, and is a point-estimate adjustment, not an interval method; bias correction plus Wald does not rescue q; the most influential period is often not the one with the most extreme factor (S-3, S-5, S-21);
-   4. S-1 (done, D-301) and S-2 (done, D-304);
-   5. S-34 (done, D-162): after a severe year q̂ jumps by about 3.7/√T SE per 1-in-100 year (6.5/√T per 1-in-1,000), and the refitted interval moves up rather than widening; a breach of the previous interval takes two 1-in-1,000 years at T = 20.
-
-   Each starts with its `PREDICTION.md` committed before any run (D-148).
-2. **M3,** the remaining single-factor estimators, with S-8, S-9, S-15, S-27 and S-28 folded in (registered, D-161; the registrations define the estimators M3 implements).
-   - **M3.1 done (D-164):** the Vasicek-rate MLE (`core/objectives/vasicek_rate.hpp`), with refuse / censor / substitute treatments and a drop edit; goldens, a scipy script, recovery on its own model (4 of 5 predictions held), `docs/methodology/vasicek_rate_mle.md`. The C ABI stays v0 until decided.
-   - **M3.2 done (D-165):** the joint-default-probability method of moments (`engine/moments.hpp`), exact in finite n, W-reweightable; goldens, a scipy script (Owen's T), `docs/methodology/method_of_moments.md`. Validated on its own seed, so S-8's comparison waits for S-8's run.
-   - **M3.3 done (D-166):** the grid-Bayesian estimator (`engine/posterior.hpp`) with flat and Jeffreys priors and the resolution rule (4 points per posterior SD; local refinement or refusal; the registered extent amended before S-9 runs). **M3 is complete.** The C ABI exposes it (D-169); S-8/S-27/S-28 (D-174), S-9 and S-15 (D-175) finished.
-3. **Surface-row cache across panels (D-167):** approved; adopted in the recovery harness and study tools, keyed on everything that determines a row, filled on demand.
-4. **C ABI 0.3 (done, D-169):** `vcal_calibrate_rate`, `vcal_calibrate_moments`, `vcal_calibrate_posterior` and the native profile; the zero-default treatments are explicit options, no recommended default until S-28.
-4a. **Performance before the M3 studies (owner, 2026-09-28):** profile and q solves by safeguarded Newton with analytic derivatives (done, D-170; goldens refreshed, 0 coverage flips over 81,000 fits); study fits compute only the arms they score (done, D-171); the bootstrap reduction over distinct rows in (n, d) order (done, D-172; 0 flips, bootstrap 3.2x faster); a bounded argmax equal to the full grid's (done, D-172; 9.47M rows verified, goldens unchanged). Together: the recovery subset 6.7x less CPU, the full matrix 319 s wall.
-5. **The M3 folded studies:** S-8/S-27/S-28 (one pass; **finished, D-174**: 11 of 13 held, E12 and E13 missed; the censored rate MLE matches the binomial MLE from n·PD ≈ 500–1,000; with counts use the binomial MLE, with rates the censored likelihood), S-9, S-15 (**finished, D-175**: S-9 3 of 5 held, S-15 4 of 5; with the rule, the Jeffreys equal-tailed interval is the best-calibrated tested, no ρ verdict below the band; SBC calibrated everywhere). **The M3 folded studies are complete.****Backlog** (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
-
-**Backlog** (`native` options, each evaluated against the pinned recovery verdicts; D-131, D-137):
-   - a Bartlett-type correction of the profile threshold: now study S-4;
-   - a bias-corrected ρ̂, the small-sample bias benchmark: studied in S-3 (D-159); if built, from exact delete-one refits, reported beside ρ̂;
-   - BCa bootstrap intervals: studied in S-5 (D-159); recommended over the percentile interval for ρ, no gain for PD, no fix near a bound;
-   - the stationary bootstrap and a data-driven block length (Politis–White); moving-block coverage is studied in M6 with AR(1) data.
-
-## Roadmap addendum: published-method studies and features (D-188)
-
-Planning only, recorded for the owner's review. The motivating papers are in `docs/references.md`, cited as
-public motivation only, and the stubs are in `studies/README.md`. Every study follows D-148: pre-registered,
-explored on the study subset, and judged on every verdict its variant could change. Costs are planning
-estimates against the current baseline: the full recovery matrix runs in about 5 minutes on 24 threads, the
-subset in under 1. Before any full run, its runtime is projected from a timing sample (D-187).
-
-| # | Study | Placement | Subset | Full matrix | Overlaps | Assessment |
-|---|---|---|---|---|---|---|
-| S-35 | Long-run PD by averaging against MLE under an AR(1) factor | **now** (AR(1) DGP variant; the average, parity and rate MLEs); M6 (AR(1)-aware MLE) | minutes | 15–30 min (3 φ) | S-11 (shares its AR(1) DGP variant), S-13, M6 AR(1) | highest priority (owner); **finished** (D-192): 12 of 15 held; iid intervals too narrow by about √((1 + φ)/(1 − φ)) at every T; the AR(1)-aware MLE arm with M6 |
-| S-36 | Fitted ρ as the rating philosophy moves from TTC to PIT | M6 | tens of minutes | hours (obligor-level simulation) | S-29, S-30, S-33 | worth doing; new generator code (D-149 artifacts) |
-| S-37 | Asymptotic rate MLE as least squares | M7, as documentation | — | — | D-164's closed form | **not worth a study:** without covariates it is already the closed form; with covariates it is an identity for the published-method track |
-| S-38 | Granularity error in factor extraction, propagated to stressed PDs | now (extraction, with S-19); M7 (stressed PDs) | minutes | minutes | S-19, S-27 | worth doing; cheap |
-| S-39 | The estimated factor plugged into the second step | M6 with M7 | once M6 exists | about the baseline per arm | S-19, S-35, M6 | worth doing |
-| S-40 | Fixed, common or grade-specific correlation in stressed PDs | M6 (folded into multi-grade, owner) | once M6 exists | about the baseline per arm | S-30, M6 | worth doing, as part of M6 |
-| S-41 | External factor against internal factor | M6 with M7 | once M6 exists | about the baseline per correlation level | M6 multi-segment, S-47 | worth doing; **runs with S-47's synthetic part** |
-| S-42 | Specification-search rules against a known true model | M7 | once the ranker exists | likely hours | M7 ranker and scorers, S-18 | worth doing; M7's test bed |
-| S-43 | Overlapping series and the AR(1) coefficient | M6 | minutes | minutes | S-35, M6 AR(1) | **small:** a methodology note with a simulation check |
-| S-44 | Long-run PD by bootstrapping the macro variables | M7 | minutes | minutes | the published-method track | **likely a numerical check:** equal by construction when the factor is Gaussian |
-| S-45 | Lifetime PD: convexity adjustment, scenario weighting, full integration | after M7 | minutes | minutes | S-35, M6 AR(1), the lifetime PD feature | worth doing, with the feature |
-| S-46 | Tail loss with fixed LGD and EAD | after M5, study tier only | minutes | minutes | S-23, S-30 | **lowest priority:** the furthest from the library's scope; kept as a bound on what a PD model leaves out |
-| S-47 | Regional and sector factors (national against segment-specific specifications) | synthetic with S-41 (M6/M7); public data M8 | — | — | S-41, M7, M8, S-2 | worth doing; the real-data part needs a data-repository decision first |
-
-**Mis-placed or not worth doing, and why:**
-- **S-37:** it is an identity, partly already in D-164. It becomes documentation of the published-method
-  track.
-- **S-43 and S-44:** likely notes or checks rather than studies, kept as stubs until their registrations
-  decide.
-- **S-46:** outside the engine's scope by design (no LGD or EAD models); last.
-- **S-41 and S-47's synthetic part:** one experiment with two readouts, not two runs.
-- **S-47's public-data part** depends on a separate data repository with pinned releases. No decision
-  records that repository yet; it needs its own D-entry, and D-163's data policy applies.
-
-**Features (generic and parameterised, never one paper's fixed configuration):**
-
-| Feature | What it is | Placement | Builds on |
-|---|---|---|---|
-| Published-method track | The three-step method of Miu and Ozdemir (2009) as a `native` composition of separately callable steps: (1) factor extraction from default rates with covariates and an optional AR(1) residual; (2) grade parameters given a factor series; (3) conditioning on a scenario. Every fixed choice in the paper is a parameter: the correlation fixed or estimated, f linear or quadratic, the lag, AR(1) on or off, infinite or finite granularity. Variable lists, groups, transforms and ranking weights are configuration inputs (parsed outside the core, D-045) | M6 (step 2: multi-grade given a factor series) and M7 (steps 1 and 3: the macro pipeline) | M6 multi-grade, M7, S-19 (Z_t extraction), S-20 (the conditional migration matrix of step 3 for migrations); S-37's identity documented here |
-| Lifetime PD term structure | A PD term structure conditional on a factor path, with user-supplied scenario weights; full integration as the reference, with the convexity adjustment and few-scenario weighting as options | after M7 | M6 AR(1) factor, M7 scenarios; S-45 tests it |
+None open. The S-35 M6 arm's scale is decided (no amendment, D-199). Recorded for later, not blocking:
+the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 ## Milestones
 
-Ordering principle: the CPU path is complete and validated before any GPU development, since the
-GPU is checked against it (D-010, D-011). Each milestone ends with its methodology doc, its
-tolerance-register entries and its golden values.
+| M | Scope | Status | Key decisions |
+|---|---|---|---|
+| M1 | Core math, `ref/`, DGP, cross-reference, recovery harness, scipy replication; binomial MLE on the CPU | **done**, tag `v0.1.0-parity-binomial` | D-025–D-127 |
+| M2 | Profile intervals, resampling engine (W × L), C ABI | **done** | D-128–D-144 |
+| M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 (S-4b) | **done** | D-164–D-166, D-169, D-184 |
+| M4 | CUDA backend, CPU↔GPU parity suite | after M6; nvcc compile-only CI exists | D-168, D-100 |
+| M5 | Monitoring: backtests, run ledger, report data, threshold table | planned | D-152 |
+| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress** (AR(1)-aware MLE) | D-151, D-195–D-200 |
+| M7 | Macro pipeline: transforms, pre-screens, batched fits, scorers, ranker | planned | D-148, R-2 |
+| M8 | Public-data demonstrations, scipy replication set, ABI 1.0 | planned | D-046, D-188 |
 
-### M1 — Core math + ref + synthetic DGP + recovery harness (single-factor binomial MLE, CPU only)
+## Performance
 
-| # | Item | Done when |
+A track separate from the studies (D-177): P-items change how results are computed, never what. Each has
+a decision, a benchmark in `perf/` and an identity or tolerance test; result changes need a golden
+refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the decisions.
+
+| ID | Item | Status | Decision | Changes results? |
+|---|---|---|---|---|
+| P-1 | Surface rows cached by (n, d) | done | D-167 | no |
+| P-2 | Profile and q solves by safeguarded Newton | done | D-170 | within solver tolerance; 0 flips |
+| P-3 | Study fits compute only scored arms | done | D-171 | no |
+| P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips |
+| P-5 | Bounded argmax, full-grid fallback | done | D-172 | no |
+| P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no |
+| P-8 | GPU backend | M4 | D-168 | within tolerance |
+| P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no |
+| P-10 | Dynamic scheduling across threads | planned | D-186 | no |
+| P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no |
+| P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — |
+| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no |
+| P-14 | Calibrate's checks per distinct observation | done | D-178 | no |
+| P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) |
+| P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no |
+| P-17 | SIMD Philox for the DGP's Bernoulli draws | done | D-194 | no |
+| P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
+| P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
+| P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
+
+Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
+would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design
+change, not a performance item). Runtimes are projected from a timing sample before every full run
+(D-187, D-193).
+
+## Studies
+
+The index, registrations and results are in [studies/README.md](studies/README.md) (D-148, D-153).
+
+- **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27,
+  S-28, S-34, S-35 (without its M6 arm).
+- **Registered, not yet run:** the S-35 M6 arm (D-196); the M6 validation run (`m6-validation`, D-200).
+- **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
+  S-26, S-29 to S-33, S-36, S-38 to S-47; S-37 is documentation, not a study (D-188).
+
+**Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
+
+| Study | Placement | Note |
 |---|---|---|
-| M1.1 ✅ | CMake skeleton + presets (cpu-debug, cpu-release), warnings-as-errors, per-target FP-contraction flags, in-house test runner under CTest, CI on Linux + Windows (D-025–D-030, D-047–D-051) | empty targets build and one test runs on both OSes |
-| M1.2 ✅ | `core/special`: `log_phi` (upper tail via `log1p(−Φ(−x))`, D-068), `erfcx`, `probit` + `probit_upper(q)` (D-069), `log_add_exp`, `lbinom` via Stirling differences (D-070); mpmath table generator + manifest with version and `mp.dps` (D-067) | matches mpmath tables (D-033) over documented ranges (e.g. `log_phi` on [−40, 10]); **relative** error asserted on both tails of `log_phi`; `probit` tested near 0 and near 1; `lbinom` tested at n up to 10⁶ and beyond; `log_add_exp` edge cases for −∞ and equal arguments (D-071); every tolerance entered in the register |
-| M1.3 ✅ | `core/quadrature`: mpmath-generated GH tables (D-080, D-081), `GaussHermiteFixed`, `GaussHermiteAdaptive`, binomial-mixture integrand + hint (D-084) | exact to degree 2N−1 on polynomials; `E[p(Z)] = PD` and `E[p(Z)²] = Φ₂(·;ρ)` closed forms reproduced; spike integrands (n = 10⁶) converge under the adaptive rule |
-| M1.4 ✅ | `core/objectives/BinomialMixture`, `core/grid`, `engine` + `backends/cpu`, `ArgMax` reducer, sub-grid refinement (D-038), curvature SEs, edge/flat/convergence flags | calibrate runs end-to-end through the engine with W = one row of ones; results bitwise identical for 1, 2 and N threads |
-| M1.5 ✅ | `ref/`: independent FP64 Φ/logΦ (std::erfc + continued-fraction tail), adaptive Gauss–Kronrod on a truncated/transformed z range, a different optimiser (e.g. nested golden-section) | shares no code with core (include check passes) |
-| M1.6 ✅ | `dgp/`: Philox4x32-10, deterministic normal and binomial samplers, scenario spec — CPU only (D-034). Own `log`/`exp`/`sqrt`/`erfc` → Φ, Φ⁻¹ via AS241, Marsaglia polar normals, Bernoulli-sum binomials, `/fp:strict` (D-052–D-056) | Philox matches the published known-answer vectors; sampler moments match theory; outputs are reproducible from (seed, stream) alone; DGP functions match mpmath within 1e-12 relative; the reference-panel hash is identical on every CI OS (D-057) |
-| M1.7 ✅ | Crossref suite: core vs ref | per-period ℓ_t agrees within tolerance on ~10⁴ fixed (PD, ρ, n, d) points including tails (PD 1e-6…0.5, ρ 1e-4…0.9, n up to 10⁶, d = 0 and d = n); estimates agree within the grid-refinement tolerance |
-| M1.7b ✅ | Parity rule for d ∈ {0, n}: composite Gauss–Legendre (Q16, D-118); SEs from the objective's Hessian at the estimate (Q17, D-119); term-scaled check threshold (D-120) | every golden case within tolerance at every ρ; every cross-reference period within tolerance; zero-default surfaces smooth; SE step sensitivity bounded; SE cross-platform tolerance in CI |
-| M1.8 ✅ | Recovery harness: scenario matrix PD ∈ {0.1%, 1%, 5%} × ρ ∈ {0.02, 0.12, 0.24} × T ∈ {20, 40, 100} × n ∈ {100, 10³, 10⁴}, R = 1000 seeded replicates each; bias, RMSE, flagged fraction, conditional coverage (D-121, D-124) | engine correctness holds (RMSE falls with T, no quadrature/numeric flags, cross-platform replay); coverage PASS inside the Monte Carlo band, DEFERRED at ≥ 5% flagged, or a reviewed KNOWN FINDING, with none unreviewed; tables committed as goldens with provenance |
-| M1.9 ✅ | Docs: `docs/methodology/binomial_mixture_mle.md` (plain prose), tolerance register, `validation/scipy/binomial_mixture_mle.py` (D-032); the note explains why fixed-node GH fails at large n (D-037) | the scipy script reproduces the M1.7 surface cells within the documented tolerance |
+| S-35 | now; M6 arm | finished (D-192), M6 arm next |
+| S-36 | M6 | new generator code |
+| S-37 | M7, documentation | an identity (D-164's closed form) |
+| S-38 | now (with S-19); M7 | cheap |
+| S-39 | M6 with M7 | plug-in factor |
+| S-40 | M6, in multi-grade | |
+| S-41 | M6 with M7 | one experiment with S-47's synthetic part |
+| S-42 | M7 | the ranker's test bed |
+| S-43 | M6 | a note with a simulation check |
+| S-44 | M7 | likely a numerical check |
+| S-45 | after M7 | with the lifetime PD feature |
+| S-46 | after M5 | lowest priority |
+| S-47 | synthetic M6/M7; public data M8 | needs a data-repository decision |
 
-**M1 exit:** all of the above green on Linux and Windows. The
-ρ-MLE's known small-T downward bias is documented, not hidden.
+Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifetime PD term structure
+(after M7).
 
-### M2 — Profile intervals, resampling engine + C ABI v0 (CPU)
+## Open items / risks
 
-| # | Item | Done when |
-|---|---|---|
-| M2a ✅ | Profile-likelihood intervals (D-128–D-130): polished maximum, grid-bracketed crossing solved against the objective, truncation flagged; an independent `ref/` implementation; recovery re-run with profile, Wald and t(T−1) side by side (D-131) | endpoint residual and core-vs-ref tolerances met; every DEFERRED verdict and M1.8 KNOWN FINDING re-assessed |
-| M2b ✅ | Resampling engine: the fused, tiled `reduce_weighted` builds W for iid bootstrap, block bootstrap, jackknife, walk-forward and custom schemes (D-042, D-045) | bootstrap CIs join the recovery harness; W × L reuse bitwise identical for any thread count |
-| M2c ✅ | C ABI v0: `vcal_calibrate` (with the profile intervals), `vcal_resample`, `vcal_surface`, `vcal_dgp_simulate`, build info and errors, with a pure-C ABI test | a `.c` test calibrates, resamples and simulates through the ABI |
+- **R-1:** GPU-side DGP, revisit at M6 (large AR(1) parametric bootstraps; D-043).
+- **R-2:** Z sign convention and macro sign filters, revisit at M7 (S-18).
+- **Toolchain floors:** a portability goal: CUDA ≥ 11.8, GCC 11, MSVC 14.39, device-visible code in
+  C++17 (D-094); the development machine needs a CUDA toolkit before M4.
 
-### M3 — Remaining single-factor estimators (CPU)
+## Where history lives
 
-Vasicek-rate MLE, method of moments (joint-default-probability form, exact in finite n) and
-grid Bayesian (`LogSumExpPosterior`, documented priors). Parity and native profiles become
-real registry whitelists (D-035, D-036, D-044). Each estimator gets recovery tests, goldens, a
-methodology note and a scipy script.
-
-**Studies now or alongside M3** (cheap: they reuse the per-period surfaces; D-148, `studies/README.md`):
-
-| # | Study | Judged against / output |
-|---|---|---|
-| S-1 | Z-sign invariance, calibration half: PD, ρ, log-likelihood and every interval identical under z → −z within rounding. The first `studies/README.md` entry | replay panels and subset; rounding-level agreement |
-| S-2 | Sample-size planning table from the existing recovery results: years needed for ρ within ±0.05 (and PD within a stated relative error) by PD and n | committed recovery summary; no new fits |
-| S-3 | Jackknife bias correction for ρ̂; profile intervals around the corrected estimate | ρ small-T profile findings and the PASS verdicts they could break |
-| S-4 | Bartlett-corrected profile threshold (S-4a oracle factor now; S-4b feasible factor with S-10). **Finished (D-181): 6 of 6 held** | the 6 pinned small-T profile findings |
-| S-5 | BCa intervals | the 125 pinned percentile findings |
-| S-6 | Pluto–Tasche most-prudent upper bounds (closed form; serially correlated version stays in M6) | coverage of the true PD in low-default scenarios |
-| S-7 | Grid resolution against accuracy and runtime | 61 × 41 (D-115) against 31 × 21 … 241 × 161 |
-| S-21 | Period influence: leave-one- and leave-two-periods-out changes in PD̂ and ρ̂ from jackknife-type weights; the most influential periods per scenario. Shares the jackknife pass with S-3 and S-5 | descriptive; no verdicts |
-| S-22 | Box sensitivity: estimates and profile intervals with the ρ cap at 0.9 against 0.5, plus a lower-bound arm (ρ ≥ 1e-5, PD ≥ 1e-6), grid spacing held fixed | every verdict (full matrix), chiefly the 20 CONSERVATIVE |
-| S-23 | Profile-likelihood intervals for the 99.9% conditional PD (other quantiles optional), coverage in the recovery harness | a new verdict family, same band and policy |
-| S-34 | Sensitivity to severe new periods: shifts in PD̂, ρ̂ and the 99.9% conditional PD after one or two 1-in-100 or 1-in-1,000 adverse periods, by T (D-152; first batch) | descriptive; no verdicts |
-
-**Synthetic data variants, now** (D-149): S-24 and S-25 are DGP variants, each with a prose description, a Python mirror and a hash; S-26 is a scenario definition on the existing DGP and needs none:
-
-| # | Study | Judged against / output |
-|---|---|---|
-| S-24 | PD heterogeneity: two pooled sub-segments with different PDs on the same factor; inflation of ρ̂ | bias and coverage against the stated estimand |
-| S-25 | PD trend: PD drifting over the sample; inflation of ρ̂, and oracle and estimated detrending (needs a `native` per-period offset objective) | bias and coverage against the stated estimand |
-| S-26 | Varying portfolio size: n_t declining over time (a scenario definition; the DGP already takes n per period) | every verdict of the paired constant-n scenario |
-
-**Data and population instability, now** (single-segment parts; D-150; the M6 parts are listed under M6):
-
-| # | Study (part that runs now) | Judged against / output |
-|---|---|---|
-| S-29 | Rating-scale version change, two-grade version: per-grade fits on the remapped history, a two-stage structural break, portfolio-level fit with allocation; crosswalk error from 0 to about 20% plus many-to-many | crosswalk error at which ρ̂ inflation is material |
-| S-30 | Grade granularity: K = 4, 7, 10, 20 buckets of a 15–20-grade true scale, per-bucket separate fits; PD error, ρ̂ per bucket, 99.9% loss quantile, by T | the K that minimises error |
-| S-31 | Composition shock: a riskier segment joining in a stress year; pooled bias, exclusion, a two-stage joining indicator | pseudo-true value and the distance from the generating parameters |
-| S-32 | Default misrecording: exclusion, a sensitivity band, a misclassification-aware likelihood (`native` objective) | pseudo-true value and the distance from the generating parameters |
-| S-33 | Survivorship and backfill at portfolio level: partial survivorship, truncation at the true and at a misjudged date | pseudo-true value and the distance from the generating parameters |
-
-**Studies with M3:**
-
-| # | Study | Judged against / output |
-|---|---|---|
-| S-8 | MLE against method of moments efficiency (relative RMSE, full matrix) | pairwise on the recovery panels |
-| S-9 | Frequentist coverage of grid-Bayesian credible intervals, flat and Jeffreys priors | the Monte Carlo band, beside the profile verdicts |
-| S-27 | Large-portfolio approximation: the n at which Vasicek-rate MLE is indistinguishable from binomial MLE; a rule of thumb by PD and ρ (adds n = 10⁵, 10⁶; after or with S-28) | pairwise on the same panels |
-| S-15 | Simulation-based calibration of the Bayesian estimator (moved from after M4, D-151) | rank uniformity |
-| S-28 | Zero-default treatments for rate-based estimators: refuse (parity) vs drop vs censored likelihood (native, D-044) | bias, RMSE, coverage; refusal rate; binomial MLE as benchmark |
-
-**Studies on the subset now, full matrix after M4** (new data per replicate):
-
-| # | Study |
-|---|---|
-| S-10 | Parametric bootstrap intervals via the DGP. **Finished on the CPU, full matrix (D-168, D-181): 2 of 5 held** |
-| S-11 | Misspecification: standard Vasicek fitted to t-copula, AR(1)-factor and beta-mixture data; bias and coverage (subset here; full matrix in M4) |
-
-### M4 — CUDA backend
-
-Surface and fused-reduce kernels, a fat binary (sm_89 + sm_120 when nvcc ≥ 12.8 + compute_80 PTX, D-026/D-040), precision
-policies (D-039), and a CPU↔GPU parity suite with tolerance definitions (D-041). Install the CUDA toolkit first. Performance goes
-in `perf/` on both architectures. The nvcc compile-only CI jobs already exist (D-100). Install the development machine's toolkit (11.8 + MSVC 14.39, D-094) before starting.
-
-**Studies after M4** (GPU scale; D-148, `studies/README.md`):
-
-| # | Study |
-|---|---|
-| S-10 | Parametric bootstrap intervals: full matrix. *Done on the CPU (D-181); nothing left for M4* |
-| S-11 | Misspecification: full matrix |
-| S-12 | Double (iterated) bootstrap to calibrate interval coverage |
-| S-13 | R = 10,000 recovery re-run, whole matrix (the targeted run on the borderline scenarios is in the first batch, D-151) |
-| S-16 | FP32 search with FP64 finalisation against pure FP64 |
-| S-17 | Performance scaling across GPU generations (results in `perf/`) |
-
-### M5 — Monitoring
-
-Backtests (exact binomial, Jeffreys, correlation-adjusted binomial, traffic light). Also a
-run ledger (canonical serialisation + SHA-256, links calibration and backtest runs) and
-report data plus rendering outside the core (D-045).
-
-**Monitoring design draws on the studies (D-152).** Each `studies/README.md` entry has a monitoring implication, filled in when the study finishes. M5's metrics, thresholds and data checks are taken from finished entries, and the design is not frozen until the studies it relies on are done.
-
-**Study in M5:** S-14, backtest power (years of data needed to detect a PD misstated by 20% / 50%), plus the threshold table's false-alarm rate and detection delay (D-152). Moved from after M4: it needs M5's backtests and threshold table.
-
-**Features (D-152):**
-
-| Feature | What it does | Builds on |
-|---|---|---|
-| What-if recalibration | Refits with hypothetical future periods added. A hypothetical period is one more row of per-period surfaces, so nothing already computed is recomputed | the surface engine; S-34 |
-| Default-count threshold table | Maps next period's default count to a tiered status (within tolerance / warning / threshold exceeded). Each tier is tied to a stated rule, for example a quantile of the predictive default-count distribution under the fitted model | S-14's operating characteristics |
-| Parameter-shock propagation | Shows how shocks to PD and ρ move the 99.9% conditional PD | S-23's machinery |
-| Conditional PD by factor level, and reverse factor stress | Conditional PD from benign to adverse factor levels (for example 1-in-10 to 1-in-1,000 years), and the adverse level at which conditional PD or expected defaults reach a stated value. Expressed as adverse or benign, never as a raw sign of Z | the Z convention in one place (S-1, S-18) |
-| Estimator comparison | The same data fitted by each estimator, with PD, ρ and the 99.9% conditional PD side by side | S-8 and S-11 |
-
-### M6 — Benchmark models
-
-Multi-segment correlated factors (two-stage + pairwise composite likelihood, PSD repair
-documented), multi-grade calibration on one factor with a shared ρ (D-151), AR(1) factor (forward filter, parametric bootstrap (D-043), revisit GPU-side DGP (R-1)), alternative mixing
-distributions, Pluto–Tasche and window/influence analysis.
-
-**Multi-grade calibration (D-151):**
-
-- **Model:** a single-factor model with K grades, each with its own PD, and a shared ρ.
-- **Likelihood:** each period's likelihood stays a one-dimensional integral over the shared Z_t, ∫ φ(z) ∏_k Binom(d_kt; n_kt, p_k(z)) dz.
-- **Optimiser:** a one-dimensional grid in ρ, with the K PDs maximised for each fixed ρ (Newton or coordinate ascent), so the profile machinery for ρ is kept.
-- **Quadrature:** the adaptive rule's mode hint is revisited for the product integrand.
-- **Needed by:** S-29 and S-30, run on the grade scenario matrix (`studies/README.md`).
-
-**Studies in M6** (the parts that need multi-grade calibration; D-150):
-
-| # | Study (M6 part) |
-|---|---|
-| S-29 | Probabilistic crosswalk mapping in the likelihood; the structural break fitted jointly with a shared ρ; the full multi-grade scale |
-| S-30 | Buckets calibrated with a shared ρ; K crossed with S-29's crosswalk error |
-| S-31 | The inflow calibrated as a separate segment |
-| S-33 | Late rating assignment (selection per grade) |
-| S-35 | The AR(1)-aware MLE arm (the rest runs now; D-188) |
-| S-36 | Rating philosophy and fitted correlation (D-188) |
-| S-39 | The estimated factor plugged into the second step, with M7 (D-188) |
-| S-40 | Fixed, common or grade-specific correlation, folded into multi-grade (D-188) |
-| S-41 | External factor against internal factor, with S-47's synthetic part (D-188) |
-| S-43 | Overlapping series and the AR(1) coefficient: a note with a simulation check (D-188) |
-
-
-### M7 — Macro pipeline
-
-Transform library with lineage, pre-screen filters, batched specification fits (fits are
-the B dimension), pluggable scorers and a config-driven ranker (config parsed outside the core, D-045).
-
-Deferred item R-2 (DECISIONS.md): the Z sign convention and macro sign filters. Expected effects are declared in economic terms (worsens or improves credit conditions) and mapped to coefficient signs in one place through the engine's Z convention (higher Z = better conditions). The mapping is tested on a synthetic DGP. Revisit when the macro pipeline starts interacting with the estimator.
-
-**Studies deferred to M7** (recorded together, not started; D-148, `studies/README.md`):
-
-| # | Study |
-|---|---|
-| S-18 | Z sign convention and macro sign filters: expected macro effects declared in economic terms, mapped to coefficient signs in one place, the mapping tested on a synthetic DGP (this is R-2) |
-| S-19 | Z_t extraction, E[Z_t given d_t], as a standard output |
-| S-20 | A reference Belkin–Suchower–Forest apply function (TTC migration matrix + ρ + z → conditional matrix) with a conventions test; needs a scope decision first |
-
-**Studies and features with M7 (D-188):** S-38's stressed-PD part, S-42 (specification-search rules: M7's
-test bed), S-44 (likely a numerical check), S-37 as documentation, and the published-method track's steps
-1 and 3. After M7: S-45 with the lifetime PD term structure. See "Roadmap addendum" above.
-
-### M8 — Public-data demonstrations + replication pack + ABI 1.0
-
-S-47's public-data part (regional and sector factors; needs a data-repository decision first, D-188).
-FDIC failed-bank counts as the binomial showcase; FRED/StatCan rate series via Vasicek-rate/MoM (D-046), end-to-end worked examples, a complete scipy replication
-set, and an ABI freeze at 1.0.
+- [DECISIONS.md](DECISIONS.md): every decision and its rationale (D-nnn).
+- `git log`: what changed and when.
+- [docs/history.md](docs/history.md): the detailed M0–M3 status record, the earlier priority lists and
+  the full milestone plan as it stood on 2026-10-10.
