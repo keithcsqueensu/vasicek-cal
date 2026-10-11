@@ -1457,6 +1457,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **D-187's projection, validated:** 3.499 h against 3.5 h (90% range 3.3–3.7 h), projection / actual 1.005, on an otherwise idle machine (about 20 minutes of light single-threaded work, recorded in the manifest). It is a full run in range after the method's last amendment (D-193), so, by the owner's rule, its status changes from "calibrated, not validated" to validated, for tools whose phases it times.
   - **The manifest check (D-201)** caught two hashes taken of CRLF working copies before commit; recomputed from the committed LF files.
 
+- **D-203 (owner) — The S-35 M6 arm's scorer is written blind, during the run, and merged before its last segment.** `studies/lrpd-serial-correlation/score_m6.py` scores L16–L28. Its readings are fixed in PREDICTION.md's 2026-10-11 addendum. The owner's rules:
+  - **No look at the running arm:** while the scorer was written, nothing from the arm was opened, printed, summarised or `head`ed (rows, checkpoints, timing output). Only the checkpoint count and the exit status were seen.
+  - **Tests:** it is tested only on a synthetic fixture (`--self-test`, in CI's `plan` job), never on the arm's partial output.
+  - **Order:** it is merged as its own PR before the arm's final segment starts. Its merge commit, the arm's build commit and the engine and study-tool sources compared with the validation build go in the arm's manifest.
+  - **Timing notes:** the work is logged in the run's timing notes.
+  - **Two choices to confirm at review:**
+    - A panel that was not fitted fails the checks, as in the validation run's W1.
+    - The binomial fits are checked against S-35's per-cell `summary.csv`, so L18, L19 and L21 compare the same fits on the same panels.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

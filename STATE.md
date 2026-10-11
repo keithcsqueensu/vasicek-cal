@@ -31,7 +31,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 2. **The arm's scorer (L16–L28),** written blind during the run (owner): the arm's rows, checkpoints and
    timing output are never opened; it is tested only on a synthetic fixture or the validation run's
    released rows; it is merged as its own PR before the final segment starts, and that merge commit goes
-   in the arm's manifest.
+   in the arm's manifest. Written: `score_m6.py`, readings in PREDICTION.md's 2026-10-11 addendum (D-203).
 3. **Copilot-audit fix PRs**, one each:
    - **A, correctness;**
    - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:

@@ -305,3 +305,37 @@ it far higher:
   the arm's scale from this number, before the validation run.
 - **The scale (owner, 2026-10-10; D-199):** unchanged. The arm runs as registered, in checkpointed segments; nothing in
   this addendum or above is amended.
+
+## Addendum, 2026-10-11: the M6 arm's scoring fixed before its results (D-203)
+
+Appended during the arm's first segment, before any of its rows existed in final form or were read; no
+prediction, threshold, scope or definition above changes. Of the running arm, only the number of checkpoint
+files and the exit status were seen (owner's rules).
+
+- **The scoring script** is [`score_m6.py`](score_m6.py), committed with this note and merged before the
+  arm's last segment starts. It was tested only on its synthetic fixture (`--self-test`, also run in CI).
+- **Checks, any failure stopping the scoring:**
+  - **The two log-likelihood checks** above, with a panel that was not fitted counting as a failure (as in the
+    validation run's W1).
+  - **The binomial fits are S-35's:** per φ and scenario, the median relative error of the arm's `binom_pd`
+    equals `summary.csv`'s at its six significant digits. "Binomial" in L18, L19 and L21 therefore means the
+    same fits on the same panels. L18 and L19 take the binomial MLE's PD profile coverage from `summary.csv`,
+    whose SHA-256 is checked against `MANIFEST.json`.
+- **Readings:**
+  - **Pooling:** a pooled coverage or share is the mean of the per-scenario values (R equal), as in `compare.py`.
+  - **Profile coverage:** an interval that was not computed counts as a miss, and every replicate counts.
+  - **The comparator:** its interval counts as covering only if it has refitted panels and contains PD.
+  - **Credibility:** "credible" is `information_m6.csv`'s `credible_phi` at the cell's true φ. L26's
+    scenario lists are the registered ones, cross-checked against that file.
+  - **At a bound:** φ̂ is at a bound when |φ̂| = 0.95 exactly; the search clamps φ there.
+  - **Ranges and inequalities:** ranges are inclusive, with 10⁻¹² of slack for floating point. "Under",
+    "below" and "above" are strict.
+  - **Ranges decide:** a prediction with a range holds only inside it. L23's criterion is 0.55–0.80, not
+    "above 0.5".
+  - **L21:** the median relative error is median(PD̂)/PD − 1. "Closer to 0" means |M6| < |binomial|.
+    "Differs by less than 0.01" means the two relative errors differ by less than 0.01.
+  - **L25:** the qualitative parts hold at each of φ = 0, 0.3 and 0.6; the strict part at φ = 0 and 0.6.
+  - **Separate verdicts:** L24's and L25's strict parts (group D, credible) and their qualitative parts
+    each get their own verdict.
+- **Not computable:** the q interval, listed above as reported without a prediction, is not computed by
+  `study_lrpd_serial_m6`. The scorer reports that it is absent.
