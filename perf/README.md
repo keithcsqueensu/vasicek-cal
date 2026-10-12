@@ -33,9 +33,9 @@ Contents: [P-items](#p-items) · [Proposed SIMD items](#proposed-simd-items-2026
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) | [p18_ar1_transition.md](p18_ar1_transition.md) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
-| P-21 | One `erfcx` per node on the derivative path | **proposed** | — | no | [below](#p-21-one-erfcx-per-node-on-the-derivative-path) |
-| P-22 | SIMD derivative node functions | **proposed** (after P-7, P-21) | — | no | [below](#p-22-simd-derivative-node-functions) |
-| P-23 | Hint and extent search across grid points | **proposed** | — | no | [below](#p-23-hint-and-extent-search-across-grid-points) |
+| P-21 | One `erfcx` per node on the derivative path | **proposed** | D-211 | no | [below](#p-21-one-erfcx-per-node-on-the-derivative-path) |
+| P-22 | SIMD derivative node functions | **proposed** (after P-7, P-21) | D-211 | no | [below](#p-22-simd-derivative-node-functions) |
+| P-23 | Hint and extent search across grid points | **proposed** | D-211 | no | [below](#p-23-hint-and-extent-search-across-grid-points) |
 
 - **Order of the open items (D-199):** P-7 next, then P-13 (third) and P-6 (fourth); P-19 with the next golden
   refresh; P-20 later, with its own flip check.
@@ -50,7 +50,7 @@ Contents: [P-items](#p-items) · [Proposed SIMD items](#proposed-simd-items-2026
 ## Proposed SIMD items (2026-10-12)
 
 A sweep of the CPU paths for vectorisation not yet covered by P-6, P-7, P-17 or P-18. These are
-proposals for the owner's order, not decisions: none has a `DECISIONS.md` entry yet, and each would need
+proposals for the owner's order, not decisions: D-211 records the sweep, and each item would still need
 the [rules below](#rules-for-every-p-item-d-177) before it merges. P-7 is in progress and its scope is not
 touched here; P-22 and P-23 reuse its vector `erfcx` as a building block. All three keep results bit for
 bit: one lane per independent evaluation, each lane performing the scalar operations in the scalar order,
