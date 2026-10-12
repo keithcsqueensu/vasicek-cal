@@ -3,6 +3,8 @@
 # In-house runner (D-029). Test sources include it as "tests/harness/vcal_test.hpp".
 add_library(vcal_test_harness STATIC harness/runner.cpp harness/golden.cpp harness/sha256.cpp)
 target_include_directories(vcal_test_harness PUBLIC "${PROJECT_SOURCE_DIR}")
+# Every test can include core/, so every test links its one compiled part, the erfcx kernels (P-7, D-212).
+target_link_libraries(vcal_test_harness PUBLIC vcal::core)
 target_compile_definitions(vcal_test_harness PRIVATE VCAL_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden")
 vcal_target_defaults(vcal_test_harness)
 
