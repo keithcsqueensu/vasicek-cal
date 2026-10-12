@@ -120,7 +120,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
   W3 NOT HELD; D-200, D-202).
 - **Registered, not yet run:** the S-35 M6 arm (D-196).
 - **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
-  S-26, S-29 to S-33, S-36, S-38 to S-47; S-37 is documentation, not a study (D-188).
+  S-26, S-29 to S-33, S-36, S-38 to S-48; S-37 is documentation, not a study (D-188).
 
 **Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
 
@@ -139,6 +139,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | S-45 | after M7 | with the lifetime PD feature |
 | S-46 | after M5 | lowest priority |
 | S-47 | synthetic M6/M7; public data M8 | needs a data-repository decision |
+| S-48 | after the S-35 M6 arm; with S-36 | HAC SE under dependence (owner, 2026-10-11) |
 
 Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifetime PD term structure
 (after M7).

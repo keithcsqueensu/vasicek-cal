@@ -6,7 +6,7 @@ beside this index, in `studies/<slug>/` (D-153). Performance work is not here: s
 
 Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run](#how-studies-are-run) ·
 [The study subset](#the-study-subset-approved-d-150) · [Priority order](#priority-order-d-151) ·
-[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-47 and M6-V, below.
+[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-48 and M6-V, below.
 
 ## At a glance
 
@@ -74,6 +74,7 @@ they exist.
 | [S-45](#s-45-lifetime-pd-convexity-adjustment-scenario-weighting-full-integration-lifetime-pd-scenarios) | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
 | [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
 | [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
+| [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | after the S-35 M6 arm; with S-36 | not registered |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -1539,7 +1540,7 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   2. **The AR(1)-aware MLE (M6)** is the structural fix, to be tested against this run's φ = 0.3 and 0.6
      arms. Its intervals come by parametric bootstrap through `dgp/` (D-043).
   3. **A sandwich (HAC) SE** that inflates the iid SE by an estimated √f is a cheaper candidate `native`
-     option. It is not tested here, and would need its own registration.
+     option. It is not tested here, and would need its own registration: now S-48.
   4. **On observed rates at small n,** an unchanged ρ coverage under serial correlation is not evidence of
      independence: the granularity bias masks it. Below S-27's n·PD threshold, use counts.
 - **Monitoring implication (D-152), confirmed:** a PD interval computed on serially correlated default
@@ -1795,3 +1796,41 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
 - **Cost:**
   - **Synthetic:** about the baseline per specification.
   - **Real data:** small fits, dominated by data preparation.
+
+## Addendum: interval methods under dependence (S-48; owner, 2026-10-11)
+
+### S-48 HAC standard errors under serial dependence (`hac-se`)
+
+- **Question:** when periods are not independent, does a Wald interval with a HAC
+  (heteroskedasticity- and autocorrelation-consistent) sandwich SE restore the coverage that the iid
+  profile and Wald intervals lose, at a cost in width small enough to make it a `native` option worth
+  recommending?
+- **Motivation:** S-35 found that intervals assuming independent periods are too narrow by √f under an
+  AR(1) factor, at every T (D-192), and named a HAC SE as a cheaper candidate than the AR(1) MLE. S-36
+  adds the opposite case: rating momentum makes a grade's default rates negatively autocorrelated, so
+  the iid intervals over-cover there.
+- **The method (fixed with S-36's draft, `pit-ttc-rho/PREDICTION.md`):** V = H⁻¹ S H⁻¹, with H the fit's
+  observed information and S the Newey–West long-run variance of the per-period scores, Bartlett kernel,
+  lag ⌊4·(T/100)^(2/9)⌋ (2, 3, 4 at T = 20, 40, 100); a Wald interval in logit units. The Bartlett kernel
+  keeps S positive semi-definite. Fits at or near a bound get none (counted).
+- **Experiment:**
+  - **Positive dependence:** S-35's AR(1)-factor panels (φ ∈ (0, 0.3, 0.6), the recovery matrix), refitted
+    with the per-period scores kept. HAC coverage and width against the iid profile interval's and the
+    AR(1) MLE's (S-35's M6 arm), on the same panels.
+  - **Negative dependence:** S-36's momentum rules, as the HAC arm registered there.
+  - **Independence:** φ = 0 and S-36's TTC rule, the price of estimating S when there is nothing to
+    correct.
+  - **The lag:** the fixed rule above, with a reported (not predicted) sensitivity at L = 1 and at twice the
+    rule.
+- **Verdicts it could change:** none pinned. It is a `native` option and changes no parity result.
+- **Prerequisites:** the HAC SE in the engine as a `native` option, with its own decision, a methodology
+  note, a scipy replication and a unit test against a hand-computed panel. The per-period scores come from
+  the per-period surfaces the engine already keeps (W × L).
+- **Overlaps:** S-35 (its panels and its AR(1) MLE as the model-based comparator), S-36 (its HAC arm is
+  this study's negative-dependence part), S-43 (overlapping series inflate dependence too).
+- **Placement:** after the S-35 M6 arm, which supplies the comparator; the S-36 part runs with S-36.
+- **Cost:** a refit of S-35's panels with scores kept: about S-35's main run (0.3 h), since the HAC
+  matrix is a few T × 2 products per fit.
+- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152). The candidate: report the
+  HAC SE beside the iid one, and flag a calibration whose ratio is far from 1.
