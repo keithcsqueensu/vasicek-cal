@@ -1470,6 +1470,22 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **"Credible"** is `credible_phi` at the cell's true φ.
   - **Deviation from the registration:** the M6 addendum lists the q interval as reported without a prediction, but `study_lrpd_serial_m6` does not compute it, so the arm cannot report it. The registration is not amended (D-197); the deviation is recorded here and in PREDICTION.md's 2026-10-11 addendum.
 
+## Docs restructure, S-37, S-48 and S-36's design, 2026-10-11
+
+- **D-204 — STATE.md is current status only; history moves to `docs/history.md`; `studies/README.md` and `perf/README.md` are the full indexes of their tracks** (#56, #59). STATE.md went from 519 to about 150 lines (Now, Next, milestones, the performance and study summaries, open items); the old content is kept nearly verbatim in `docs/history.md`. `studies/README.md` leads with an at-a-glance summary and an index of every study, each number linked to its entry and each slug to its directory, with the rules after it; the M6 validation run has an index row and an entry. `perf/README.md` leads with the full P-1 to P-20 table, each item linked to its write-up. No result, tolerance or registration changed.
+
+- **D-205 — S-37 is documented, not run** (#59; D-188's assessment). `docs/methodology/vasicek_rate_mle.md` §3, "The least-squares form", states Yang (2013)'s identity: without covariates the asymptotic rate MLE is least squares on the probit rates with the variance as RSS/T, which is D-164's closed form by invariance; with covariates it is least squares on (1, w_t) for any model whose parameters are a one-to-one function of the intercept, slopes and residual variance, the mapping to PD and ρ being left to each M7 model. Where it stops holding: censored zero rates (a Tobit-type regression), count data (S-27), serial correlation (S-35). Checked numerically against a direct maximisation of the rate likelihood (agreement to about 10⁻⁸). The covariate identity's unit test comes with the first covariate model (M7).
+
+- **D-206 (owner) — S-48, HAC standard errors under serial dependence, is added to the study list** (#61). The question: does a Newey–West sandwich SE restore interval coverage when periods are dependent, positively (S-35's AR(1) panels, against the AR(1) MLE) and negatively (S-36's rating momentum), and at what cost under independence. The method is fixed as in S-36's draft: V = H⁻¹ S H⁻¹, Bartlett kernel, lag ⌊4·(T/100)^(2/9)⌋ (2, 3, 4 at T = 20, 40, 100), Wald in logit units. It is the candidate `native` option of D-192, and needs its own decision, methodology note, scipy replication and unit test before it runs. Not registered.
+
+- **D-207 (owner) — S-36's design choices so far; the study is not registered** (draft PR #60, `studies/pit-ttc-rho/PREDICTION.md`).
+  - **Rating momentum (owner):** a rating has a philosophy λ (TTC 0 to PIT 1) and a speed θ (1 is no momentum). As proposed, momentum acts through the systematic part: the score uses the factor smoothed at speed θ, M_t = (1 − θ)M_{t−1} + θZ_t, with obligors redrawn each period. The alternative, persistent obligors with obligor-level partial adjustment, is still open.
+  - **A HAC interval beside the profile (owner),** with S-48's settings.
+  - **Left to the proposer (owner), and set:** grades keep their master-scale labels under every rule; the grid is 13 rules (TTC, and λ ∈ {0.25, 0.5, 0.75, 1} × θ ∈ {1, 0.5, 0.25}) on the grade scenario matrix at R = 1,000.
+  - **Seeds reserved:** `0x5049545454435248` ("PITTTCRH") for the study's panels and `0x5049545454435453` ("PITTTCTS") for its runtime timing sample, disjoint from every other seed in this file and the code.
+  - **The reference values** (`reference.py`, model only, no panels): the narrow-grade closed form v = ρ/(1 − ρ)·(1 − 2βθ + β²θ/(2 − θ)), ρ_eff = v/(1 + v), with a negative lag autocorrelation under momentum; the finite-grade quadrature agrees within 0.002 on every informative grade.
+  - **Still open before registration:** the momentum form, and the informative-grade rule and the bands of Q2 to Q10. Nothing is simulated or fitted until the file is registered.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
