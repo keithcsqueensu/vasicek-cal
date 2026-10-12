@@ -13,12 +13,6 @@ the scalar operations in the scalar order, FMA contraction off, every kernel pat
 natural form is to hand the batch's per-node `erfcx` values (and exp pair) to the derivative functor, rather
 than caching them in the scalar integrand.
 
-A sweep of the CPU paths for vectorisation not yet covered by P-6, P-7, P-17 or P-18. These are
-proposals for the owner's order, not decisions: D-213 records the sweep, and each item would still need
-the [P-item rules](README.md#rules-for-every-p-item-d-177) before it merges. P-7 (D-212) is not changed here; P-22 and P-23 reuse its vector `erfcx` as a building block. All three keep results bit for
-bit: one lane per independent evaluation, each lane performing the scalar operations in the scalar order,
-FMA contraction off, every kernel path tested as P-17.
-
 **Measurements** (`simd_scout`; parity rule, PD 1%, ρ 0.12; one thread on a cloud VM, Intel Xeon 2.1 GHz,
 GCC 13.3, Release; indicative only, to be repeated on the owner's machine before any decision):
 
@@ -36,7 +30,7 @@ the composite rule's node transform (`sinh`, `cosh`, `log`) 28–32 ns. Two thin
 path pays about as much for its inverse-Mills pair as for the value itself. And a one-sided period
 (d ∈ {0, n}, common in low-PD panels) costs about 3.4× an interior one, a third of it in the extent search.
 
-### P-21: one `erfcx` per node on the derivative path
+## P-21: one `erfcx` per node on the derivative path
 
 **What.** At each node `log_contrib_derivs` calls `log_phi_pair(x)` (one `erfcx(|x|/√2)`, one exp pair
 `exp(−s.hi/2)·exp(−s.lo/2)`), then `BinomialLogIntegrandDerivs` calls `inverse_mills(x)` and
@@ -61,7 +55,7 @@ per-call costs above), less at d ∈ {0, n} where only one inverse-Mills call is
 profile solves: W* of S-4b (39.8% of the S-10 run, D-199), the analytic SE (13.5%) and the refinement.
 The run-level saving should be projected with the D-187 method before it is built.
 
-### P-22: SIMD derivative node functions
+## P-22: SIMD derivative node functions
 
 **What.** After P-7 and P-21, everything `BinomialLogIntegrandDerivs` does per node is arithmetic on
 (z, x, λ(x), λ(−x)): x_ρ, x_ρρ, g_x, g_xx and the five node functions, then `m_[j] += w·f[j]` and the
@@ -75,7 +69,7 @@ exact divisions, no reciprocals. The remaining libm calls (the exp pair, the fol
 **Depends on** P-7's node batching (the same block of nodes, the same scratch) and on P-21 (without it the
 lanes wait on three scalar `erfcx`).
 
-### P-23: hint and extent search across grid points
+## P-23: hint and extent search across grid points
 
 **What.** Two serial searches sit in front of every integral: the hint's bracket and Newton
 (`binomial_mixture_hint`, 10–30% of an interior period's cost, 30% at n = 10,000) and the composite rule's
@@ -100,7 +94,7 @@ flip check, while lanes over grid points give the same gain bit for bit.
 `parallel_for` stays over blocks, so results still do not depend on the thread count. The profile solves
 evaluate off-grid points one at a time and do not benefit.
 
-### Scope note for P-6
+## Scope note for P-6
 
 P-6's entry describes a SIMD reduction across grid points, as in `reduce_weighted`, but since D-172 the engine's default is the bounded argmax
 (`ArgmaxSearch::Bounded`); `reduce_weighted` runs only when its guard fails. The 5–7% of the run that P-6
@@ -120,7 +114,7 @@ Not SIMD, noted while reading: each replicate sorts all tile bounds (176 on the 
 visits a few; a heap pops them in the same order (bound descending, then index) for less work. Measure
 before deciding.
 
-### Unlocked only by the in-house `log`/`exp` decision (D-199)
+## Unlocked only by the in-house `log`/`exp` decision (D-199)
 
 These remain scalar under bit-for-bit rules because they call libm; they belong in that decision's
 cost-benefit, not in new P-items: `log` and `log1p` in `log_phi`, its exp pair, the online log-sum-exp's
@@ -129,7 +123,7 @@ one-sided node), the posterior's mass exponentials and the AR(1) filter's `weigh
 in-house `log`/`exp`, a whole `log_contrib` could run with lanes over grid points and the online fold kept
 per lane, with no scratch buffer: P-23's layout extended to the integral itself.
 
-### Checked and not proposed
+## Checked and not proposed
 
 - **Bootstrap index draws** (`resample/weights.hpp`): scalar Philox, one block per two draws. P-17's
   lanes would apply bit for bit, but S-10 draws about 5 × 10⁴ blocks per panel against thousands of
