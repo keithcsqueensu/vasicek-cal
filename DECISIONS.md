@@ -1569,7 +1569,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
 ## S-48: results, 2026-10-12
 
 - **D-211 — S-48's positive-dependence and independence parts: 5 of 6 held; H2 NOT HELD** (`studies/hac-se/results.txt`, `MANIFEST.json`; D-209, D-210).
-  - **The run:** S-35's panels at φ = 0, 0.3 and 0.6, 304 s on 24 threads, from cbdd234. The projection, recorded before the run, was 314 s (298–330 s): in range, projection / actual 1.03. Both checks passed: the fits are S-35's in all 243 (φ, scenario) cells, and every unflagged fit has a HAC SE at all three lags.
+  - **The run:** S-35's panels at φ = 0, 0.3 and 0.6, 304 s on 24 threads, from cbdd234. The projection, recorded before the run, was 314 s (298–330 s): in range, projection / actual 1.03. Its sample was shorter than D-193's minimum, a deviation listed below. Both checks passed: the fits are S-35's in all 243 (φ, scenario) cells, and every unflagged fit has a HAC SE at all three lags.
   - **Held:**
     - **H1, PD coverage follows the reference:** 9 of 9 cells within 0.04. The largest gap is B at φ = 0, +0.016 (0.880 against 0.864).
     - **H3, the gain grows with T:** at φ = 0.6 the paired PD gain over the iid Wald is B +0.068, C +0.108, D +0.134.
@@ -1584,8 +1584,9 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **Lag, PD:** L = 1 covers best at φ = 0 and worst at φ = 0.6, and twice the rule is worst at φ = 0. At φ = 0.6, twice the rule is best or tied with the rule. The largest gap is 0.08 (D at φ = 0.6: 0.785 at L = 1 against 0.865 at twice the rule). For ρ, L = 1 is best in every cell but D at φ = 0.6 (the rule's 0.885 against 0.873).
     - **ρ:** the HAC interval covers ρ less often than the iid Wald in every group and φ except D at φ = 0.6 (0.885 against 0.864). For ρ the HAC SE costs coverage at these T rather than restoring it.
     - **Group A** and the per-scenario band verdicts are in `results.txt` and `summary.csv`. PD at φ = 0.6: 74 of 79 scenarios with an unflagged fit are below the band.
-  - **The recommendation (PREDICTION.md):** H3 to H5 held. The HAC SE is a cheap partial correction at long histories, not a substitute for modelling the dependence. It stays a `native` option, reported beside the iid SE as a diagnostic, and is not recommended as the interval. It is not added to the C ABI.
-  - **Monitoring implication (D-152):** a HAC/iid SE ratio for PD well above 1 on a long history flags positive dependence. At T = 100 the RMS ratio is 0.97 at φ = 0 and 1.41 at φ = 0.6. At T = 20 it is 0.93 against 1.20, too close to read from one calibration.
+  - **The recommendation (PREDICTION.md):** H3 to H5 held. For PD, the HAC SE is a cheap partial correction at long histories, not a substitute for modelling the dependence. It stays a `native` option, reported beside the iid SE as a diagnostic **for PD only**, and is not recommended as the interval. **HAC is not recommended for ρ, where it covers worse than the iid Wald.** It is not added to the C ABI.
+  - **Monitoring implication (D-152), for PD only:** a HAC/iid SE ratio for PD well above 1 on a long history flags positive dependence. At T = 100 the RMS ratio is 0.97 at φ = 0 and 1.41 at φ = 0.6. At T = 20 it is 0.93 against 1.20, too close to read from one calibration. HAC is not recommended for ρ, where it covers worse than the iid Wald; ρ's ratio is not a diagnostic.
+  - **Deviation from D-193 (the projection's sample length):** the 256-replicate sample ran 84 s, under D-193's 120 s minimum, at the sampler's 256-replicate cap. The projection was recorded and used anyway (PREDICTION.md's runtime addendum). Its range (±1%) and its agreement with the previous sample size (1%) met the target. It landed in range (304 s against 298–330 s).
   - **Data:** `rows.csv` is on the release `s48-data-2026-10-12` (D-163).
 
 ## Open

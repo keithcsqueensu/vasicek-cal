@@ -1863,9 +1863,11 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
     HAC interval covers less often than the iid Wald everywhere but D at φ = 0.6.
   - **Fixed-b (reported only):** PD coverage at φ = 0.6 is B 0.781, C 0.844, D 0.874. At φ = 0 it is about
     the iid Wald's.
-  - **Runtime:** 304 s against the projected 298–330 s.
-- **Mitigation:** none needed; the HAC SE stays a `native` diagnostic (D-211).
-- **Monitoring implication (D-211):** report the HAC SE beside the iid one. A PD ratio well above 1 on a
+  - **Runtime:** 304 s against the projected 298–330 s. The projection's sample ran 84 s, under D-193's
+    120 s minimum, a deviation listed in D-211.
+- **Mitigation:** none needed; the HAC SE stays a `native` diagnostic, for PD only (D-211).
+- **Monitoring implication (D-211), for PD only:** report the HAC SE for PD beside the iid one. HAC is not
+  recommended for ρ, where it covers worse than the iid Wald. A PD ratio well above 1 on a
   long history flags positive dependence (RMS 1.41 at T = 100 and φ = 0.6, against 0.97 at φ = 0). At
   T = 20 the ratio is too noisy to read from one calibration (1.20 against 0.93). The fix for the
   interval is to model the dependence (the AR(1) MLE, D-208), not the HAC SE.

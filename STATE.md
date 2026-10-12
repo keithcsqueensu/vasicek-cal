@@ -35,8 +35,12 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - For PD the HAC interval is a partial correction that grows with T: at φ = 0.6, 0.721, 0.805 and 0.852
     at T = 20, 40 and 100, against the iid Wald's 0.65–0.72 and the AR(1) MLE's 0.91–0.94. It costs
     0.017–0.043 under independence.
-  - The HAC SE stays a `native` diagnostic, reported beside the iid SE, not added to the C ABI.
-  - **Runtime:** 304 s, in the projected range. `rows.csv` is on the release `s48-data-2026-10-12`.
+  - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
+    ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
+  - S-48's negative-dependence part stays with S-36 (#60), which waits on its two open decisions.
+  - The next decision number is D-213 (P-7 is D-212, #67).
+  - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
+    minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
 ## Next
 
