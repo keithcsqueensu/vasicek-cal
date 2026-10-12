@@ -127,7 +127,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | Study | Placement | Note |
 |---|---|---|
 | S-35 | now; M6 arm | finished (D-192), M6 arm next |
-| S-36 | M6 | new generator code |
+| S-36 | M6 | new generator code; design and draft predictions in #60, not registered (D-207) |
 | S-37 | M7, documentation | an identity (D-164's closed form); **documented** in the rate MLE note, §3 |
 | S-38 | now (with S-19); M7 | cheap |
 | S-39 | M6 with M7 | plug-in factor |
@@ -139,7 +139,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | S-45 | after M7 | with the lifetime PD feature |
 | S-46 | after M5 | lowest priority |
 | S-47 | synthetic M6/M7; public data M8 | needs a data-repository decision |
-| S-48 | after the S-35 M6 arm; with S-36 | HAC SE under dependence (owner, 2026-10-11) |
+| S-48 | after the S-35 M6 arm; with S-36 | HAC SE under dependence (D-206) |
 
 Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifetime PD term structure
 (after M7).
