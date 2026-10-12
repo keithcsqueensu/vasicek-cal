@@ -20,11 +20,13 @@
 #pragma once
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 
 #include "core/model/vasicek.hpp"
 #include "core/precision.hpp"
 #include "core/quadrature/integrator.hpp"
+#include "core/special/erfcx_batch.hpp"
 #include "core/special/inverse_mills.hpp"
 #include "core/special/log_phi.hpp"
 #include "core/special/generated/constants.hpp"
@@ -49,6 +51,42 @@ struct BinomialLogIntegrand {
         if (defaults > 0.0) v += defaults * special::log_phi(x);
         if (survivors > 0.0) v += survivors * special::log_phi(-x);
         return v;
+    }
+
+    // out[i] = (*this)(z[i]) bit for bit, for n <= kBatchMax: the nodes' erfcx(|x| / sqrt 2) from the vector kernels
+    // (P-7, D-210, core/special/erfcx_batch.hpp), then each node finished by operator()'s expressions with that
+    // value. A node whose |x| is not finite, and every node if no kernel is selected, takes operator() itself.
+    // Host only: the quadrature calls it only outside device code (gauss_hermite.hpp).
+    static constexpr int kBatchMax = 256;  // the largest rule: the parity check's doubled 128
+    void batch(const double* z, double* out, int n) const {
+        double x[kBatchMax];
+        double a[kBatchMax] = {};  // fully initialised: the kernel reads it through a pointer
+        double e[kBatchMax];
+        bool finite[kBatchMax];
+        for (int i = 0; i < n; ++i) {
+            x[i] = model.threshold(z[i]);
+            const double ai = std::fabs(x[i]) * special::constants::kInvSqrt2;
+            finite[i] = std::isfinite(ai);
+            a[i] = finite[i] ? ai : 0.0;  // keeps the kernel's lanes finite; such nodes are redone below
+        }
+        const bool ok = special::erfcx_batch::nonnegative(a, e, static_cast<std::size_t>(n));
+        for (int i = 0; i < n; ++i) {
+            if (!ok || !finite[i]) {
+                out[i] = (*this)(z[i]);
+                continue;
+            }
+            double v = 0.0;
+            if (defaults > 0.0 && survivors > 0.0) {
+                const special::LogPhiPair lp = special::log_phi_pair_given_erfcx(x[i], e[i]);
+                v += defaults * lp.at_x;
+                v += survivors * lp.at_neg_x;
+                out[i] = v;
+                continue;
+            }
+            if (defaults > 0.0) v += defaults * special::log_phi_given_erfcx(x[i], e[i]);
+            if (survivors > 0.0) v += survivors * special::log_phi_given_erfcx(-x[i], e[i]);
+            out[i] = v;
+        }
     }
 };
 

@@ -21,6 +21,17 @@
 
 namespace vcal::quadrature {
 
+namespace detail {
+// An integrand with a host-side batch(z, out, n) and kBatchMax evaluates many nodes at once, bit for bit as its
+// operator() (P-7, D-210); the Gauss-Hermite rules use it outside device code.
+template <class G, class = void>
+struct has_batch : std::false_type {};
+template <class G>
+struct has_batch<G, std::void_t<decltype(G::kBatchMax), decltype(std::declval<const G&>().batch(
+                                                            std::declval<const double*>(), std::declval<double*>(), 0))>>
+    : std::true_type {};
+}  // namespace detail
+
 // Where exp(g(z)) phi(z) peaks: the mode of h(z) = g(z) - z^2/2 and 1/sqrt(-h''(mode)).
 // Fixed rules ignore it; adaptive rules centre and scale on it. For one-sided integrands (the
 // prior truncated by a steep survival factor, D-118) `center` and `width` locate the factor's

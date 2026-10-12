@@ -34,7 +34,8 @@ vasicek-cal/
 ├── CMakeLists.txt  CMakePresets.json  LICENSE  NOTICE
 ├── cmake/                  arch lists, warning sets, FP-contraction flags per target
 ├── include/vcal/vcal.h     the public C ABI — the only installed header
-├── core/                   header-only, host+device (VCAL_HD); no heap, no I/O, no threads, no exceptions
+├── core/                   header-only, host+device (VCAL_HD); no heap, no I/O, no threads, no exceptions;
+│                           one compiled host-only part, the erfcx lane kernels (P-7, D-210)
 │   ├── precision.hpp       Precision policies, VCAL_HD macro
 │   ├── special/            log_phi, erfcx, probit, log_add_exp, lbinom; generated/ from tools/
 │   ├── model/              Vasicek1F (conditional PD), binomial-mixture log-integrand + adaptive hint

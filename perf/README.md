@@ -18,7 +18,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips | `study_surface_cache_spike` |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no | `study_surface_cache_spike`, `study_argmax_check` |
 | P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no | — |
-| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no | — |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done: `log_contrib` 33% faster (SSE2, AVX2) | D-199, D-210 | no | [p7_erfcx.md](p7_erfcx.md) |
 | P-8 | GPU backend | M4 | D-168 | within tolerance | — |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no | [p9_repeat_rate.md](p9_repeat_rate.md) |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no | — |
@@ -33,7 +33,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
 
-- **Order of the open items (D-199):** P-7 next, then P-13 (third) and P-6 (fourth); P-19 with the next golden
+- **Order of the open items (D-199):** P-7 done (D-210); next P-13 (third) and P-6 (fourth); P-19 with the next golden
   refresh; P-20 later, with its own flip check.
 - **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
   would make results platform-independent).
@@ -137,6 +137,7 @@ work: the scorer's editing, its seconds-long self-test, and one CI-config check.
 | P-5 | `study_argmax_check` (`tests/studies/argmax_check.cpp`; slow CTest at R = 40) | bounded against full-grid argmax, every bootstrap and jackknife row of the subset |
 | P-9 | `p9_repeat_rate` (`perf/p9_repeat_rate.cpp`), with a timing sample of the run it would speed up (`perf/p9_repeat_rate.md`) | repeated panels per scenario, replicate and (T, n) cell, under the ordered and the sorted key; the saving they project |
 | P-15 | `study_parametric_bootstrap` before and after, in ABBA order; `recovery_harness --save-fits` before and after for the flip check (`perf/p15_analytic_se.md`) | calibrate-phase CPU seconds; every recovery fit's fields and coverage flips |
+| P-7 | `p7_erfcx` (`perf/p7_erfcx.cpp`; CTest `p7_erfcx_identity` runs it briefly), the same source built on `main` for "before" (`perf/p7_erfcx.md`) | µs per `log_contrib` and `log_contrib_derivs` by erfcx kernel on the recovery grid, every kernel checked against the no-kernel path first; identity: `unit_erfcx_batch`, `unit_erfcx_kernel_*`, `xref_core_regression_erfcx_*`, `unit_ar1_filter_erfcx_*` |
 | P-18 | `perf/p18_ar1_transition.md`: one evaluation plus one score per (T, n) cell, the libm filter against each transition kernel; the transition kernel's ns per term; `study_lrpd_serial_m6` projected before and after | ms per evaluation plus score by kernel; the S-35 M6 arm's projection; identity: `unit_ar1_transition`, `unit_ar1_kernel_*`, `unit_ar1_filter_kernel_*` |
 | P-17 | `p17_simd_philox` (`perf/p17_simd_philox.cpp`; CTest `p17_simd_philox_identity` runs it briefly); `study_parametric_bootstrap` before and after, in ABBA order (`perf/p17_simd_philox.md`) | ms per panel by Bernoulli kernel (scalar, SSE2, AVX2) on the recovery grid's (T, n) cells, every panel checked against `simulate_panel`; the S-10 tool's simulate phase and rows |
 

@@ -1552,6 +1552,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before they are merged.
     - The negative-dependence part is registered with S-36.
 
+## P-7: erfcx in vector lanes, 2026-10-12
+
+- **D-210 — P-7 is done: the quadrature's nodes take erfcx from vector kernels (scalar, SSE2, AVX2, chosen at run time), bit for bit; one evaluation of the binomial term is 33% faster** (`perf/p7_erfcx.md`).
+  - **Changes results: no.** Every kernel gives the scalar erfcx's value bit for bit, and each node is finished by `log_phi`'s own expressions with that value and folded in the same order, so every surface, fit, interval and golden is unchanged. Tested: 800,401 erfcx arguments, 69,708 integrand nodes, 400 periods' `log_contrib` and derivatives under the parity rule and its doubled rule, at every kernel against no kernel; the committed regression and AR(1) goldens under each kernel forced.
+  - **The method:** every node of a Gauss-Hermite rule needs the same erfcx(|x| / √2) whichever tail log Φ takes it for, so `BinomialLogIntegrand::batch` computes the nodes' values in one call and finishes each node with `log_phi_given_erfcx` / `log_phi_pair_given_erfcx` (which `log_phi` and `log_phi_pair` now call). The Chebyshev pieces are one generated table, each padded with +0 at its top, which leaves Clenshaw's recurrence at +0 exactly until a piece's own first coefficient, so lanes in different pieces share a pass; four vectors are interleaved, and a block within one piece broadcasts its coefficients.
+  - **core/ gains one compiled, host-only part** (`vcal_core_kernels`, linked through `vcal_core`), as `dgp/` and `benchmark_models/` have for P-17 and P-18: strict FP, no contraction, only the AVX2 file compiled for AVX2 and run after a CPU check. The device path is unchanged and never calls it (`#if !defined(__CUDA_ARCH__)`). `VCAL_ERFCX_KERNEL=scalar|sse2|avx2` forces a kernel; an unavailable one selects none, and the integrand then takes its scalar path.
+  - **Measured** (cloud VM, Xeon 2.8 GHz, GCC 13, one thread; against the same benchmark built on `main`): `log_contrib` 21.6-22.8 → 14.3-15.1 µs per period at SSE2 and AVX2 (33%; expected 20-35%, recorded before the build); erfcx alone 3.6× at AVX2. With the score and Hessian, 11% at SSE2 and none at AVX2: that path is dominated by `inverse_mills`, outside P-7. A run's saving is measured by the next projection (D-187) on the machine that runs it.
+  - **Not done:** `inverse_mills` in the score and Hessian (a later item if wanted), the composite Gauss-Legendre rule for d ∈ {0, n}, and the device path.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

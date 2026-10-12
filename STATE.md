@@ -96,7 +96,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no |
 | P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no |
-| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done (`log_contrib` 33% faster) | D-199, D-210 | no |
 | P-8 | GPU backend | M4 | D-168 | within tolerance |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no |

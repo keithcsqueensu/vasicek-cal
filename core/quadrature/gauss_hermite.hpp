@@ -35,6 +35,16 @@ struct GaussHermiteFixed {
     }
     template <class G, class Acc>
     VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint /*unused*/, Acc& acc) const {
+#if !defined(__CUDA_ARCH__)
+        if constexpr (detail::has_batch<G>::value) {
+            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-210), then the same fold
+                double gv[G::kBatchMax];
+                g.batch(rule.node, gv, rule.n);
+                for (int i = 0; i < rule.n; ++i) acc.add(rule.log_weight[i] + gv[i], rule.node[i]);
+                return acc.result();
+            }
+        }
+#endif
         for (int i = 0; i < rule.n; ++i) acc.add(rule.log_weight[i] + g(rule.node[i]), rule.node[i]);
         return acc.result();
     }
@@ -55,6 +65,22 @@ struct GaussHermiteAdaptive {
         if (!(hint.scale > 0.0) || !std::isfinite(hint.scale) || !std::isfinite(hint.mode)) {
             return static_cast<double>(NAN);
         }
+#if !defined(__CUDA_ARCH__)
+        if constexpr (detail::has_batch<G>::value) {
+            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-210), then the same fold
+                double zs[G::kBatchMax];
+                double gv[G::kBatchMax];
+                for (int i = 0; i < rule.n; ++i) zs[i] = hint.mode + hint.scale * rule.node[i];
+                g.batch(zs, gv, rule.n);
+                for (int i = 0; i < rule.n; ++i) {
+                    const double u = rule.node[i];
+                    const double z = zs[i];
+                    acc.add(rule.log_weight[i] + 0.5 * (u - z) * (u + z) + gv[i], z);
+                }
+                return std::log(hint.scale) + acc.result();
+            }
+        }
+#endif
         for (int i = 0; i < rule.n; ++i) {
             const double u = rule.node[i];
             const double z = hint.mode + hint.scale * u;
