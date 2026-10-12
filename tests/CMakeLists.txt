@@ -108,6 +108,8 @@ vcal_add_test_executable(unit_grid SOURCES unit/grid_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_reducer SOURCES unit/reducer_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_profile SOURCES unit/profile_test.cpp LIBS vcal::engine vcal::backend_cpu)
+# S-48: the HAC (Newey-West) sandwich SE, a native option (D-209).
+vcal_add_test_executable(unit_hac SOURCES unit/hac_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_vasicek_rate SOURCES unit/vasicek_rate_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
 vcal_add_test_executable(unit_moments SOURCES unit/moments_test.cpp LIBS vcal::engine vcal::dgp)
 vcal_add_test_executable(unit_posterior SOURCES unit/posterior_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
@@ -270,6 +272,11 @@ add_executable(p17_simd_philox ${PROJECT_SOURCE_DIR}/perf/p17_simd_philox.cpp)
 target_link_libraries(p17_simd_philox PRIVATE vcal::dgp)
 vcal_target_defaults(p17_simd_philox)
 add_test(NAME p17_simd_philox_identity COMMAND p17_simd_philox --seconds 0.04)
+# The measurements behind the proposed SIMD items P-21 to P-23 (perf/p21_p23_simd_sweep.md, D-213). Built so it keeps compiling;
+# run by hand.
+add_executable(simd_scout ${PROJECT_SOURCE_DIR}/perf/simd_scout.cpp)
+target_link_libraries(simd_scout PRIVATE vcal::core)
+vcal_target_defaults(simd_scout)
 set_tests_properties(study_argmax_check PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)
@@ -340,6 +347,13 @@ target_link_libraries(study_lrpd_serial PRIVATE vcal_test_harness vcal::resample
 vcal_target_defaults(study_lrpd_serial)
 add_test(NAME study_lrpd_serial_smoke COMMAND study_lrpd_serial --replicates 2 --scenarios 29,2 --phis 0,0.6
          --out lrpd_smoke.csv --rate-out lrpd_smoke_rate.csv)
+# S-48 (D-209): S-35's panels refitted, with the HAC sandwich SE at three lags. Run by hand; a two-panel
+# run is a smoke test.
+add_executable(study_hac_se studies/hac_se.cpp)
+target_link_libraries(study_hac_se PRIVATE vcal_test_harness vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_hac_se)
+add_test(NAME study_hac_se_smoke COMMAND study_hac_se --replicates 2 --scenarios 29,2 --phis 0,0.6
+         --out hac_se_smoke.csv)
 add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
 target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_parametric_bootstrap)

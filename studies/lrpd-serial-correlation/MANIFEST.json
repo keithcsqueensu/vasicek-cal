@@ -30,5 +30,49 @@
     "rate_rows.parquet (not committed, D-163)": "sha256 805451ecfbb92cb8ffc57ef1f2e7192422be587d5880e54b6fd400f8f6148b56, 1,567,594 bytes; from rate_rows.csv (sha256 21e0543ee73625bc01fb6fb42af13c0ee4c567782ee93acff4982aafa86a6b62, 7,671,503 bytes)",
     "release": "https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s35-data-2026-10-09"
   },
-  "result": "12 of 15 held. Not held: L2 (direction held, 47 of 50; group B's mean 0.558 against 0.56-0.70), L7 (the iid bootstrap's rho interval at T = 20, phi = 0.6 fell 0.067 more than the profile's; every other method, group and phi within 0.04), L8 (binomial PD profile, B against D at phi = 0.6: 0.041 apart against < 0.04; the rate MLE's T = 20 against T = 100 held at 0.025)"
+  "result": "12 of 15 held. Not held: L2 (direction held, 47 of 50; group B's mean 0.558 against 0.56-0.70), L7 (the iid bootstrap's rho interval at T = 20, phi = 0.6 fell 0.067 more than the profile's; every other method, group and phi within 0.04), L8 (binomial PD profile, B against D at phi = 0.6: 0.041 apart against < 0.04; the rate MLE's T = 20 against T = 100 held at 0.025)",
+  "m6_arm": {
+    "registration": "PREDICTION.md, the 2026-10-10 M6 addendum (L16-L28; D-196) and its runtime addendum; the scoring readings in the 2026-10-11 addendum (D-203)",
+    "scoring": "score_m6.py, merged in e9e04c23b16ea6d635ed74eb99a881be36a29807 (PR #58) on 2026-10-11, before segment 3 started (2026-10-12T05:00:56-04:00); unchanged since. Run as: python studies/lrpd-serial-correlation/score_m6.py rows.csv --summary-out summary_m6.csv (standard library only); its output is results_m6.txt",
+    "scorer_order": "written blind during segment 1 (owner, D-203): of the running arm only the checkpoint count and exit status were seen; tested on a synthetic fixture only",
+    "posthoc": "posthoc_m6.py, written after the run to answer D-208's questions, which were committed before it was run; not a prediction, changes no verdict. Run as: python studies/lrpd-serial-correlation/posthoc_m6.py rows.csv; its output is posthoc_m6.txt. L25's reachability: tests/unit/ar1_search_test.cpp, ar1_fit_reaches_the_bound_on_short_panels",
+    "compiler": "MSVC 1951, Release",
+    "run": {
+      "command": "study_lrpd_serial_m6 --checkpoint ckpt --out rows.csv --timing-out timing.csv (S-35's seed 0x4D31385245434F56, 81 scenarios x 1,000 replicates x phi 0, 0.3, 0.6; phi intervals on the study subset; the comparator on; 24 threads, dgp_kernel avx2); segments 1 and 2 with --stop-after-units 27000 (exit 3), segment 3 without",
+      "commit": "6c1edc2cb659c7ff27f3b2a67729707b5ba8a736 (main after #57, tree clean)",
+      "source_comparison": "against the validation build 1a97b4d: no engine, core, benchmark_models, dgp, tests/ or CMake source changed; outside docs only .github/workflows/ci.yml, tools/check_manifests.py and studies/m6-validation/posthoc_w3.py. The executables differ only by the embedded git commit",
+      "executable_sha256": "f35acf411feed215d599fb063b843e15497548835179f0f5ade01ab8165dc8e7",
+      "segments": [
+        {
+          "start": "2026-10-11T01:10:25-04:00",
+          "end": "2026-10-11T16:22:33-04:00",
+          "exit": 3,
+          "wall_seconds": 54728
+        },
+        {
+          "start": "2026-10-11T16:22:56-04:00",
+          "end": "2026-10-12T05:00:44-04:00",
+          "exit": 3,
+          "wall_seconds": 45468
+        },
+        {
+          "start": "2026-10-12T05:00:56-04:00",
+          "end": "2026-10-12T12:07:07-04:00",
+          "exit": 0,
+          "wall_seconds": 25571
+        }
+      ],
+      "wall_seconds": 125767,
+      "interruptions": "none beyond the planned segment stops; one executable throughout (its hash rechecked before segments 2 and 3); system sleep held off from 01:10:12 on 2026-10-11 to 12:07:23 on 2026-10-12",
+      "machine_load": "during segment 1, single-threaded work on the scorer (editing, reading code, self-test runs of 2-3 s, one cmake script check); otherwise idle",
+      "projection": "34.9 h (90% range 32.9-37.0 h; 31.2-38.9 h with the machine-state allowance), recorded in PREDICTION.md before the run (D-187, D-193, D-199). Took 34.94 h: in range, projection / actual 0.999 (D-208)"
+    },
+    "files": {
+      "results_m6.txt": "sha256 a1a82b0c4f7de8fa59b05eb6a6ec7a0701577a9a209b647e006d744a388f13cb; score_m6.py's output",
+      "summary_m6.csv": "sha256 378d66452b9b980ac4105354807c548c07cb59729935134c6855f17c0ed7142c; score_m6.py --summary-out (one row per phi and scenario)",
+      "posthoc_m6.txt": "sha256 5dc50d1982be95bd3ec4e8bd54421d782d8a0232ce336da76b92af8684fe135a; posthoc_m6.py's output",
+      "rows.csv (M6 arm; not committed, D-163)": "sha256 5d8c363f89369e5ee20e1a7363429420b76744098e49a56e49c043c1871bb929, 124,968,295 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s35-m6-data-2026-10-12 and checked after download; regenerable exactly by the command above at its commit"
+    },
+    "result": "9 of 11 strict predictions held (L16-L20, L22, L24, L25, L26) and 3 of 4 qualitative (L23, L24's group B part, L27). Not held: L21 (strict; the registration's own alternative applies: the AR(1) model moves the median PD toward 0, by small amounts), L28 (strict; the percentile bootstrap undercovers, D-176) and L25's qualitative part (group B rarely at the bound; the bound is reachable). The q interval is not reported, a deviation (D-203)"
+  }
 }

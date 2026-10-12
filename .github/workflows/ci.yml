@@ -60,6 +60,9 @@ jobs:
       # D-203: the S-35 M6 arm's scorer on its synthetic fixture (standard library only).
       - name: M6 arm scorer self-test (D-203)
         run: python3 studies/lrpd-serial-correlation/score_m6.py --self-test
+      # D-210: S-48's scorer on its synthetic fixture (standard library only).
+      - name: S-48 scorer self-test (D-210)
+        run: python3 studies/hac-se/score.py --self-test
       - id: plan
         shell: bash
         run: |
@@ -211,6 +214,8 @@ jobs:
         run: .venv/bin/python validation/scipy/grid_posterior.py
       - name: AR(1)-factor likelihood against the engine, two formulations (M6)
         run: .venv/bin/python validation/scipy/ar1_binomial_mle.py
+      - name: HAC sandwich SE against the engine (S-48, D-209)
+        run: .venv/bin/python validation/scipy/hac_se.py
 
   # K-1, D-059, D-100: device-visible code must compile as device code. Compile-only (no GPU on
   # the runners); the CPU tests also run, as a host-side check of the CUDA-enabled build.

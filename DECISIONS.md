@@ -1470,6 +1470,114 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **"Credible"** is `credible_phi` at the cell's true φ.
   - **Deviation from the registration:** the M6 addendum lists the q interval as reported without a prediction, but `study_lrpd_serial_m6` does not compute it, so the arm cannot report it. The registration is not amended (D-197); the deviation is recorded here and in PREDICTION.md's 2026-10-11 addendum.
 
+## Docs restructure, S-37, S-48 and S-36's design, 2026-10-11
+
+- **D-204 — STATE.md is current status only; history moves to `docs/history.md`; `studies/README.md` and `perf/README.md` are the full indexes of their tracks** (#56, #59). STATE.md went from 519 to about 150 lines (Now, Next, milestones, the performance and study summaries, open items); the old content is kept nearly verbatim in `docs/history.md`. `studies/README.md` leads with an at-a-glance summary and an index of every study, each number linked to its entry and each slug to its directory, with the rules after it; the M6 validation run has an index row and an entry. `perf/README.md` leads with the full P-1 to P-20 table, each item linked to its write-up. No result, tolerance or registration changed.
+
+- **D-205 — S-37 is documented, not run** (#59; D-188's assessment). `docs/methodology/vasicek_rate_mle.md` §3, "The least-squares form", states Yang (2013)'s identity: without covariates the asymptotic rate MLE is least squares on the probit rates with the variance as RSS/T, which is D-164's closed form by invariance; with covariates it is least squares on (1, w_t) for any model whose parameters are a one-to-one function of the intercept, slopes and residual variance, the mapping to PD and ρ being left to each M7 model. Where it stops holding: censored zero rates (a Tobit-type regression), count data (S-27), serial correlation (S-35). Checked numerically against a direct maximisation of the rate likelihood (agreement to about 10⁻⁸). The covariate identity's unit test comes with the first covariate model (M7).
+
+- **D-206 (owner) — S-48, HAC standard errors under serial dependence, is added to the study list** (#61). The question: does a Newey–West sandwich SE restore interval coverage when periods are dependent, positively (S-35's AR(1) panels, against the AR(1) MLE) and negatively (S-36's rating momentum), and at what cost under independence. The method is fixed as in S-36's draft: V = H⁻¹ S H⁻¹, Bartlett kernel, lag ⌊4·(T/100)^(2/9)⌋ (2, 3, 4 at T = 20, 40, 100), Wald in logit units. It is the candidate `native` option of D-192, and needs its own decision, methodology note, scipy replication and unit test before it runs. Not registered.
+
+- **D-207 (owner) — S-36's design choices so far; the study is not registered** (draft PR #60, `studies/pit-ttc-rho/PREDICTION.md`).
+  - **Rating momentum (owner):** a rating has a philosophy λ (TTC 0 to PIT 1) and a speed θ (1 is no momentum). As proposed, momentum acts through the systematic part: the score uses the factor smoothed at speed θ, M_t = (1 − θ)M_{t−1} + θZ_t, with obligors redrawn each period. The alternative, persistent obligors with obligor-level partial adjustment, is still open.
+  - **A HAC interval beside the profile (owner),** with S-48's settings.
+  - **Left to the proposer (owner), and set:** grades keep their master-scale labels under every rule; the grid is 13 rules (TTC, and λ ∈ {0.25, 0.5, 0.75, 1} × θ ∈ {1, 0.5, 0.25}) on the grade scenario matrix at R = 1,000.
+  - **Seeds reserved:** `0x5049545454435248` ("PITTTCRH") for the study's panels and `0x5049545454435453` ("PITTTCTS") for its runtime timing sample, disjoint from every other seed in this file and the code.
+  - **The reference values** (`reference.py`, model only, no panels): the narrow-grade closed form v = ρ/(1 − ρ)·(1 − 2βθ + β²θ/(2 − θ)), ρ_eff = v/(1 + v), with a negative lag autocorrelation under momentum; the finite-grade quadrature agrees within 0.002 on every informative grade.
+  - **Still open before registration:** the momentum form, and the informative-grade rule and the bands of Q2 to Q10. Nothing is simulated or fitted until the file is registered.
+
+## S-35's M6 arm: results, 2026-10-12
+
+- **D-208 — S-35's M6 arm, the AR(1)-aware MLE: 9 of 11 strict predictions held and 3 of 4 qualitative; NOT HELD: L21 and L28 (strict) and L25's qualitative part.** Results and numbers are in `studies/lrpd-serial-correlation/PREDICTION.md` (the M6 results section), `results_m6.txt` and `MANIFEST.json`.
+  - **Post-hoc questions, written before any of them was run (owner).** They are labelled post-hoc and change no verdict. Nothing else is read from the rows, and nothing is re-scored.
+    - **L25, can the estimator reach the bound?** Build T = 20 panels (group B's length) whose maximum is at φ = +0.95 and at φ = −0.95, from constructed default series. Confirm that from the profile over a fine φ grid, and from ref's independent dense likelihood. Then check that `ar1::fit` returns exactly ±0.95. If it does not, that is an implementation finding with its own entry.
+    - **L25, the validation run:** only then, compare group B's bound rate with the validation run's reported rate. If that run reported none, say so; its rows are not read again (owner).
+    - **L21:** break down the 41 of 50 scenarios where the median relative error of PD̂ moved closer to 0 than the binomial MLE's, by T, n and PD. Give the size of the shift in each cell.
+    - **L28:** the percentile-against-profile coverage gap by T, and the comparator's median bias (the median of the bootstrap PD̂ against the panel's PD̂ is not in the rows; the percentile interval's midpoint against PD̂ and against the true PD is used instead), read against S-10 and D-176.
+  - **The run:** commit 6c1edc2 (main after #57).
+    - **Sources:** the engine, model, DGP, test and CMake sources are unchanged since the validation build (1a97b4d).
+    - **The scorer:** merged in e9e04c2, before segment 3 started.
+    - **Checks:** 0 failures; every panel was fitted, and no fit was flagged.
+    - **Release:** `rows.csv` is on `s35-m6-data-2026-10-12`, and its SHA-256 was checked after download.
+  - **The headline (owner):** the AR(1)-aware MLE restores PD coverage, answering S-35's main finding.
+    - At T = 100, group D covers 0.946 (φ = 0.3) and 0.942 (φ = 0.6). The MLE that assumes independent periods had 0.69–0.73 at φ = 0.6.
+    - At φ = 0.6 the gain over it is +0.21 to +0.22 in each of groups B, C and D. At φ = 0 it costs nothing: +0.002 to +0.007.
+  - **L21's conclusion is the registration's own alternative (owner).** 41 of 50 scenarios is at least the 32 that the registration set as showing that the AR(1) model moves the median. So the AR(1) model moves the median PD toward 0, consistently but by small amounts: the shift is under 0.01 in 44 of 50 scenarios. The registered "fixes the interval but not the median bias" does not apply.
+  - **D-187's projection, a second full run in range:** 34.94 h against 34.9 h (32.9–37.0 h), projection / actual 0.999, after the validation run's 1.005.
+  - **Post-hoc answers** (`posthoc_m6.py`, `posthoc_m6.txt`; no verdict changes):
+    - **L25: the bound is reachable; no implementation finding.** A new unit test, `ar1_fit_reaches_the_bound_on_short_panels`, uses two hand-built T = 20, n = 1,000 panels at PD 1% and ρ 0.12 (group B's shape), with counts from a constructed factor path: a ramp and an alternating path.
+      - **The maximum is at the bound:** the profile over a fine φ grid peaks there, −51.09 against −52.10 at φ = 0.90, and −46.16 against −49.17 at −0.90.
+      - **ref agrees:** its independent dense likelihood also rises into the bound.
+      - **The fit:** `ar1::fit` returns exactly +0.95 and −0.95, flagged.
+      - **So L25's qualitative miss is a calibration miss in the prediction.** The bound is reachable; in group B it simply occurs less often than the registration guessed (0.01–0.03% against 1–20%), and in group A's T = 20 scenarios a little less (about 9% against at least 10%). The search is not at fault.
+      - **The validation run reported no bound rate:** its scorer covered only the credible T = 100 and T = 40 cells. Its rows are not read again, so there is no comparison.
+    - **L21:** the median moves closer to 0 at every T, n and PD.
+      - By T: 11 of 12 at T = 20 (median shift +0.0057), 11 of 17 at T = 40 (+0.0019), 19 of 21 at T = 100 (+0.0013).
+      - By n: 6 of 7 at n = 100, 18 of 19 at 1,000, 17 of 24 at 10,000.
+      - By PD: 8 of 9 at 0.1%, 14 of 18 at 1%, 19 of 23 at 5%.
+      - The binomial MLE understates the median in all 50, and the shift is largest at short T, where that understatement is largest. The largest shift toward 0 is +0.0185 (scenario 25); the 9 that moved away did so by at most 0.0114.
+    - **L28:** the gap grows as T shrinks: −0.150 at T = 20, −0.077 at T = 40, −0.040 at T = 100 (3 scenarios each).
+      - **The misses fall on one side:** the true PD is above the percentile interval in 105 of its 143 misses.
+      - **It is not PD̂'s location:** the interval's median midpoint is above the true PD in 7 of 9 scenarios. The interval is too narrow on its upper side.
+      - **The reading (not tested):** the comparator simulates at (PD̂, ρ̂, φ̂), and at short T ρ̂ and φ̂ are biased down (for φ̂, Kendall's −(1 + 3φ)/T). Panels from that less dependent world spread PD̂ less, so the interval comes out too narrow, less so as T grows.
+      - **This is the one-sided inheritance S-10 found** for the parametric percentile interval on ρ (at T = 20, 12.1% of replicates above it and 0.2% below). D-176's advice stands: percentile bootstrap intervals are not recommended for PD or ρ in this model.
+
+## S-48: the HAC SE, and its registration, 2026-10-12
+
+- **D-209 — The HAC (Newey–West) sandwich SE is a `native` option of the binomial-mixture MLE** (`engine/hac.hpp`, `docs/methodology/hac_se.md`; S-48, D-206). It changes no parity result and is not in the C ABI; if S-48 recommends it, a later decision adds it there.
+  - **The method, as D-206 fixed it:**
+    - V = H⁻¹ S H⁻¹ in the axes' scaled coordinates (logit PD, logit ρ), with H the analytic Hessian calibrate's own SE uses (D-185).
+    - S is the Bartlett-weighted long-run variance of the per-period scores.
+    - Lag ⌊4·(T/100)^(2/9)⌋: 2, 3 and 4 at T = 20, 40 and 100.
+    - The Wald interval is û ± 1.96·SE in logit units.
+  - **Choices made here:**
+    - **The scores are centred on their mean.** calibrate's estimate is a refined grid point, whose score is small but not zero. Centring keeps that from entering S, and S then does not depend on how close the refinement came.
+    - **No small-sample factor** (no T/(T − 2)): the plain estimator. S-48 measures its downward bias rather than patching it.
+    - **Computed on the fits that have an iid Wald interval.** None on fits flagged `kFlagGridEdge`, `kFlagFlatSurface` or `kFlagNearBound`, so the two Wald intervals are compared on the same fits. None either when H is not negative definite or V's diagonal is not positive. Both cases set `kIntervalNotComputed`, with every value NaN, and are counted. No new flag bit.
+    - **The scores use the objective's analytic derivatives** (`log_contrib_derivs`, D-170), one evaluation per distinct observation.
+  - **Tests:**
+    - `tests/unit/hac_test.cpp`, six tests:
+      - the lag rule;
+      - S by hand on four score vectors, exact;
+      - the SE against an independent assembly on the M1.4 panel (finite-difference scores and H, the textbook double sum), agreeing to about 10⁻⁷;
+      - reversal invariance;
+      - no SE on a flagged fit;
+      - regression values on the six M1.7 panels (`tests/golden/hac/validation.csv`).
+    - `validation/scipy/hac_se.py` in CI:
+      - its scores are `quad` posterior means and its H differences of them;
+      - it agrees to 5.7·10⁻¹⁰ (`TOL_SCIPY_HAC_SE_REL` = 2·10⁻⁹);
+      - it confirms the not-computed fits are exactly the two near-bound ones.
+  - **S-48's positive-dependence and independence parts are registered** (`studies/hac-se/PREDICTION.md`, H1–H6; the owner approved H1–H6 and their bands, with three edits before merging: ν stated per φ from `reference.csv`; a fixed-b HAC interval (Kiefer–Vogelsang, Bartlett kernel, b = L/T) reported without a prediction; H6's ratio over the fits with both SEs). The numbers come from `studies/hac-se/reference.py`: S-35's score structure and the pinned φ = 0 Wald coverage, with exact Gaussian moments of the Bartlett estimator. What was seen first is disclosed there: S-35's and the M6 arm's published summaries. So is the mapping's one known miss, 0.027 too high for the iid Wald interval's PD in group B at φ = 0.6.
+    - The expected answer: a partial correction that grows with T (PD coverage about 0.86 at T = 100 and φ = 0.6, against the iid Wald's 0.72), little help at T = 20, a cost of about 0.06 under independence at T = 20, and short of the AR(1) MLE everywhere.
+    - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before they are merged.
+    - The negative-dependence part is registered with S-36.
+
+## S-48: the tool and scorer, 2026-10-12
+
+- **D-210 — S-48's tool and scorer, merged before the run** (`tests/studies/hac_se.cpp`, `studies/hac-se/score.py`; D-209). Nothing was run on the study's panels before the merge except the two-panel smoke test, whose rows were checked for structure only (columns; HAC SEs present exactly on the unflagged fits); no coverage was printed.
+  - **The tool, `study_hac_se`:** S-35's panels, bit for bit (`dgp::simulate_panel_ar1` on the recovery seed, scenario ids and replicates), each fitted by `recovery::fit_counts` with the profile arm only (the arm S-35's check compares; the bootstrap and q arms are not scored, D-171). At the estimate, `engine::hac_se` at the rule's lag, L = 1 and 2 × rule. Per fit and lag, the HAC Wald interval's coverage in logit units with z = 1.959963984540054; at the rule's lag, the fixed-b interval with c(b) = 1.9600 + 2.9694b + 0.4160b² − 0.5324b³ at b = L/T. A flagged fit has indicator −1; an unflagged fit without a HAC SE misses. It records a runtime timing sample (D-187), with the surface-row cache's fills as a "once" phase (D-193).
+  - **The scorer's readings, fixed before any result:**
+    - Check 1 compares, per φ and scenario, the flagged count and the iid Wald and profile coverage of PD and ρ with S-35's `summary.csv` in its own six-significant-digit format. A mismatch stops the scoring. The hashes of `summary.csv` and `summary_m6.csv` are checked against S-35's `MANIFEST.json` first.
+    - Check 2 names every unflagged fit without a HAC SE, per lag; it does not stop the scoring.
+    - Pooled coverage is covered over unflagged fits, summed over the group's scenarios. "Paired" is the two intervals pooled over the same unflagged fits.
+    - The reference for H1, H2 and H6 is `reference.csv` pooled as registered (weights the pinned unflagged counts), at full precision; the self-test checks that it rounds to the table's numbers.
+    - H5's comparator is the mean over the group's scenarios of `summary_m6.csv`'s `prof_pd` at φ = 0.6; the self-test checks it rounds to D-208's 0.910, 0.929 and 0.942.
+    - H6's ratio is per fit, over the unflagged fits with both SEs finite and positive; "within ±10%" is |RMS / reference − 1| ≤ 0.10.
+    - Ranges are inclusive, with 10⁻¹² of slack; "below", "above" and orderings are strict. A prediction is held only on the full matrix (81 scenarios × 1,000 replicates × φ 0, 0.3, 0.6).
+  - **The self-test** (CI, `plan` job) runs a synthetic fixture whose verdicts are known: a clean pass; one H1 cell out (still held) that also breaks H4's ordering; a profile coverage not S-35's (stops); an unflagged fit without a HAC SE (named); a flagged fit (counted, and checked against S-35's count); another seed (refused); a small matrix (marked "would hold").
+
+## The SIMD sweep: P-21 to P-23 proposed, 2026-10-12
+
+- **D-213 — A sweep of the CPU paths for vectorisation not covered by P-6, P-7, P-17 or P-18: three items proposed (P-21 to P-23), a scope note for P-6, and the rest recorded as checked; nothing built, the order left to the owner** (`perf/p21_p23_simd_sweep.md`; `perf/simd_scout.cpp`).
+  - **Status:** proposals only. Each still needs its own decision entry, benchmark and identity test under D-177 before it merges, and its place in D-199's order is the owner's call. P-7 (D-212, #67) is not changed; P-21 builds on its node batch (the derivative functor takes the batch's per-node `erfcx`), and P-22 and P-23 reuse its vector `erfcx`.
+  - **The measurements** (`simd_scout`: parity rule, PD 1%, ρ 0.12, one thread on a cloud VM, GCC 13.3; indicative only, to be repeated on the owner's machine): `log_contrib_derivs` costs 1.6–1.8× `log_contrib` at 0 < d < n; the inverse-Mills pair costs about 90 ns per node, as much as `log_phi_pair`; the hint is 10–30% of an interior period (30% at n = 10,000); a one-sided period (d ∈ {0, n}) costs about 3.4× an interior one, and 113–116 of its ~370 integrand evaluations are the composite rule's extent search.
+  - **P-21, one `erfcx` per node on the derivative path:** `log_phi_pair` and `inverse_mills(±x)` compute the same `erfcx(|x|/√2)` and exp pair, so λ(±x) is finished from the pair's own values with `inverse_mills`'s expression for each sign; 3 `erfcx` and 4 `exp` per node become 1 and 2, and the hint's `mixture_slopes` shares the change. No (bit for bit). Estimated about a third of a derivative evaluation, on the path behind W* (39.8% of S-10), the analytic SE (13.5%) and refinement; to be projected by D-187 before it is built.
+  - **P-22, SIMD derivative node functions** (after P-7 and P-21): lanes over nodes, values to scratch and folded in node order, as P-18. No (bit for bit, every kernel path tested as P-17).
+  - **P-23, the hint and the extent search across grid points:** lanes are grid points of one surface row (same n and d, so the same branches), each lane's iterates the scalar ones, finished lanes masked. No (bit for bit). **Not proposed:** a four-way section search within one integral, which matches the bisection only if the search predicate is monotone in floating point; it would be a within-rounding change with a flip check.
+  - **P-6's scope:** since D-172 the default is the bounded argmax, so P-6's 5–7% is mostly `weighted_sum` inside visited tiles. Proposed for P-6's own entry: lanes = one 4 × 4 tile row (four contiguous k, one AVX2 vector), plus the tile bounds, the `U` table and the unit-weight surface sums in the posterior, profile and conditional-PD code. A heap in place of the per-replicate sort of tile bounds is noted, to be measured.
+  - **Left to the in-house `log`/`exp` decision (D-199), not new items:** the remaining libm calls (`log_phi`'s log, log1p and exp pair, the log-sum-exp's exp per node, the composite rule's sinh, cosh and log, the posterior's masses, the AR(1) filter's `weighted_moments`).
+  - **Checked, not proposed:** bootstrap index draws (under 1% of S-10), per-grid-point `make_vasicek1f` (tens of ns per evaluation), and the DGP's factor draws (T per panel).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

@@ -344,3 +344,52 @@ files and the exit status were seen (owner's rules).
 - **Deviation from the registration (owner):** the M6 addendum lists the q interval as reported without a
   prediction, but `study_lrpd_serial_m6` does not compute it, so the arm cannot report it. The registration is
   not amended (D-197); the deviation is recorded here and in D-203, and the scorer prints it as not reported.
+
+## Results of the M6 arm, 2026-10-12 (D-208)
+
+Appended after the run; nothing above changes. Scored by [`score_m6.py`](score_m6.py) as merged in e9e04c2,
+before the arm's last segment started, and unchanged since (output: [`results_m6.txt`](results_m6.txt); per
+cell: `summary_m6.csv`).
+
+- **Checks:** 0 failures. All 243,000 panels were fitted. The binomial fits equal S-35's in all 243 cells.
+  The placement and doubled-rule checks flagged 0 fits. The comparator produced all 900 intervals, each
+  from 199 refitted panels, none excluded.
+
+| # | Result | Verdict |
+|---|---|---|
+| L16 | group D PD profile coverage 0.9461 (φ = 0.3), 0.9421 (φ = 0.6) | held |
+| L17 | φ = 0.6: B 0.9097, C 0.9288; φ = 0.3: B 0.9316, C 0.9434 | held |
+| L18 | gain over the binomial MLE at φ = 0.6: B +0.2218, C +0.2154, D +0.2136 | held |
+| L19 | gain at φ = 0: B +0.0067, C +0.0034, D +0.0022 | held |
+| L20 | ρ profile coverage at φ = 0.6: B 0.9273, C 0.9359, D 0.9472 | held |
+| L21 | median relative error of PD̂ closer to 0 than the binomial's in 41 of 50 (predicted 19–31); differs by < 0.01 in 44 of 50 | **not held** |
+| L22 | share of φ̂ < 0 at φ = 0, group D credible (15 scenarios): 0.5445 | held |
+| L23 | share of φ̂ < 0 at φ = 0: B 0.5910; A's T = 20 0.6359 | held (qualitative) |
+| L24 | share of φ̂ < 0 at φ = 0.6: group D credible 0.15%; B 4.84% (qualitative) | held; held |
+| L25 | φ̂ at ±0.95, group D credible: 0.00% (φ = 0), 0.01% (φ = 0.6) | held |
+| L25, qualitative | group B 0.01%, 0.01%, 0.03% (predicted 1–20%); A's T = 20 8.95%, 8.93%, 9.61% (predicted at least 10%) | **not held** |
+| L26 | φ interval coverage where φ is credible: 0.933–0.954 | held |
+| L27 | φ interval coverage at φ = 0.6: 29 0.914, 37 0.928, 72 0.923 | held (qualitative) |
+| L28 | percentile PD coverage within ±0.05 of the profile's in 3 of 9 (0.76–0.91 against 0.90–0.97) | **not held** |
+
+**9 of 11 strict predictions held; 3 of 4 qualitative held. Not held: L21 and L28 (strict) and L25's
+qualitative part.** Every miss is recorded as a miss. No panel was excluded from L21–L25, since none failed
+to fit.
+
+- **The headline:** the AR(1)-aware MLE restores PD coverage.
+  - At T = 100 it covers 0.946 and 0.942 (φ = 0.3 and 0.6), where the MLE that assumes independent periods
+    had 0.69–0.73 at φ = 0.6.
+  - The gain is about +0.22 at φ = 0.6 in each informative group, at almost no cost when φ = 0.
+- **L21's conclusion is the registration's own alternative.** It set 32 or more of 50 as showing that the
+  AR(1) model moves the median, and the count is 41. So **the AR(1) model moves the median PD toward 0:
+  consistently, but by small amounts** (the shift is under 0.01 in 44 of 50 scenarios). The registered
+  reading "modelling serial correlation fixes the interval but not the median bias" does not apply.
+- **Not reported:** the q interval, a deviation from the registration (D-203).
+- **Runtime:** 125,767 s (34.94 h) in three checkpointed segments of 54,728, 45,468 and 25,571 s. The
+  projection recorded before the run was 34.9 h (90% range 32.9–37.0 h), so the run is in range,
+  projection / actual 0.999.
+- **Post-hoc diagnosis** (D-208, questions committed before it was run; it changes no verdict):
+  [`posthoc_m6.py`](posthoc_m6.py), output [`posthoc_m6.txt`](posthoc_m6.txt).
+  - **L25:** the bound is reachable at T = 20 (a new unit test), so there is no implementation finding.
+  - **L21:** the gain toward 0 appears at every T, n and PD.
+  - **L28:** the percentile interval's shortfall grows as T shrinks, and its misses fall on one side.

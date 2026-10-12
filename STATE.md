@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-10-11
+Last updated: 2026-10-12
 
 The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
 detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
@@ -20,34 +20,39 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     the paired difference itself is second order, as theory says. No estimator fix is indicated. The
     arm's registration has no prediction with an information-based denominator, so it is unchanged.
     `rows.csv` is on the release `m6-validation-data-2026-10-10`.
-  - **Then:** the S-35 M6 arm at its registered scale, no amendment, in three checkpointed segments
-    (projected 34.9 h, 32.9–37.0 h; D-199, D-198). Its registration may not be amended after the
-    validation run (D-197).
+  - **The S-35 M6 arm: done (D-208).** 9 of 11 strict predictions held, 3 of 4 qualitative; NOT HELD:
+    L21, L28 and L25's qualitative part.
+    - **The headline:** the AR(1)-aware MLE restores PD coverage: 0.946 and 0.942 at T = 100, against
+      0.69–0.73 for the iid MLE at φ = 0.6, a gain of about +0.22 at φ = 0.6 and almost none at φ = 0.
+    - **L21:** by the registration's own alternative, the AR(1) model moves the median PD toward 0,
+      consistently but by small amounts.
+    - **L28:** the percentile bootstrap undercovers, consistent with S-10 and D-176.
+    - **L25:** the bound is reachable at T = 20, so there is no implementation finding.
+    - **Runtime:** the projection landed in range again (34.94 h against 32.9–37.0 h).
+    - **Data:** `rows.csv` is on the release `s35-m6-data-2026-10-12`.
 
 ## Next
 
-1. **The S-35 M6 arm** at its registered scale, in three checkpointed segments (D-199); then score it
-   against the 2026-10-10 addendum of `studies/lrpd-serial-correlation/PREDICTION.md` (D-196).
-2. **The arm's scorer (L16–L28),** written blind during the run (owner): the arm's rows, checkpoints and
-   timing output are never opened; it is tested only on a synthetic fixture or the validation run's
-   released rows; it is merged as its own PR before the final segment starts, and that merge commit goes
-   in the arm's manifest. Written: `score_m6.py`, readings in PREDICTION.md's 2026-10-11 addendum (D-203).
-3. **Copilot-audit fix PRs**, one each:
+1. **S-48, the HAC SE (D-209):** the engine option, note, unit tests and scipy replication are done.
+   The registration (`studies/hac-se/PREDICTION.md`, H1–H6) is approved by the owner. The tool
+   `study_hac_se` and `score.py` (self-tested) are in their own PR (D-210), merged before the run. Then
+   the runtime projection (D-187), recorded before the run starts, and the run.
+2. **Copilot-audit fix PRs**, one each:
    - **A, correctness;**
    - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
      D-201, PR #55);
    - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
-4. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
+3. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
    golden refresh.
-5. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
+4. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
    (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
    S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
-6. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
+5. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
    selection rule fixed in advance. Not started.
-7. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
+6. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
    from M7; D-177). Not started.
-8. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
-9. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
+7. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
+8. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
    factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
    R-1. Then M4 (D-168).
 
@@ -61,7 +66,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 ## Waiting on the owner
 
-None open. The S-35 M6 arm's scale is decided (no amendment, D-199). Recorded for later, not blocking:
+None open. Recorded for later, not blocking:
 the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 ## Milestones
@@ -73,7 +78,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 | M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 (S-4b) | **done** | D-164–D-166, D-169, D-184 |
 | M4 | CUDA backend, CPU↔GPU parity suite | after M6; nvcc compile-only CI exists | D-168, D-100 |
 | M5 | Monitoring: backtests, run ledger, report data, threshold table | planned | D-152 |
-| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress** (AR(1)-aware MLE) | D-151, D-195–D-200 |
+| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress** (AR(1)-aware MLE) | D-151, D-195–D-200, D-208 |
 | M7 | Macro pipeline: transforms, pre-screens, batched fits, scorers, ranker | planned | D-148, R-2 |
 | M8 | Public-data demonstrations, scipy replication set, ABI 1.0 | planned | D-046, D-188 |
 
@@ -81,7 +86,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 A track separate from the studies (D-177): P-items change how results are computed, never what. Each has
 a decision, a benchmark in `perf/` and an identity or tolerance test; result changes need a golden
-refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the decisions.
+refresh with a flip check. Every item with its benchmark and write-up: [perf/README.md](perf/README.md).
 
 | ID | Item | Status | Decision | Changes results? |
 |---|---|---|---|---|
@@ -105,30 +110,35 @@ refresh with a flip check. Full rows: [docs/history.md](docs/history.md) and the
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
+| P-21 | One `erfcx` per node on the derivative path | proposed | D-213 | no |
+| P-22 | SIMD derivative node functions | proposed (after P-7, P-21) | D-213 | no |
+| P-23 | Hint and extent search across grid points | proposed | D-213 | no |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design
 change, not a performance item). Runtimes are projected from a timing sample before every full run
-(D-187, D-193); the method is **validated** on the M6 validation run (3.499 h against 3.3–3.7 h; D-202).
+(D-187, D-193); the method is **validated** on the M6 validation run (3.499 h against 3.3–3.7 h; D-202),
+and landed in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h; D-208).
 
 ## Studies
 
 The index, registrations and results are in [studies/README.md](studies/README.md) (D-148, D-153).
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27,
-  S-28, S-34, S-35 (without its M6 arm), the M6 validation run (`m6-validation`: 7 of 8 strict held,
-  W3 NOT HELD; D-200, D-202).
-- **Registered, not yet run:** the S-35 M6 arm (D-196).
+  S-28, S-34, S-35 (main arms, D-192; M6 arm, D-208: 9 of 11 strict held, 3 of 4 qualitative; L21, L28
+  and L25's qualitative part NOT HELD), the M6 validation run (`m6-validation`: 7 of 8 strict held, W3
+  NOT HELD; D-200, D-202).
+- **Registered, not yet run:** S-48's positive-dependence and independence parts (D-209).
 - **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
-  S-26, S-29 to S-33, S-36, S-38 to S-47; S-37 is documentation, not a study (D-188).
+  S-26, S-29 to S-33, S-36, S-38 to S-48; S-37 is documentation, not a study (D-188).
 
 **Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
 
 | Study | Placement | Note |
 |---|---|---|
-| S-35 | now; M6 arm | finished (D-192), M6 arm next |
-| S-36 | M6 | new generator code |
-| S-37 | M7, documentation | an identity (D-164's closed form) |
+| S-35 | now; M6 arm | finished (D-192; M6 arm D-208) |
+| S-36 | M6 | new generator code; design and draft predictions in #60, not registered (D-207) |
+| S-37 | M7, documentation | an identity (D-164's closed form); **documented** in the rate MLE note, §3 |
 | S-38 | now (with S-19); M7 | cheap |
 | S-39 | M6 with M7 | plug-in factor |
 | S-40 | M6, in multi-grade | |
@@ -139,6 +149,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | S-45 | after M7 | with the lifetime PD feature |
 | S-46 | after M5 | lowest priority |
 | S-47 | synthetic M6/M7; public data M8 | needs a data-repository decision |
+| S-48 | now (its comparator exists, D-208); the S-36 part with S-36 | HAC SE under dependence (D-206); the option and draft registration, D-209 |
 
 Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifetime PD term structure
 (after M7).

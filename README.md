@@ -13,7 +13,8 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
 >   `v0.1.0-parity-binomial`.
 > - **M2 and M3 are done:** profile-likelihood intervals, the resampling engine, the Vasicek-rate
 >   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.4.
-> - **In progress:** M6's AR(1)-aware binomial MLE. The CUDA backend (M4) comes after M6 (D-168).
+> - **In progress:** M6. Its AR(1)-aware binomial MLE is finished and tested on S-35's panels (D-208);
+>   the other benchmark models remain. The CUDA backend (M4) comes after M6 (D-168).
 
 ## What it does today
 
@@ -99,7 +100,9 @@ Each from a pre-registered study; details in [studies/README.md](studies/README.
   a `native` option (D-181, D-182).
 - **The profile interval undercovers by about one point at T = 20**, systematically (S-13, D-158).
 - **Serial correlation makes iid intervals too narrow at every T**: PD profile coverage 0.86–0.88 at
-  φ = 0.3 and 0.69–0.73 at φ = 0.6 (S-35, D-192).
+  φ = 0.3 and 0.69–0.73 at φ = 0.6 (S-35, D-192). **The AR(1)-aware MLE restores PD coverage**
+  (0.94–0.95 at T = 100; +0.22 at φ = 0.6) and moves the median PD toward the truth by small amounts
+  (S-35 M6 arm, D-208).
 - **The censored rate MLE matches the binomial MLE only from n·PD ≈ 500–1,000**; with counts, use
   the binomial MLE (S-27, S-28; D-174).
 - **Delta-method Wald intervals fail for the 99.9% conditional PD**: q̂ inherits ρ̂'s downward bias
@@ -278,7 +281,7 @@ build/cpu-release/tests/recovery_harness --write           # regenerate the reco
 | M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 with S-4b | **Done** |
 | M4 | CUDA backend and CPU↔GPU parity suite. Today CI only compiles device code with nvcc 11.8 and 12.8 | Planned, after M6 (D-168) |
 | M5 | Monitoring: backtests, run ledger, report data | Planned |
-| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | **In progress:** the AR(1)-aware MLE |
+| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | **In progress:** the AR(1)-aware MLE is finished (D-208); the other models remain |
 | M7 | Macro pipeline: transforms with lineage, pre-screens, batched fits, scorers, ranker | Planned |
 | M8 | Public-data demonstrations (FDIC, FRED, StatCan), the full scipy replication set, ABI 1.0 | Planned |
 
