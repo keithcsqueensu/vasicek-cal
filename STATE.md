@@ -38,7 +38,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part stays with S-36 (#60), which waits on its two open decisions.
-  - The next decision number is D-213 (P-7 is D-212, #67).
+  - The next decision number is D-214 (P-7 is D-212, #67; the SIMD sweep took D-213, #68).
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
@@ -117,6 +117,9 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
+| P-21 | One `erfcx` per node on the derivative path | proposed | D-213 | no |
+| P-22 | SIMD derivative node functions | proposed (after P-7, P-21) | D-213 | no |
+| P-23 | Hint and extent search across grid points | proposed | D-213 | no |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design
