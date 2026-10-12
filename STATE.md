@@ -110,6 +110,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
+| P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design

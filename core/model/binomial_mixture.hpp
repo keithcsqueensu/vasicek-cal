@@ -34,10 +34,33 @@
 
 namespace vcal::model {
 
+// Per node of one quadrature call, what the value's batch computed and the derivatives need again (P-21, D-400): the
+// node z, e = erfcx(|x| / sqrt 2) and E = exp(-x^2 / 2) as exp_neg_half_square computes it (NaN where the value did
+// not compute it). The derivative functor is called for the same nodes in the same order, skipping those whose
+// weight underflows, so it finds each node by advancing a cursor. Host only (6 KB): log_contrib_derivs makes one
+// outside device code.
+struct NodeCache {
+    static constexpr int kMax = 256;
+    int n = 0;
+    int cursor = 0;
+    double z[kMax];
+    double e[kMax];
+    double E[kMax];
+    // The index of node zz at or after the cursor, or -1.
+    int find(double zz) {
+        while (cursor < n) {
+            const int i = cursor++;
+            if (z[i] == zz) return i;
+        }
+        return -1;
+    }
+};
+
 struct BinomialLogIntegrand {
     Vasicek1F model;
     double defaults;   // d, exact as a double for counts up to 2^53
     double survivors;  // n - d
+    NodeCache* cache = nullptr;  // if set, batch() leaves each node's erfcx and exp pair there (P-21, D-400)
 
     VCAL_HD double operator()(double z) const {
         const double x = model.threshold(z);
@@ -70,14 +93,25 @@ struct BinomialLogIntegrand {
             a[i] = finite[i] ? ai : 0.0;  // keeps the kernel's lanes finite; such nodes are redone below
         }
         const bool ok = special::erfcx_batch::nonnegative(a, e, static_cast<std::size_t>(n));
+        if (cache != nullptr) {
+            cache->n = n;
+            cache->cursor = 0;
+        }
         for (int i = 0; i < n; ++i) {
+            if (cache != nullptr) {
+                cache->z[i] = z[i];
+                cache->e[i] = (ok && finite[i]) ? e[i] : static_cast<double>(NAN);  // NaN: the derivatives' own path
+                cache->E[i] = static_cast<double>(NAN);
+            }
             if (!ok || !finite[i]) {
                 out[i] = (*this)(z[i]);
                 continue;
             }
             double v = 0.0;
             if (defaults > 0.0 && survivors > 0.0) {
-                const special::LogPhiPair lp = special::log_phi_pair_given_erfcx(x[i], e[i]);
+                double E = 0.0;
+                const special::LogPhiPair lp = special::log_phi_pair_given_erfcx(x[i], e[i], &E);
+                if (cache != nullptr) cache->E[i] = E;
                 v += defaults * lp.at_x;
                 v += survivors * lp.at_neg_x;
                 out[i] = v;
@@ -112,17 +146,49 @@ struct BinomialLogIntegrandDerivs {
     double c, a, b, rho;
     double c1, c2;  // dc/dPD, d2c/dPD2
     double defaults, survivors;
+    NodeCache* cache = nullptr;  // if set, lambda(+-x) from the value's erfcx and exp pair (P-21, D-400)
 
     VCAL_HD void operator()(double z, double (&f)[5]) const {
-        const double x = (c - a * z) / b;
+        const double x = (c - a * z) / b;  // BinomialLogIntegrand's threshold(z), the same expression
+        // lambda(x) and lambda(-x) as inverse_mills computes them, bit for bit: from the cache when the value's batch
+        // left this node's e there, else from one erfcx and one exp pair (inverse_mills_pair) or one inverse_mills.
+        double e = static_cast<double>(NAN), E = static_cast<double>(NAN);
+        if (cache != nullptr) {
+            const int i = cache->find(z);
+            if (i >= 0) {
+                e = cache->e[i];
+                E = cache->E[i];
+            }
+        }
+        const bool have = !std::isnan(e);
+        auto lambda = [&](double t) {
+            if (!have) return special::inverse_mills(t);
+            if (!(t < 0.0) && std::isnan(E)) E = special::detail::exp_neg_half_square(x);
+            return special::inverse_mills_given_erfcx(t, e, E);
+        };
+        double lam_x = 0.0, lam_neg_x = 0.0;
+        if (defaults > 0.0 && survivors > 0.0) {
+            if (have) {
+                lam_x = lambda(x);
+                lam_neg_x = lambda(-x);
+            } else {
+                const special::InverseMillsPair p = special::inverse_mills_pair(x);
+                lam_x = p.at_x;
+                lam_neg_x = p.at_neg_x;
+            }
+        } else if (defaults > 0.0) {
+            lam_x = lambda(x);
+        } else if (survivors > 0.0) {
+            lam_neg_x = lambda(-x);
+        }
         double gx = 0.0, gxx = 0.0;
         if (defaults > 0.0) {
-            const double lam = special::inverse_mills(x);
+            const double lam = lam_x;
             gx += defaults * lam;
             gxx += defaults * (-lam * (x + lam));
         }
         if (survivors > 0.0) {
-            const double lam = special::inverse_mills(-x);
+            const double lam = lam_neg_x;
             gx -= survivors * lam;
             gxx += survivors * (-lam * (lam - x));
         }
@@ -155,11 +221,12 @@ namespace detail {
 
 // lambda'(t) = -lambda(t)(t + lambda(t)), clamped to its true range [-1, 0]: for t << 0 the sum
 // t + lambda(t) cancels, and only the sign and rough size matter for the hint.
-VCAL_HD double inverse_mills_slope(double t) {
-    const double lam = special::inverse_mills(t);
+VCAL_HD double inverse_mills_slope_given(double t, double lam) {  // with lam = inverse_mills(t)
     const double v = -lam * (t + lam);
     return v < -1.0 ? -1.0 : (v > 0.0 ? 0.0 : v);
 }
+
+VCAL_HD double inverse_mills_slope(double t) { return inverse_mills_slope_given(t, special::inverse_mills(t)); }
 
 struct Slopes {
     double d1;  // h'(z)
@@ -171,13 +238,25 @@ VCAL_HD Slopes mixture_slopes(const BinomialLogIntegrand& f, double z) {
     const double b = f.model.beta();
     double g1 = 0.0;
     double g2 = 0.0;
+    // lambda(x) and lambda(-x) once each, from one erfcx at 0 < d < n (P-21, D-400): the same values inverse_mills and
+    // inverse_mills_slope computed, four erfcx before.
+    double lam_x = 0.0, lam_neg_x = 0.0;
+    if (f.defaults > 0.0 && f.survivors > 0.0) {
+        const special::InverseMillsPair p = special::inverse_mills_pair(x);
+        lam_x = p.at_x;
+        lam_neg_x = p.at_neg_x;
+    } else if (f.defaults > 0.0) {
+        lam_x = special::inverse_mills(x);
+    } else if (f.survivors > 0.0) {
+        lam_neg_x = special::inverse_mills(-x);
+    }
     if (f.defaults > 0.0) {
-        g1 += f.defaults * special::inverse_mills(x);
-        g2 += f.defaults * inverse_mills_slope(x);
+        g1 += f.defaults * lam_x;
+        g2 += f.defaults * inverse_mills_slope_given(x, lam_x);
     }
     if (f.survivors > 0.0) {
-        g1 -= f.survivors * special::inverse_mills(-x);
-        g2 += f.survivors * inverse_mills_slope(-x);
+        g1 -= f.survivors * lam_neg_x;
+        g2 += f.survivors * inverse_mills_slope_given(-x, lam_neg_x);
     }
     return {-b * g1 - z, b * b * g2 - 1.0};
 }

@@ -32,6 +32,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) | [p18_ar1_transition.md](p18_ar1_transition.md) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
+| P-21 | One `erfcx` per node on the derivative path and in the hint | done: `log_contrib_derivs` ~3× faster, `log_contrib` 15% (after P-7) | D-213, D-400 | no | [p21_shared_erfcx.md](p21_shared_erfcx.md) |
 
 - **Order of the open items (D-199):** P-7 done (D-212); next P-13 (third) and P-6 (fourth); P-19 with the next golden
   refresh; P-20 later, with its own flip check.
@@ -138,6 +139,7 @@ work: the scorer's editing, its seconds-long self-test, and one CI-config check.
 | P-9 | `p9_repeat_rate` (`perf/p9_repeat_rate.cpp`), with a timing sample of the run it would speed up (`perf/p9_repeat_rate.md`) | repeated panels per scenario, replicate and (T, n) cell, under the ordered and the sorted key; the saving they project |
 | P-15 | `study_parametric_bootstrap` before and after, in ABBA order; `recovery_harness --save-fits` before and after for the flip check (`perf/p15_analytic_se.md`) | calibrate-phase CPU seconds; every recovery fit's fields and coverage flips |
 | P-7 | `p7_erfcx` (`perf/p7_erfcx.cpp`; CTest `p7_erfcx_identity` runs it briefly), the same source built on `main` for "before" (`perf/p7_erfcx.md`) | µs per `log_contrib` and `log_contrib_derivs` by erfcx kernel on the recovery grid, every kernel checked against the no-kernel path first; identity: `unit_erfcx_batch`, `unit_erfcx_kernel_*`, `xref_core_regression_erfcx_*`, `unit_ar1_filter_erfcx_*` |
+| P-21 | `p7_erfcx` against P-7's branch built the same way; a cross-build dump of hints, values and derivatives against `main` (`perf/p21_shared_erfcx.md`) | µs per `log_contrib` and `log_contrib_derivs`; identity: `unit_erfcx_batch` (`inverse_mills_pair_*`, `derivative_functor_*`) |
 | P-18 | `perf/p18_ar1_transition.md`: one evaluation plus one score per (T, n) cell, the libm filter against each transition kernel; the transition kernel's ns per term; `study_lrpd_serial_m6` projected before and after | ms per evaluation plus score by kernel; the S-35 M6 arm's projection; identity: `unit_ar1_transition`, `unit_ar1_kernel_*`, `unit_ar1_filter_kernel_*` |
 | P-17 | `p17_simd_philox` (`perf/p17_simd_philox.cpp`; CTest `p17_simd_philox_identity` runs it briefly); `study_parametric_bootstrap` before and after, in ABBA order (`perf/p17_simd_philox.md`) | ms per panel by Bernoulli kernel (scalar, SSE2, AVX2) on the recovery grid's (T, n) cells, every panel checked against `simulate_panel`; the S-10 tool's simulate phase and rows |
 
