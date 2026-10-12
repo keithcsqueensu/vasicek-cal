@@ -34,8 +34,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 ## Next
 
 1. **S-48, the HAC SE (D-209):** the engine option, note, unit tests and scipy replication are done.
-   The registration (`studies/hac-se/PREDICTION.md`, H1–H6) is drafted and waits on the owner. After it:
-   the tool `study_hac_se` and `score.py` (self-tested), merged before the run, and the runtime
+   The registration (`studies/hac-se/PREDICTION.md`, H1–H6) is approved by the owner. Next, in their own
+   PR: the tool `study_hac_se` and `score.py` (self-tested), merged before the run, and the runtime
    projection (D-187).
 2. **Copilot-audit fix PRs**, one each:
    - **A, correctness;**
@@ -66,9 +66,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 ## Waiting on the owner
 
-- **S-48's registration** (`studies/hac-se/PREDICTION.md`, D-209): the predictions H1–H6 and their bands.
-
-Recorded for later, not blocking:
+None open. Recorded for later, not blocking:
 the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 ## Milestones
@@ -127,7 +125,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
   S-28, S-34, S-35 (main arms, D-192; M6 arm, D-208: 9 of 11 strict held, 3 of 4 qualitative; L21, L28
   and L25's qualitative part NOT HELD), the M6 validation run (`m6-validation`: 7 of 8 strict held, W3
   NOT HELD; D-200, D-202).
-- **Registered, not yet run:** none.
+- **Registered, not yet run:** S-48's positive-dependence and independence parts (D-209).
 - **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
   S-26, S-29 to S-33, S-36, S-38 to S-48; S-37 is documentation, not a study (D-188).
 

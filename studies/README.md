@@ -74,7 +74,7 @@ they exist.
 | [S-45](#s-45-lifetime-pd-convexity-adjustment-scenario-weighting-full-integration-lifetime-pd-scenarios) | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
 | [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
 | [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
-| [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | registration drafted (D-209) |
+| [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | registered (D-209); not run |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -1847,7 +1847,7 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
 - **The HAC SE (D-209):** `engine/hac.hpp`, `docs/methodology/hac_se.md`, its unit tests
   (`tests/unit/hac_test.cpp`) and scipy replication (`validation/scipy/hac_se.py`). Scores centred on
   their mean; no small-sample factor; none on fits without an iid Wald interval.
-- **Prediction:** drafted for the owner's registration, [`hac-se/PREDICTION.md`](hac-se/PREDICTION.md)
+- **Prediction:** registered, [`hac-se/PREDICTION.md`](hac-se/PREDICTION.md)
   (H1–H6, the positive-dependence and independence parts), with model-only reference numbers from
   [`hac-se/reference.py`](hac-se/reference.py). The expected answer: a partial correction that grows with
   T (PD coverage about 0.86 at T = 100 and φ = 0.6, against the iid Wald's 0.72), little help at T = 20, a

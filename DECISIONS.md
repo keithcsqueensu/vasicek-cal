@@ -1522,7 +1522,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
       - **The reading (not tested):** the comparator simulates at (PD̂, ρ̂, φ̂), and at short T ρ̂ and φ̂ are biased down (for φ̂, Kendall's −(1 + 3φ)/T). Panels from that less dependent world spread PD̂ less, so the interval comes out too narrow, less so as T grows.
       - **This is the one-sided inheritance S-10 found** for the parametric percentile interval on ρ (at T = 20, 12.1% of replicates above it and 0.2% below). D-176's advice stands: percentile bootstrap intervals are not recommended for PD or ρ in this model.
 
-## S-48: the HAC SE, and its registration drafted, 2026-10-12
+## S-48: the HAC SE, and its registration, 2026-10-12
 
 - **D-209 — The HAC (Newey–West) sandwich SE is a `native` option of the binomial-mixture MLE** (`engine/hac.hpp`, `docs/methodology/hac_se.md`; S-48, D-206). It changes no parity result and is not in the C ABI; if S-48 recommends it, a later decision adds it there.
   - **The method, as D-206 fixed it:**
@@ -1547,9 +1547,9 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
       - its scores are `quad` posterior means and its H differences of them;
       - it agrees to 5.7·10⁻¹⁰ (`TOL_SCIPY_HAC_SE_REL` = 2·10⁻⁹);
       - it confirms the not-computed fits are exactly the two near-bound ones.
-  - **S-48's positive-dependence and independence parts are drafted for registration** (`studies/hac-se/PREDICTION.md`, H1–H6). The numbers come from `studies/hac-se/reference.py`: S-35's score structure and the pinned φ = 0 Wald coverage, with exact Gaussian moments of the Bartlett estimator. What was seen first is disclosed there: S-35's and the M6 arm's published summaries. So is the mapping's one known miss, 0.027 too high for the iid Wald interval's PD in group B at φ = 0.6.
+  - **S-48's positive-dependence and independence parts are registered** (`studies/hac-se/PREDICTION.md`, H1–H6; the owner approved H1–H6 and their bands, with three edits before merging: ν stated per φ from `reference.csv`; a fixed-b HAC interval (Kiefer–Vogelsang, Bartlett kernel, b = L/T) reported without a prediction; H6's ratio over the fits with both SEs). The numbers come from `studies/hac-se/reference.py`: S-35's score structure and the pinned φ = 0 Wald coverage, with exact Gaussian moments of the Bartlett estimator. What was seen first is disclosed there: S-35's and the M6 arm's published summaries. So is the mapping's one known miss, 0.027 too high for the iid Wald interval's PD in group B at φ = 0.6.
     - The expected answer: a partial correction that grows with T (PD coverage about 0.86 at T = 100 and φ = 0.6, against the iid Wald's 0.72), little help at T = 20, a cost of about 0.06 under independence at T = 20, and short of the AR(1) MLE everywhere.
-    - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before the owner registers it.
+    - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before they are merged.
     - The negative-dependence part is registered with S-36.
 
 ## Open

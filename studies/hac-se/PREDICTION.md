@@ -79,8 +79,10 @@ cost when the periods are independent?
     the Bartlett sum of the AR(1) autocorrelations is 2.04, against the full 4.
   - **Centring:** estimating the mean removes about f/T of the variance, the most at T = 20.
 - **Its own variability matters at T = 20.** Its effective degrees of freedom are ν = 2 E[Q]² / Var[Q]:
-  about 9, 14 and 29 at T = 20, 40 and 100 under independence. The Wald interval with a 1.96 critical
-  value then acts like a t interval with too few degrees of freedom.
+  about 9, 14 and 29 at T = 20, 40 and 100 under independence. Dependence lowers them: at φ = 0.6, the
+  median over a group's scenarios in `reference.csv` (`pd_nu`) is 5.4, 9.2 and 20.1 for PD, and
+  (`rho_nu`) 6.9, 11.6 and 24.5 for ρ. The Wald interval with a 1.96 critical value then acts like a t
+  interval with too few degrees of freedom.
 - **Under independence it is pure cost.** g = 1.17, 1.11 and 1.05 at T = 20, 40 and 100 (the centring
   and the Bartlett weights on lags whose true autocovariance is 0), on top of the lost degrees of
   freedom.
@@ -106,7 +108,7 @@ from `reference.csv`, pooled as above.
 | H3 | **The gain under dependence grows with T:** at φ = 0.6, the paired gain in pooled PD coverage (HAC minus iid Wald) is ordered D > C > B, and D's is at least +0.08 (reference: D +0.14, C +0.10, B +0.03) |
 | H4 | **It costs coverage under independence, most at T = 20:** at φ = 0, the HAC interval's pooled PD coverage is below the iid Wald's in each of B, C and D. The shortfall is ordered B > C > D, and B's is 0.03–0.10 (reference: B 0.059, C 0.035, D 0.017) |
 | H5 | **It is not a fix at these T:** at φ = 0.6, the HAC interval's pooled PD coverage is below the band's lower edge (0.9273) in each of B, C and D, and below the AR(1) MLE's pooled profile PD coverage on the same panels in each (D-208: B 0.910, C 0.929, D 0.942) |
-| H6 | **Its width follows E[Q]:** the root mean square of the per-fit ratio HAC SE / iid SE in logit PD, pooled per group, is within ±10% of the reference at φ = 0 (B 0.926, C 0.950, D 0.975: narrower than the iid SE) and at φ = 0.6 (B 1.170, C 1.318, D 1.425) |
+| H6 | **Its width follows E[Q]:** the root mean square of the per-fit ratio HAC SE / iid SE in logit PD, pooled per group, is within ±10% of the reference at φ = 0 (B 0.926, C 0.950, D 0.975: narrower than the iid SE) and at φ = 0.6 (B 1.170, C 1.318, D 1.425). The ratio is taken over the fits that have both SEs |
 
 **Held** means held as stated. A prediction that holds in direction but misses in size is not held.
 
@@ -118,7 +120,12 @@ from `reference.csv`, pooled as above.
 - the HAC interval's verdicts against the recovery band, per scenario;
 - ρ's SE ratio;
 - the side of the misses (true value above or below the interval);
-- the count of unflagged fits without a HAC SE.
+- the count of unflagged fits without a HAC SE;
+- **the HAC interval with a fixed-b critical value**, per group and φ, from the same SE: û ± c(b) SE
+  in logit units, with c(b) Kiefer and Vogelsang's (2005) two-sided 95% critical value for the Bartlett
+  kernel, c(b) = 1.9600 + 2.9694 b + 0.4160 b² − 0.5324 b³, at b = L/T (the rule's L: b = 0.1, 0.075
+  and 0.04 at T = 20, 40 and 100). It tests whether a critical-value change alone rescues the HAC
+  interval at short T. Being unpredicted, it changes no verdict.
 
 ## How the comparison will be reported
 
@@ -133,5 +140,6 @@ from `reference.csv`, pooled as above.
   as a diagnostic, a ratio far from 1 flagging dependence, rather than recommended as the interval.
 
 **Monitoring implication (to be confirmed by the result, D-152):** a HAC/iid SE ratio well above 1 on a
-long history is evidence of positive serial dependence. At T = 20 the ratio is too noisy (ν ≈ 5–9) to
-read on its own.
+long history is evidence of positive serial dependence. At T = 20 the ratio is too noisy to read on its
+own: its effective degrees of freedom are about 9 under independence and 5.4 for PD at φ = 0.6
+(`reference.csv`, `pd_nu`, the median over group B).
