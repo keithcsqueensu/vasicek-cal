@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The measurements behind perf/README.md's proposed SIMD items (P-21 to P-23). Single-threaded, one
+// The measurements behind the proposed SIMD items P-21 to P-23 (perf/p21_p23_simd_sweep.md, D-213). Single-threaded, one
 // observation at a time, PD 1% and rho 0.12, the parity rule (128-node adaptive Gauss-Hermite; 16 x 16
 // composite Gauss-Legendre for d in {0, n}). It times, per period:
 //   value    BinomialMixture::log_contrib
