@@ -47,7 +47,7 @@ struct NodeCache {
     double e[kMax];
     double E[kMax];
     // The index of node zz at or after the cursor, or -1.
-    int find(double zz) {
+    VCAL_HD int find(double zz) {
         while (cursor < n) {
             const int i = cursor++;
             if (z[i] == zz) return i;
