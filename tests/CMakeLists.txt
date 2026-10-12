@@ -304,6 +304,11 @@ add_executable(p7_erfcx ${PROJECT_SOURCE_DIR}/perf/p7_erfcx.cpp)
 target_link_libraries(p7_erfcx PRIVATE vcal::core)
 vcal_target_defaults(p7_erfcx)
 add_test(NAME p7_erfcx_identity COMMAND p7_erfcx --seconds 0.04)
+# The measurements behind the proposed SIMD items P-21 to P-23 (perf/p21_p23_simd_sweep.md, D-213). Built so it keeps compiling;
+# run by hand.
+add_executable(simd_scout ${PROJECT_SOURCE_DIR}/perf/simd_scout.cpp)
+target_link_libraries(simd_scout PRIVATE vcal::core)
+vcal_target_defaults(simd_scout)
 set_tests_properties(study_argmax_check PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)
