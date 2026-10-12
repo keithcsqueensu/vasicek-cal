@@ -1522,6 +1522,36 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
       - **The reading (not tested):** the comparator simulates at (PD̂, ρ̂, φ̂), and at short T ρ̂ and φ̂ are biased down (for φ̂, Kendall's −(1 + 3φ)/T). Panels from that less dependent world spread PD̂ less, so the interval comes out too narrow, less so as T grows.
       - **This is the one-sided inheritance S-10 found** for the parametric percentile interval on ρ (at T = 20, 12.1% of replicates above it and 0.2% below). D-176's advice stands: percentile bootstrap intervals are not recommended for PD or ρ in this model.
 
+## S-48: the HAC SE, and its registration, 2026-10-12
+
+- **D-209 — The HAC (Newey–West) sandwich SE is a `native` option of the binomial-mixture MLE** (`engine/hac.hpp`, `docs/methodology/hac_se.md`; S-48, D-206). It changes no parity result and is not in the C ABI; if S-48 recommends it, a later decision adds it there.
+  - **The method, as D-206 fixed it:**
+    - V = H⁻¹ S H⁻¹ in the axes' scaled coordinates (logit PD, logit ρ), with H the analytic Hessian calibrate's own SE uses (D-185).
+    - S is the Bartlett-weighted long-run variance of the per-period scores.
+    - Lag ⌊4·(T/100)^(2/9)⌋: 2, 3 and 4 at T = 20, 40 and 100.
+    - The Wald interval is û ± 1.96·SE in logit units.
+  - **Choices made here:**
+    - **The scores are centred on their mean.** calibrate's estimate is a refined grid point, whose score is small but not zero. Centring keeps that from entering S, and S then does not depend on how close the refinement came.
+    - **No small-sample factor** (no T/(T − 2)): the plain estimator. S-48 measures its downward bias rather than patching it.
+    - **Computed on the fits that have an iid Wald interval.** None on fits flagged `kFlagGridEdge`, `kFlagFlatSurface` or `kFlagNearBound`, so the two Wald intervals are compared on the same fits. None either when H is not negative definite or V's diagonal is not positive. Both cases set `kIntervalNotComputed`, with every value NaN, and are counted. No new flag bit.
+    - **The scores use the objective's analytic derivatives** (`log_contrib_derivs`, D-170), one evaluation per distinct observation.
+  - **Tests:**
+    - `tests/unit/hac_test.cpp`, six tests:
+      - the lag rule;
+      - S by hand on four score vectors, exact;
+      - the SE against an independent assembly on the M1.4 panel (finite-difference scores and H, the textbook double sum), agreeing to about 10⁻⁷;
+      - reversal invariance;
+      - no SE on a flagged fit;
+      - regression values on the six M1.7 panels (`tests/golden/hac/validation.csv`).
+    - `validation/scipy/hac_se.py` in CI:
+      - its scores are `quad` posterior means and its H differences of them;
+      - it agrees to 5.7·10⁻¹⁰ (`TOL_SCIPY_HAC_SE_REL` = 2·10⁻⁹);
+      - it confirms the not-computed fits are exactly the two near-bound ones.
+  - **S-48's positive-dependence and independence parts are registered** (`studies/hac-se/PREDICTION.md`, H1–H6; the owner approved H1–H6 and their bands, with three edits before merging: ν stated per φ from `reference.csv`; a fixed-b HAC interval (Kiefer–Vogelsang, Bartlett kernel, b = L/T) reported without a prediction; H6's ratio over the fits with both SEs). The numbers come from `studies/hac-se/reference.py`: S-35's score structure and the pinned φ = 0 Wald coverage, with exact Gaussian moments of the Bartlett estimator. What was seen first is disclosed there: S-35's and the M6 arm's published summaries. So is the mapping's one known miss, 0.027 too high for the iid Wald interval's PD in group B at φ = 0.6.
+    - The expected answer: a partial correction that grows with T (PD coverage about 0.86 at T = 100 and φ = 0.6, against the iid Wald's 0.72), little help at T = 20, a cost of about 0.06 under independence at T = 20, and short of the AR(1) MLE everywhere.
+    - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before they are merged.
+    - The negative-dependence part is registered with S-36.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
