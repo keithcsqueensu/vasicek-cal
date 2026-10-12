@@ -74,7 +74,7 @@ they exist.
 | [S-45](#s-45-lifetime-pd-convexity-adjustment-scenario-weighting-full-integration-lifetime-pd-scenarios) | `lifetime-pd-scenarios` | Lifetime PD: convexity adjustment and few-scenario weighting against full integration? | after M7 | not registered (D-188) |
 | [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
 | [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
-| [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | registered (D-209); not run |
+| [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | **done** (D-211): 5 of 6 held; H2 NOT HELD |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -1852,6 +1852,20 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   [`hac-se/reference.py`](hac-se/reference.py). The expected answer: a partial correction that grows with
   T (PD coverage about 0.86 at T = 100 and φ = 0.6, against the iid Wald's 0.72), little help at T = 20, a
   cost of about 0.06 under independence at T = 20, and short of the AR(1) MLE everywhere. The tool and
-  scorer come before the run. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152). The candidate: report the
-  HAC SE beside the iid one, and flag a calibration whose ratio is far from 1.
+  scorer (D-210) were merged before the run.
+- **Result (D-211; [`hac-se/results.txt`](hac-se/results.txt), [`MANIFEST.json`](hac-se/MANIFEST.json)):**
+  5 of 6 held.
+  - **PD (H1, H3–H6 held):** the HAC interval behaves as predicted, a partial correction that grows with T.
+    At φ = 0.6, PD coverage is B 0.721, C 0.805, D 0.852, against the iid Wald's 0.653, 0.697 and 0.718
+    and the AR(1) MLE's 0.910, 0.929 and 0.942. At φ = 0 it costs B 0.043, C 0.030, D 0.017.
+  - **H2 NOT HELD:** ρ's coverage is within 0.04 of the reference in 7 of 9 cells against 8. It is out at
+    φ = 0.6 in B (0.742 against 0.804) and C (0.832 against 0.876). Reported, not predicted: for ρ the
+    HAC interval covers less often than the iid Wald everywhere but D at φ = 0.6.
+  - **Fixed-b (reported only):** PD coverage at φ = 0.6 is B 0.781, C 0.844, D 0.874. At φ = 0 it is about
+    the iid Wald's.
+  - **Runtime:** 304 s against the projected 298–330 s.
+- **Mitigation:** none needed; the HAC SE stays a `native` diagnostic (D-211).
+- **Monitoring implication (D-211):** report the HAC SE beside the iid one. A PD ratio well above 1 on a
+  long history flags positive dependence (RMS 1.41 at T = 100 and φ = 0.6, against 0.97 at φ = 0). At
+  T = 20 the ratio is too noisy to read from one calibration (1.20 against 0.93). The fix for the
+  interval is to model the dependence (the AR(1) MLE, D-208), not the HAC SE.

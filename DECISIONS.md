@@ -1566,6 +1566,28 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - Ranges are inclusive, with 10⁻¹² of slack; "below", "above" and orderings are strict. A prediction is held only on the full matrix (81 scenarios × 1,000 replicates × φ 0, 0.3, 0.6).
   - **The self-test** (CI, `plan` job) runs a synthetic fixture whose verdicts are known: a clean pass; one H1 cell out (still held) that also breaks H4's ordering; a profile coverage not S-35's (stops); an unflagged fit without a HAC SE (named); a flagged fit (counted, and checked against S-35's count); another seed (refused); a small matrix (marked "would hold").
 
+## S-48: results, 2026-10-12
+
+- **D-211 — S-48's positive-dependence and independence parts: 5 of 6 held; H2 NOT HELD** (`studies/hac-se/results.txt`, `MANIFEST.json`; D-209, D-210).
+  - **The run:** S-35's panels at φ = 0, 0.3 and 0.6, 304 s on 24 threads, from cbdd234. The projection, recorded before the run, was 314 s (298–330 s): in range, projection / actual 1.03. Both checks passed: the fits are S-35's in all 243 (φ, scenario) cells, and every unflagged fit has a HAC SE at all three lags.
+  - **Held:**
+    - **H1, PD coverage follows the reference:** 9 of 9 cells within 0.04. The largest gap is B at φ = 0, +0.016 (0.880 against 0.864).
+    - **H3, the gain grows with T:** at φ = 0.6 the paired PD gain over the iid Wald is B +0.068, C +0.108, D +0.134.
+    - **H4, the cost under independence:** at φ = 0 the HAC interval's PD coverage is below the iid Wald's by B 0.043, C 0.030, D 0.017.
+    - **H5, not a fix:** PD coverage at φ = 0.6 is B 0.721, C 0.805, D 0.852, against the AR(1) MLE's 0.910, 0.929 and 0.942.
+    - **H6, the width follows E[Q]:** the RMS HAC/iid SE ratio in logit PD is within 2.4% of the reference in all six cells (D at φ = 0.6: 1.406 against 1.425).
+  - **Not held, H2:** ρ's coverage is within 0.04 in 7 of 9 cells against the 8 required. It is out at φ = 0.6 in B (0.742 against 0.804) and C (0.832 against 0.876), and below the reference in all 9 cells.
+    - Reported without a prediction, and not used to revise the verdict: ρ's HAC/iid SE ratio is below its reference in every group and φ (B at φ = 0.6: 0.930 against 1.082). The ρ misses mostly have the truth above the interval (7,169 above against 1,085 below at φ = 0.6).
+    - A post-hoc reading, not a prediction: the same mapping reproduced the iid Wald's ρ coverage within 0.007 at φ = 0.6 (PREDICTION.md's calibration check). So the miss is in the reference's moments of the HAC SE for ρ, not in the mapping's starting point.
+  - **Reported without a prediction:**
+    - **Fixed-b interval** (b = L/T): it recovers part of the loss without changing the SE. PD coverage at φ = 0 is B 0.923, C 0.935, D 0.941, about the iid Wald's (0.923, 0.936, 0.944); at φ = 0.6 it is B 0.781, C 0.844, D 0.874. It still falls short of nominal and of the AR(1) MLE.
+    - **Lag, PD:** L = 1 covers best at φ = 0 and worst at φ = 0.6, and twice the rule is worst at φ = 0. At φ = 0.6, twice the rule is best or tied with the rule. The largest gap is 0.08 (D at φ = 0.6: 0.785 at L = 1 against 0.865 at twice the rule). For ρ, L = 1 is best in every cell but D at φ = 0.6 (the rule's 0.885 against 0.873).
+    - **ρ:** the HAC interval covers ρ less often than the iid Wald in every group and φ except D at φ = 0.6 (0.885 against 0.864). For ρ the HAC SE costs coverage at these T rather than restoring it.
+    - **Group A** and the per-scenario band verdicts are in `results.txt` and `summary.csv`. PD at φ = 0.6: 74 of 79 scenarios with an unflagged fit are below the band.
+  - **The recommendation (PREDICTION.md):** H3 to H5 held. The HAC SE is a cheap partial correction at long histories, not a substitute for modelling the dependence. It stays a `native` option, reported beside the iid SE as a diagnostic, and is not recommended as the interval. It is not added to the C ABI.
+  - **Monitoring implication (D-152):** a HAC/iid SE ratio for PD well above 1 on a long history flags positive dependence. At T = 100 the RMS ratio is 0.97 at φ = 0 and 1.41 at φ = 0.6. At T = 20 it is 0.93 against 1.20, too close to read from one calibration.
+  - **Data:** `rows.csv` is on the release `s48-data-2026-10-12` (D-163).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
