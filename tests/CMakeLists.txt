@@ -108,6 +108,8 @@ vcal_add_test_executable(unit_grid SOURCES unit/grid_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_reducer SOURCES unit/reducer_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_profile SOURCES unit/profile_test.cpp LIBS vcal::engine vcal::backend_cpu)
+# S-48: the HAC (Newey-West) sandwich SE, a native option (D-209).
+vcal_add_test_executable(unit_hac SOURCES unit/hac_test.cpp LIBS vcal::engine vcal::backend_cpu)
 vcal_add_test_executable(unit_vasicek_rate SOURCES unit/vasicek_rate_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)
 vcal_add_test_executable(unit_moments SOURCES unit/moments_test.cpp LIBS vcal::engine vcal::dgp)
 vcal_add_test_executable(unit_posterior SOURCES unit/posterior_test.cpp LIBS vcal::engine vcal::backend_cpu vcal::dgp)

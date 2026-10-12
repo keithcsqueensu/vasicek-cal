@@ -119,6 +119,11 @@ inline constexpr double TOL_SCIPY_ESTIMATE_SE = 0.06;
 // Observed 1.2e-9: both solvers' 1e-9 tolerances. Doubled and rounded up. With the engine's
 // Newton solves (D-170), which stop only once the root is bracketed, 2.4e-10.
 inline constexpr double TOL_SCIPY_Q_PROFILE_ENDPOINT_S = 3e-9;
+// S-48 (D-209): validation/scipy/hac_se.py against tests/golden/hac/validation.csv on the six M1.7
+// panels. Relative difference of the SEs in logit units (iid from scipy's H, and HAC at three lags);
+// absolute for the correlations. scipy's scores are quad integrals (1e-12) and its H central
+// differences of them (step 1e-5). Observed 5.7e-10 on Windows; doubled and rounded up.
+inline constexpr double TOL_SCIPY_HAC_SE_REL = 2e-9;
 
 // --- profile likelihood, M2 (D-128..D-130) -------------------------------------------------------
 // |P_a(endpoint) - (l_max - c)| in log-likelihood units, against an independent dense profile;

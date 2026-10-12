@@ -33,7 +33,10 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 ## Next
 
-1. **S-48 is unblocked:** its AR(1) comparator, S-35's M6 arm, now exists (D-206, D-208).
+1. **S-48, the HAC SE (D-209):** the engine option, note, unit tests and scipy replication are done.
+   The registration (`studies/hac-se/PREDICTION.md`, H1–H6) is drafted and waits on the owner. After it:
+   the tool `study_hac_se` and `score.py` (self-tested), merged before the run, and the runtime
+   projection (D-187).
 2. **Copilot-audit fix PRs**, one each:
    - **A, correctness;**
    - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
@@ -63,7 +66,9 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 ## Waiting on the owner
 
-None open. Recorded for later, not blocking:
+- **S-48's registration** (`studies/hac-se/PREDICTION.md`, D-209): the predictions H1–H6 and their bands.
+
+Recorded for later, not blocking:
 the data repository for S-47's public-data part needs its own D-entry (D-188).
 
 ## Milestones
@@ -143,7 +148,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | S-45 | after M7 | with the lifetime PD feature |
 | S-46 | after M5 | lowest priority |
 | S-47 | synthetic M6/M7; public data M8 | needs a data-repository decision |
-| S-48 | now (its comparator exists, D-208); with S-36 | HAC SE under dependence (D-206) |
+| S-48 | now (its comparator exists, D-208); the S-36 part with S-36 | HAC SE under dependence (D-206); the option and draft registration, D-209 |
 
 Features: the published-method track (M6 step 2, M7 steps 1 and 3) and the lifetime PD term structure
 (after M7).
