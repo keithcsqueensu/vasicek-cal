@@ -1486,6 +1486,15 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **The reference values** (`reference.py`, model only, no panels): the narrow-grade closed form v = ρ/(1 − ρ)·(1 − 2βθ + β²θ/(2 − θ)), ρ_eff = v/(1 + v), with a negative lag autocorrelation under momentum; the finite-grade quadrature agrees within 0.002 on every informative grade.
   - **Still open before registration:** the momentum form, and the informative-grade rule and the bands of Q2 to Q10. Nothing is simulated or fitted until the file is registered.
 
+## S-35's M6 arm: results, 2026-10-12
+
+- **D-208 — S-35's M6 arm, the AR(1)-aware MLE: 9 of 11 strict predictions held and 3 of 4 qualitative; NOT HELD: L21 and L28 (strict) and L25's qualitative part.** Results and numbers are in `studies/lrpd-serial-correlation/PREDICTION.md` (the M6 results section), `results_m6.txt` and `MANIFEST.json`.
+  - **Post-hoc questions, written before any of them was run (owner).** They are labelled post-hoc and change no verdict. Nothing else is read from the rows, and nothing is re-scored.
+    - **L25, can the estimator reach the bound?** Build T = 20 panels (group B's length) whose maximum is at φ = +0.95 and at φ = −0.95, from constructed default series. Confirm that from the profile over a fine φ grid, and from ref's independent dense likelihood. Then check that `ar1::fit` returns exactly ±0.95. If it does not, that is an implementation finding with its own entry.
+    - **L25, the validation run:** only then, compare group B's bound rate with the validation run's reported rate. If that run reported none, say so; its rows are not read again (owner).
+    - **L21:** break down the 41 of 50 scenarios where the median relative error of PD̂ moved closer to 0 than the binomial MLE's, by T, n and PD. Give the size of the shift in each cell.
+    - **L28:** the percentile-against-profile coverage gap by T, and the comparator's median bias (the median of the bootstrap PD̂ against the panel's PD̂ is not in the rows; the percentile interval's midpoint against PD̂ and against the true PD is used instead), read against S-10 and D-176.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
