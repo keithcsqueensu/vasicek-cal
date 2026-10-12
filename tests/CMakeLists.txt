@@ -342,6 +342,13 @@ target_link_libraries(study_lrpd_serial PRIVATE vcal_test_harness vcal::resample
 vcal_target_defaults(study_lrpd_serial)
 add_test(NAME study_lrpd_serial_smoke COMMAND study_lrpd_serial --replicates 2 --scenarios 29,2 --phis 0,0.6
          --out lrpd_smoke.csv --rate-out lrpd_smoke_rate.csv)
+# S-48 (D-209): S-35's panels refitted, with the HAC sandwich SE at three lags. Run by hand; a two-panel
+# run is a smoke test.
+add_executable(study_hac_se studies/hac_se.cpp)
+target_link_libraries(study_hac_se PRIVATE vcal_test_harness vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_hac_se)
+add_test(NAME study_hac_se_smoke COMMAND study_hac_se --replicates 2 --scenarios 29,2 --phis 0,0.6
+         --out hac_se_smoke.csv)
 add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
 target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_parametric_bootstrap)

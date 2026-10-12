@@ -1552,6 +1552,20 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **Before the run:** the tool (`study_hac_se`) and its scorer (`score.py`, self-tested on a synthetic fixture) are committed and merged, and the runtime projection is recorded (D-187). Nothing is run before they are merged.
     - The negative-dependence part is registered with S-36.
 
+## S-48: the tool and scorer, 2026-10-12
+
+- **D-210 — S-48's tool and scorer, merged before the run** (`tests/studies/hac_se.cpp`, `studies/hac-se/score.py`; D-209). Nothing was run on the study's panels before the merge except the two-panel smoke test, whose rows were checked for structure only (columns; HAC SEs present exactly on the unflagged fits); no coverage was printed.
+  - **The tool, `study_hac_se`:** S-35's panels, bit for bit (`dgp::simulate_panel_ar1` on the recovery seed, scenario ids and replicates), each fitted by `recovery::fit_counts` with the profile arm only (the arm S-35's check compares; the bootstrap and q arms are not scored, D-171). At the estimate, `engine::hac_se` at the rule's lag, L = 1 and 2 × rule. Per fit and lag, the HAC Wald interval's coverage in logit units with z = 1.959963984540054; at the rule's lag, the fixed-b interval with c(b) = 1.9600 + 2.9694b + 0.4160b² − 0.5324b³ at b = L/T. A flagged fit has indicator −1; an unflagged fit without a HAC SE misses. It records a runtime timing sample (D-187), with the surface-row cache's fills as a "once" phase (D-193).
+  - **The scorer's readings, fixed before any result:**
+    - Check 1 compares, per φ and scenario, the flagged count and the iid Wald and profile coverage of PD and ρ with S-35's `summary.csv` in its own six-significant-digit format. A mismatch stops the scoring. The hashes of `summary.csv` and `summary_m6.csv` are checked against S-35's `MANIFEST.json` first.
+    - Check 2 names every unflagged fit without a HAC SE, per lag; it does not stop the scoring.
+    - Pooled coverage is covered over unflagged fits, summed over the group's scenarios. "Paired" is the two intervals pooled over the same unflagged fits.
+    - The reference for H1, H2 and H6 is `reference.csv` pooled as registered (weights the pinned unflagged counts), at full precision; the self-test checks that it rounds to the table's numbers.
+    - H5's comparator is the mean over the group's scenarios of `summary_m6.csv`'s `prof_pd` at φ = 0.6; the self-test checks it rounds to D-208's 0.910, 0.929 and 0.942.
+    - H6's ratio is per fit, over the unflagged fits with both SEs finite and positive; "within ±10%" is |RMS / reference − 1| ≤ 0.10.
+    - Ranges are inclusive, with 10⁻¹² of slack; "below", "above" and orderings are strict. A prediction is held only on the full matrix (81 scenarios × 1,000 replicates × φ 0, 0.3, 0.6).
+  - **The self-test** (CI, `plan` job) runs a synthetic fixture whose verdicts are known: a clean pass; one H1 cell out (still held) that also breaks H4's ordering; a profile coverage not S-35's (stops); an unflagged fit without a HAC SE (named); a flagged fit (counted, and checked against S-35's count); another seed (refused); a small matrix (marked "would hold").
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
