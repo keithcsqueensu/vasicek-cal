@@ -1509,7 +1509,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
       - **The maximum is at the bound:** the profile over a fine φ grid peaks there, −51.09 against −52.10 at φ = 0.90, and −46.16 against −49.17 at −0.90.
       - **ref agrees:** its independent dense likelihood also rises into the bound.
       - **The fit:** `ar1::fit` returns exactly +0.95 and −0.95, flagged.
-      - **So group B's rarity of bound hits is a property of its data,** not of the search. It was not tested further.
+      - **So L25's qualitative miss is a calibration miss in the prediction.** The bound is reachable; in group B it simply occurs less often than the registration guessed (0.01–0.03% against 1–20%), and in group A's T = 20 scenarios a little less (about 9% against at least 10%). The search is not at fault.
       - **The validation run reported no bound rate:** its scorer covered only the credible T = 100 and T = 40 cells. Its rows are not read again, so there is no comparison.
     - **L21:** the median moves closer to 0 at every T, n and PD.
       - By T: 11 of 12 at T = 20 (median shift +0.0057), 11 of 17 at T = 40 (+0.0019), 19 of 21 at T = 100 (+0.0013).
