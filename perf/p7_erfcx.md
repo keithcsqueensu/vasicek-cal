@@ -1,4 +1,4 @@
-# P-7: erfcx in vector lanes, bit for bit (D-210)
+# P-7: erfcx in vector lanes, bit for bit (D-212)
 
 ## Expected, written before the build (2026-10-12)
 

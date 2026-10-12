@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// P-7's benchmark (perf/p7_erfcx.md, D-210): the per-period log-likelihood through the parity rule
+// P-7's benchmark (perf/p7_erfcx.md, D-212): the per-period log-likelihood through the parity rule
 // (log_contrib) and with its score and Hessian (log_contrib_derivs), on the recovery grid's cells, with each
 // erfcx kernel; and erfcx alone on the arguments those periods' nodes produce.
 //

@@ -25,7 +25,7 @@ add_library(vcal_core INTERFACE)
 add_library(vcal::core ALIAS vcal_core)
 target_include_directories(vcal_core INTERFACE "${PROJECT_SOURCE_DIR}")
 target_compile_features(vcal_core INTERFACE cxx_std_17)
-# core/'s one compiled part (P-7, D-210): the host-only erfcx lane kernels behind the quadrature's node batches,
+# core/'s one compiled part (P-7, D-212): the host-only erfcx lane kernels behind the quadrature's node batches,
 # with strict FP and no contraction, since their lanes must match the scalar erfcx bit for bit. Only
 # erfcx_batch_avx2.cpp is compiled for AVX2, and it runs only on CPUs that have it (checked at run time). Every
 # target that uses core/ links it through vcal_core; the device code never calls it.

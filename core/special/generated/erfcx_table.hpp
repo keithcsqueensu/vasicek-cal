@@ -3,7 +3,7 @@
 // Provenance: tests/golden/special/MANIFEST.json. Regenerate with:
 //   uv run --no-project --with mpmath==1.4.1 python tools/gen_special_tables.py
 //
-// erfcx's Chebyshev pieces (erfcx_chebyshev.hpp) as one table for the host lane kernels (P-7, D-210):
+// erfcx's Chebyshev pieces (erfcx_chebyshev.hpp) as one table for the host lane kernels (P-7, D-212):
 // pieces 0..2 are the segments, piece 3 the tail; each padded with +0 at its top to the longest
 // piece's length, which leaves Clenshaw's recurrence unchanged bit for bit. Host-only data.
 #pragma once

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// The erfcx lane kernels (P-7, D-210; core/special/erfcx_batch.hpp): every kernel this CPU and build have (scalar,
+// The erfcx lane kernels (P-7, D-212; core/special/erfcx_batch.hpp): every kernel this CPU and build have (scalar,
 // SSE2, AVX2), selected in turn on one machine, bit for bit against the scalar erfcx: a fine sweep over all four
 // pieces, every piece boundary and its neighbouring doubles, the signed zeros, the subnormals and huge arguments,
 // and random arguments, at lengths that leave remainders. Then the quadrature's node batches: the binomial

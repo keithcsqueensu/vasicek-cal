@@ -162,7 +162,7 @@ foreach(_k scalar sse2 avx2)
                      ar1_likelihood_goldens_reproduce)
     set_tests_properties(unit_ar1_filter_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
-# P-7 (D-210): the filter's committed likelihood goldens under each erfcx kernel forced.
+# P-7 (D-212): the filter's committed likelihood goldens under each erfcx kernel forced.
 foreach(_k scalar sse2 avx2)
     add_test(NAME unit_ar1_filter_erfcx_${_k}
              COMMAND unit_ar1_filter ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit ar1_likelihood_goldens_reproduce)
@@ -180,7 +180,7 @@ foreach(_k scalar sse2 avx2 none-such)
     set_tests_properties(unit_ar1_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
 
-# The erfcx lane kernels (P-7, D-210): every kernel against the scalar erfcx bit for bit, the integrand's node
+# The erfcx lane kernels (P-7, D-212): every kernel against the scalar erfcx bit for bit, the integrand's node
 # batches, and log_contrib with its derivatives under every kernel against no kernel; each kernel also forced by
 # VCAL_ERFCX_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed. The fit suites with
 # committed goldens run again under each forced kernel.
@@ -230,7 +230,7 @@ target_link_libraries(unit_xref PRIVATE vcal_test_harness vcal::engine vcal::bac
 vcal_target_defaults(unit_xref)
 add_test(NAME xref_period_loglik COMMAND unit_xref xref_period_loglik_core_vs_ref)
 add_test(NAME xref_core_regression COMMAND unit_xref xref_core_estimates_match_regression_values)
-# P-7 (D-210): the committed regression estimates under each erfcx kernel forced (skipped where unavailable).
+# P-7 (D-212): the committed regression estimates under each erfcx kernel forced (skipped where unavailable).
 foreach(_k scalar sse2 avx2)
     add_test(NAME xref_core_regression_erfcx_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
     set_tests_properties(xref_core_regression_erfcx_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}")
@@ -296,7 +296,7 @@ add_executable(p17_simd_philox ${PROJECT_SOURCE_DIR}/perf/p17_simd_philox.cpp)
 target_link_libraries(p17_simd_philox PRIVATE vcal::dgp)
 vcal_target_defaults(p17_simd_philox)
 add_test(NAME p17_simd_philox_identity COMMAND p17_simd_philox --seconds 0.04)
-# P-7's benchmark (perf/p7_erfcx.md, D-210): log_contrib and its derivatives under each erfcx kernel, every kernel's
+# P-7's benchmark (perf/p7_erfcx.md, D-212): log_contrib and its derivatives under each erfcx kernel, every kernel's
 # values checked against the no-kernel path bit for bit first. A short run is a CTest entry.
 add_executable(p7_erfcx ${PROJECT_SOURCE_DIR}/perf/p7_erfcx.cpp)
 target_link_libraries(p7_erfcx PRIVATE vcal::core)
@@ -372,6 +372,13 @@ target_link_libraries(study_lrpd_serial PRIVATE vcal_test_harness vcal::resample
 vcal_target_defaults(study_lrpd_serial)
 add_test(NAME study_lrpd_serial_smoke COMMAND study_lrpd_serial --replicates 2 --scenarios 29,2 --phis 0,0.6
          --out lrpd_smoke.csv --rate-out lrpd_smoke_rate.csv)
+# S-48 (D-209): S-35's panels refitted, with the HAC sandwich SE at three lags. Run by hand; a two-panel
+# run is a smoke test.
+add_executable(study_hac_se studies/hac_se.cpp)
+target_link_libraries(study_hac_se PRIVATE vcal_test_harness vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_hac_se)
+add_test(NAME study_hac_se_smoke COMMAND study_hac_se --replicates 2 --scenarios 29,2 --phis 0,0.6
+         --out hac_se_smoke.csv)
 add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
 target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_parametric_bootstrap)

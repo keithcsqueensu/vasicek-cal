@@ -21,7 +21,7 @@
 
 namespace vcal::special {
 
-// log Phi(x) given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-210): log_phi's own expressions, so that a
+// log Phi(x) given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212): log_phi's own expressions, so that a
 // caller with e from erfcx_batch.hpp gets log_phi(x) bit for bit. For x < 0, log_phi takes erfcx(-x / sqrt 2), and
 // -x = |x| exactly; for x >= 0 (-0 included) erfcx(x / sqrt 2), which at x = -0 is erfcx(-0) = erfcx(+0).
 VCAL_HD double log_phi_given_erfcx(double x, double e) {
@@ -47,7 +47,7 @@ struct LogPhiPair {
     double at_neg_x;  // log Phi(-x)
 };
 
-// log_phi_pair given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-210).
+// log_phi_pair given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212).
 VCAL_HD LogPhiPair log_phi_pair_given_erfcx(double x, double e) {
     const detail::Square s = detail::split_square(x);
     const double upper = std::log1p(-0.5 * e * (std::exp(-0.5 * s.hi) * std::exp(-0.5 * s.lo)));  // log Phi(|x|)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// erfcx on many arguments at once, in vector lanes (P-7, D-210): host-only kernels behind the scalar erfcx of
+// erfcx on many arguments at once, in vector lanes (P-7, D-212): host-only kernels behind the scalar erfcx of
 // erfcx.hpp, for the quadrature's nodes. Every node of a Gauss-Hermite rule needs erfcx(|x| / sqrt 2) whichever
 // tail log Phi takes it for (log_phi.hpp), so the binomial log-integrand computes its nodes' erfcx values first,
 // here, and finishes each node with the scalar code (binomial_mixture.hpp).

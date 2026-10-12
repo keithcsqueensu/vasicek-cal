@@ -18,7 +18,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips | `study_surface_cache_spike` |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no | `study_surface_cache_spike`, `study_argmax_check` |
 | P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no | — |
-| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done: `log_contrib` 33% faster (SSE2, AVX2) | D-199, D-210 | no | [p7_erfcx.md](p7_erfcx.md) |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done: `log_contrib` 33% faster (SSE2, AVX2) | D-199, D-212 | no | [p7_erfcx.md](p7_erfcx.md) |
 | P-8 | GPU backend | M4 | D-168 | within tolerance | — |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no | [p9_repeat_rate.md](p9_repeat_rate.md) |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no | — |
@@ -33,7 +33,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
 
-- **Order of the open items (D-199):** P-7 done (D-210); next P-13 (third) and P-6 (fourth); P-19 with the next golden
+- **Order of the open items (D-199):** P-7 done (D-212); next P-13 (third) and P-6 (fourth); P-19 with the next golden
   refresh; P-20 later, with its own flip check.
 - **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
   would make results platform-independent).

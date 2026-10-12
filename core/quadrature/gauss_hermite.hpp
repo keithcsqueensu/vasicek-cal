@@ -37,7 +37,7 @@ struct GaussHermiteFixed {
     VCAL_HD typename P::accum_t log_integrate_with(const G& g, IntegrandHint /*unused*/, Acc& acc) const {
 #if !defined(__CUDA_ARCH__)
         if constexpr (detail::has_batch<G>::value) {
-            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-210), then the same fold
+            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-212), then the same fold
                 double gv[G::kBatchMax];
                 g.batch(rule.node, gv, rule.n);
                 for (int i = 0; i < rule.n; ++i) acc.add(rule.log_weight[i] + gv[i], rule.node[i]);
@@ -67,7 +67,7 @@ struct GaussHermiteAdaptive {
         }
 #if !defined(__CUDA_ARCH__)
         if constexpr (detail::has_batch<G>::value) {
-            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-210), then the same fold
+            if (rule.n <= G::kBatchMax) {  // the nodes' g in one batch (P-7, D-212), then the same fold
                 double zs[G::kBatchMax];
                 double gv[G::kBatchMax];
                 for (int i = 0; i < rule.n; ++i) zs[i] = hint.mode + hint.scale * rule.node[i];

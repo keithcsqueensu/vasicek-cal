@@ -1,7 +1,7 @@
 {
   "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_special_tables.py",
   "generator_files": {
-    "tools/gen_special_tables.py": "7a428e376d9faecd93b51a386b7ee98a81d6076b20503dec8dee06dbae504c49",
+    "tools/gen_special_tables.py": "7fcb78980ca69b24c09f02bd6b4ba4f97af0b11cdc999e5bfd19727ce3be30b0",
     "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
   },
   "mp_dps": 50,
@@ -10,7 +10,7 @@
   "outputs": {
     "core/special/generated/constants.hpp": "de6e8148a02a57661b45b183d2ef16d1edc86b0d02246a7f9eb6c613c51f19b1",
     "core/special/generated/erfcx_chebyshev.hpp": "b6f29a375c2bfd0992a1d9bb9aac8505694f23a0d93dccf2752486813bc81190",
-    "core/special/generated/erfcx_table.hpp": "aaf132263c3a07b729ee8d1fd52fab8aa8947079a791907847fec34de8e85650",
+    "core/special/generated/erfcx_table.hpp": "5afe4fc52ece6b0d3cef9fcdbf7f1a1cbc4113cefc35beca9f976f25dd157d4f",
     "core/special/generated/stirling_error.hpp": "dcc8c2a04a0ad3bc2b0d88adb9a2cd4b24254a2e77ebc88bc0075b586e912eec",
     "tests/golden/special/erfcx.csv": "7960195aa1e45dfa1a3dd81261a5e08e74052075da6c5ef54481b196edea4d86",
     "tests/golden/special/inverse_mills.csv": "c98e3cd2b1139404ce5f2a74bb2bc34997e0b04a8a4ccb7b06f9df2c49867c6d",

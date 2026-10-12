@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The erfcx lane kernel's body (P-7, D-210; the contract is in erfcx_batch.hpp), generic over a lane type V: two
+// The erfcx lane kernel's body (P-7, D-212; the contract is in erfcx_batch.hpp), generic over a lane type V: two
 // doubles (SSE2) or four (AVX2). Included only by erfcx_batch.cpp (SSE2) and erfcx_batch_avx2.cpp (AVX2), each with
 // its own V.
 //

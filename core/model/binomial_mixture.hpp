@@ -54,7 +54,7 @@ struct BinomialLogIntegrand {
     }
 
     // out[i] = (*this)(z[i]) bit for bit, for n <= kBatchMax: the nodes' erfcx(|x| / sqrt 2) from the vector kernels
-    // (P-7, D-210, core/special/erfcx_batch.hpp), then each node finished by operator()'s expressions with that
+    // (P-7, D-212, core/special/erfcx_batch.hpp), then each node finished by operator()'s expressions with that
     // value. A node whose |x| is not finite, and every node if no kernel is selected, takes operator() itself.
     // Host only: the quadrature calls it only outside device code (gauss_hermite.hpp).
     static constexpr int kBatchMax = 256;  // the largest rule: the parity check's doubled 128

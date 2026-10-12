@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The erfcx lane kernels (P-7, D-210; erfcx_batch.hpp): the scalar kernel, the SSE2 lane type, the run-time
+// The erfcx lane kernels (P-7, D-212; erfcx_batch.hpp): the scalar kernel, the SSE2 lane type, the run-time
 // selection and the dispatch. A call runs the selected kernel on as many whole blocks of its width as fit and
 // finishes the remainder with the scalar kernel, which gives the same values: the results do not depend on the
 // kernel or on where a block boundary falls.

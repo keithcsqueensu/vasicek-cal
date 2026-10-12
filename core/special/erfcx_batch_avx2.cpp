@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// The AVX2 erfcx kernel (P-7, D-210): erfcx_lanes.hpp on four lanes. This file alone is compiled for AVX2, and
+// The AVX2 erfcx kernel (P-7, D-212): erfcx_lanes.hpp on four lanes. This file alone is compiled for AVX2, and
 // erfcx_batch.cpp calls it only after checking at run time that the CPU and the OS support AVX2. It therefore
 // includes nothing with external-linkage inline functions (no standard library beyond <cstddef>); see
 // erfcx_lanes.hpp. Whole blocks of four only: erfcx_batch.cpp finishes any remainder with the scalar kernel.

@@ -23,7 +23,7 @@ namespace vcal::quadrature {
 
 namespace detail {
 // An integrand with a host-side batch(z, out, n) and kBatchMax evaluates many nodes at once, bit for bit as its
-// operator() (P-7, D-210); the Gauss-Hermite rules use it outside device code.
+// operator() (P-7, D-212); the Gauss-Hermite rules use it outside device code.
 template <class G, class = void>
 struct has_batch : std::false_type {};
 template <class G>

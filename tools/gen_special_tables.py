@@ -184,7 +184,7 @@ def render_erfcx(segments, tail_coeffs, worst: float) -> str:
 
 
 def render_erfcx_table(segments, tail_coeffs) -> str:
-    """The same coefficients as render_erfcx, as one host-side table for the lane kernels (P-7, D-210).
+    """The same coefficients as render_erfcx, as one host-side table for the lane kernels (P-7, D-212).
 
     Each piece is padded with +0 at its top (highest-order) end to the longest piece's length. Clenshaw's
     recurrence starts at b1 = b2 = +0, and a zero coefficient keeps it there exactly (0 + (2t)(+0) - (+0) = +0 for
@@ -194,7 +194,7 @@ def render_erfcx_table(segments, tail_coeffs) -> str:
     width = max(len(c) for c in rows)
     preamble = (
         "//\n"
-        "// erfcx's Chebyshev pieces (erfcx_chebyshev.hpp) as one table for the host lane kernels (P-7, D-210):\n"
+        "// erfcx's Chebyshev pieces (erfcx_chebyshev.hpp) as one table for the host lane kernels (P-7, D-212):\n"
         "// pieces 0..2 are the segments, piece 3 the tail; each padded with +0 at its top to the longest\n"
         "// piece's length, which leaves Clenshaw's recurrence unchanged bit for bit. Host-only data.\n"
         "#pragma once\n\n"
