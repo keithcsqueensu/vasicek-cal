@@ -124,6 +124,9 @@ struct BinomialLogIntegrand {
     }
 };
 
+static_assert(NodeCache::kMax >= BinomialLogIntegrand::kBatchMax,
+              "batch() fills the node cache for up to kBatchMax nodes (P-21, D-400)");
+
 VCAL_HD BinomialLogIntegrand make_binomial_log_integrand(const Vasicek1F& m, std::int64_t n, std::int64_t d) {
     return {m, static_cast<double>(d), static_cast<double>(n - d)};
 }
