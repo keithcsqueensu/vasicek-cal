@@ -1494,6 +1494,33 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **L25, the validation run:** only then, compare group B's bound rate with the validation run's reported rate. If that run reported none, say so; its rows are not read again (owner).
     - **L21:** break down the 41 of 50 scenarios where the median relative error of PD̂ moved closer to 0 than the binomial MLE's, by T, n and PD. Give the size of the shift in each cell.
     - **L28:** the percentile-against-profile coverage gap by T, and the comparator's median bias (the median of the bootstrap PD̂ against the panel's PD̂ is not in the rows; the percentile interval's midpoint against PD̂ and against the true PD is used instead), read against S-10 and D-176.
+  - **The run:** commit 6c1edc2 (main after #57).
+    - **Sources:** the engine, model, DGP, test and CMake sources are unchanged since the validation build (1a97b4d).
+    - **The scorer:** merged in e9e04c2, before segment 3 started.
+    - **Checks:** 0 failures; every panel was fitted, and no fit was flagged.
+    - **Release:** `rows.csv` is on `s35-m6-data-2026-10-12`, and its SHA-256 was checked after download.
+  - **The headline (owner):** the AR(1)-aware MLE restores PD coverage, answering S-35's main finding.
+    - At T = 100, group D covers 0.946 (φ = 0.3) and 0.942 (φ = 0.6). The MLE that assumes independent periods had 0.69–0.73 at φ = 0.6.
+    - At φ = 0.6 the gain over it is +0.21 to +0.22 in each of groups B, C and D. At φ = 0 it costs nothing: +0.002 to +0.007.
+  - **L21's conclusion is the registration's own alternative (owner).** 41 of 50 scenarios is at least the 32 that the registration set as showing that the AR(1) model moves the median. So the AR(1) model moves the median PD toward 0, consistently but by small amounts: the shift is under 0.01 in 44 of 50 scenarios. The registered "fixes the interval but not the median bias" does not apply.
+  - **D-187's projection, a second full run in range:** 34.94 h against 34.9 h (32.9–37.0 h), projection / actual 0.999, after the validation run's 1.005.
+  - **Post-hoc answers** (`posthoc_m6.py`, `posthoc_m6.txt`; no verdict changes):
+    - **L25: the bound is reachable; no implementation finding.** A new unit test, `ar1_fit_reaches_the_bound_on_short_panels`, uses two hand-built T = 20, n = 1,000 panels at PD 1% and ρ 0.12 (group B's shape), with counts from a constructed factor path: a ramp and an alternating path.
+      - **The maximum is at the bound:** the profile over a fine φ grid peaks there, −51.09 against −52.10 at φ = 0.90, and −46.16 against −49.17 at −0.90.
+      - **ref agrees:** its independent dense likelihood also rises into the bound.
+      - **The fit:** `ar1::fit` returns exactly +0.95 and −0.95, flagged.
+      - **So group B's rarity of bound hits is a property of its data,** not of the search. It was not tested further.
+      - **The validation run reported no bound rate:** its scorer covered only the credible T = 100 and T = 40 cells. Its rows are not read again, so there is no comparison.
+    - **L21:** the median moves closer to 0 at every T, n and PD.
+      - By T: 11 of 12 at T = 20 (median shift +0.0057), 11 of 17 at T = 40 (+0.0019), 19 of 21 at T = 100 (+0.0013).
+      - By n: 6 of 7 at n = 100, 18 of 19 at 1,000, 17 of 24 at 10,000.
+      - By PD: 8 of 9 at 0.1%, 14 of 18 at 1%, 19 of 23 at 5%.
+      - The binomial MLE understates the median in all 50, and the shift is largest at short T, where that understatement is largest. The largest shift toward 0 is +0.0185 (scenario 25); the 9 that moved away did so by at most 0.0114.
+    - **L28:** the gap grows as T shrinks: −0.150 at T = 20, −0.077 at T = 40, −0.040 at T = 100 (3 scenarios each).
+      - **The misses fall on one side:** the true PD is above the percentile interval in 105 of its 143 misses.
+      - **It is not PD̂'s location:** the interval's median midpoint is above the true PD in 7 of 9 scenarios. The interval is too narrow on its upper side.
+      - **The reading (not tested):** the comparator simulates at (PD̂, ρ̂, φ̂), and at short T ρ̂ and φ̂ are biased down (for φ̂, Kendall's −(1 + 3φ)/T). Panels from that less dependent world spread PD̂ less, so the interval comes out too narrow, less so as T grows.
+      - **This is the one-sided inheritance S-10 found** for the parametric percentile interval on ρ (at T = 20, 12.1% of replicates above it and 0.2% below). D-176's advice stands: percentile bootstrap intervals are not recommended for PD or ρ in this model.
 
 ## Open
 

@@ -11,8 +11,8 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 ## At a glance
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
-  S-34, S-35 (main arms), and the M6 validation run.
-- **Running:** S-35's AR(1)-aware MLE arm (D-199, D-203).
+  S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
+- **Running:** none.
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
 - **The interval recommendation** that the finished studies support is in
@@ -60,7 +60,7 @@ they exist.
 | [S-32](#s-32-default-measurement-error-default-misrecording) | `default-misrecording` | How do misrecorded defaults bias the fit, and which treatment helps? | now | not registered |
 | [S-33](#s-33-survivorship-and-backfilled-history-survivorship-backfill) | `survivorship-backfill` | How biased is a backfilled, survivor-only history, and does truncation fix it? | now (portfolio part); M6 (late rating assignment) | not registered |
 | [S-34](#s-34-sensitivity-to-severe-new-periods-severe-period-sensitivity) | [`severe-period-sensitivity`](severe-period-sensitivity/) | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
-| [S-35](#s-35-long-run-pd-under-serial-correlation-lrpd-serial-correlation) | [`lrpd-serial-correlation`](lrpd-serial-correlation/) | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | main arms **finished** (D-192): 12 of 15 held. AR(1) MLE arm **running** in checkpointed segments; scorer merged blind (D-203) |
+| [S-35](#s-35-long-run-pd-under-serial-correlation-lrpd-serial-correlation) | [`lrpd-serial-correlation`](lrpd-serial-correlation/) | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | main arms **finished** (D-192): 12 of 15 held. AR(1) MLE arm **finished** (D-208): 9 of 11 strict held, 3 of 4 qualitative; L21, L28 and L25's qualitative part NOT HELD |
 | [M6-V](#m6-validation-run-m6-validation) | [`m6-validation`](m6-validation/) | Does the AR(1)-aware MLE work on its own model, before S-35 uses it? | M6 | **finished** (D-202): 7 of 8 strict held; W3 NOT HELD (wrong premise, diagnosed) |
 | [S-36](#s-36-rating-philosophy-and-fitted-correlation-pit-ttc-rho) | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
 | [S-37](#s-37-the-asymptotic-rate-mle-as-least-squares-rate-mle-least-squares) | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | **documented** (methodology note, §3); covariate unit test with M7 |
@@ -1449,10 +1449,23 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
 - **Prediction:** registered (`lrpd-serial-correlation/PREDICTION.md`, D-190), L1–L11, before any AR(1)
   panel was fitted. L12–L15, a second rate-MLE arm on the observed rates (owner), were appended before any
   run. The AR(1)-aware MLE's predictions are appended before its run.
-- **Status:** run 2026-10-09 (D-192), without the AR(1)-aware MLE, which comes with M6. The M6 arm (L16–L28)
-  is running in checkpointed segments; its scorer was written blind and merged before the last segment (D-203). Files are in
-  `lrpd-serial-correlation/`: `summary.csv` and `MANIFEST.json`. The per-replicate rows are on the release
-  `s35-data-2026-10-09` (D-163).
+- **Status:** the main arms ran 2026-10-09 (D-192). The M6 arm (L16–L28), the AR(1)-aware MLE, ran
+  2026-10-11/12 in three checkpointed segments; its scorer was written blind and merged before the last
+  segment (D-203); results in D-208.
+  - **Files** (`lrpd-serial-correlation/`): `summary.csv`, `results_m6.txt`, `summary_m6.csv`,
+    `posthoc_m6.txt` and `MANIFEST.json`.
+  - **Per-replicate rows** (D-163): on the releases `s35-data-2026-10-09` and `s35-m6-data-2026-10-12`.
+- **The M6 arm's result (D-208):** 9 of 11 strict predictions held, 3 of 4 qualitative.
+  - **It restores PD coverage:** 0.946 and 0.942 at T = 100 (φ = 0.3, 0.6), against 0.69–0.73 for the
+    iid MLE at φ = 0.6. The gain is about +0.22 at φ = 0.6 in each informative group, and near zero at
+    φ = 0.
+  - **L21, not held:** by the registration's own alternative (41 of 50 ≥ 32), it moves the median PD
+    toward 0, consistently but by small amounts (shift under 0.01 in 44 of 50). This answers finding 2
+    below: modelling the serial correlation does move the median.
+  - **L28, not held:** the parametric percentile interval undercovers PD, most at short T, with its misses
+    on one side, as S-10 found (D-176).
+  - **L25's qualitative part, not held:** φ̂ rarely reaches ±0.95 in group B. The bound is reachable, so
+    this is a property of the data.
 - **Result:** three findings, in order of weight.
   1. **A longer history does not fix it.** Under serial correlation, intervals that assume independent
      periods are too narrow by the same factor at T = 20, 40 and 100. PD profile coverage is 0.86–0.88 at

@@ -20,6 +20,7 @@
 #include "backends/cpu/cpu_backend.hpp"
 #include "core/objectives/binomial_mixture.hpp"
 #include "core/quadrature/parity.hpp"
+#include "core/special/probit.hpp"
 #include "dgp/dgp.hpp"
 #include "engine/calibrate.hpp"
 #include "engine/profile.hpp"
@@ -224,6 +225,57 @@ VCAL_TEST(ar1_fit_holds_a_bound_and_flags_it) {
     VCAL_CHECK(bits_equal(e.value[0], ar1::detail::inv_logit(ar1::detail::logit(kBox.pd_lo))));
     vcal::test::note("all-zero panel: PD^ " + describe(e.value[0]) + ", rho^ " + describe(e.value[1]) + ", phi^ " +
                      describe(e.value[2]) + ", flags " + std::to_string(e.flags));
+}
+
+// The bound is reachable at short T (D-208's post-hoc question for L25: group B's phi-hat almost never reached
+// +-0.95). Hand-built T = 20, n = 1,000 panels at PD 1%, rho 0.12 (group B's shape), their counts the conditional
+// expectation n p(z_t) of a constructed factor path: a smooth ramp from +2 to -2 (rising default rates; persistence
+// beyond any |phi| < 1) and an alternating +-1.5 (reversal beyond any phi > -1). First, that the maximum is at the
+// bound: the 2-D maxima on the phi grid -0.95, -0.90, ..., 0.95 are largest at the bound, and ref's independent
+// dense likelihood also rises from 0.90 to 0.95 at the grid's (PD, rho). Then, that ar1::fit returns the bound
+// exactly, flagged.
+VCAL_TEST(ar1_fit_reaches_the_bound_on_short_panels) {
+    const double pd = 0.01, rho = 0.12;
+    const std::int64_t n = 1000, T = 20;
+    const auto counts = [&](double z) {
+        const double x = (vcal::special::probit(pd) - std::sqrt(rho) * z) / std::sqrt(1.0 - rho);
+        const double p = 0.5 * std::erfc(-x / std::sqrt(2.0));
+        return static_cast<std::int64_t>(std::lround(static_cast<double>(n) * p));
+    };
+    for (const double sign : {1.0, -1.0}) {
+        Panel p;
+        for (std::int64_t t = 0; t < T; ++t) {
+            const double z = sign > 0.0 ? 2.0 - 4.0 * static_cast<double>(t) / static_cast<double>(T - 1)
+                                        : (t % 2 == 0 ? 1.5 : -1.5);
+            p.obs.push_back({n, counts(z)});
+        }
+        p.name = sign > 0.0 ? "ramp (T 20, n 1000)" : "alternating (T 20, n 1000)";
+        double best = -INFINITY, at_bound = -INFINITY, inside = -INFINITY, u_in[3] = {}, u_b[3] = {};
+        for (int k = -19; k <= 19; ++k) {
+            const double phi = k == -19 ? -ar1::kPhiBound : k == 19 ? ar1::kPhiBound : 0.05 * k;
+            double u[3];
+            const double l = fixed_phi_maximum(p, phi, u);
+            best = std::fmax(best, l);
+            if (k == 19 * static_cast<int>(sign)) {
+                at_bound = l;
+                std::memcpy(u_b, u, sizeof u);
+            }
+            if (k == 18 * static_cast<int>(sign)) {
+                inside = l;
+                std::memcpy(u_in, u, sizeof u);
+            }
+        }
+        VCAL_CHECK(at_bound == best);
+        VCAL_CHECK(at_bound > inside);
+        const double pd_in = ar1::detail::inv_logit(u_in[0]), rho_in = ar1::detail::inv_logit(u_in[1]);
+        VCAL_CHECK(ref_ll(p, pd_in, rho_in, sign * ar1::kPhiBound) > ref_ll(p, pd_in, rho_in, u_in[2]));
+        const auto e = fit(p);
+        VCAL_CHECK(bits_equal(e.value[2], sign * ar1::kPhiBound));
+        VCAL_CHECK((e.flags & vcal::engine::kFlagGridEdge) != 0u);
+        vcal::test::note(p.name + ": 2-D maximum at the bound " + describe(at_bound) + ", at " +
+                         describe(sign * 0.9) + " " + describe(inside) + "; phi^ " + describe(e.value[2]) +
+                         ", flags " + std::to_string(e.flags) + " (bound in u: " + describe(u_b[2]) + ")");
+    }
 }
 
 // The search is deterministic: a second fit of the same panel returns the same estimate, checks, diagnostics and

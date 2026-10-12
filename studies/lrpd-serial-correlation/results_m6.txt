@@ -1,0 +1,32 @@
+rows: 243000; 81 scenarios x 3 phi; replicates per cell [1000]; full matrix
+checks: 0 failures that stop the scoring (the log-likelihood checks on 243000 fitted panels; the binomial fits against S-35's summary in 243 cells); panels not fitted 0
+reported: placement check flagged 0 of 243000 fits, doubled rule 0; either is a result, not a filter
+reported: comparator intervals 900 (registered: 900); panels refitted with finite estimates 179100, not 0 (of 199 per interval)
+
+| # | Prediction | Result | Verdict |
+|---|---|---|---|
+| L16 | PD profile coverage, group D, in 0.92-0.96 at phi 0.3 and 0.6 | phi 0.3 0.9461; phi 0.6 0.9421 | held |
+| L17 | PD profile coverage: phi 0.6 B 0.82-0.92, C 0.87-0.95; phi 0.3 B 0.88-0.95, C 0.90-0.96 | phi 0.6 B 0.9097; phi 0.6 C 0.9288; phi 0.3 B 0.9316; phi 0.3 C 0.9434 | held |
+| L18 | phi 0.6: PD profile coverage minus the binomial MLE's >= 0.10 in each of B, C, D | B +0.2218; C +0.2154; D +0.2136 | held |
+| L19 | phi 0: PD profile coverage minus the binomial MLE's in -0.03..+0.01 in each of B, C, D | B +0.0067; C +0.0034; D +0.0022 | held |
+| L20 | phi 0.6: rho profile coverage in 0.88-0.96 in each of B, C, D | B 0.9273; C 0.9359; D 0.9472 | held |
+| L21 | phi 0.6: median relative error of PD-hat closer to 0 than the binomial's in 19-31 of 50; differs by < 0.01 in >= 40 of 50 | closer in 41 of 50; within 0.01 in 44; panels excluded (not fitted): 0 | NOT HELD |
+| L22 | phi 0: share of phi-hat < 0 over group D's credible scenarios in 0.50-0.60 | 0.5445 (15 scenarios); panels excluded (not fitted): 0 | held |
+| L23 | phi 0: share of phi-hat < 0 over group B in 0.55-0.80; group A's T = 20 higher than B's | B 0.5910; A T = 20 0.6359; panels excluded (not fitted): 0 | held (qualitative) |
+| L24 | phi 0.6: share of phi-hat < 0 under 0.5% in group D's credible scenarios | 0.1500% (20 scenarios); panels excluded (not fitted): 0 | held |
+| L24 (B) | phi 0.6: share of phi-hat < 0 in group B in 1%-15% | 4.8417%; panels excluded (not fitted): 0 | held (qualitative) |
+| L25 | phi-hat at +/-0.95 under 0.5% in group D's credible scenarios at phi 0 and 0.6 | phi 0.0 0.0000% (15 scenarios); phi 0.6 0.0100% (20 scenarios); panels excluded (not fitted): 0 | held |
+| L25 (B, A) | phi-hat at +/-0.95: group B in 1%-20% at each phi; group A's T = 20 at least 10% at each phi | phi 0.0: B 0.01%, A T = 20 8.95%; phi 0.3: B 0.01%, A T = 20 8.93%; phi 0.6: B 0.03%, A T = 20 9.61%; panels excluded (not fitted): 0 | NOT HELD (qualitative) |
+| L26 | phi interval coverage >= 0.92 where phi is credible (subset) | 43 at 0.0 0.9530; 43 at 0.3 0.9530; 68 at 0.6 0.9330; 49 at 0.6 0.9540; 43 at 0.6 0.9540; 51 at 0.6 0.9500 | held |
+| L27 | phi 0.6: phi interval coverage below 0.93 in >= 2 of 29, 37, 72 | 29 0.9140; 37 0.9280; 72 0.9230 | held (qualitative) |
+| L28 | comparator: percentile PD coverage within +/-0.05 of the profile's (replicates 0-99, phi 0.6) in >= 7 of 9 | 3 of 9; 29 0.76 vs 0.90; 37 0.77 vs 0.93; 72 0.80 vs 0.95; 4 0.88 vs 0.95; 68 0.85 vs 0.92; 49 0.88 vs 0.97; 7 0.91 vs 0.95; 43 0.85 vs 0.90; 51 0.87 vs 0.90 | NOT HELD |
+
+strict: 9 of 11 held; qualitative: 3 of 4 held
+
+Reported without a prediction, per phi (informative groups B-D unless stated):
+  phi 0.0: phi-hat mean -0.0313, median of medians -0.0251; share of fits with more than one local maximum along the scan 0.0304 (all scenarios); flagged: placement 0, doubled rule 0
+  phi 0.3: phi-hat mean +0.2428, median of medians +0.2578; share of fits with more than one local maximum along the scan 0.0323 (all scenarios); flagged: placement 0, doubled rule 0
+  phi 0.6: phi-hat mean +0.5156, median of medians +0.5443; share of fits with more than one local maximum along the scan 0.0381 (all scenarios); flagged: placement 0, doubled rule 0
+  gap to the second maximum where there is one: 8168 fits, median 0.07078
+  the q interval: NOT REPORTED, a deviation from the registration (D-203): study_lrpd_serial_m6 does not compute it
+  per-scenario phi-hat mean and median: --summary-out

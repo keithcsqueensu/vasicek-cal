@@ -40,7 +40,8 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 - **Rejected:** P-12 (above), and sequential stopping of Monte Carlo runs (a design change, not a
   performance item).
 - **The runtime projection** ([below](#projecting-a-full-run-d-187)) is **validated** on the M6 validation run
-  (3.499 h against 3.3–3.7 h; D-202).
+  (3.499 h against 3.3–3.7 h; D-202), and in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h;
+  D-208).
 
 ## Rules for every P-item (D-177)
 
@@ -121,6 +122,12 @@ check, a minimum sample wall time, fixed costs added once), the projection recor
 (3.3–3.7 h; 3.2–3.9 h with the machine-state allowance), from a sample on another seed. The run took 3.499 h,
 projection / actual 1.005, on an otherwise idle machine. The method is now validated, for tools whose phases
 it times.
+
+**Fourth test, the S-35 M6 arm (D-208): in range.** The projection recorded before the run was 34.9 h (90%
+range 32.9–37.0 h; D-199). The run took 125,767 s (34.94 h) in three checkpointed segments (54,728, 45,468 and
+25,571 s; the gaps between them, 35 s, excluded), projection / actual 0.999. That makes two full runs in range
+after D-193, one about 3.5 h and one about 35 h long. During the first segment the machine also ran single-threaded
+work: the scorer's editing, its seconds-long self-test, and one CI-config check.
 
 ## Benchmarks
 
