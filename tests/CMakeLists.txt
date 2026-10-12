@@ -272,6 +272,11 @@ add_executable(p17_simd_philox ${PROJECT_SOURCE_DIR}/perf/p17_simd_philox.cpp)
 target_link_libraries(p17_simd_philox PRIVATE vcal::dgp)
 vcal_target_defaults(p17_simd_philox)
 add_test(NAME p17_simd_philox_identity COMMAND p17_simd_philox --seconds 0.04)
+# The measurements behind the proposed SIMD items P-21 to P-23 (perf/p21_p23_simd_sweep.md, D-213). Built so it keeps compiling;
+# run by hand.
+add_executable(simd_scout ${PROJECT_SOURCE_DIR}/perf/simd_scout.cpp)
+target_link_libraries(simd_scout PRIVATE vcal::core)
+vcal_target_defaults(simd_scout)
 set_tests_properties(study_argmax_check PROPERTIES LABELS slow)
 # Its committed summary against the reviewed labels, kept apart (D-155): fast, always run.
 vcal_add_test_executable(unit_study_jackknife SOURCES studies/jackknife_reviewed_test.cpp LIBS vcal::engine)
