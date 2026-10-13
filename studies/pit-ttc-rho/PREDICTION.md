@@ -1,10 +1,10 @@
 # S-36 Rating philosophy and fitted correlation: design and predictions
 
-Status: **DRAFT, not registered.** This is a proposal for the owner. It is registered only when the owner
-approves it and it is merged. No generator code exists yet; nothing has been simulated or fitted, and nothing
-may be until this file is registered (D-148). The reference values below come from the model alone
-([`reference.py`](reference.py), [`reference.csv`](reference.csv), [`reference_idio.csv`](reference_idio.csv)):
-quadrature, no panels, with a Monte Carlo check of arm I ([`reference_idio_mc.csv`](reference_idio_mc.csv)).
+Status: **REGISTERED (D-401, owner's approval 2026-10-12).** No generator code exists yet; nothing has been
+simulated or fitted, and nothing may be before this file is merged (D-148). The reference values below come
+from the model alone ([`reference.py`](reference.py), [`reference.csv`](reference.csv),
+[`reference_idio.csv`](reference_idio.csv)): quadrature, no panels, with a Monte Carlo check of arm I
+([`reference_idio_mc.csv`](reference_idio_mc.csv)).
 
 The design and the predictions are written together, before the generator, so that the predictions are blind
 by construction. Implementation readings that the code later forces (as with D-203) go in an appended,
@@ -265,9 +265,10 @@ To be filled in when the study finishes (D-152). The candidates: a check that th
 uses matches both the rating philosophy and the rating speed of the grades it is applied to, and a check of a
 grade's realised default rate against its label, which a lagging rating moves.
 
-## Still for the owner before registration
+## Registration
 
-1. Approve the design as it stands: the two arms (the smoothed-factor rule for systematic momentum, an
-   observable AR(1) driver with κ = 0.5 and ψ = 0.8 for idiosyncratic momentum, obligors redrawn each
-   period), the informative-grade rule, and Q1–Q13 with their bands.
-2. The HAC interval's settings (Bartlett kernel, the lag rule, Wald in logit units), as S-48 fixed them.
+Approved by the owner on 2026-10-12 as it stands (D-401): the two arms (the smoothed-factor rule for
+systematic momentum; an observable AR(1) driver with κ = 0.5 and ψ = 0.8 for idiosyncratic momentum;
+obligors redrawn each period), the informative-grade rule, Q1–Q13 with their bands, and the HAC interval
+with S-48's settings (D-209). Before the run: the generator's D-149 artifacts (prose specification, Python
+mirror, reference-panel hash), the tool and scorer merged, and the runtime projection (D-187, D-193).
