@@ -37,7 +37,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     0.017–0.043 under independence.
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
-  - S-48's negative-dependence part stays with S-36 (#60), which waits on its two open decisions.
+  - S-48's negative-dependence part is registered with S-36 (D-401, #60).
   - The next decision number is D-214 (P-7 is D-212, #67; the SIMD sweep took D-213, #68).
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
@@ -145,7 +145,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
 | Study | Placement | Note |
 |---|---|---|
 | S-35 | now; M6 arm | finished (D-192; M6 arm D-208) |
-| S-36 | M6 | new generator code; design and draft predictions in #60, not registered (D-207) |
+| S-36 | M6 | new generator code; registered (D-401, #60): two momentum arms, Q1–Q13; not run |
 | S-37 | M7, documentation | an identity (D-164's closed form); **documented** in the rate MLE note, §3 |
 | S-38 | now (with S-19); M7 | cheap |
 | S-39 | M6 with M7 | plug-in factor |

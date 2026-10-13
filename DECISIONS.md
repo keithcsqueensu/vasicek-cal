@@ -1619,6 +1619,19 @@ so that the two do not collide (as D-300 on, above).
   - **Measured** (cloud Xeon 2.8 GHz, GCC 13, one thread, against P-7's branch): `log_contrib_derivs` 41.8-48.9 → 14.2-15.1 µs per period (expected 15-30% faster; the expectation used the sweep's per-call erfcx cost, about half this machine's); `log_contrib` 13.6-14.4 → 11.7-12.3 µs (expected 5-15%). With P-7, against `main`: about 45% less time for the value and 70% less with derivatives. A run's saving is measured by the next projection (D-187).
   - **P-22 (D-213) is now smaller:** the derivative functor's remaining per-node work is the node functions' arithmetic; whether lanes over it still pay is for its own measurement.
 
+## S-36: registered, 2026-10-12
+
+Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop agent's sequence continues at D-214.
+
+- **D-401 (owner) — S-36, rating philosophy and fitted correlation, is registered** (`studies/pit-ttc-rho/PREDICTION.md`, #60; D-207 settled).
+  - **Momentum is both systematic and idiosyncratic (owner), so the study has two arms.** The main arm keeps D-207's smoothed-factor rule (13 rules). Arm I adds an observable obligor driver η, a share κ = 0.5 of the idiosyncratic variance, AR(1) with ψ = 0.8, which the rating tracks at its own speed θ_I; 13 rules (a TTC control, and λ ∈ {0.5, 1} × θ_S ∈ {1, 0.25} × θ_I ∈ {1, 0.5, 0.25}). Obligors are redrawn each period, with (η, N) from their stationary joint law. D-207's open alternative (persistent obligors) is not taken; survivorship stays with S-33.
+  - **The targets:** the finite-grade pseudo-true values of `reference.csv` and `reference_idio.csv`. For arm I the narrow-grade closed form overstates ρ by about 40% on the fast hybrid rules, so it is not used as a target; a Monte Carlo of the grade construction (`reference_idio_mc.csv`) agrees with the quadrature on every rule.
+  - **Informative grades (left to the proposer by the owner):** the 23 grades with at least 5 expected TTC defaults per period, less the grade–rule pairs whose reference empty-period probability exceeds 0.01 (11 of the main arm's 299 pairs and 4 of arm I's).
+  - **The interval tests are core (owner):** Q1–Q13 are all strict, including the profile intervals' coverage of the pseudo-true ρ and PD (Q8, Q10) and the HAC interval for PD (Q11), with S-48's settings (D-209). The HAC interval for ρ is reported only (D-211).
+  - **Seeds:** as reserved in D-207 (`PITTTCRH`, `PITTTCTS`); arm I's extra normals take block ranges of their own under the same seed.
+  - **Cost:** about 4.0 million fits; if the projection is too long, arm I at T = 20 is dropped first, then the main arm's θ = 0.25 rules at T = 20, by an addendum before the run.
+  - **Before the run:** the generator's D-149 artifacts, the tool and scorer merged, and the runtime projection (D-187, D-193). Nothing is simulated before this registration is merged.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
