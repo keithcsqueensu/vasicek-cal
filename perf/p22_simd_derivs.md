@@ -21,3 +21,40 @@
   worth its code, and is not merged.
 - **Bit for bit:** every lane value is the scalar expression on the same operands; scalar, SSE2 and AVX2 kernels
   are each checked against the scalar functor, with `VCAL_DERIVS_KERNEL` to force one, as P-7 and P-17.
+
+## What was built (branch `p22-simd-derivs`, kept for reference, not merged)
+
+- `core/model/derivs_batch.{hpp,cpp}`, `derivs_batch_avx2.cpp`, `derivs_lanes.hpp`: the node functions on kB
+  interleaved vectors, scalar, SSE2 and AVX2 kernels, `VCAL_DERIVS_KERNEL`, in `vcal_core_kernels`.
+- The hook: `BinomialLogIntegrandDerivs` fills the node cache's functions at its first call after a batch (the E
+  of one-sided periods by its own expression first) and reads node i's five values back; nodes without a cached e
+  keep the per-node path.
+- **Identity:** `unit_derivs_batch`, every kernel against the functor's own path under every erfcx kernel and
+  none (69,681 cached nodes and 63,874 nodes through the functor per combination, 0 differences), and
+  `log_contrib_derivs` on 400 periods with the parity rule and its doubled rule, 0 differences.
+
+## Measured (2026-10-12): under the stop rule, not adopted
+
+Cloud Xeon 2.8 GHz, GCC 13, one thread, Release.
+
+- **The kernel alone** (the node functions of 128 cached nodes, n = 1,000, d = 10): scalar 16.5-16.9 ns per node,
+  SSE2 8.7-8.8, AVX2 7.2-8.9. About 2× as expected.
+- **`log_contrib_derivs`,** 36 interior periods (PD 0.3-10%, ρ 0.02-0.24, n 100-10,000), the parity rule, the three
+  derivative paths interleaved in one process (A B C C B A, 30 rounds), median µs per period:
+
+  | erfcx kernel | none (P-21's path) | derivs SSE2 | derivs AVX2 |
+  |---|---|---|---|
+  | AVX2 | 15.34 | 15.15 (−1.3%) | 14.84 (−3.2%) |
+  | SSE2 | 14.91 | 14.63 (−1.9%) | 17.78 (+19%) |
+
+  The interquartile ranges overlap in every row, and P-7's benchmark (`p7_erfcx`, three runs per kernel) shows
+  no consistent difference either.
+- **Why the kernel's 2× did not carry over:** in the per-node path the node functions' divisions overlap with the
+  fold's `exp` and the cursor search (out-of-order execution hides much of their latency), so they cost less in
+  place than alone. The batch saves about 1.2 µs of arithmetic per period but adds a separate pass that stores and
+  reloads 640 values and loses that overlap. Storing the values node-major (one node's five together) instead of
+  by function made no measurable difference. The AVX2 kernel next to the SSE2 erfcx kernel is slower, probably a
+  transition or frequency effect between the two instruction sets.
+- **Verdict:** under 3% on both kernels, so by the stop rule written above, P-22 is recorded as measured and not
+  worth its code (about 300 lines, a third kernel family to maintain). The derivative path's remaining cost is the
+  fold and the value's own nodes; a gain there needs the fold itself in lanes (its `exp` is libm, D-199).

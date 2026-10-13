@@ -195,6 +195,19 @@ foreach(_k scalar sse2 avx2 none-such)
     set_tests_properties(unit_erfcx_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
 
+# The derivative node-function kernels (P-22, D-402): every kernel against the derivative functor's own path bit for
+# bit, through the node cache, and log_contrib_derivs under every kernel against none; each kernel also forced by
+# VCAL_DERIVS_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed. The fit suite with
+# committed goldens runs again under each forced kernel.
+add_executable(unit_derivs_batch unit/derivs_batch_test.cpp)
+target_link_libraries(unit_derivs_batch PRIVATE vcal_test_harness vcal::core)
+vcal_target_defaults(unit_derivs_batch)
+add_test(NAME unit_derivs_batch COMMAND unit_derivs_batch)
+foreach(_k scalar sse2 avx2 none-such)
+    add_test(NAME unit_derivs_kernel_${_k} COMMAND unit_derivs_batch derivs_kernel_selection_follows_vcal_derivs_kernel)
+    set_tests_properties(unit_derivs_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_DERIVS_KERNEL=${_k}" SKIP_RETURN_CODE 77)
+endforeach()
+
 # The AR(1) MLE's search and profile intervals (D-195, D-196): recovery on DGP panels with known phi, ref's
 # independent surface at the estimate, the binomial MLE at phi = 0, the box, determinism, the profile ends.
 add_executable(unit_ar1_search unit/ar1_search_test.cpp)
@@ -236,6 +249,11 @@ add_test(NAME xref_core_regression COMMAND unit_xref xref_core_estimates_match_r
 foreach(_k scalar sse2 avx2)
     add_test(NAME xref_core_regression_erfcx_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
     set_tests_properties(xref_core_regression_erfcx_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}")
+endforeach()
+# P-22 (D-402): the committed regression estimates under each derivative kernel forced.
+foreach(_k scalar sse2 avx2)
+    add_test(NAME xref_core_regression_derivs_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
+    set_tests_properties(xref_core_regression_derivs_${_k} PROPERTIES ENVIRONMENT "VCAL_DERIVS_KERNEL=${_k}")
 endforeach()
 add_test(NAME xref_surface_smoothness COMMAND unit_xref xref_surface_is_smooth_for_zero_default_panels)
 add_test(NAME validation_goldens COMMAND unit_xref validation_goldens_are_current)

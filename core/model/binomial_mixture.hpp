@@ -27,6 +27,7 @@
 #include "core/precision.hpp"
 #include "core/quadrature/integrator.hpp"
 #include "core/special/erfcx_batch.hpp"
+#include "core/model/derivs_batch.hpp"
 #include "core/special/inverse_mills.hpp"
 #include "core/special/log_phi.hpp"
 #include "core/special/generated/constants.hpp"
@@ -37,15 +38,18 @@ namespace vcal::model {
 // Per node of one quadrature call, what the value's batch computed and the derivatives need again (P-21, D-400): the
 // node z, e = erfcx(|x| / sqrt 2) and E = exp(-x^2 / 2) as exp_neg_half_square computes it (NaN where the value did
 // not compute it). The derivative functor is called for the same nodes in the same order, skipping those whose
-// weight underflows, so it finds each node by advancing a cursor. Host only (6 KB): log_contrib_derivs makes one
-// outside device code.
+// weight underflows, so it finds each node by advancing a cursor. With P-22 (D-402) the derivative functor also
+// computes every cached node's five node functions here in one vector pass, at its first call after a batch.
+// Host only (16 KB): log_contrib_derivs makes one outside device code.
 struct NodeCache {
     static constexpr int kMax = 256;
     int n = 0;
     int cursor = 0;
+    int f_state = 0;  // the node functions: 0 not computed for this batch, 1 in f, 2 no kernel (each node on its own)
     double z[kMax];
     double e[kMax];
     double E[kMax];
+    double f[kMax * 5];  // node-major: node i's five node functions at f[5 i .. 5 i + 4]
     // The index of node zz at or after the cursor, or -1.
     VCAL_HD int find(double zz) {
         while (cursor < n) {
@@ -96,6 +100,7 @@ struct BinomialLogIntegrand {
         if (cache != nullptr) {
             cache->n = n;
             cache->cursor = 0;
+            cache->f_state = 0;
         }
         for (int i = 0; i < n; ++i) {
             if (cache != nullptr) {
@@ -159,6 +164,14 @@ struct BinomialLogIntegrandDerivs {
         if (cache != nullptr) {
             const int i = cache->find(z);
             if (i >= 0) {
+#if !defined(__CUDA_ARCH__)
+                // P-22 (D-402): every cached node's functions in one vector pass, the same values bit for bit.
+                if (cache->f_state == 0) fill_node_functions(*cache);
+                if (cache->f_state == 1 && !std::isnan(cache->e[i])) {
+                    for (int j = 0; j < 5; ++j) f[j] = cache->f[5 * i + j];
+                    return;
+                }
+#endif
                 e = cache->e[i];
                 E = cache->E[i];
             }
@@ -209,6 +222,22 @@ struct BinomialLogIntegrandDerivs {
         f[3] = gxx * x2 * x2 + gx * x22 + g2 * g2;
         f[4] = gxx * x1 * x2 + gx * x12 + g1 * g2;
     }
+
+#if !defined(__CUDA_ARCH__)
+    // The node functions of every cached node, as operator() computes them (P-22, D-402; derivs_batch.hpp). First
+    // the exp pair E where operator()'s lambda would compute it itself (a one-sided period: the value's batch leaves
+    // E only at 0 < d < n), by its expression; then the kernels. Nodes without a cached e keep operator()'s path.
+    void fill_node_functions(NodeCache& cc) const {
+        for (int i = 0; i < cc.n; ++i) {
+            if (std::isnan(cc.e[i]) || !std::isnan(cc.E[i])) continue;
+            const double x = (c - a * cc.z[i]) / b;
+            const bool need = (defaults > 0.0 && !(x < 0.0)) || (survivors > 0.0 && !(-x < 0.0));
+            if (need) cc.E[i] = special::detail::exp_neg_half_square(x);
+        }
+        const derivs_batch::Params p{c, a, b, rho, c1, c2, defaults, survivors};
+        cc.f_state = derivs_batch::node_functions(p, cc.z, cc.e, cc.E, cc.f, static_cast<std::size_t>(cc.n)) ? 1 : 2;
+    }
+#endif
 };
 
 // Requires 0 < pd < 1 and 0 < rho < 1 (as make_vasicek1f); otherwise the fields are NaN.
