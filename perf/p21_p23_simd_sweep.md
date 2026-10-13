@@ -71,6 +71,11 @@ lanes wait on three scalar `erfcx`).
 
 ## P-23: hint and extent search across grid points
 
+**Rejected (owner, 2026-10-13; D-405), before it was built.** The row fill it targets runs inside the surface-row
+cache's fill (P-1), once per distinct (n, d) per scenario. In S-10's tool that fill is 2.4 s once per scenario,
+against about 1.5 s of per-replicate work; at R = 1,000 it is under 0.2% of the run. The proposal below is kept as
+written.
+
 **What.** Two serial searches sit in front of every integral: the hint's bracket and Newton
 (`binomial_mixture_hint`, 10–30% of an interior period's cost, 30% at n = 10,000) and the composite rule's
 extent bisections (113–116 of about 370 integrand evaluations at d ∈ {0, n}). Neither vectorises within
