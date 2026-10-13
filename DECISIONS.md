@@ -1648,6 +1648,12 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Measured:** the reduction 3.4×, 3.7× and 2.2× (AVX2) at T = 13, 40 and 100; SSE2 about 1.8×. The W × L tool's ArgMax phase 0.9 → 0.6 s. S-10's tool shows no measurable change, against 3-5% expected: its reduction is a small part of each refit.
   - **Not done:** the U table's per-tile `fmax`, once per call and cheap; and a heap in place of the per-replicate sort of tile bounds (D-213), which stays to be measured.
 
+## P-23: rejected, 2026-10-13
+
+- **D-405 (owner) — P-23, the hint and extent search in lanes across grid points, is rejected before it was built** (proposed in D-213; `perf/p21_p23_simd_sweep.md`).
+  - **Why:** its ceiling was measured first. The row fill it would speed up runs inside the surface-row cache's fill (P-1), once per distinct (n, d) per scenario. In `study_parametric_bootstrap` (subset scenarios 37 and 4) the fill is 2.4 s once per scenario, against about 1.5 s of per-replicate work, so at R = 1,000 it is under 0.2% of the run. The evaluations off the grid (the profile solves, W*, Newton's steps, the analytic SE) evaluate one point at a time and would not benefit.
+  - **Also searched, not proposed:** the same searches in lanes across a likelihood's periods. Each period's hint is a serial chain, and lanes would overlap the chains of different periods. It would serve every off-grid evaluation, but it would be a new item with its own ceiling to measure, and the libm calls (`exp`, `log`, the probit) would stay scalar. The owner did not take it up.
+
 ## P-13: rejected, 2026-10-13
 
 - **D-403 — P-13, link-time and profile-guided optimisation for local study builds, is rejected under its stop rule** (`perf/p13_lto_pgo.md`, #72; D-199). The options (`VCAL_LTO`, `VCAL_PGO`) and the cycle script were built, measured and dropped; they remain in #72's history.
