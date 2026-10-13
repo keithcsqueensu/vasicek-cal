@@ -1648,6 +1648,13 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Measured:** the reduction 3.4×, 3.7× and 2.2× (AVX2) at T = 13, 40 and 100; SSE2 about 1.8×. The W × L tool's ArgMax phase 0.9 → 0.6 s. S-10's tool shows no measurable change, against 3-5% expected: its reduction is a small part of each refit.
   - **Not done:** the U table's per-tile `fmax`, once per call and cheap; and a heap in place of the per-replicate sort of tile bounds (D-213), which stays to be measured.
 
+## P-13: rejected, 2026-10-13
+
+- **D-403 — P-13, link-time and profile-guided optimisation for local study builds, is rejected under its stop rule** (`perf/p13_lto_pgo.md`, #72; D-199). The options (`VCAL_LTO`, `VCAL_PGO`) and the cycle script were built, measured and dropped; they remain in #72's history.
+  - **Measured, bit for bit on both compilers:** on GCC 13 (cloud), LTO +1.3% and −0.5%, LTO + PGO +1.1% and −3.6%, on the bootstrap and M6 tools, inside a 3% noise floor. On MSVC 14.51 (the owner's laptop, about 1% noise), LTO −2.4% and −0.3%, LTO + PGO −0.5% and +5.7% (slower). The stop rule recorded before the build was under 3% on both tools: drop.
+  - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
+  - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

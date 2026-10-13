@@ -24,7 +24,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no | — |
 | P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no | [p11_checkpoint.md](p11_checkpoint.md) |
 | P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — | — |
-| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no | — |
+| P-13 | LTO/PGO for local study builds | **rejected** (GCC and MSVC: LTO 0–2.4%, PGO 0–4% or slower) | D-199, D-403 | — | [p13_lto_pgo.md](p13_lto_pgo.md) |
 | P-14 | Calibrate's checks per distinct observation | done | D-178 | no | [p14_calibrate_distinct.md](p14_calibrate_distinct.md) |
 | P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) | [p15_analytic_se.md](p15_analytic_se.md) |
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no | [p16_sampled_check.md](p16_sampled_check.md) |

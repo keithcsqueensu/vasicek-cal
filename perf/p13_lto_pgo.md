@@ -1,4 +1,8 @@
-# P-13: link-time and profile-guided optimisation for local study builds (D-403)
+# P-13: link-time and profile-guided optimisation for local study builds (D-403): rejected
+
+**Rejected under the stop rule (2026-10-13; D-403).** Measured on GCC (here) and MSVC (the owner's laptop): LTO
+gains 0-2.4%, PGO 0-4% on GCC and nothing or worse on MSVC, all bit for bit. The options were built and are kept
+on the branch `p13-lto-pgo`'s history (`cmake/VcalLtoPgo.cmake`, `perf/p13_pgo.py`), not merged.
 
 ## Expected, written before the build (2026-10-13)
 
@@ -62,10 +66,30 @@ A B C C B A; times are in seconds.
   differ from GCC's, and its PGO is often worth more. Its LTO and PGO paths are built into the CMake module, but
   untested.
 
-## Status: the owner's decision, after the MSVC measurement
+## Measured on MSVC (2026-10-13, the owner's laptop)
 
-On GCC, LTO is worth nothing and PGO about 0-4%, inside the noise: not worth adding there. The runs that matter,
-the M6-class runs, are built with MSVC, where PGO is often worth more and where these options are untested. So
-the next step is the laptop: `python perf/p13_pgo.py --build-dir build/pgo --generator Ninja --check
-build/cpu-release/tests` in a developer prompt. Then apply the same stop rule (under 3% on both tools: record and
-drop the options). Until then this is a draft and is not merged.
+MSVC 14.51, Ninja, 24 threads; the check workloads above, single-threaded, A B C C B A. Repeat runs of one build
+agree to about 1%.
+
+| Tool | Release | LTO | LTO + PGO |
+|---|---|---|---|
+| `study_parametric_bootstrap` | 24.04, 24.07 s | 23.48, 23.47 s (−2.4%) | 23.91, 23.95 s (−0.5%) |
+| `study_lrpd_serial_m6` | 78.89, 77.95 s | 78.63, 77.69 s (−0.3%) | 83.32, 82.41 s (+5.7%, slower) |
+
+- **Identity:** all 12 runs byte-identical to Release.
+- **LTO:** a real 2.4% on the bootstrap tool, nothing on M6.
+- **PGO:** slows the M6 tool. The training is small (one replicate of scenario 49 at φ = 0.3) and the check runs
+  another case (37 at φ = 0.6). A likely reason, not checked: code the training never ran is laid out as cold.
+- **A defect found in the MSVC path:** the instrumented binaries wrote their `.pgc` files next to the executables,
+  not next to the `.pgd` files in `VCAL_PGO_DIR` as `VcalLtoPgo.cmake` assumed. So the USE link merged no counts
+  (`pgomgr /summary`: 0 dynamic instructions), and `p13_pgo.py --check` timed an untrained build without noticing.
+  The PGO column above is a corrected build, with the `.pgc` files moved by hand and the binaries relinked (3.6e12
+  and 9.3e10 dynamic instructions). `--check` also timed each build once, which cannot resolve 3%. Neither is
+  fixed, since the options are dropped.
+
+## Decision
+
+Under the stop rule written before the build (under 3% on both tools: drop the options), met on both compilers:
+P-13 is rejected and the options are not merged. If it is ever revisited, the `.pgc` placement (`pgomgr /merge`
+into `VCAL_PGO_DIR`), a training workload covering the checked cases, and repeated, interleaved check timings
+come first.

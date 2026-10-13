@@ -19,7 +19,6 @@ option(VCAL_BUILD_TESTS "Build the test suite" ${PROJECT_IS_TOP_LEVEL})
 
 include(VcalTargetDefaults)
 include(VcalCuda)  # defines VCAL_ENABLE_CUDA (D-030); architectures per D-026/D-040
-include(VcalLtoPgo)  # VCAL_LTO, VCAL_PGO: local study builds only, off by default (P-13, D-403)
 
 # core/: header-only, host+device, C++17 (D-058). Consumers include it as "core/...".
 add_library(vcal_core INTERFACE)
