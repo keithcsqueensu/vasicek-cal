@@ -6,8 +6,8 @@
 //     under seed S10PBOOT, scenario id as the panel's, replicate 1,000 r + b; each fitted as the
 //     recovery panels are (the parity grid through the row cache). Per parameter, in logit: the
 //     percentile interval (type-7 2.5% and 97.5% points of the finite bootstrap estimates) and the
-//     studentised interval (t*_b = (u*_b - u-hat)/se*_b, se from analytic_se_scaled, the analytic
-//     observed information; bootstrap panels without it are left out, and with more than 10% left out
+//     studentised interval (t*_b = (u*_b - u-hat)/se*_b, se from analytic_se_of (P-19, D-406: calibrate's own analytic
+//     observed information, at its scaled estimate); bootstrap panels without it are left out, and with more than 10% left out
 //     the interval is not computed);
 //   - the comparators on the same rows: the profile interval (recomputed) and, for replicates 0-49,
 //     the Jeffreys equal-tailed interval with the resolution rule, computed as S-9 computed it, for a
@@ -202,7 +202,7 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
     e::AnalyticSe se_hat{};
     {
         Timer t{&sec[kSe]};
-        se_hat = e::analytic_se_scaled(rc::Objective{}, primary, obs.data(), T, g, v_hat);
+        se_hat = e::analytic_se_of(rc::Objective{}, primary, obs.data(), T, g, est);  // P-19 (D-406)
     }
     for (int a = 0; a < 2; ++a) row.se_analytic_u[a] = se_hat.ok ? se_hat.se_u[a] : kNaN;
     {
@@ -259,8 +259,7 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
         e::AnalyticSe seb{{kNaN, kNaN}, false};
         if (finite && !(eb.flags & (e::kFlagFlatSurface | e::kFlagNumeric))) {
             Timer t{&sec[kSe]};
-            const double vb[2] = {eb.value[0], eb.value[1]};
-            seb = e::analytic_se_scaled(rc::Objective{}, primary, obs_b.data(), T, g, vb);
+            seb = e::analytic_se_of(rc::Objective{}, primary, obs_b.data(), T, g, eb);  // P-19 (D-406)
         }
         for (int a = 0; a < 2; ++a) {
             if (!finite) continue;

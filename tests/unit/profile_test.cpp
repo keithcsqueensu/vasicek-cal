@@ -428,6 +428,37 @@ VCAL_TEST(profile_lr_statistic_is_the_threshold_at_the_interval_ends) {
     VCAL_CHECK(worst <= 2.0 * tol::TOL_PROFILE_ENDPOINT_RESIDUAL_LL);
 }
 
+// P-19 (D-406): the studentised SE taken from calibrate's own Hessian is, bit for bit, the analytic SE computed at
+// calibrate's scaled estimate; and a grid-edge estimate, for which calibrate takes no Hessian, gets the same
+// computation at its scaled coordinates.
+VCAL_TEST(analytic_se_of_is_calibrates_hessian_bit_for_bit) {
+    const Rules r;
+    const auto g = grid();
+    int from_hessian = 0, computed = 0, bad = 0;
+    auto run = [&](const std::vector<Obs>& p) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        e::Estimate2 est{};
+        std::vector<double> L;
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        const auto of = e::analytic_se_of(Objective{}, r.primary, p.data(), T, g, est);
+        const double u[2] = {est.scaled[0], est.scaled[1]};
+        const auto at = e::analytic_se_at_scaled(Objective{}, r.primary, p.data(), T, g, u);
+        const bool has_h = std::isfinite(est.hess_u[0]);
+        (has_h ? from_hessian : computed) += 1;
+        VCAL_CHECK(has_h || (est.flags & (e::kFlagGridEdge | e::kFlagFlatSurface)));  // only those skip the Hessian
+        const bool same = of.ok == at.ok && (!of.ok || (std::memcmp(of.se_u, at.se_u, sizeof of.se_u) == 0));
+        bad += same ? 0 : 1;
+    };
+    for (const auto& p : lr_panels()) run(p);
+    std::vector<Obs> zero;  // every period without defaults: the estimate sits on the grid's PD floor
+    for (int t = 0; t < 20; ++t) zero.push_back({1000, 0});
+    run(zero);
+    vcal::test::note(std::to_string(from_hessian) + " estimates from calibrate's Hessian, " + std::to_string(computed) +
+                     " computed at the scaled estimate, " + std::to_string(bad) + " differ");
+    VCAL_CHECK(computed >= 1);
+    VCAL_CHECK(bad == 0);
+}
+
 // P-15 (D-185): calibrate's SE is the analytic observed information (D-170's derivatives, themselves
 // checked against Richardson differences at TOL_SCORE_HESSIAN_FD_REL), the same as analytic_se_scaled's
 // up to the round trip of the estimate through the natural scale, in logit units.
