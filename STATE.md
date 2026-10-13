@@ -103,7 +103,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no |
 | P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no |
-| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done (`log_contrib` 33% faster) | D-199, D-212 | no |
 | P-8 | GPU backend | M4 | D-168 | within tolerance |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no |
@@ -117,7 +117,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
-| P-21 | One `erfcx` per node on the derivative path | proposed | D-213 | no |
+| P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 | P-22 | SIMD derivative node functions | proposed (after P-7, P-21) | D-213 | no |
 | P-23 | Hint and extent search across grid points | proposed | D-213 | no |
 

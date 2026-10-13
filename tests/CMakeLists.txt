@@ -3,6 +3,8 @@
 # In-house runner (D-029). Test sources include it as "tests/harness/vcal_test.hpp".
 add_library(vcal_test_harness STATIC harness/runner.cpp harness/golden.cpp harness/sha256.cpp)
 target_include_directories(vcal_test_harness PUBLIC "${PROJECT_SOURCE_DIR}")
+# Every test can include core/, so every test links its one compiled part, the erfcx kernels (P-7, D-212).
+target_link_libraries(vcal_test_harness PUBLIC vcal::core)
 target_compile_definitions(vcal_test_harness PRIVATE VCAL_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden")
 vcal_target_defaults(vcal_test_harness)
 
@@ -162,6 +164,12 @@ foreach(_k scalar sse2 avx2)
                      ar1_likelihood_goldens_reproduce)
     set_tests_properties(unit_ar1_filter_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
+# P-7 (D-212): the filter's committed likelihood goldens under each erfcx kernel forced.
+foreach(_k scalar sse2 avx2)
+    add_test(NAME unit_ar1_filter_erfcx_${_k}
+             COMMAND unit_ar1_filter ar1_phi_zero_is_the_per_period_likelihood_bit_for_bit ar1_likelihood_goldens_reproduce)
+    set_tests_properties(unit_ar1_filter_erfcx_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}")
+endforeach()
 # The AR(1) filter's transition kernels (P-18, D-199): every kernel against a plain reference, bit for bit; each
 # kernel also forced by VCAL_AR1_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed.
 add_executable(unit_ar1_transition unit/ar1_transition_test.cpp)
@@ -172,6 +180,19 @@ foreach(_k scalar sse2 avx2 none-such)
     add_test(NAME unit_ar1_kernel_${_k}
              COMMAND unit_ar1_transition ar1_kernel_selection_follows_vcal_ar1_kernel ar1_kernels_equal_the_reference_bit_for_bit)
     set_tests_properties(unit_ar1_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_AR1_KERNEL=${_k}" SKIP_RETURN_CODE 77)
+endforeach()
+
+# The erfcx lane kernels (P-7, D-212): every kernel against the scalar erfcx bit for bit, the integrand's node
+# batches, and log_contrib with its derivatives under every kernel against no kernel; each kernel also forced by
+# VCAL_ERFCX_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed. The fit suites with
+# committed goldens run again under each forced kernel.
+add_executable(unit_erfcx_batch unit/erfcx_batch_test.cpp)
+target_link_libraries(unit_erfcx_batch PRIVATE vcal_test_harness vcal::core)
+vcal_target_defaults(unit_erfcx_batch)
+add_test(NAME unit_erfcx_batch COMMAND unit_erfcx_batch)
+foreach(_k scalar sse2 avx2 none-such)
+    add_test(NAME unit_erfcx_kernel_${_k} COMMAND unit_erfcx_batch erfcx_kernel_selection_follows_vcal_erfcx_kernel)
+    set_tests_properties(unit_erfcx_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
 
 # The AR(1) MLE's search and profile intervals (D-195, D-196): recovery on DGP panels with known phi, ref's
@@ -211,6 +232,11 @@ target_link_libraries(unit_xref PRIVATE vcal_test_harness vcal::engine vcal::bac
 vcal_target_defaults(unit_xref)
 add_test(NAME xref_period_loglik COMMAND unit_xref xref_period_loglik_core_vs_ref)
 add_test(NAME xref_core_regression COMMAND unit_xref xref_core_estimates_match_regression_values)
+# P-7 (D-212): the committed regression estimates under each erfcx kernel forced (skipped where unavailable).
+foreach(_k scalar sse2 avx2)
+    add_test(NAME xref_core_regression_erfcx_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
+    set_tests_properties(xref_core_regression_erfcx_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}")
+endforeach()
 add_test(NAME xref_surface_smoothness COMMAND unit_xref xref_surface_is_smooth_for_zero_default_panels)
 add_test(NAME validation_goldens COMMAND unit_xref validation_goldens_are_current)
 add_test(NAME xref_estimates COMMAND unit_xref xref_estimates_core_vs_ref xref_estimates_agree_on_the_bound)
@@ -272,6 +298,12 @@ add_executable(p17_simd_philox ${PROJECT_SOURCE_DIR}/perf/p17_simd_philox.cpp)
 target_link_libraries(p17_simd_philox PRIVATE vcal::dgp)
 vcal_target_defaults(p17_simd_philox)
 add_test(NAME p17_simd_philox_identity COMMAND p17_simd_philox --seconds 0.04)
+# P-7's benchmark (perf/p7_erfcx.md, D-212): log_contrib and its derivatives under each erfcx kernel, every kernel's
+# values checked against the no-kernel path bit for bit first. A short run is a CTest entry.
+add_executable(p7_erfcx ${PROJECT_SOURCE_DIR}/perf/p7_erfcx.cpp)
+target_link_libraries(p7_erfcx PRIVATE vcal::core)
+vcal_target_defaults(p7_erfcx)
+add_test(NAME p7_erfcx_identity COMMAND p7_erfcx --seconds 0.04)
 # The measurements behind the proposed SIMD items P-21 to P-23 (perf/p21_p23_simd_sweep.md, D-213). Built so it keeps compiling;
 # run by hand.
 add_executable(simd_scout ${PROJECT_SOURCE_DIR}/perf/simd_scout.cpp)

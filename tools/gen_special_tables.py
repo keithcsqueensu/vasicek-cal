@@ -183,6 +183,38 @@ def render_erfcx(segments, tail_coeffs, worst: float) -> str:
     return "".join(out)
 
 
+def render_erfcx_table(segments, tail_coeffs) -> str:
+    """The same coefficients as render_erfcx, as one host-side table for the lane kernels (P-7, D-212).
+
+    Each piece is padded with +0 at its top (highest-order) end to the longest piece's length. Clenshaw's
+    recurrence starts at b1 = b2 = +0, and a zero coefficient keeps it there exactly (0 + (2t)(+0) - (+0) = +0 for
+    finite t), so a padded piece evaluates bit for bit as its unpadded series.
+    """
+    rows = [c for _, _, _, c in segments] + [tail_coeffs]
+    width = max(len(c) for c in rows)
+    preamble = (
+        "//\n"
+        "// erfcx's Chebyshev pieces (erfcx_chebyshev.hpp) as one table for the host lane kernels (P-7, D-212):\n"
+        "// pieces 0..2 are the segments, piece 3 the tail; each padded with +0 at its top to the longest\n"
+        "// piece's length, which leaves Clenshaw's recurrence unchanged bit for bit. Host-only data.\n"
+        "#pragma once\n\n"
+        "namespace vcal::special::generated {\n\n"
+    )
+    out = [HEADER_BANNER, preamble]
+    out.append(f"inline constexpr int kErfcxPieces = {len(rows)};\n")
+    out.append(f"inline constexpr int kErfcxWidth = {width};\n")
+    out.append("// Piece s covers x <= kErfcxUpper[s] (s < 3), with t = (2x - kErfcxCentre2[s]) / kErfcxSpan[s].\n")
+    out.append("inline constexpr double kErfcxUpper[3] = {" + ", ".join(repr(float(b)) for _, _, b, _ in segments) + "};\n")
+    out.append("inline constexpr double kErfcxCentre2[3] = {" + ", ".join(repr(float(a + b)) for _, a, b, _ in segments) + "};\n")
+    out.append("inline constexpr double kErfcxSpan[3] = {" + ", ".join(repr(float(b - a)) for _, a, b, _ in segments) + "};\n")
+    out.append(f"// The tail (piece 3): x erfcx(x) in t = 2 (kErfcxTailX0 / x) - 1.\ninline constexpr double kErfcxTailX0 = {float(ERFCX_TAIL_X0)!r};\n")
+    out.append(f"inline constexpr double kErfcxCoef[{len(rows)}][{width}] = {{\n")
+    for c in rows:
+        out.append("    {" + ", ".join(cxx(v) for v in c + [0.0] * (width - len(c))) + "},\n")
+    out.append("};\n\n}  // namespace vcal::special::generated\n")
+    return "".join(out)
+
+
 def render_stirling() -> str:
     table = [to_double(stirling_error_mp(n)) for n in range(1, STIRLING_TABLE_MAX + 1)]
     # delta(n) ~ sum_{k>=1} B_2k / (2k (2k-1) n^(2k-1))
@@ -317,6 +349,7 @@ def build_outputs() -> dict[str, str]:
     return {
         f"{GEN_DIR}/constants.hpp": render_constants(),
         f"{GEN_DIR}/erfcx_chebyshev.hpp": render_erfcx(segments, tail_coeffs, worst),
+        f"{GEN_DIR}/erfcx_table.hpp": render_erfcx_table(segments, tail_coeffs),
         f"{GEN_DIR}/stirling_error.hpp": render_stirling(),
         f"{GOLDEN_DIR}/erfcx.csv": golden_erfcx(),
         f"{GOLDEN_DIR}/inverse_mills.csv": golden_inverse_mills(),

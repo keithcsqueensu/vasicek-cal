@@ -86,8 +86,13 @@ struct BinomialMixture {
     template <class I>
     VCAL_HD typename P::accum_t log_contrib_derivs(const Obs& y, const Theta& th, const I& integrator,
                                                    double (&grad)[2], double (&hess)[3]) const {
-        const auto f = model::make_binomial_log_integrand(model::make_vasicek1f(th.pd, th.rho), y.n, y.d);
-        const auto df = model::make_binomial_log_integrand_derivs(th.pd, th.rho, y.n, y.d);
+        auto f = model::make_binomial_log_integrand(model::make_vasicek1f(th.pd, th.rho), y.n, y.d);
+        auto df = model::make_binomial_log_integrand_derivs(th.pd, th.rho, y.n, y.d);
+#if !defined(__CUDA_ARCH__)
+        model::NodeCache cache;  // the value's per-node erfcx for the derivatives (P-21, D-400); host only
+        f.cache = &cache;
+        df.cache = &cache;
+#endif
         quadrature::detail::OnlineLogSumExpMoments<model::BinomialLogIntegrandDerivs, 5> acc(df);
         const double l = special::lbinom(y.n, y.d) + integrator.log_integrate_with(f, model::binomial_mixture_hint(f), acc);
         const double m0 = acc.mean(0), m1 = acc.mean(1);
