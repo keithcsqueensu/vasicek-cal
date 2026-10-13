@@ -30,7 +30,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no | [p16_sampled_check.md](p16_sampled_check.md) |
 | P-17 | SIMD Philox for the DGP's Bernoulli draws | done | D-194 | no | [p17_simd_philox.md](p17_simd_philox.md) |
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) | [p18_ar1_transition.md](p18_ar1_transition.md) |
-| P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
+| P-19 | Analytic SE shared with calibrate | built: the SE phase −93%, per-replicate work −6.9%; full flip check owed | D-199, D-406 | within rounding (1e-14); flip check | [p19_shared_se.md](p19_shared_se.md) |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done: `log_contrib_derivs` ~3× faster, `log_contrib` 15% (after P-7) | D-213, D-400 | no | [p21_shared_erfcx.md](p21_shared_erfcx.md) |
 | P-22 | SIMD derivative node functions | **rejected** (measured 0–3%, expected 8–12%; ~300 lines and a third kernel family) | D-213, D-402 | — | [p22_simd_derivs.md](p22_simd_derivs.md) |

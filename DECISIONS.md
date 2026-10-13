@@ -1654,6 +1654,14 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Why:** its ceiling was measured first. The row fill it would speed up runs inside the surface-row cache's fill (P-1), once per distinct (n, d) per scenario. In `study_parametric_bootstrap` (subset scenarios 37 and 4) the fill is 2.4 s once per scenario, against about 1.5 s of per-replicate work, so at R = 1,000 it is under 0.2% of the run. The evaluations off the grid (the profile solves, W*, Newton's steps, the analytic SE) evaluate one point at a time and would not benefit.
   - **Also searched, not proposed:** the same searches in lanes across a likelihood's periods. Each period's hint is a serial chain, and lanes would overlap the chains of different periods. It would serve every off-grid evaluation, but it would be a new item with its own ceiling to measure, and the libm calls (`exp`, `log`, the probit) would stay scalar. The owner did not take it up.
 
+## P-19: the analytic SE shared with calibrate, 2026-10-13
+
+- **D-406 — P-19 is built: S-10's studentised SE comes from calibrate's own analytic Hessian at its scaled estimate, instead of a second Hessian at `to_scaled(value)`; within rounding, not merged before the full flip check** (`perf/p19_shared_se.md`; D-199).
+  - **Changes results: within rounding.** The SE becomes one computation at one point; before, it was computed again after the estimate's round trip through the natural scale. In a 24-row sample the analytic SEs and studentised ends change in about a third of rows, by at most 1.2e-14 in logit units, with 0 coverage flips; every other column is byte-identical.
+  - **Built:** `Estimate2::scaled` and `hess_u`, and `analytic_se_from_hessian`, `analytic_se_at_scaled` and `analytic_se_of` in `engine/profile.hpp` (`analytic_se_scaled` is kept). Test: `analytic_se_of_is_calibrates_hessian_bit_for_bit`; non-slow suite 79/79.
+  - **Measured:** the analytic SE phase −93%, per-replicate work −6.9% (expected 8-13%; stop rule under 5%, not triggered).
+  - **Before merge (D-177):** the full S-10/S-4 run, every fit flip-checked against the run that wrote `studies/parametric-bootstrap/summary.csv`, the flip counts reported even if zero, and the summary refreshed from it, in its own commit.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

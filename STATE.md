@@ -115,7 +115,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no |
 | P-17 | SIMD Philox for the DGP's Bernoulli draws | done | D-194 | no |
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
-| P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
+| P-19 | Analytic SE shared with calibrate | built (per-replicate −6.9%); full flip check owed (D-406) | D-199, D-406 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 | P-22 | SIMD derivative node functions | **rejected** (measured 0–3%) | D-213, D-402 | — |
