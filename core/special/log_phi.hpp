@@ -47,10 +47,13 @@ struct LogPhiPair {
     double at_neg_x;  // log Phi(-x)
 };
 
-// log_phi_pair given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212).
-VCAL_HD LogPhiPair log_phi_pair_given_erfcx(double x, double e) {
+// log_phi_pair given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212). If E_out is not null it receives the
+// exp pair exp(-x^2 / 2) computed here (exp_neg_half_square's value), for the derivatives (P-21, D-400).
+VCAL_HD LogPhiPair log_phi_pair_given_erfcx(double x, double e, double* E_out = nullptr) {
     const detail::Square s = detail::split_square(x);
-    const double upper = std::log1p(-0.5 * e * (std::exp(-0.5 * s.hi) * std::exp(-0.5 * s.lo)));  // log Phi(|x|)
+    const double E = std::exp(-0.5 * s.hi) * std::exp(-0.5 * s.lo);
+    if (E_out != nullptr) *E_out = E;
+    const double upper = std::log1p(-0.5 * e * E);  // log Phi(|x|)
     if (x == 0.0) return {upper, upper};
     const double lower = ((std::log(e) - constants::kLn2) - 0.5 * s.lo) - 0.5 * s.hi;  // log Phi(-|x|)
     return x < 0.0 ? LogPhiPair{lower, upper} : LogPhiPair{upper, lower};

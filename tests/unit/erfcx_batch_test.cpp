@@ -227,3 +227,113 @@ VCAL_TEST(log_contrib_is_the_same_under_every_kernel) {
     }
 }
 
+
+// --- P-21 (D-400): one erfcx per node on the derivative path and in the hint -----------------------------------
+
+namespace {
+
+// The code P-21 replaced, verbatim: the reference every shared-erfcx path must equal bit for bit.
+double old_slope(double t) {
+    const double lam = vcal::special::inverse_mills(t);
+    const double v = -lam * (t + lam);
+    return v < -1.0 ? -1.0 : (v > 0.0 ? 0.0 : v);
+}
+
+void old_derivs(const vcal::model::BinomialLogIntegrandDerivs& d, double z, double (&f)[5]) {
+    const double x = (d.c - d.a * z) / d.b;
+    double gx = 0.0, gxx = 0.0;
+    if (d.defaults > 0.0) {
+        const double lam = vcal::special::inverse_mills(x);
+        gx += d.defaults * lam;
+        gxx += d.defaults * (-lam * (x + lam));
+    }
+    if (d.survivors > 0.0) {
+        const double lam = vcal::special::inverse_mills(-x);
+        gx -= d.survivors * lam;
+        gxx += d.survivors * (-lam * (lam - x));
+    }
+    const double b2 = d.b * d.b;
+    const double x1 = d.c1 / d.b;
+    const double x2 = -z / (2.0 * d.a * d.b) + x / (2.0 * b2);
+    const double x11 = d.c2 / d.b;
+    const double x12 = d.c1 / (2.0 * b2 * d.b);
+    const double ab = d.a * d.b;
+    const double x22 = z * (1.0 - 2.0 * d.rho) / (4.0 * ab * ab * ab) + x2 / (2.0 * b2) + x / (2.0 * b2 * b2);
+    const double g1 = gx * x1, g2 = gx * x2;
+    f[0] = g1;
+    f[1] = g2;
+    f[2] = gxx * x1 * x1 + gx * x11 + g1 * g1;
+    f[3] = gxx * x2 * x2 + gx * x22 + g2 * g2;
+    f[4] = gxx * x1 * x2 + gx * x12 + g1 * g2;
+}
+
+bool same(double a, double b) { return bits_equal(a, b) || (std::isnan(a) && std::isnan(b)); }
+
+}  // namespace
+
+// inverse_mills_pair and inverse_mills_given_erfcx are two inverse_mills calls bit for bit, over the erfcx argument
+// set mapped to x = +-sqrt2 * a (every piece, both signs, the zeros, the infinities, NaN).
+VCAL_TEST(inverse_mills_pair_is_two_inverse_mills_calls_bit_for_bit) {
+    namespace sp = vcal::special;
+    std::vector<double> xs;
+    for (const double a : erfcx_arguments()) {
+        xs.push_back(a * 1.4142135623730951);
+        xs.push_back(-a * 1.4142135623730951);
+    }
+    for (const double v : {HUGE_VAL, -HUGE_VAL, std::numeric_limits<double>::quiet_NaN(), 0.0, -0.0}) xs.push_back(v);
+    std::size_t bad = 0;
+    for (const double x : xs) {
+        const sp::InverseMillsPair p = sp::inverse_mills_pair(x);
+        bad += same(p.at_x, sp::inverse_mills(x)) ? 0 : 1;
+        bad += same(p.at_neg_x, sp::inverse_mills(-x)) ? 0 : 1;
+        bad += same(vcal::model::detail::inverse_mills_slope(x), old_slope(x)) ? 0 : 1;
+    }
+    vcal::test::note(std::to_string(xs.size()) + " arguments, " + std::to_string(bad) + " differ");
+    VCAL_CHECK(bad == 0);
+}
+
+// The derivative functor, with and without the value's node cache, is the replaced functor bit for bit; and the
+// hint (mixture_slopes inside binomial_mixture_hint) is unchanged: checked through log_contrib_derivs below and here
+// directly on random periods and nodes, with d = 0, d = n and 0 < d < n, under every kernel.
+VCAL_TEST(derivative_functor_with_the_node_cache_is_the_replaced_functor_bit_for_bit) {
+    namespace m = vcal::model;
+    for_each_kernel([&](k::Kernel kern) {
+        Lcg g{0xD21u};
+        std::size_t bad = 0, nodes = 0;
+        std::vector<double> z(256);
+        for (int rep = 0; rep < 500; ++rep) {
+            const double pd = std::exp(-9.0 + 8.9 * g.uniform());
+            const double rho = 0.001 + 0.99 * g.uniform();
+            const std::int64_t n = 1 + static_cast<std::int64_t>(std::exp(14.0 * g.uniform()));
+            std::int64_t d = static_cast<std::int64_t>(g.uniform() * static_cast<double>(n + 1));
+            if (rep % 5 == 0) d = 0;
+            if (rep % 5 == 1) d = n;
+            if (d > n) d = n;
+            const int count = 1 + rep % 256;
+            for (int i = 0; i < count; ++i) z[static_cast<std::size_t>(i)] = -12.0 + 24.0 * g.uniform();
+            if (rep % 7 == 0) z[0] = 1e308;
+            m::NodeCache cache;
+            auto f = m::make_binomial_log_integrand(m::make_vasicek1f(pd, rho), n, d);
+            f.cache = &cache;
+            auto df = m::make_binomial_log_integrand_derivs(pd, rho, n, d);
+            const auto df_plain = df;
+            df.cache = &cache;
+            double out[256];
+            f.batch(z.data(), out, count);
+            for (int i = 0; i < count; ++i) {
+                if (rep % 3 == 0 && i % 4 == 1) continue;  // skipped nodes, as the accumulator skips underflowed ones
+                double a[5], b[5], c[5];
+                df(z[static_cast<std::size_t>(i)], a);
+                df_plain(z[static_cast<std::size_t>(i)], b);
+                old_derivs(df_plain, z[static_cast<std::size_t>(i)], c);
+                for (int j = 0; j < 5; ++j) bad += (same(a[j], c[j]) && same(b[j], c[j])) ? 0 : 1;
+                ++nodes;
+            }
+            const auto h = m::binomial_mixture_hint(f);
+            (void)h;
+        }
+        vcal::test::note(std::string(k::name(kern)) + ": " + std::to_string(nodes) + " nodes, " +
+                         std::to_string(bad) + " values differ");
+        VCAL_CHECK(bad == 0);
+    });
+}

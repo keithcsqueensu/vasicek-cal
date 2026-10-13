@@ -1609,6 +1609,16 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Left to the in-house `log`/`exp` decision (D-199), not new items:** the remaining libm calls (`log_phi`'s log, log1p and exp pair, the log-sum-exp's exp per node, the composite rule's sinh, cosh and log, the posterior's masses, the AR(1) filter's `weighted_moments`).
   - **Checked, not proposed:** bootstrap index draws (under 1% of S-10), per-grid-point `make_vasicek1f` (tens of ns per evaluation), and the DGP's factor draws (T per panel).
 
+## P-21: one erfcx per node on the derivative path, 2026-10-12
+
+Numbered from D-400: entries made in a cloud session while the laptop agent continues the main sequence (D-214 on),
+so that the two do not collide (as D-300 on, above).
+
+- **D-400 — P-21 is done: the derivative path and the hint take each node's erfcx once, bit for bit; `log_contrib_derivs` is about 3× faster and `log_contrib` 15% faster than with P-7 alone** (`perf/p21_shared_erfcx.md`; proposed in D-213).
+  - **Changes results: no.** λ(±x) is finished from the value's `erfcx(|x|/√2)` and exp pair with `inverse_mills`'s own expression for each sign (`inverse_mills_given_erfcx`), through a per-call host-only node cache (`model::NodeCache`) that P-7's batch fills; the hint's `mixture_slopes` takes λ(±x) from one `inverse_mills_pair` and λ' from those values. Tested: 1,600,807 arguments for the pair and slope, 57,512 derivative nodes against a verbatim copy of the replaced functor, under every kernel; and 66,000 values (hints, values, scores, Hessians; 6,000 periods, both rules) against `main` before P-7 as built code, 0 differences.
+  - **Measured** (cloud Xeon 2.8 GHz, GCC 13, one thread, against P-7's branch): `log_contrib_derivs` 41.8-48.9 → 14.2-15.1 µs per period (expected 15-30% faster; the expectation used the sweep's per-call erfcx cost, about half this machine's); `log_contrib` 13.6-14.4 → 11.7-12.3 µs (expected 5-15%). With P-7, against `main`: about 45% less time for the value and 70% less with derivatives. A run's saving is measured by the next projection (D-187).
+  - **P-22 (D-213) is now smaller:** the derivative functor's remaining per-node work is the node functions' arithmetic; whether lanes over it still pay is for its own measurement.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
