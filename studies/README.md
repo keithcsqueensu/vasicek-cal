@@ -12,7 +12,7 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
   S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
-- **Running:** none. **Registered, not run:** S-36 (D-401).
+- **Running:** none. **Registered, not run:** S-6 (D-214), S-36 (D-401).
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
 - **The interval recommendation** that the finished studies support is in
@@ -31,7 +31,7 @@ they exist.
 | [S-3](#s-3-jackknife-bias-correction-for-ρ̂-jackknife-bias-rho) | [`jackknife-bias-rho`](jackknife-bias-rho/) | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
 | [S-4](#s-4-bartlett-corrected-profile-threshold-bartlett-profile) | [`bartlett-profile`](bartlett-profile/) | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
 | [S-5](#s-5-bca-intervals-bca-intervals) | [`bca-intervals`](bca-intervals/) | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
-| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
+| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | registered (D-214); tool and scorer next |
 | [S-7](#s-7-grid-resolution-against-accuracy-and-runtime-grid-resolution) | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | [S-8](#s-8-mle-against-method-of-moments-mle-vs-mom) | [`mle-vs-mom`](mle-vs-mom/) | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
 | [S-9](#s-9-frequentist-coverage-of-grid-bayesian-credible-intervals-bayes-coverage) | [`bayes-coverage`](bayes-coverage/) | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
@@ -535,7 +535,21 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 - **Scope:** the serially correlated version needs the AR(1) factor and stays in M6, which already
   lists Pluto–Tasche as a benchmark.
 - **Cost:** minutes for the full matrix.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
+- **Prediction:** registered in [`pluto-tasche/PREDICTION.md`](pluto-tasche/PREDICTION.md) before any
+  panel was simulated (D-214).
+  - **Six predictions,** P1–P6, from exact numbers in [`pluto-tasche/reference.csv`](pluto-tasche/reference.csv)
+    (`reference.py`: scipy only, no simulation).
+  - **The design:** 27 low-default scenarios (n·PD ≤ 1), R = 1,000, a new seed (`0x533036504C55544F`).
+  - **The arms:** (a) independent, and (b) one factor with ρ_a either the generating ρ or a fixed 0.12.
+  - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ ∈ {0.5, 0.75, 0.9, 0.95,
+    0.99}; reported, not predicted.
+  - **Scope of the predictions:** coverage in the 18 n·PD = 1 scenarios only. In the 9 n·PD = 0.1
+    scenarios, coverage is driven by totals of 0–2 and is reported; the bound/true ratio is the headline
+    there. The per-panel order of the bounds holds at every total checked
+    ([`reference_ordering.csv`](pluto-tasche/reference_ordering.csv): 0 violations in 32,700 pairs).
+  - **Exact headline:** at γ = 0.95 in the n·PD = 1 cells, the independent bound covers 0.943, 0.850 and
+    0.733 at ρ = 0.02, 0.12 and 0.24, against the oracle's 0.957, 0.958 and 0.956.
+- **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
 ### S-7 Grid resolution against accuracy and runtime (`grid-resolution`)

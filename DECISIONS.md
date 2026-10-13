@@ -1609,6 +1609,41 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Left to the in-house `log`/`exp` decision (D-199), not new items:** the remaining libm calls (`log_phi`'s log, log1p and exp pair, the log-sum-exp's exp per node, the composite rule's sinh, cosh and log, the posterior's masses, the AR(1) filter's `weighted_moments`).
   - **Checked, not proposed:** bootstrap index draws (under 1% of S-10), per-grid-point `make_vasicek1f` (tens of ns per evaluation), and the DGP's factor draws (T per panel).
 
+## S-6: Pluto–Tasche bounds, the registration, 2026-10-12
+
+- **D-214 — S-6, Pluto–Tasche most-prudent upper bounds, is registered before any panel is simulated (D-148).** The record is in `studies/pluto-tasche/PREDICTION.md` (P1–P6) and in `reference.py`, which writes `reference.csv`: exact numbers, scipy only, with no simulation. There are three PRs, each approved by the owner before the next: this registration; the tool and scorer, merged before any run; then the run.
+  - **The bounds,** per panel at γ ∈ {0.5, 0.75, 0.9, 0.95, 0.99}:
+    - **(a) independent:** one-sided Clopper–Pearson on N = Σ n_t and D = Σ d_t;
+    - **(b) one factor:** the T Vasicek mixed-binomial PMFs, from the existing quadrature in log space, convolved on 0..D. ρ_a is assumed: either the generating ρ (oracle) or a fixed 0.12.
+    - Both are solved by bisection on logit p.
+  - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ.
+  - **The scenarios:** the recovery grid's low-default cells, n·PD ≤ 1. That is 27 scenarios: 9 at n·PD = 0.1 and 18 at n·PD = 1. The latter include the subset's PD 0.1% cells, 4 and 7. R = 1,000.
+  - **The seed:** `0x533036504C55544F` ("S06PLUTO"), reserved here. It collides with none in the code or in DECISIONS.md. The recovery seed is not reused.
+  - **Exact coverage without simulation.**
+    - Both bounds depend on the panel only through D, and bound(D) ≥ PD exactly when P_a(S ≤ D | PD) ≥ 1 − γ. So coverage is P_true(S ≥ D_min), with D_min the assumed law's (1 − γ) quantile at the true PD.
+    - For the oracle this makes coverage ≥ γ hold by construction.
+    - The brief's wording, summing up to "the largest D whose bound still covers", had the direction reversed. The bound rises with D, and PREDICTION.md records the correct identity.
+  - **Headline (exact),** at γ = 0.95 in the 18 n·PD = 1 scenarios, as mean coverage:
+    - **independent:** 0.943, 0.850 and 0.733 at ρ = 0.02, 0.12 and 0.24;
+    - **oracle:** 0.957, 0.958 and 0.956;
+    - **fixed ρ_a = 0.12:** 0.993, the oracle, and 0.869.
+    - At n·PD = 0.1 discreteness dominates: totals are mostly 0–2, and every method covers above γ on average.
+  - **Coverage is predicted in the 18 n·PD = 1 scenarios only (review).** In the 9 n·PD = 0.1 scenarios it is reported, not predicted, and the bound/true ratio is the headline there: at γ = 0.95 the oracle's median bound is 2.32, 2.55 and 3.02 times the true PD at ρ = 0.02, 0.12 and 0.24.
+  - **Checks in `reference.py`:**
+    - the trapezoid PMF against `scipy.integrate.quad`: 1.6e-13 relative;
+    - (a) at D = 0 against 1 − (1 − γ)^(1/N): exact;
+    - (b) at ρ_a = 1e-10 against (a): 1.7e-10;
+    - the per-panel ordering independent ≤ (b, 0.02) ≤ (b, 0.12) ≤ (b, 0.24), every pair at every D up to each (n, T)'s 0.9999 quantile of the true total and at all five γ: **0 violations and 0 ties in 32,700 pairs** (`reference_ordering.csv`). The closest approach is 4.3e-4 in logit, at γ = 0.5 (independent against 0.02, n = 100, T = 100, D = 197). The review asked that P6 be narrowed to where the check holds, with the exceptions listed, rather than loosened; there are no exceptions, so P6 stands as written. At γ = 0.5 the gaps narrow with D, so the scorer also checks the order on every simulated panel;
+    - the closest any bound comes to the truth where coverage switches: 8.4e-5 in logit, far above the planned 1e-10 solver tolerance.
+  - **Two departures from the brief, for the owner:**
+    - **The profile and Jeffreys ordering is reported, not predicted.** Their limits depend on the whole count vector, so the reference cannot give their exact coverage. Their ordering against the bounds is reported paired, with D-176's z.
+    - **The solver tolerance goes into `tolerances.md` with the code in PR 2.** The register's sync check needs the id in `tests/tolerances.toml`.
+  - **Open choices for the owner (not decided here; the review's recommendation in brackets):**
+    - **(i) The multi-grade most-prudent sequence** (grade k's bound pools grades k..K) on the grade scenario matrix (D-151). The existing generator does **not** support it without new code. `dgp::simulate_panel` takes one PD per panel, and the grade matrix draws grade k under S-24's segment index on a shared Z_t. That stream is not built, and needs its own prose, Python mirror and reference-panel hash (D-149). The bound itself needs only a convolution over grades within each period; its exact coverage could also be computed without simulation. [Drop it from S-6 and note it under S-24.]
+    - **(ii) The γ set:** registered as {0.5, 0.75, 0.9, 0.95, 0.99}. [Keep.]
+    - **(iii) The misspecified ρ_a:** registered as 0.12, which equals the oracle on the 0.12 scale, so that arm adds information on two scales only. [Keep 0.12.]
+  - **Placement:** the bounds will be a `native` benchmark, not parity and not in the C ABI. The proposed home is `benchmark_models/`, beside the AR(1) model; PR 2's D-entry justifies the placement. The serially correlated version stays with M6.
+
 ## P-21: one erfcx per node on the derivative path, 2026-10-12
 
 Numbered from D-400: entries made in a cloud session while the laptop agent continues the main sequence (D-214 on),
