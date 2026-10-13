@@ -49,8 +49,6 @@ PD_K = np.array([0.0003 * 1.5 ** (k - 1) for k in range(1, K + 1)])  # master sc
 SCALES = {"L": (5, 0.24), "M": (8, 0.12), "H": (11, 0.02)}            # centre, rho (D-151)
 # Probit boundaries between grades: geometric midpoints of adjacent master-scale PDs.
 B = ndtri(np.sqrt(PD_K[:-1] * PD_K[1:]))
-LO = ndtri(PD_K / math.sqrt(1.5))   # each obligor's TTC PD is log-uniform on [PD_k/sqrt1.5, PD_k*sqrt1.5)
-HI = ndtri(PD_K * math.sqrt(1.5))
 
 
 def shares(centre: int) -> np.ndarray:
@@ -164,7 +162,8 @@ def reference_idio(centre: int, rho: float, lam: float, thS: float, thI: float, 
     """Arm I's finite-grade pseudo-true (rho, PD) per grade, as reference() does for the main arm.
 
     Quadrature over (z_t, M_{t-1}); the obligor population over (c, N) with c as in population() and N on nn
-    equally spaced nodes over +-8 standard deviations of its stationary law (trapezoid weights). The driver eta is integrated out exactly given N:
+    equally spaced nodes over +-8 standard deviations of its stationary law, each weighted by the normal
+    density at the node, normalised to sum to 1 (a rectangle rule). The driver eta is integrated out exactly given N:
     eta | N ~ N(mu N, sig2), mu = Cov / Var N, sig2 = 1 - Cov^2 / Var N, so an obligor's conditional PD given
     (c, N, z) is Phi((c - sqrt(rho) z - sqrt((1 - rho) kappa) mu N) / sqrt((1 - rho)(1 - kappa) + (1 - rho) kappa sig2)).
     """
