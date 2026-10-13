@@ -192,7 +192,7 @@ inline std::vector<double> summed_surface(const Grid<2>& grid, const std::vector
     const std::int64_t K = grid.size();
     const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
     std::vector<double> S(static_cast<std::size_t>(K));
-    for (std::int64_t k = 0; k < K; ++k) S[static_cast<std::size_t>(k)] = weighted_sum(L.data(), periods, K, ones.data(), k);
+    weighted_sums(L.data(), periods, K, ones.data(), 0, K, S.data());  // P-6, D-404
     return S;
 }
 

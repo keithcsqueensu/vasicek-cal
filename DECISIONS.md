@@ -1639,6 +1639,15 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Measured:** the kernel alone about 2× faster (16.5-16.9 → 7.2-8.9 ns per node), but `log_contrib_derivs` only 0-3% faster in place (AVX2 15.34 → 14.84 µs, SSE2 14.91 → 14.63 µs; interquartile ranges overlapping), against 8-12% expected. In the per-node path the divisions overlap with the fold's `exp`; the batch adds a store-and-reload pass. The stop rule recorded before the build (under 3% on both kernels) was borderline (AVX2 −3.2%).
   - **Why rejected:** a gain inside the noise does not pay for about 300 lines and a third kernel family. A real gain on the derivative path needs the fold itself in lanes, which waits on the in-house `exp` (D-199).
 
+## P-6: the grid reduction in vector lanes, 2026-10-13
+
+- **D-404 — P-6 is done: `weighted_sum` and the bounded argmax's tile bounds run in vector lanes over grid points, bit for bit; the reduction is 3.3-3.7× faster with AVX2 and the W × L bootstrap phase 33% faster** (`perf/p6_simd_reduction.md`; D-199, D-213's scope note). D-403 is reserved for P-13 (#72), which waits on the MSVC measurement.
+  - **Changes results: no.** One lane per grid point, each lane `weighted_sum`'s operations in their order. Both Neumaier branches are computed and the scalar's selected exactly. A block that meets a non-finite term is redone with the scalar code. Scalar, SSE2 and AVX2 kernels behind `VCAL_REDUCE_KERNEL`, in `vcal_core_kernels`, as P-7.
+  - **Where:** `weighted_sum` moves to `core/reducers/weighted_sum.hpp` unchanged, with `weighted_sums` for a run of adjacent k. The callers are `reduce_weighted`, the bounded argmax's tile rows and tile bounds, `grid_posterior` and `summed_surface`.
+  - **Checked:** every kernel against the scalar sums on random, adversarial and non-finite surfaces (56,754 sums, 522 tile bounds), and calibrate and 64 replicates with both searches under every kernel: 0 differences. Also the regression estimates under each forced kernel, the non-slow suite (79/79) and the slow full-against-bounded check.
+  - **Measured:** the reduction 3.4×, 3.7× and 2.2× (AVX2) at T = 13, 40 and 100; SSE2 about 1.8×. The W × L tool's ArgMax phase 0.9 → 0.6 s. S-10's tool shows no measurable change, against 3-5% expected: its reduction is a small part of each refit.
+  - **Not done:** the U table's per-tile `fmax`, once per call and cheap; and a heap in place of the per-replicate sort of tile bounds (D-213), which stays to be measured.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

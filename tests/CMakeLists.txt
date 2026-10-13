@@ -195,6 +195,16 @@ foreach(_k scalar sse2 avx2 none-such)
     set_tests_properties(unit_erfcx_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}" SKIP_RETURN_CODE 77)
 endforeach()
 
+# The grid reduction's sum kernels (P-6, D-404): every kernel against the scalar sums bit for bit, and calibrate and
+# the bootstrap's replicate estimates (full and bounded) under every kernel against none; each kernel also forced by
+# VCAL_REDUCE_KERNEL, a kernel this machine lacks reported as skipped (exit 77), never as passed. The fit suites
+# with committed goldens run again under each forced kernel.
+vcal_add_test_executable(unit_sum_batch SOURCES unit/sum_batch_test.cpp LIBS vcal::resample vcal::backend_cpu)
+foreach(_k scalar sse2 avx2 none-such)
+    add_test(NAME unit_reduce_kernel_${_k} COMMAND unit_sum_batch reduce_kernel_selection_follows_vcal_reduce_kernel)
+    set_tests_properties(unit_reduce_kernel_${_k} PROPERTIES ENVIRONMENT "VCAL_REDUCE_KERNEL=${_k}" SKIP_RETURN_CODE 77)
+endforeach()
+
 # The AR(1) MLE's search and profile intervals (D-195, D-196): recovery on DGP panels with known phi, ref's
 # independent surface at the estimate, the binomial MLE at phi = 0, the box, determinism, the profile ends.
 add_executable(unit_ar1_search unit/ar1_search_test.cpp)
@@ -236,6 +246,11 @@ add_test(NAME xref_core_regression COMMAND unit_xref xref_core_estimates_match_r
 foreach(_k scalar sse2 avx2)
     add_test(NAME xref_core_regression_erfcx_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
     set_tests_properties(xref_core_regression_erfcx_${_k} PROPERTIES ENVIRONMENT "VCAL_ERFCX_KERNEL=${_k}")
+endforeach()
+# P-6 (D-404): the committed regression estimates under each reduce kernel forced.
+foreach(_k scalar sse2 avx2)
+    add_test(NAME xref_core_regression_reduce_${_k} COMMAND unit_xref xref_core_estimates_match_regression_values)
+    set_tests_properties(xref_core_regression_reduce_${_k} PROPERTIES ENVIRONMENT "VCAL_REDUCE_KERNEL=${_k}")
 endforeach()
 add_test(NAME xref_surface_smoothness COMMAND unit_xref xref_surface_is_smooth_for_zero_default_panels)
 add_test(NAME validation_goldens COMMAND unit_xref validation_goldens_are_current)

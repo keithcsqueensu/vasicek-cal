@@ -103,17 +103,20 @@ bool argmax_bounded(const Backend& backend, const Grid<2>& grid, const double* L
         const double* w = W + b * periods;
         std::vector<double> bound(static_cast<std::size_t>(tiles));
         std::vector<std::int64_t> order(static_cast<std::size_t>(tiles));
-        for (std::int64_t tile = 0; tile < tiles; ++tile) {
-            double s = 0.0, mag = 0.0;
-            for (std::int64_t j = 0; j < periods; ++j) {
-                if (w[j] == 0.0) continue;
-                const double x = w[j] * U[static_cast<std::size_t>(j * tiles + tile)];
-                s += x;
-                mag += std::fabs(x);
+        // Each tile's bound, s + margin * mag over the replicate's weights (in lanes over tiles, P-6, D-404).
+        if (!reducers::sum_batch::tile_bounds(U.data(), periods, tiles, w, kArgmaxBoundMargin, bound.data())) {
+            for (std::int64_t tile = 0; tile < tiles; ++tile) {
+                double s = 0.0, mag = 0.0;
+                for (std::int64_t j = 0; j < periods; ++j) {
+                    if (w[j] == 0.0) continue;
+                    const double x = w[j] * U[static_cast<std::size_t>(j * tiles + tile)];
+                    s += x;
+                    mag += std::fabs(x);
+                }
+                bound[static_cast<std::size_t>(tile)] = s + kArgmaxBoundMargin * mag;
             }
-            bound[static_cast<std::size_t>(tile)] = s + kArgmaxBoundMargin * mag;
-            order[static_cast<std::size_t>(tile)] = tile;
         }
+        for (std::int64_t tile = 0; tile < tiles; ++tile) order[static_cast<std::size_t>(tile)] = tile;
         std::sort(order.begin(), order.end(), [&](std::int64_t x, std::int64_t y) {
             const double bx = bound[static_cast<std::size_t>(x)], by = bound[static_cast<std::size_t>(y)];
             return bx > by || (bx == by && x < y);
@@ -124,12 +127,15 @@ bool argmax_bounded(const Backend& backend, const Grid<2>& grid, const double* L
             if (state.k >= 0 && bound[static_cast<std::size_t>(tile)] < state.best) break;
             const std::int32_t a0 = static_cast<std::int32_t>(tile / t1) * kArgmaxTile;
             const std::int32_t a1 = static_cast<std::int32_t>(tile % t1) * kArgmaxTile;
+            const std::int32_t e1 = a1 + kArgmaxTile < n1 ? a1 + kArgmaxTile : n1;
             for (std::int32_t i0 = a0; i0 < a0 + kArgmaxTile && i0 < n0; ++i0) {
-                for (std::int32_t i1 = a1; i1 < a1 + kArgmaxTile && i1 < n1; ++i1) {
-                    const std::int32_t idx[2] = {i0, i1};
-                    const std::int64_t k = grid.flatten(idx);
-                    argmax.push(state, k, engine::weighted_sum(L, periods, K, w, k));
-                }
+                // One tile row: adjacent k (the last axis is contiguous), summed at once (P-6, D-404) and pushed in
+                // ascending i1 as before.
+                const std::int32_t idx[2] = {i0, a1};
+                const std::int64_t k0 = grid.flatten(idx);
+                double v[kArgmaxTile];
+                engine::weighted_sums(L, periods, K, w, k0, e1 - a1, v);
+                for (std::int32_t i1 = a1; i1 < e1; ++i1) argmax.push(state, k0 + (i1 - a1), v[i1 - a1]);
             }
         }
         best[b] = state;
