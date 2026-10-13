@@ -74,9 +74,9 @@ Cloud Xeon 2.8 GHz, GCC 13, one thread, Release.
 - **S-10's tool** (`study_parametric_bootstrap`, scenarios 37 and 4, one replicate, A B B A): 51.8, 53.0 s on
   `main` against 52.6, 52.4 s. No measurable change.
 - **Against the expectation:** the reduction met it (3.3-3.7× with AVX2 at T ≤ 40, 2.2× at T = 100). The W × L
-  bootstrap phase met it (−33%). S-10's tool missed (about 0% against 3-5%). D-199's 5-7% share of S-10 was
-  probably mostly reduction work the re-profile counted elsewhere: calibrate's one full-grid argmax per refit is
-  50-250 µs, against milliseconds of integrals per refit.
+  bootstrap phase met it (−33%). S-10's tool missed (about 0% against 3-5%). A likely reason, not checked: in S-10
+  each refit runs one full-grid argmax (50-250 µs) against milliseconds of integrals, so the reduction is a smaller
+  share of this sample than D-199's 5-7% of the whole run. A gain of 1-2% would also be inside this sample's noise.
 - **Against the stop rule:** the W × L bootstrap phase is over 10%, so it is not triggered. Adopted.
 - **Who gains:** the W × L bootstrap studies (replicate estimates through the bounded argmax), the posterior's grid
   sums (the Bayesian studies) and the profile's summed surface. The parametric bootstrap and the AR(1) MLE barely
