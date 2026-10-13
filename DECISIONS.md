@@ -1654,6 +1654,13 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Why:** its ceiling was measured first. The row fill it would speed up runs inside the surface-row cache's fill (P-1), once per distinct (n, d) per scenario. In `study_parametric_bootstrap` (subset scenarios 37 and 4) the fill is 2.4 s once per scenario, against about 1.5 s of per-replicate work, so at R = 1,000 it is under 0.2% of the run. The evaluations off the grid (the profile solves, W*, Newton's steps, the analytic SE) evaluate one point at a time and would not benefit.
   - **Also searched, not proposed:** the same searches in lanes across a likelihood's periods. Each period's hint is a serial chain, and lanes would overlap the chains of different periods. It would serve every off-grid evaluation, but it would be a new item with its own ceiling to measure, and the libm calls (`exp`, `log`, the probit) would stay scalar. The owner did not take it up.
 
+## P-13: rejected, 2026-10-13
+
+- **D-403 — P-13, link-time and profile-guided optimisation for local study builds, is rejected under its stop rule** (`perf/p13_lto_pgo.md`, #72; D-199). The options (`VCAL_LTO`, `VCAL_PGO`) and the cycle script were built, measured and dropped; they remain in #72's history.
+  - **Measured, bit for bit on both compilers:** on GCC 13 (cloud), LTO +1.3% and −0.5%, LTO + PGO +1.1% and −3.6%, on the bootstrap and M6 tools, inside a 3% noise floor. On MSVC 14.51 (the owner's laptop, about 1% noise), LTO −2.4% and −0.3%, LTO + PGO −0.5% and +5.7% (slower). The stop rule recorded before the build was under 3% on both tools: drop.
+  - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
+  - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
+
 ## P-19: the analytic SE shared with calibrate, 2026-10-13
 
 - **D-406 — P-19 is built: S-10's studentised SE comes from calibrate's own analytic Hessian at its scaled estimate, instead of a second Hessian at `to_scaled(value)`; within rounding, not merged before the full flip check** (`perf/p19_shared_se.md`; D-199).
