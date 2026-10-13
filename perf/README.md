@@ -37,11 +37,11 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2% of a run: the row fill is cached once per scenario) | D-213, D-405 | — | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-23-hint-and-extent-search-across-grid-points) |
 
 - **The SIMD sweep (D-213):** P-21 done (D-400); P-22 and P-23 rejected (D-402, D-405).
-- **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 measured on GCC, waiting on the MSVC
-  measurement (#72); P-19 with the next golden refresh; P-20 later, with its own flip check.
+- **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 rejected (D-403, measured on GCC
+  and MSVC); P-19 with the next golden refresh; P-20 later, with its own flip check.
 - **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
   would make results platform-independent).
-- **Rejected:** P-12, P-22 and P-23 (above), and sequential stopping of Monte Carlo runs (a design change, not a
+- **Rejected:** P-12, P-13, P-22 and P-23 (above), and sequential stopping of Monte Carlo runs (a design change, not a
   performance item).
 - **The runtime projection** ([below](#projecting-a-full-run-d-187)) is **validated** on the M6 validation run
   (3.499 h against 3.3–3.7 h; D-202), and in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h;
