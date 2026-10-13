@@ -1661,6 +1661,14 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
   - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
 
+## P-19: the analytic SE shared with calibrate, 2026-10-13
+
+- **D-406 — P-19 is built: S-10's studentised SE comes from calibrate's own analytic Hessian at its scaled estimate, instead of a second Hessian at `to_scaled(value)`; within rounding, not merged before the full flip check** (`perf/p19_shared_se.md`; D-199).
+  - **Changes results: within rounding.** The SE becomes one computation at one point; before, it was computed again after the estimate's round trip through the natural scale. In a 24-row sample the analytic SEs and studentised ends change in about a third of rows, by at most 1.2e-14 in logit units, with 0 coverage flips; every other column is byte-identical.
+  - **Built:** `Estimate2::scaled` and `hess_u`, and `analytic_se_from_hessian`, `analytic_se_at_scaled` and `analytic_se_of` in `engine/profile.hpp` (`analytic_se_scaled` is kept). Test: `analytic_se_of_is_calibrates_hessian_bit_for_bit`; non-slow suite 79/79.
+  - **Measured:** the analytic SE phase −93%, per-replicate work −6.9% (expected 8-13%; stop rule under 5%, not triggered).
+  - **Before merge (D-177):** the full S-10/S-4 run, every fit flip-checked against the run that wrote `studies/parametric-bootstrap/summary.csv`, the flip counts reported even if zero, and the summary refreshed from it, in its own commit.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

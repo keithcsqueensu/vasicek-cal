@@ -741,22 +741,50 @@ struct AnalyticSe {
     bool ok;
 };
 
+// The SE from a Hessian H = (h00, h11, h01) in scaled units: ok only where -H is positive definite with a finite
+// determinant. The one rule behind every analytic_se_* (P-19, D-406).
+inline AnalyticSe analytic_se_from_hessian(double h00, double h11, double h01) {
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const double det = h00 * h11 - h01 * h01;  // det(-H) = det(H) for 2 x 2
+    if (!(h00 < 0.0 && h11 < 0.0 && det > 0.0) || !std::isfinite(det)) return {{nan, nan}, false};
+    return {{std::sqrt(-h11 / det), std::sqrt(-h00 / det)}, true};
+}
+
+// At scaled coordinates u (P-19, D-406): calibrate's Hessian is taken at its estimate's scaled coordinates
+// (Estimate2::scaled), so this, at those, is calibrate's computation; see also Estimate2::hess_u.
+template <class Objective, class Integrator>
+AnalyticSe analytic_se_at_scaled(const Objective& objective, const Integrator& primary,
+                                 const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& grid,
+                                 const double (&u)[2]) {
+    static_assert(profile_detail::has_contrib_derivs<Objective, Integrator>::value,
+                  "vcal: analytic_se_at_scaled needs the objective's analytic derivatives (D-170)");
+    std::vector<std::int64_t> first, count;
+    profile_detail::distinct_observations(obs, periods, first, count);
+    const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
+    const auto d = profile_detail::panel_derivs(objective, primary, obs, first, count, ax, u[0], u[1]);
+    return analytic_se_from_hessian(d.h[0], d.h[1], d.h[2]);
+}
+
+// At natural values v: the Hessian at to_scaled(v), which differs from calibrate's point by the round trip
+// through the natural scale (an ulp in about a quarter of coordinates). Kept for callers without an Estimate2.
 template <class Objective, class Integrator>
 AnalyticSe analytic_se_scaled(const Objective& objective, const Integrator& primary,
                               const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& grid,
                               const double (&v)[2]) {
-    static_assert(profile_detail::has_contrib_derivs<Objective, Integrator>::value,
-                  "vcal: analytic_se_scaled needs the objective's analytic derivatives (D-170)");
-    const double nan = std::numeric_limits<double>::quiet_NaN();
-    std::vector<std::int64_t> first, count;
-    profile_detail::distinct_observations(obs, periods, first, count);
-    const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
-    const auto d = profile_detail::panel_derivs(objective, primary, obs, first, count, ax,
-                                                grid::to_scaled(ax[0]->scale, v[0]), grid::to_scaled(ax[1]->scale, v[1]));
-    const double h00 = d.h[0], h11 = d.h[1], h01 = d.h[2];
-    const double det = h00 * h11 - h01 * h01;  // det(-H) = det(H) for 2 x 2
-    if (!(h00 < 0.0 && h11 < 0.0 && det > 0.0) || !std::isfinite(det)) return {{nan, nan}, false};
-    return {{std::sqrt(-h11 / det), std::sqrt(-h00 / det)}, true};
+    const double u[2] = {grid::to_scaled(grid.axis[0].scale, v[0]), grid::to_scaled(grid.axis[1].scale, v[1])};
+    return analytic_se_at_scaled(objective, primary, obs, periods, grid, u);
+}
+
+// An estimate's studentised SE (P-19, D-406): from calibrate's own Hessian where it took one, else computed at
+// the estimate's scaled coordinates. Either way the same computation at the same point.
+template <class Objective, class Integrator>
+AnalyticSe analytic_se_of(const Objective& objective, const Integrator& primary, const typename Objective::Obs* obs,
+                          std::int64_t periods, const Grid<2>& grid, const Estimate2& est) {
+    if (std::isfinite(est.hess_u[0]) && std::isfinite(est.hess_u[1]) && std::isfinite(est.hess_u[2])) {
+        return analytic_se_from_hessian(est.hess_u[0], est.hess_u[1], est.hess_u[2]);
+    }
+    const double u[2] = {est.scaled[0], est.scaled[1]};
+    return analytic_se_at_scaled(objective, primary, obs, periods, grid, u);
 }
 
 // The profile-likelihood intervals: by safeguarded Newton when the objective gives analytic
