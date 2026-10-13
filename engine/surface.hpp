@@ -25,33 +25,16 @@
 
 #include "core/grid.hpp"
 #include "core/precision.hpp"
+#include "core/reducers/weighted_sum.hpp"
 
 namespace vcal::engine {
 
 inline constexpr std::int64_t kReduceTileSize = 1024;
 
-// sum_t w[t] * L[t * K + k] in ascending t, Neumaier-compensated; periods with w[t] == 0 are
-// skipped, so a zero weight never meets a non-finite L. The single definition every reducer
-// and refinement uses, so they all see the same values bit for bit.
-VCAL_HD double weighted_sum(const double* L, std::int64_t T, std::int64_t K, const double* w, std::int64_t k) {
-    double sum = 0.0;
-    double comp = 0.0;
-    double nonfinite = 0.0;  // +-inf / NaN terms bypass compensation, which they would poison
-    bool any_nonfinite = false;
-    for (std::int64_t t = 0; t < T; ++t) {
-        if (w[t] == 0.0) continue;
-        const double x = w[t] * L[t * K + k];
-        if (!std::isfinite(x)) {
-            nonfinite += x;
-            any_nonfinite = true;
-            continue;
-        }
-        const double s = sum + x;
-        comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
-        sum = s;
-    }
-    return any_nonfinite ? nonfinite + (sum + comp) : sum + comp;
-}
+// weighted_sum (sum_t w[t] * L[t * K + k] in ascending t, Neumaier-compensated) and weighted_sums (a run of adjacent
+// k at once, in vector lanes outside device code, bit for bit; P-6, D-404) live in core/reducers/weighted_sum.hpp.
+using reducers::weighted_sum;
+using reducers::weighted_sums;
 
 template <class Backend, class Objective, class Integrator, int D>
 void evaluate_surface(const Backend& backend, const Objective& objective, const Integrator& integrator,
@@ -88,8 +71,13 @@ void reduce_weighted(const Backend& backend, const Reducer& reducer, const doubl
         const std::int64_t tile = job % tiles;
         auto state = reducer.init();
         const std::int64_t end = tile * kReduceTileSize + kReduceTileSize < K ? tile * kReduceTileSize + kReduceTileSize : K;
-        for (std::int64_t k = tile * kReduceTileSize; k < end; ++k) {
-            reducer.push(state, k, weighted_sum(L, T, K, W + b * T, k));
+        // The tile's sums in chunks of adjacent k (P-6, D-404), pushed in ascending k as before.
+        constexpr std::int64_t kChunk = 64;
+        double v[kChunk];
+        for (std::int64_t k0 = tile * kReduceTileSize; k0 < end; k0 += kChunk) {
+            const std::int64_t m = end - k0 < kChunk ? end - k0 : kChunk;
+            weighted_sums(L, T, K, W + b * T, k0, m, v);
+            for (std::int64_t i = 0; i < m; ++i) reducer.push(state, k0 + i, v[i]);
         }
         partial[static_cast<std::size_t>(job)] = state;
     });

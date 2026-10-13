@@ -17,7 +17,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-3 | Study fits compute only scored arms | done | D-171 | no | `study_surface_cache_spike` |
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips | `study_surface_cache_spike` |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no | `study_surface_cache_spike`, `study_argmax_check` |
-| P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no | scope note: [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#scope-note-for-p-6) |
+| P-6 | SIMD reduction across grid points | done: the reduction 3.3–3.7× (AVX2), the W × L bootstrap phase −33%; S-10 ~0% | D-199, D-404 | no | [p6_simd_reduction.md](p6_simd_reduction.md) |
 | P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done: `log_contrib` 33% faster (SSE2, AVX2) | D-199, D-212 | no | [p7_erfcx.md](p7_erfcx.md) |
 | P-8 | GPU backend | M4 | D-168 | within tolerance | — |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no | [p9_repeat_rate.md](p9_repeat_rate.md) |
