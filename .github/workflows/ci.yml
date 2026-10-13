@@ -63,6 +63,9 @@ jobs:
       # D-210: S-48's scorer on its synthetic fixture (standard library only).
       - name: S-48 scorer self-test (D-210)
         run: python3 studies/hac-se/score.py --self-test
+      # D-215: S-6's scorer on its synthetic fixture (standard library only).
+      - name: S-6 scorer self-test (D-215)
+        run: python3 studies/pluto-tasche/score.py --self-test
       - id: plan
         shell: bash
         run: |
@@ -216,6 +219,8 @@ jobs:
         run: .venv/bin/python validation/scipy/ar1_binomial_mle.py
       - name: HAC sandwich SE against the engine (S-48, D-209)
         run: .venv/bin/python validation/scipy/hac_se.py
+      - name: Pluto-Tasche bounds against the engine (S-6, D-215)
+        run: .venv/bin/python validation/scipy/pluto_tasche.py
 
   # K-1, D-059, D-100: device-visible code must compile as device code. Compile-only (no GPU on
   # the runners); the CPU tests also run, as a host-side check of the CUDA-enabled build.

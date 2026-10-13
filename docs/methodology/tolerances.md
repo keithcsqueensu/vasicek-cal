@@ -259,6 +259,17 @@ The forward filter over each period's own nodes, placed for the law of Z_t given
 | `TOL_AR1_SMOOTH_D2_REL` | 1e-11 | 6.4e-13 | Second differences of core minus ref along lines in φ and ρ, as a fraction of core's own largest | The node placement moves with θ; a clamp, branch or floor in it would put a kink into the likelihood (owner's condition, as Q16's test). Rounding alone gives 5e-14 to 6.4e-13. | `unit_ar1_filter_smooth` (slow) |
 | `TOL_AR1_SCORE_REL` | 1e-8 | 6.8e-10 | The analytic score against Richardson-extrapolated central differences, relative to max(1, \|derivative\|) | The differences' own noise: last-bit noise in l over steps of 1e-3 relative. | `unit_ar1_filter: ar1_score_matches_richardson_differences` |
 
+## Pluto–Tasche bounds (S-6)
+
+The most-prudent upper bounds (`benchmark_models/pluto_tasche/bounds.hpp`; D-214, D-215;
+`docs/methodology/pluto_tasche.md`), solved by bisection on logit p.
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_PT_SOLVE_LOGIT` | 1e-10 | 4.1e-11 (the zero-default closed form, 60 cases) | The bisection's final bracket width in logit p (`kSolveTolLogit`), for both bounds; the independent bound at D = 0 against 1 − (1 − γ)^(1/N) | The registration's reference puts no true PD within 8.4e-5 in logit of a bound at the total where coverage switches, so the solve cannot flip a coverage flag. The bracket's ends are checked to hold the root. | `unit_pluto_tasche: pt_independent_zero_defaults_is_the_closed_form` |
+| `TOL_PT_RHO_LIMIT_LOGIT` | 5e-8 | 1.7e-8 (15 cases) | The one-factor bound at ρ_a = 1e-8 against the independent bound, logit p; the gap also falls strictly from ρ_a = 1e-2 to 1e-8 | The gap is the model's, about 1.7 ρ_a: the mixed binomial tends to the binomial as ρ_a → 0. Observed, rounded up. | `unit_pluto_tasche: pt_factor_tends_to_independent_as_rho_falls` |
+| `TOL_PT_GOLDEN_LOGIT` | 2e-10 | 0 (MSVC, the writer's platform) | The bounds against `tests/golden/pluto_tasche/bounds.csv` (192 rows), logit p, on every platform | Twice the solve's width: a last-bit difference in the CDF near the root can turn one bisection step. | `unit_pluto_tasche: pt_goldens_reproduce` |
+
 ## Conditional PD (S-23)
 
 The conditional PD at the 99.9% adverse factor level, q = Φ((Φ⁻¹(PD) + √ρ·z₀.₉₉₉)/√(1 − ρ)), and
@@ -317,3 +328,4 @@ versions on Linux (job `validation (scipy)`).
 | `TOL_SCIPY_AR1_LOGLIK_REL` | 1e-12 | 2.9e-14 (grid filter, 66 rows), 7.5e-15 (nested quad, 36 rows) | M6: the AR(1)-factor log-likelihood on `tests/golden/ar1/likelihood.csv`, in the Markov formulation (transition densities), scipy vs the engine, relative to max(1, \|l\|) | A uniform composite-Simpson grid filter over [−12, 12] and, for T ≤ 3 and n ≤ 1000, nested 1-D `quad` (given Z₂ the other factors are independent). Held at ref's 1e-12 (`TOL_AR1_REFERENCE_REL`). | `validation/scipy/ar1_binomial_mle.py` |
 | `TOL_SCIPY_AR1_JOINT_REL` | 1e-10 | 1.8e-14 (48 rows, T ≤ 3, every n) | M6: the same rows in the joint formulation: adaptive 3-D cubature (`scipy.integrate.cubature`) of the explicit multivariate normal density with Toeplitz covariance φ^\|i−j\| | Shares no transition density with the engine, so an error derived the same way in the engine and the Markov checks (the 1 − φ² variance, the prior-ratio term) would show here (owner). Looser by the owner's choice, above the cubature's requested 1e-11. | same |
 | `TOL_SCIPY_HAC_SE_REL` | 2e-9 | 5.7e-10 (iid SEs from scipy's H), 2.5e-10 (HAC SEs); 4 computed fits × 3 lags, 2 near-bound fits not computed | S-48 (D-209): the HAC sandwich SE in logit units, scipy vs the engine (`tests/golden/hac/validation.csv`, the six M1.7 panels), relative; absolute for the correlations | scipy's per-period scores are posterior means of d log binom.pmf / du by `quad` (relative 1e-12, absolute 1e-12 of the score's scale, since they integrate to about 0), not the engine's moment accumulators; its H is central differences of them (step 1e-5). Observed, doubled, rounded up. | `validation/scipy/hac_se.py` |
+| `TOL_SCIPY_PT_LOGIT` | 2e-10 | 4.0e-11 (independent), 6.3e-11 (one factor); 192 rows | S-6 (D-215): the Pluto–Tasche bounds on `tests/golden/pluto_tasche/bounds.csv`, scipy vs the engine, logit p. scipy: `beta.ppf` for the independent bound; a trapezoid PMF over z in log space, the truncated convolution and brentq at 1e-13 for the one-factor bound | Within the engine's bisection half-width; held at twice the solve's width, as the goldens. | `validation/scipy/pluto_tasche.py` |

@@ -222,3 +222,22 @@ no Monte Carlo noise.
   correlation is material. Its coverage at γ = 0.95 in tier 1 is 0.85 at ρ = 0.12 and 0.73 at ρ = 0.24.
   The one-factor bound restores coverage only if ρ_a is not below the truth, so a conservative ρ_a is
   the safe choice.
+
+## Addendum, 2026-10-13: the tool, the scorer and the runtime projection (D-215), before the run
+
+- **The method is unchanged.** `study_pluto_tasche` and `score.py` implement it as registered. D-215 and the
+  scorer's docstring record the readings it fixes: the profile limit at γ = 0.5 is the profile's own polished
+  maximum; the Jeffreys limit is the γ quantile of the cell-uniform PD marginal; and P5 (iii) and (iv) are scored
+  as exact numbers, with the simulated medians over scenarios inside the medians of the cells' bands.
+- **A check added before scoring:** every simulated bound must cover exactly when D ≥ `reference.csv`'s D_min.
+  The tool and `reference.py` compute the bounds independently.
+- **Runtime projection** (`perf/project_runtime.py --run`, D-187, D-193), at commit 9956da4 plus this PR's tool,
+  MSVC Release on 24 threads, efficiency 0.997:
+  - **7,446 thread-s, 0.086 h (about 311 s wall).** The 90% range is ±1% (0.09–0.09 h), or 296–327 s with
+    the machine-state allowance (±5%).
+  - The sample was 512 replicates per scenario and ran 169 s, above D-193's 120 s minimum. It agrees with
+    the 256-replicate sample (7,401 thread-s) to 1%.
+  - The bounds are solved once per distinct total, and the projection counts that phase once. A full run has
+    more distinct totals than the sample, so that phase is slightly undercounted; it is a small share of the
+    run.
+  - The sample's rows were written to a scratch file and deleted unread.

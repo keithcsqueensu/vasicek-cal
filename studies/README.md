@@ -31,7 +31,7 @@ they exist.
 | [S-3](#s-3-jackknife-bias-correction-for-ρ̂-jackknife-bias-rho) | [`jackknife-bias-rho`](jackknife-bias-rho/) | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
 | [S-4](#s-4-bartlett-corrected-profile-threshold-bartlett-profile) | [`bartlett-profile`](bartlett-profile/) | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
 | [S-5](#s-5-bca-intervals-bca-intervals) | [`bca-intervals`](bca-intervals/) | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
-| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | registered (D-214); tool and scorer next |
+| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | registered (D-214); tool and scorer (D-215); run next |
 | [S-7](#s-7-grid-resolution-against-accuracy-and-runtime-grid-resolution) | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | [S-8](#s-8-mle-against-method-of-moments-mle-vs-mom) | [`mle-vs-mom`](mle-vs-mom/) | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
 | [S-9](#s-9-frequentist-coverage-of-grid-bayesian-credible-intervals-bayes-coverage) | [`bayes-coverage`](bayes-coverage/) | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
@@ -543,6 +543,9 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
   - **The arms:** (a) independent, and (b) one factor with ρ_a either the generating ρ or a fixed 0.12.
   - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ ∈ {0.5, 0.75, 0.9, 0.95,
     0.99}; reported, not predicted.
+- **Tool and scorer (D-215):** the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (`docs/methodology/pluto_tasche.md`);
+  `study_pluto_tasche` writes the rows and [`pluto-tasche/score.py`](pluto-tasche/score.py) scores them against
+  `reference.csv` only.
   - **Scope of the predictions:** coverage in the 18 n·PD = 1 scenarios only. In the 9 n·PD = 0.1
     scenarios, coverage is driven by totals of 0–2 and is reported; the bound/true ratio is the headline
     there. The per-panel order of the bounds holds at every total checked
@@ -1000,6 +1003,9 @@ kind as S-11 and report both targets (D-150).
   value, and the distance from the generating ρ.
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
+- **Deferred here from S-6 (owner, D-214, D-215):** the multi-grade most-prudent sequence (grade k's
+  bound pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needs this study's
+  segment streams, so it waits for them.
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 

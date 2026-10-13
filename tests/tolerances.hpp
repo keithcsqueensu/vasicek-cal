@@ -124,6 +124,10 @@ inline constexpr double TOL_SCIPY_Q_PROFILE_ENDPOINT_S = 3e-9;
 // absolute for the correlations. scipy's scores are quad integrals (1e-12) and its H central
 // differences of them (step 1e-5). Observed 5.7e-10 on Windows; doubled and rounded up.
 inline constexpr double TOL_SCIPY_HAC_SE_REL = 2e-9;
+// S-6 (D-215): validation/scipy/pluto_tasche.py against tests/golden/pluto_tasche/bounds.csv, in logit p
+// (beta.ppf for the independent bound; a trapezoid PMF, convolution and brentq at 1e-13 for the factor
+// bound). Observed 6.3e-11, under the engine's bisection half-width; held at twice the solve's width.
+inline constexpr double TOL_SCIPY_PT_LOGIT = 2e-10;
 
 // --- profile likelihood, M2 (D-128..D-130) -------------------------------------------------------
 // |P_a(endpoint) - (l_max - c)| in log-likelihood units, against an independent dense profile;
@@ -306,4 +310,16 @@ inline constexpr double TOL_AR1_SMOOTH_D2_REL = 1e-11;
 // Richardson-extrapolated central differences, relative to max(1, |derivative|). Observed 6.8e-10, the
 // differences' own noise (last-bit noise in l divided by steps of 1e-3 relative).
 inline constexpr double TOL_AR1_SCORE_REL = 1e-8;
+
+// --- Pluto-Tasche bounds, S-6 --------------------------------------------------------------------
+// S-6 (D-214, D-215): the bisection's stopping width in logit p for both bounds
+// (benchmark_models/pluto_tasche/bounds.hpp kSolveTolLogit); the zero-default closed form is held to it.
+// The registration's reference puts no true PD within 8.4e-5 of a bound where coverage switches.
+inline constexpr double TOL_PT_SOLVE_LOGIT = 1e-10;
+// S-6 (D-215): the one-factor bound at rho_a = 1e-8 against the independent bound, in logit p. The gap
+// is the model's, linear in rho_a (about 1.7 rho_a): observed 1.7e-8 over 15 cases, rounded up to 5e-8.
+inline constexpr double TOL_PT_RHO_LIMIT_LOGIT = 5e-8;
+// S-6 (D-215): the bounds against their committed goldens, in logit p, on every platform: twice the
+// solve's width, since a last-bit difference in the CDF can turn one bisection step near the root.
+inline constexpr double TOL_PT_GOLDEN_LOGIT = 2e-10;
 }  // namespace vcal::tol
