@@ -1565,6 +1565,14 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - H6's ratio is per fit, over the unflagged fits with both SEs finite and positive; "within ±10%" is |RMS / reference − 1| ≤ 0.10.
     - Ranges are inclusive, with 10⁻¹² of slack; "below", "above" and orderings are strict. A prediction is held only on the full matrix (81 scenarios × 1,000 replicates × φ 0, 0.3, 0.6).
   - **The self-test** (CI, `plan` job) runs a synthetic fixture whose verdicts are known: a clean pass; one H1 cell out (still held) that also breaks H4's ordering; a profile coverage not S-35's (stops); an unflagged fit without a HAC SE (named); a flagged fit (counted, and checked against S-35's count); another seed (refused); a small matrix (marked "would hold").
+## P-7: erfcx in vector lanes, 2026-10-12
+
+- **D-212 — P-7 is done: the quadrature's nodes take erfcx from vector kernels (scalar, SSE2, AVX2, chosen at run time), bit for bit; one evaluation of the binomial term is 33% faster** (`perf/p7_erfcx.md`).
+  - **Changes results: no.** Every kernel gives the scalar erfcx's value bit for bit, and each node is finished by `log_phi`'s own expressions with that value and folded in the same order, so every surface, fit, interval and golden is unchanged. Tested: 800,401 erfcx arguments, 69,708 integrand nodes, 400 periods' `log_contrib` and derivatives under the parity rule and its doubled rule, at every kernel against no kernel; the committed regression and AR(1) goldens under each kernel forced.
+  - **The method:** every node of a Gauss-Hermite rule needs the same erfcx(|x| / √2) whichever tail log Φ takes it for, so `BinomialLogIntegrand::batch` computes the nodes' values in one call and finishes each node with `log_phi_given_erfcx` / `log_phi_pair_given_erfcx` (which `log_phi` and `log_phi_pair` now call). The Chebyshev pieces are one generated table, each padded with +0 at its top, which leaves Clenshaw's recurrence at +0 exactly until a piece's own first coefficient, so lanes in different pieces share a pass; four vectors are interleaved, and a block within one piece broadcasts its coefficients.
+  - **core/ gains one compiled, host-only part** (`vcal_core_kernels`, linked through `vcal_core`), as `dgp/` and `benchmark_models/` have for P-17 and P-18: strict FP, no contraction, only the AVX2 file compiled for AVX2 and run after a CPU check. The device path is unchanged and never calls it (`#if !defined(__CUDA_ARCH__)`). `VCAL_ERFCX_KERNEL=scalar|sse2|avx2` forces a kernel; an unavailable one selects none, and the integrand then takes its scalar path.
+  - **Measured** (cloud VM, Xeon 2.8 GHz, GCC 13, one thread; against the same benchmark built on `main`): `log_contrib` 21.6-22.8 → 14.3-15.1 µs per period at SSE2 and AVX2 (33%; expected 20-35%, recorded before the build); erfcx alone 3.6× at AVX2. With the score and Hessian, 11% at SSE2 and none at AVX2: that path is dominated by `inverse_mills`, outside P-7. A run's saving is measured by the next projection (D-187) on the machine that runs it.
+  - **Not done:** `inverse_mills` in the score and Hessian (a later item if wanted), the composite Gauss-Legendre rule for d ∈ {0, n}, and the device path.
 
 ## S-48: results, 2026-10-12
 
@@ -1635,6 +1643,29 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **(ii) The γ set:** registered as {0.5, 0.75, 0.9, 0.95, 0.99}. [Keep.]
     - **(iii) The misspecified ρ_a:** registered as 0.12, which equals the oracle on the 0.12 scale, so that arm adds information on two scales only. [Keep 0.12.]
   - **Placement:** the bounds will be a `native` benchmark, not parity and not in the C ABI. The proposed home is `benchmark_models/`, beside the AR(1) model; PR 2's D-entry justifies the placement. The serially correlated version stays with M6.
+
+## P-21: one erfcx per node on the derivative path, 2026-10-12
+
+Numbered from D-400: entries made in a cloud session while the laptop agent continues the main sequence (D-214 on),
+so that the two do not collide (as D-300 on, above).
+
+- **D-400 — P-21 is done: the derivative path and the hint take each node's erfcx once, bit for bit; `log_contrib_derivs` is about 3× faster and `log_contrib` 15% faster than with P-7 alone** (`perf/p21_shared_erfcx.md`; proposed in D-213).
+  - **Changes results: no.** λ(±x) is finished from the value's `erfcx(|x|/√2)` and exp pair with `inverse_mills`'s own expression for each sign (`inverse_mills_given_erfcx`), through a per-call host-only node cache (`model::NodeCache`) that P-7's batch fills; the hint's `mixture_slopes` takes λ(±x) from one `inverse_mills_pair` and λ' from those values. Tested: 1,600,807 arguments for the pair and slope, 57,512 derivative nodes against a verbatim copy of the replaced functor, under every kernel; and 66,000 values (hints, values, scores, Hessians; 6,000 periods, both rules) against `main` before P-7 as built code, 0 differences.
+  - **Measured** (cloud Xeon 2.8 GHz, GCC 13, one thread, against P-7's branch): `log_contrib_derivs` 41.8-48.9 → 14.2-15.1 µs per period (expected 15-30% faster; the expectation used the sweep's per-call erfcx cost, about half this machine's); `log_contrib` 13.6-14.4 → 11.7-12.3 µs (expected 5-15%). With P-7, against `main`: about 45% less time for the value and 70% less with derivatives. A run's saving is measured by the next projection (D-187).
+  - **P-22 (D-213) is now smaller:** the derivative functor's remaining per-node work is the node functions' arithmetic; whether lanes over it still pay is for its own measurement.
+
+## S-36: registered, 2026-10-12
+
+Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop agent's sequence continues at D-214.
+
+- **D-401 (owner) — S-36, rating philosophy and fitted correlation, is registered** (`studies/pit-ttc-rho/PREDICTION.md`, #60; D-207 settled).
+  - **Momentum is both systematic and idiosyncratic (owner), so the study has two arms.** The main arm keeps D-207's smoothed-factor rule (13 rules). Arm I adds an observable obligor driver η, a share κ = 0.5 of the idiosyncratic variance, AR(1) with ψ = 0.8, which the rating tracks at its own speed θ_I; 13 rules (a TTC control, and λ ∈ {0.5, 1} × θ_S ∈ {1, 0.25} × θ_I ∈ {1, 0.5, 0.25}). Obligors are redrawn each period, with (η, N) from their stationary joint law. D-207's open alternative (persistent obligors) is not taken; survivorship stays with S-33.
+  - **The targets:** the finite-grade pseudo-true values of `reference.csv` and `reference_idio.csv`. For arm I the narrow-grade closed form overstates ρ by about 40% on the fast hybrid rules, so it is not used as a target; a Monte Carlo of the grade construction (`reference_idio_mc.csv`) agrees with the quadrature on every rule.
+  - **Informative grades (left to the proposer by the owner):** the 23 grades with at least 5 expected TTC defaults per period, less the grade–rule pairs whose reference empty-period probability exceeds 0.01 (11 of the main arm's 299 pairs and 4 of arm I's).
+  - **The interval tests are core (owner):** Q1–Q13 are all strict, including the profile intervals' coverage of the pseudo-true ρ and PD (Q8, Q10) and the HAC interval for PD (Q11), with S-48's settings (D-209). The HAC interval for ρ is reported only (D-211).
+  - **Seeds:** as reserved in D-207 (`PITTTCRH`, `PITTTCTS`); arm I's extra normals take block ranges of their own under the same seed.
+  - **Cost:** about 4.0 million fits; if the projection is too long, arm I at T = 20 is dropped first, then the main arm's θ = 0.25 rules at T = 20, by an addendum before the run.
+  - **Before the run:** the generator's D-149 artifacts, the tool and scorer merged, and the runtime projection (D-187, D-193). Nothing is simulated before this registration is merged.
 
 ## Open
 

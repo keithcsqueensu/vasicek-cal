@@ -12,7 +12,7 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
   S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
-- **Running:** none. **Registered, not run:** S-6 (D-214).
+- **Running:** none. **Registered, not run:** S-6 (D-214), S-36 (D-401).
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
 - **The interval recommendation** that the finished studies support is in
@@ -62,7 +62,7 @@ they exist.
 | [S-34](#s-34-sensitivity-to-severe-new-periods-severe-period-sensitivity) | [`severe-period-sensitivity`](severe-period-sensitivity/) | How much do the estimates and the 99.9% conditional PD move after one or two severe periods? | first batch (after S-1 and S-2) | finished (D-162) |
 | [S-35](#s-35-long-run-pd-under-serial-correlation-lrpd-serial-correlation) | [`lrpd-serial-correlation`](lrpd-serial-correlation/) | How biased is the long-run PD by averaging, and by an MLE ignoring serial correlation, under an AR(1) factor? | now (DGP variant, existing estimators); M6 (AR(1) MLE) | main arms **finished** (D-192): 12 of 15 held. AR(1) MLE arm **finished** (D-208): 9 of 11 strict held, 3 of 4 qualitative; L21, L28 and L25's qualitative part NOT HELD |
 | [M6-V](#m6-validation-run-m6-validation) | [`m6-validation`](m6-validation/) | Does the AR(1)-aware MLE work on its own model, before S-35 uses it? | M6 | **finished** (D-202): 7 of 8 strict held; W3 NOT HELD (wrong premise, diagnosed) |
-| [S-36](#s-36-rating-philosophy-and-fitted-correlation-pit-ttc-rho) | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | not registered (D-188) |
+| [S-36](#s-36-rating-philosophy-and-fitted-correlation-pit-ttc-rho) | `pit-ttc-rho` | How does fitted ρ change as the rating philosophy moves from TTC to PIT? | M6 | registered (D-401); not run |
 | [S-37](#s-37-the-asymptotic-rate-mle-as-least-squares-rate-mle-least-squares) | `rate-mle-least-squares` | Is the asymptotic rate MLE least squares on probit rates, with and without covariates? | M7 (documentation) | **documented** (methodology note, §3); covariate unit test with M7 |
 | [S-38](#s-38-granularity-error-in-factor-extraction-granularity-factor-extraction) | `granularity-factor-extraction` | How large is the error of extracting a factor as if infinitely granular, and its effect on stressed PDs? | now (extraction); M7 (stressed PDs) | not registered (D-188) |
 | [S-39](#s-39-the-estimated-factor-plugged-into-the-second-step-plug-in-factor) | `plug-in-factor` | Do grade parameters' intervals cover when the factor is estimated, not known? | M6 with M7 | not registered (D-188) |
@@ -1618,6 +1618,10 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   - **S-33:** it models rating assignment.
 - **Placement:** M6, which has multi-grade calibration and the grade scenario matrix. The obligor-level
   rating rule is new generator code and needs D-149's artifacts.
+- **Prediction:** registered in [`pit-ttc-rho/PREDICTION.md`](pit-ttc-rho/PREDICTION.md) (D-401), before any
+  generator code: two arms (systematic momentum; systematic and idiosyncratic momentum), 26 rules on the
+  grade scenario matrix at R = 1,000, and Q1–Q13, all strict, with the profile and HAC interval coverage
+  tests core (Q8, Q10, Q11). Model-only reference values in `reference.py` and its CSVs.
 - **Cost:** dominated by the obligor-level simulation (n × T draws per panel), not the fits: an order of
   magnitude above the baseline.
 

@@ -37,9 +37,9 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     0.017–0.043 under independence.
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
-  - S-48's negative-dependence part stays with S-36 (#60), which waits on its two open decisions.
+  - S-48's negative-dependence part is registered with S-36 (D-401, #60).
   - The next decision number is D-215 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
-    registration is D-214).
+    registration is D-214). D-400 on is the cloud sessions' block.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
@@ -115,7 +115,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no |
 | P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no |
-| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | next | D-199 | no |
+| P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done (`log_contrib` 33% faster) | D-199, D-212 | no |
 | P-8 | GPU backend | M4 | D-168 | within tolerance |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no |
@@ -129,7 +129,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
-| P-21 | One `erfcx` per node on the derivative path | proposed | D-213 | no |
+| P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 | P-22 | SIMD derivative node functions | proposed (after P-7, P-21) | D-213 | no |
 | P-23 | Hint and extent search across grid points | proposed | D-213 | no |
 
@@ -148,16 +148,16 @@ The index, registrations and results are in [studies/README.md](studies/README.m
   and L25's qualitative part NOT HELD), S-48's positive-dependence and independence parts (D-211: 5 of 6
   held, H2 NOT HELD), the M6 validation run (`m6-validation`: 7 of 8 strict held, W3
   NOT HELD; D-200, D-202).
-- **Registered, not yet run:** S-6 (D-214; tool and scorer next, PR 2).
+- **Registered, not yet run:** S-6 (D-214; tool and scorer next, PR 2), S-36 (D-401, #60).
 - **Planned (not registered):** S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
-  S-26, S-29 to S-33, S-36, S-38 to S-48; S-37 is documentation, not a study (D-188).
+  S-26, S-29 to S-33, S-38 to S-48; S-37 is documentation, not a study (D-188).
 
 **Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
 
 | Study | Placement | Note |
 |---|---|---|
 | S-35 | now; M6 arm | finished (D-192; M6 arm D-208) |
-| S-36 | M6 | new generator code; design and draft predictions in #60, not registered (D-207) |
+| S-36 | M6 | new generator code; registered (D-401, #60): two momentum arms, Q1–Q13; not run |
 | S-37 | M7, documentation | an identity (D-164's closed form); **documented** in the rate MLE note, §3 |
 | S-38 | now (with S-19); M7 | cheap |
 | S-39 | M6 with M7 | plug-in factor |
