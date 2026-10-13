@@ -102,7 +102,9 @@ Each from a pre-registered study; details in [studies/README.md](studies/README.
 - **Serial correlation makes iid intervals too narrow at every T**: PD profile coverage 0.86–0.88 at
   φ = 0.3 and 0.69–0.73 at φ = 0.6 (S-35, D-192). **The AR(1)-aware MLE restores PD coverage**
   (0.94–0.95 at T = 100; +0.22 at φ = 0.6) and moves the median PD toward the truth by small amounts
-  (S-35 M6 arm, D-208).
+  (S-35 M6 arm, D-208). A HAC (Newey–West) SE only partly helps: PD coverage 0.72–0.85 at φ = 0.6,
+  at a cost of 0.02–0.04 under independence. It is a diagnostic for PD only; HAC is not recommended
+  for ρ, where it covers worse than the iid Wald (S-48, D-211).
 - **The censored rate MLE matches the binomial MLE only from n·PD ≈ 500–1,000**; with counts, use
   the binomial MLE (S-27, S-28; D-174).
 - **Delta-method Wald intervals fail for the 99.9% conditional PD**: q̂ inherits ρ̂'s downward bias

@@ -143,3 +143,17 @@ from `reference.csv`, pooled as above.
 long history is evidence of positive serial dependence. At T = 20 the ratio is too noisy to read on its
 own: its effective degrees of freedom are about 9 under independence and 5.4 for PD at φ = 0.6
 (`reference.csv`, `pd_nu`, the median over group B).
+
+## Addendum, 2026-10-12: the runtime projection, recorded before the run (D-187)
+
+- **The tool and scorer** (`study_hac_se`, `score.py`; D-210) were merged in cbdd234 (PR #65) before this
+  projection was sampled. The run uses that commit's source, built MSVC Release.
+- **The projection:** `perf/project_runtime.py --run "study_hac_se"` from 2 to 256 replicates per
+  scenario, after the 120 s warm-up. At 256 replicates: 7,512 thread-seconds, 0.087 h (314 s) on 24
+  threads at efficiency 0.997; 90% range ±1%; with the machine-state allowance (±5%, D-193), 298–330 s.
+  The subset-based figure, for comparison, is 0.07 h.
+- **The stopping rule:** the range (±1%) and the agreement with the previous sample size (1% apart) are
+  within ±10%. The sample length is not: the 256-replicate sample ran 84 s against the 120 s minimum,
+  and the tool's cap is 256. A 512-replicate sample would be about half the full run, so the projection
+  is recorded as it stands.
+- The sampler's rows were deleted unread; only its timing was used.
