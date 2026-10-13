@@ -21,14 +21,20 @@
 
 namespace vcal::special {
 
-VCAL_HD double log_phi(double x) {
-    if (std::isnan(x)) return x;
+// log Phi(x) given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212): log_phi's own expressions, so that a
+// caller with e from erfcx_batch.hpp gets log_phi(x) bit for bit. For x < 0, log_phi takes erfcx(-x / sqrt 2), and
+// -x = |x| exactly; for x >= 0 (-0 included) erfcx(x / sqrt 2), which at x = -0 is erfcx(-0) = erfcx(+0).
+VCAL_HD double log_phi_given_erfcx(double x, double e) {
     if (x < 0.0) {
         const detail::Square s = detail::split_square(x);
-        return ((std::log(erfcx(-x * constants::kInvSqrt2)) - constants::kLn2) - 0.5 * s.lo) -
-               0.5 * s.hi;
+        return ((std::log(e) - constants::kLn2) - 0.5 * s.lo) - 0.5 * s.hi;
     }
-    return std::log1p(-0.5 * erfcx(x * constants::kInvSqrt2) * detail::exp_neg_half_square(x));
+    return std::log1p(-0.5 * e * detail::exp_neg_half_square(x));
+}
+
+VCAL_HD double log_phi(double x) {
+    if (std::isnan(x)) return x;
+    return log_phi_given_erfcx(x, erfcx((x < 0.0 ? -x : x) * constants::kInvSqrt2));
 }
 
 // log Phi(x) and log Phi(-x) together (P-7, D-199): bit for bit the two log_phi calls, with erfcx(|x|/sqrt2) and the
@@ -41,15 +47,18 @@ struct LogPhiPair {
     double at_neg_x;  // log Phi(-x)
 };
 
-VCAL_HD LogPhiPair log_phi_pair(double x) {
-    if (std::isnan(x)) return {x, -x};
-    const double ax = std::fabs(x);
-    const double e = erfcx(ax * constants::kInvSqrt2);
+// log_phi_pair given e = erfcx(|x| / sqrt 2), for x not NaN (P-7, D-212).
+VCAL_HD LogPhiPair log_phi_pair_given_erfcx(double x, double e) {
     const detail::Square s = detail::split_square(x);
     const double upper = std::log1p(-0.5 * e * (std::exp(-0.5 * s.hi) * std::exp(-0.5 * s.lo)));  // log Phi(|x|)
     if (x == 0.0) return {upper, upper};
     const double lower = ((std::log(e) - constants::kLn2) - 0.5 * s.lo) - 0.5 * s.hi;  // log Phi(-|x|)
     return x < 0.0 ? LogPhiPair{lower, upper} : LogPhiPair{upper, lower};
+}
+
+VCAL_HD LogPhiPair log_phi_pair(double x) {
+    if (std::isnan(x)) return {x, -x};
+    return log_phi_pair_given_erfcx(x, erfcx(std::fabs(x) * constants::kInvSqrt2));
 }
 
 }  // namespace vcal::special
