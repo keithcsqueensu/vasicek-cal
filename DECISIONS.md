@@ -1667,6 +1667,35 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Cost:** about 4.0 million fits; if the projection is too long, arm I at T = 20 is dropped first, then the main arm's θ = 0.25 rules at T = 20, by an addendum before the run.
   - **Before the run:** the generator's D-149 artifacts, the tool and scorer merged, and the runtime projection (D-187, D-193). Nothing is simulated before this registration is merged.
 
+## P-22: rejected, 2026-10-13
+
+- **D-402 (owner) — P-22, the derivative node functions in vector lanes, is rejected** (`perf/p22_simd_derivs.md`; proposed in D-213; the code on the branch `p22-simd-derivs`, not merged).
+  - **Built and checked:** scalar, SSE2 and AVX2 kernels behind `VCAL_DERIVS_KERNEL`, filled once per quadrature call from P-21's node cache; bit for bit against the derivative functor under every erfcx kernel (69,681 cached nodes, 63,874 through the functor, 400 periods of `log_contrib_derivs` on both parity rules; 0 differences).
+  - **Measured:** the kernel alone about 2× faster (16.5-16.9 → 7.2-8.9 ns per node), but `log_contrib_derivs` only 0-3% faster in place (AVX2 15.34 → 14.84 µs, SSE2 14.91 → 14.63 µs; interquartile ranges overlapping), against 8-12% expected. In the per-node path the divisions overlap with the fold's `exp`; the batch adds a store-and-reload pass. The stop rule recorded before the build (under 3% on both kernels) was borderline (AVX2 −3.2%).
+  - **Why rejected:** a gain inside the noise does not pay for about 300 lines and a third kernel family. A real gain on the derivative path needs the fold itself in lanes, which waits on the in-house `exp` (D-199).
+
+## P-6: the grid reduction in vector lanes, 2026-10-13
+
+- **D-404 — P-6 is done: `weighted_sum` and the bounded argmax's tile bounds run in vector lanes over grid points, bit for bit; the reduction is 3.3-3.7× faster with AVX2 and the W × L bootstrap phase 33% faster** (`perf/p6_simd_reduction.md`; D-199, D-213's scope note). D-403 is reserved for P-13 (#72), which waits on the MSVC measurement.
+  - **Changes results: no.** One lane per grid point, each lane `weighted_sum`'s operations in their order. Both Neumaier branches are computed and the scalar's selected exactly. A block that meets a non-finite term is redone with the scalar code. Scalar, SSE2 and AVX2 kernels behind `VCAL_REDUCE_KERNEL`, in `vcal_core_kernels`, as P-7.
+  - **Where:** `weighted_sum` moves to `core/reducers/weighted_sum.hpp` unchanged, with `weighted_sums` for a run of adjacent k. The callers are `reduce_weighted`, the bounded argmax's tile rows and tile bounds, `grid_posterior` and `summed_surface`.
+  - **Checked:** every kernel against the scalar sums on random, adversarial and non-finite surfaces (56,754 sums, 522 tile bounds), and calibrate and 64 replicates with both searches under every kernel: 0 differences. Also the regression estimates under each forced kernel, the non-slow suite (79/79) and the slow full-against-bounded check.
+  - **Measured:** the reduction 3.4×, 3.7× and 2.2× (AVX2) at T = 13, 40 and 100; SSE2 about 1.8×. The W × L tool's ArgMax phase 0.9 → 0.6 s. S-10's tool shows no measurable change, against 3-5% expected: its reduction is a small part of each refit.
+  - **Not done:** the U table's per-tile `fmax`, once per call and cheap; and a heap in place of the per-replicate sort of tile bounds (D-213), which stays to be measured.
+
+## P-23: rejected, 2026-10-13
+
+- **D-405 (owner) — P-23, the hint and extent search in lanes across grid points, is rejected before it was built** (proposed in D-213; `perf/p21_p23_simd_sweep.md`).
+  - **Why:** its ceiling was measured first. The row fill it would speed up runs inside the surface-row cache's fill (P-1), once per distinct (n, d) per scenario. In `study_parametric_bootstrap` (subset scenarios 37 and 4) the fill is 2.4 s once per scenario, against about 1.5 s of per-replicate work, so at R = 1,000 it is under 0.2% of the run. The evaluations off the grid (the profile solves, W*, Newton's steps, the analytic SE) evaluate one point at a time and would not benefit.
+  - **Also searched, not proposed:** the same searches in lanes across a likelihood's periods. Each period's hint is a serial chain, and lanes would overlap the chains of different periods. It would serve every off-grid evaluation, but it would be a new item with its own ceiling to measure, and the libm calls (`exp`, `log`, the probit) would stay scalar. The owner did not take it up.
+
+## P-13: rejected, 2026-10-13
+
+- **D-403 — P-13, link-time and profile-guided optimisation for local study builds, is rejected under its stop rule** (`perf/p13_lto_pgo.md`, #72; D-199). The options (`VCAL_LTO`, `VCAL_PGO`) and the cycle script were built, measured and dropped; they remain in #72's history.
+  - **Measured, bit for bit on both compilers:** on GCC 13 (cloud), LTO +1.3% and −0.5%, LTO + PGO +1.1% and −3.6%, on the bootstrap and M6 tools, inside a 3% noise floor. On MSVC 14.51 (the owner's laptop, about 1% noise), LTO −2.4% and −0.3%, LTO + PGO −0.5% and +5.7% (slower). The stop rule recorded before the build was under 3% on both tools: drop.
+  - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
+  - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

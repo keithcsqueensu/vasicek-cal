@@ -17,14 +17,14 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-3 | Study fits compute only scored arms | done | D-171 | no | `study_surface_cache_spike` |
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips | `study_surface_cache_spike` |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no | `study_surface_cache_spike`, `study_argmax_check` |
-| P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no | scope note: [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#scope-note-for-p-6) |
+| P-6 | SIMD reduction across grid points | done: the reduction 3.3–3.7× (AVX2), the W × L bootstrap phase −33%; S-10 ~0% | D-199, D-404 | no | [p6_simd_reduction.md](p6_simd_reduction.md) |
 | P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done: `log_contrib` 33% faster (SSE2, AVX2) | D-199, D-212 | no | [p7_erfcx.md](p7_erfcx.md) |
 | P-8 | GPU backend | M4 | D-168 | within tolerance | — |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no | [p9_repeat_rate.md](p9_repeat_rate.md) |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no | — |
 | P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no | [p11_checkpoint.md](p11_checkpoint.md) |
 | P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — | — |
-| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no | — |
+| P-13 | LTO/PGO for local study builds | **rejected** (GCC and MSVC: LTO 0–2.4%, PGO 0–4% or slower) | D-199, D-403 | — | [p13_lto_pgo.md](p13_lto_pgo.md) |
 | P-14 | Calibrate's checks per distinct observation | done | D-178 | no | [p14_calibrate_distinct.md](p14_calibrate_distinct.md) |
 | P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) | [p15_analytic_se.md](p15_analytic_se.md) |
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no | [p16_sampled_check.md](p16_sampled_check.md) |
@@ -33,16 +33,15 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done: `log_contrib_derivs` ~3× faster, `log_contrib` 15% (after P-7) | D-213, D-400 | no | [p21_shared_erfcx.md](p21_shared_erfcx.md) |
-| P-22 | SIMD derivative node functions | **proposed** (after P-7, P-21) | D-213 | no | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-22-simd-derivative-node-functions) |
-| P-23 | Hint and extent search across grid points | **proposed** | D-213 | no | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-23-hint-and-extent-search-across-grid-points) |
+| P-22 | SIMD derivative node functions | **rejected** (measured 0–3%, expected 8–12%; ~300 lines and a third kernel family) | D-213, D-402 | — | [p22_simd_derivs.md](p22_simd_derivs.md) |
+| P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2% of a run: the row fill is cached once per scenario) | D-213, D-405 | — | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-23-hint-and-extent-search-across-grid-points) |
 
-- **Proposed, not yet ordered (D-213):** P-22 and P-23 (P-21 done, D-400), from a SIMD sweep, with a scope note for P-6
-  ([p21_p23_simd_sweep.md](p21_p23_simd_sweep.md)). P-22 is smaller after P-21: re-measure first.
-- **Order of the open items (D-199):** P-7 done (D-212); next P-13 (third) and P-6 (fourth); P-19 with the next golden
-  refresh; P-20 later, with its own flip check.
+- **The SIMD sweep (D-213):** P-21 done (D-400); P-22 and P-23 rejected (D-402, D-405).
+- **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 rejected (D-403, measured on GCC
+  and MSVC); P-19 with the next golden refresh; P-20 later, with its own flip check.
 - **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
   would make results platform-independent).
-- **Rejected:** P-12 (above), and sequential stopping of Monte Carlo runs (a design change, not a
+- **Rejected:** P-12, P-13, P-22 and P-23 (above), and sequential stopping of Monte Carlo runs (a design change, not a
   performance item).
 - **The runtime projection** ([below](#projecting-a-full-run-d-187)) is **validated** on the M6 validation run
   (3.499 h against 3.3–3.7 h; D-202), and in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h;

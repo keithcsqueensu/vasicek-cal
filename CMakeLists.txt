@@ -25,21 +25,24 @@ add_library(vcal_core INTERFACE)
 add_library(vcal::core ALIAS vcal_core)
 target_include_directories(vcal_core INTERFACE "${PROJECT_SOURCE_DIR}")
 target_compile_features(vcal_core INTERFACE cxx_std_17)
-# core/'s one compiled part (P-7, D-212): the host-only erfcx lane kernels behind the quadrature's node batches,
-# with strict FP and no contraction, since their lanes must match the scalar erfcx bit for bit. Only
-# erfcx_batch_avx2.cpp is compiled for AVX2, and it runs only on CPUs that have it (checked at run time). Every
-# target that uses core/ links it through vcal_core; the device code never calls it.
-add_library(vcal_core_kernels STATIC core/special/erfcx_batch.cpp core/special/erfcx_batch_avx2.cpp)
+# core/'s one compiled part (P-7, D-212; P-6, D-404): the host-only lane kernels behind the quadrature's node
+# batches (erfcx) and the grid reduction's sums, with strict FP and no contraction, since their lanes must match the
+# scalar code bit for bit. Only the *_avx2.cpp files are compiled for AVX2, and they run only on CPUs that have it
+# (checked at run time). Every target that uses core/ links it through vcal_core; the device code never calls it.
+add_library(vcal_core_kernels STATIC core/special/erfcx_batch.cpp core/special/erfcx_batch_avx2.cpp
+                                     core/reducers/sum_batch.cpp core/reducers/sum_batch_avx2.cpp)
 target_include_directories(vcal_core_kernels PUBLIC "${PROJECT_SOURCE_DIR}")
 vcal_target_defaults(vcal_core_kernels CXX17 FP_STRICT)
 set_target_properties(vcal_core_kernels PROPERTIES POSITION_INDEPENDENT_CODE ON)  # linked into the shared vcal
-option(VCAL_CORE_AVX2 "Build the AVX2 erfcx kernel on x86-64 (selected at run time)" ON)
+option(VCAL_CORE_AVX2 "Build the AVX2 core kernels on x86-64 (selected at run time)" ON)
 if(VCAL_CORE_AVX2 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|x64)$")
-    target_compile_definitions(vcal_core_kernels PRIVATE VCAL_ERFCX_AVX2)
+    target_compile_definitions(vcal_core_kernels PRIVATE VCAL_ERFCX_AVX2 VCAL_REDUCE_AVX2)
     if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-        set_source_files_properties(core/special/erfcx_batch_avx2.cpp PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+        set_source_files_properties(core/special/erfcx_batch_avx2.cpp core/reducers/sum_batch_avx2.cpp
+                                    PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
     else()
-        set_source_files_properties(core/special/erfcx_batch_avx2.cpp PROPERTIES COMPILE_OPTIONS "-mavx2")
+        set_source_files_properties(core/special/erfcx_batch_avx2.cpp core/reducers/sum_batch_avx2.cpp
+                                    PROPERTIES COMPILE_OPTIONS "-mavx2")
     endif()
 endif()
 target_link_libraries(vcal_core INTERFACE vcal_core_kernels)

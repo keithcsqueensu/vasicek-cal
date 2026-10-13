@@ -61,8 +61,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
    - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
      D-201, PR #55);
    - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
-2. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
-   golden refresh.
+2. **The performance pass, in the owner's order** (D-199): P-7 and P-6 done (D-212, D-404); P-13 rejected
+   (D-403); P-19 with the next golden refresh.
 3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
    (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
    S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
@@ -114,14 +114,14 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-3 | Study fits compute only scored arms | done | D-171 | no |
 | P-4 | Bootstrap reduction over distinct rows | done | D-172 | within rounding; 0 flips |
 | P-5 | Bounded argmax, full-grid fallback | done | D-172 | no |
-| P-6 | SIMD reduction across grid points | planned, fourth (5–7% of the run) | D-199 | no |
+| P-6 | SIMD reduction across grid points | done (reduction 3.3–3.7×; W × L bootstrap −33%) | D-199, D-404 | no |
 | P-7 | SIMD `erfcx` (narrowed; `log_phi_pair` extension done) | done (`log_contrib` 33% faster) | D-199, D-212 | no |
 | P-8 | GPU backend | M4 | D-168 | within tolerance |
 | P-9 | Memoise identical panels | measured, not built (~1%) | D-189 | no |
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no |
 | P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no |
 | P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — |
-| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no |
+| P-13 | LTO/PGO for local study builds | **rejected** (0–2.4%, GCC and MSVC) | D-199, D-403 | — |
 | P-14 | Calibrate's checks per distinct observation | done | D-178 | no |
 | P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) |
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no |
@@ -130,8 +130,8 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
-| P-22 | SIMD derivative node functions | proposed (after P-7, P-21) | D-213 | no |
-| P-23 | Hint and extent search across grid points | proposed | D-213 | no |
+| P-22 | SIMD derivative node functions | **rejected** (measured 0–3%) | D-213, D-402 | — |
+| P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2%) | D-213, D-405 | — |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design

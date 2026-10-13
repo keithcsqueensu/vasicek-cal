@@ -317,9 +317,7 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
     out.grid = parity;
     const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
     std::vector<double> ll(static_cast<std::size_t>(parity.size()));
-    for (std::int64_t k = 0; k < parity.size(); ++k) {
-        ll[static_cast<std::size_t>(k)] = weighted_sum(L.data(), periods, parity.size(), ones.data(), k);
-    }
+    weighted_sums(L.data(), periods, parity.size(), ones.data(), 0, parity.size(), ll.data());  // P-6, D-404
     std::vector<double> m;
     if (!pd::masses(prior, jt, parity, ll, m)) {
         out.flags |= kPosteriorNumeric;
@@ -385,9 +383,7 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
         Lloc.assign(static_cast<std::size_t>(periods * g.size()), 0.0);
         evaluate_surface(backend, objective, integrator, obs, periods, g, Lloc.data());
         ll.assign(static_cast<std::size_t>(g.size()), 0.0);
-        for (std::int64_t k = 0; k < g.size(); ++k) {
-            ll[static_cast<std::size_t>(k)] = weighted_sum(Lloc.data(), periods, g.size(), ones.data(), k);
-        }
+        weighted_sums(Lloc.data(), periods, g.size(), ones.data(), 0, g.size(), ll.data());  // P-6, D-404
         if (!pd::masses(prior, jt, g, ll, m)) {
             out.flags |= kPosteriorNumeric;
             return out;
