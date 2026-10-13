@@ -1,0 +1,81 @@
+# S-48 (D-209): one row per (phi, scenario, replicate); seed 0x4D31385245434F56; dgp_kernel avx2
+243000 rows: 81 scenarios x 3 phi x 1000 replicates
+check 1 (the fits are S-35's): 0 failures
+check 2 (unflagged fits without a HAC SE, the rule): 0
+check 2 (unflagged fits without a HAC SE, L = 1): 0
+check 2 (unflagged fits without a HAC SE, 2 x rule): 0
+
+| # | Prediction | Result | Held |
+|---|---|---|---|
+| H1 | PD HAC coverage within 0.04 of the reference in >= 8 of 9 | 9 of 9: B 0.0 0.880 (0.864); B 0.3 0.830 (0.815); B 0.6 0.721 (0.707); C 0.0 0.906 (0.901); C 0.3 0.877 (0.871); C 0.6 0.805 (0.799); D 0.0 0.927 (0.927); D 0.3 0.905 (0.909); D 0.6 0.852 (0.862) | held |
+| H2 | RHO HAC coverage within 0.04 of the reference in >= 8 of 9 | 7 of 9: B 0.0 0.869 (0.881); B 0.3 0.839 (0.867); B 0.6 0.742 (0.804, OUT); C 0.0 0.911 (0.918); C 0.3 0.891 (0.910); C 0.6 0.832 (0.876, OUT); D 0.0 0.926 (0.935); D 0.3 0.920 (0.931); D 0.6 0.885 (0.911) | NOT HELD |
+| H3 | phi 0.6 paired PD gain D > C > B, D >= +0.08 | B +0.068; C +0.108; D +0.134 | held |
+| H4 | phi 0 PD shortfall (Wald - HAC) > 0 in each, B > C > D, B in 0.03-0.10 | B +0.043; C +0.030; D +0.017 | held |
+| H5 | phi 0.6 PD HAC below 0.9273 and below the AR(1) MLE's profile in each | B 0.721 (M6 0.910); C 0.805 (M6 0.929); D 0.852 (M6 0.942) | held |
+| H6 | RMS HAC/iid SE ratio (logit PD) within +/-10% of the reference, phi 0 and 0.6 | 0.0 B 0.934 (0.926, +0.9%, n 11858); 0.0 C 0.951 (0.950, +0.0%, n 16883); 0.0 D 0.973 (0.975, -0.2%, n 20931); 0.6 B 1.199 (1.170, +2.4%, n 11777); 0.6 C 1.313 (1.318, -0.4%, n 16770); 0.6 D 1.406 (1.425, -1.4%, n 20893) | held |
+
+Reported without a prediction:
+  Coverage per group and phi (pooled over unflagged fits): iid Wald | HAC at the rule [L = 1, 2 x rule] | fixed-b | profile (all fits)
+    PD A phi 0.0: 0.937 | 0.903 [0.916, 0.881] | 0.933 | 0.955   (reference HAC 0.896 [0.912, 0.867])
+    PD A phi 0.3: 0.892 | 0.881 [0.885, 0.861] | 0.912 | 0.926   (reference HAC 0.873 [0.879, 0.849])
+    PD A phi 0.6: 0.794 | 0.826 [0.811, 0.819] | 0.866 | 0.862   (reference HAC 0.813 [0.798, 0.803])
+    PD B phi 0.0: 0.923 | 0.880 [0.894, 0.848] | 0.923 | 0.940   (reference HAC 0.864 [0.883, 0.826])
+    PD B phi 0.3: 0.833 | 0.830 [0.832, 0.808] | 0.880 | 0.859   (reference HAC 0.815 [0.818, 0.787])
+    PD B phi 0.6: 0.653 | 0.721 [0.700, 0.721] | 0.781 | 0.688   (reference HAC 0.707 [0.686, 0.705])
+    PD C phi 0.0: 0.936 | 0.906 [0.923, 0.885] | 0.935 | 0.947   (reference HAC 0.901 [0.918, 0.873])
+    PD C phi 0.3: 0.858 | 0.877 [0.871, 0.860] | 0.910 | 0.873   (reference HAC 0.871 [0.867, 0.851])
+    PD C phi 0.6: 0.697 | 0.805 [0.759, 0.810] | 0.844 | 0.713   (reference HAC 0.799 [0.751, 0.802])
+    PD D phi 0.0: 0.944 | 0.927 [0.936, 0.915] | 0.941 | 0.948   (reference HAC 0.927 [0.937, 0.913])
+    PD D phi 0.3: 0.871 | 0.905 [0.892, 0.899] | 0.922 | 0.879   (reference HAC 0.909 [0.895, 0.902])
+    PD D phi 0.6: 0.718 | 0.852 [0.785, 0.865] | 0.874 | 0.729   (reference HAC 0.862 [0.793, 0.874])
+    RHO A phi 0.0: 0.958 | 0.912 [0.925, 0.890] | 0.940 | 0.964   (reference HAC 0.927 [0.940, 0.904])
+    RHO A phi 0.3: 0.954 | 0.907 [0.919, 0.882] | 0.937 | 0.961   (reference HAC 0.924 [0.935, 0.901])
+    RHO A phi 0.6: 0.934 | 0.884 [0.897, 0.860] | 0.917 | 0.944   (reference HAC 0.904 [0.910, 0.883])
+    RHO B phi 0.0: 0.936 | 0.869 [0.884, 0.838] | 0.910 | 0.937   (reference HAC 0.881 [0.899, 0.844])
+    RHO B phi 0.3: 0.913 | 0.839 [0.855, 0.808] | 0.886 | 0.918   (reference HAC 0.867 [0.882, 0.832])
+    RHO B phi 0.6: 0.817 | 0.742 [0.755, 0.710] | 0.799 | 0.825   (reference HAC 0.804 [0.802, 0.781])
+    RHO C phi 0.0: 0.950 | 0.911 [0.923, 0.883] | 0.938 | 0.945   (reference HAC 0.918 [0.933, 0.892])
+    RHO C phi 0.3: 0.932 | 0.891 [0.906, 0.867] | 0.925 | 0.928   (reference HAC 0.910 [0.922, 0.886])
+    RHO C phi 0.6: 0.852 | 0.832 [0.837, 0.808] | 0.873 | 0.846   (reference HAC 0.876 [0.866, 0.860])
+    RHO D phi 0.0: 0.951 | 0.926 [0.937, 0.912] | 0.941 | 0.948   (reference HAC 0.935 [0.944, 0.922])
+    RHO D phi 0.3: 0.935 | 0.920 [0.926, 0.908] | 0.936 | 0.934   (reference HAC 0.931 [0.936, 0.919])
+    RHO D phi 0.6: 0.864 | 0.885 [0.873, 0.876] | 0.906 | 0.862   (reference HAC 0.911 [0.890, 0.906])
+  RMS HAC/iid SE ratio per group and phi: the rule [L = 1, 2 x rule] (reference)
+    PD A phi 0.0: 0.939 [0.960, 0.902] (0.942 [0.965, 0.903])
+    PD A phi 0.3: 1.015 [1.008, 0.992] (1.026 [1.015, 1.004])
+    PD A phi 0.6: 1.112 [1.055, 1.129] (1.133 [1.060, 1.160])
+    PD B phi 0.0: 0.934 [0.956, 0.887] (0.926 [0.950, 0.877])
+    PD B phi 0.3: 1.061 [1.045, 1.041] (1.055 [1.035, 1.039])
+    PD B phi 0.6: 1.199 [1.127, 1.237] (1.170 [1.086, 1.226])
+    PD C phi 0.0: 0.951 [0.975, 0.915] (0.950 [0.975, 0.914])
+    PD C phi 0.3: 1.111 [1.069, 1.100] (1.116 [1.068, 1.106])
+    PD C phi 0.6: 1.313 [1.158, 1.373] (1.318 [1.148, 1.391])
+    PD D phi 0.0: 0.973 [0.988, 0.953] (0.975 [0.990, 0.955])
+    PD D phi 0.3: 1.151 [1.082, 1.154] (1.159 [1.085, 1.164])
+    PD D phi 0.6: 1.406 [1.177, 1.486] (1.425 [1.182, 1.514])
+    RHO A phi 0.0: 0.883 [0.905, 0.846] (0.942 [0.965, 0.903])
+    RHO A phi 0.3: 0.883 [0.905, 0.845] (0.957 [0.975, 0.920])
+    RHO A phi 0.6: 0.896 [0.911, 0.863] (1.016 [1.009, 0.994])
+    RHO B phi 0.0: 0.890 [0.914, 0.843] (0.926 [0.950, 0.877])
+    RHO B phi 0.3: 0.895 [0.917, 0.848] (0.965 [0.978, 0.923])
+    RHO B phi 0.6: 0.930 [0.938, 0.889] (1.082 [1.049, 1.078])
+    RHO C phi 0.0: 0.925 [0.950, 0.888] (0.950 [0.975, 0.914])
+    RHO C phi 0.3: 0.947 [0.963, 0.912] (0.994 [1.003, 0.963])
+    RHO C phi 0.6: 1.031 [1.008, 1.008] (1.146 [1.081, 1.146])
+    RHO D phi 0.0: 0.960 [0.975, 0.940] (0.975 [0.990, 0.955])
+    RHO D phi 0.3: 0.993 [0.994, 0.976] (1.021 [1.017, 1.006])
+    RHO D phi 0.6: 1.120 [1.054, 1.120] (1.193 [1.098, 1.206])
+  Side of the HAC interval's misses (rule), per phi: truth above / below the interval, informative groups
+    PD phi 0.0: above 2925, below 1613
+    PD phi 0.3: above 3920, below 2155
+    PD phi 0.6: above 6162, below 3483
+    RHO phi 0.0: above 3409, below 1204
+    RHO phi 0.3: above 4248, below 1156
+    RHO phi 0.6: above 7169, below 1085
+  HAC interval (rule) against the recovery band, per scenario: below / inside / above (no unflagged fit)
+    PD phi 0.0: 52 / 25 / 0 (4)
+    PD phi 0.3: 70 / 8 / 0 (3)
+    PD phi 0.6: 74 / 5 / 0 (2)
+    RHO phi 0.0: 56 / 18 / 3 (4)
+    RHO phi 0.3: 58 / 17 / 3 (3)
+    RHO phi 0.6: 63 / 13 / 3 (2)
