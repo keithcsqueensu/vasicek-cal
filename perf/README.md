@@ -33,16 +33,16 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-19 | Analytic SE shared with calibrate (~13% of S-10) | future, with next golden refresh | D-199 | within rounding; flip check | — |
 | P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check | — |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done: `log_contrib_derivs` ~3× faster, `log_contrib` 15% (after P-7) | D-213, D-400 | no | [p21_shared_erfcx.md](p21_shared_erfcx.md) |
-| P-22 | SIMD derivative node functions | **proposed** (after P-7, P-21) | D-213 | no | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-22-simd-derivative-node-functions) |
+| P-22 | SIMD derivative node functions | **rejected** (measured 0–3%, expected 8–12%; ~300 lines and a third kernel family) | D-213, D-402 | — | [p22_simd_derivs.md](p22_simd_derivs.md) |
 | P-23 | Hint and extent search across grid points | **proposed** | D-213 | no | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-23-hint-and-extent-search-across-grid-points) |
 
-- **Proposed, not yet ordered (D-213):** P-22 and P-23 (P-21 done, D-400), from a SIMD sweep, with a scope note for P-6
-  ([p21_p23_simd_sweep.md](p21_p23_simd_sweep.md)). P-22 is smaller after P-21: re-measure first.
+- **Proposed, not yet ordered (D-213):** P-23 (P-21 done, D-400; P-22 rejected, D-402), from a SIMD sweep, with a scope
+  note for P-6 ([p21_p23_simd_sweep.md](p21_p23_simd_sweep.md)).
 - **Order of the open items (D-199):** P-7 done (D-212); next P-13 (third) and P-6 (fourth); P-19 with the next golden
   refresh; P-20 later, with its own flip check.
 - **Also future (D-199):** the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
   would make results platform-independent).
-- **Rejected:** P-12 (above), and sequential stopping of Monte Carlo runs (a design change, not a
+- **Rejected:** P-12 and P-22 (above), and sequential stopping of Monte Carlo runs (a design change, not a
   performance item).
 - **The runtime projection** ([below](#projecting-a-full-run-d-187)) is **validated** on the M6 validation run
   (3.499 h against 3.3–3.7 h; D-202), and in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h;
