@@ -49,8 +49,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
    - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
      D-201, PR #55);
    - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
-2. **The performance pass, in the owner's order** (D-199): P-7 (`erfcx`), P-13, P-6; P-19 with the next
-   golden refresh.
+2. **The performance pass, in the owner's order** (D-199): P-7 and P-6 done (D-212, D-404); P-13 rejected
+   (D-403); P-19 with the next golden refresh.
 3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
    (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
    S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
@@ -109,7 +109,7 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-10 | Dynamic scheduling across threads | planned | D-186 | no |
 | P-11 | Checkpoint and resume | part 1 done; part 2 open | D-179 | no |
 | P-12 | Warm-started bootstrap search | **rejected** (competes with P-6; extra fallback path) | D-199 | — |
-| P-13 | LTO/PGO for local study builds | planned, third | D-199 | no |
+| P-13 | LTO/PGO for local study builds | **rejected** (0–2.4%, GCC and MSVC) | D-199, D-403 | — |
 | P-14 | Calibrate's checks per distinct observation | done | D-178 | no |
 | P-15 | Calibrate's SEs from the analytic Hessian | done | D-185 | within tolerance (a correction) |
 | P-16 | Sampled, reported quadrature check on bootstrap fits | done | D-180 | no |
