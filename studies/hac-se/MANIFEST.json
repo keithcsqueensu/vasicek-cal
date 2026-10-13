@@ -1,0 +1,26 @@
+{
+  "study": "S-48, HAC standard errors under serial dependence: the positive-dependence and independence parts (D-206, D-209, D-210, D-211)",
+  "prediction": "studies/hac-se/PREDICTION.md: H1-H6 registered in 456232b (PR #64, merged as 26d8860) before any HAC SE was computed on a study panel; the runtime addendum in 7f55a24, pushed at 2026-10-12T17:46:14-04:00, before the run started",
+  "scoring": "score.py, merged in cbdd234 (PR #65) before the run, unchanged since; tested only on its synthetic fixture (D-210). Run as: python studies/hac-se/score.py rows.csv --summary-out summary.csv (standard library only); its output is results.txt",
+  "compiler": "MSVC 1951, Release",
+  "run": {
+    "command": "study_hac_se --out rows.csv --timing-out timing.csv (S-35's panels: the recovery seed 0x4D31385245434F56, 81 scenarios x 1,000 replicates x phi 0, 0.3, 0.6; 24 threads, dgp_kernel avx2)",
+    "commit": "cbdd234 (main after #65, tree clean)",
+    "executable_sha256": "989a91e62988bc7bb52c1a47c5f089ef4d09dbd63cad91d24b4394c3c4625540",
+    "start": "2026-10-12T17:46:19-04:00",
+    "end": "2026-10-12T17:51:25-04:00",
+    "wall_seconds": 304,
+    "cpu_seconds": 7295,
+    "efficiency": "7,295 / (24 x 304) = 1.00",
+    "phase_split": "binomial MLE 88%, HAC SE 8%, simulate 2%, cache fill 2%",
+    "projection": "0.087 h, 314 s (90% range +/-1%; 298-330 s with the machine-state allowance), from a 256-replicate sample, recorded in PREDICTION.md before the run (D-187, D-193). Took 304 s: in range, projection / actual 1.03",
+    "checks": "check 1: per phi and scenario, the flagged count and the iid Wald and profile coverage of PD and rho equal S-35's summary.csv to its printed digits in all 243 (phi, scenario) cells; check 2: no unflagged fit without a HAC SE at any of the three lags"
+  },
+  "files": {
+    "results.txt": "sha256 6c5640240e583a4731a3a3fddb6fb8980e3202f08f55d70b7c4d70d1d99826fe; score.py's output",
+    "summary.csv": "sha256 1074e6d6e77e6206c462777283627561825f76d077a8f1fa833927ed3fb83301; score.py --summary-out (one row per phi and scenario)",
+    "reference.csv": "the registered reference numbers (reference.py), from the model and pinned results only",
+    "rows.csv (not committed, D-163)": "sha256 b318da27a376f75a53793c51ebe7b2a08e8429af5a089f4877de647007df171c, 70,173,771 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s48-data-2026-10-12 and checked after download; regenerable exactly by the command above at its commit"
+  },
+  "result": "5 of 6 held (H1, H3, H4, H5, H6). Not held: H2 (rho's HAC coverage within 0.04 of the reference in 7 of 9 cells against >= 8; out at phi = 0.6 in B, 0.742 against 0.804, and C, 0.832 against 0.876)"
+}

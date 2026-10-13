@@ -1574,6 +1574,29 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Measured** (cloud VM, Xeon 2.8 GHz, GCC 13, one thread; against the same benchmark built on `main`): `log_contrib` 21.6-22.8 → 14.3-15.1 µs per period at SSE2 and AVX2 (33%; expected 20-35%, recorded before the build); erfcx alone 3.6× at AVX2. With the score and Hessian, 11% at SSE2 and none at AVX2: that path is dominated by `inverse_mills`, outside P-7. A run's saving is measured by the next projection (D-187) on the machine that runs it.
   - **Not done:** `inverse_mills` in the score and Hessian (a later item if wanted), the composite Gauss-Legendre rule for d ∈ {0, n}, and the device path.
 
+## S-48: results, 2026-10-12
+
+- **D-211 — S-48's positive-dependence and independence parts: 5 of 6 held; H2 NOT HELD** (`studies/hac-se/results.txt`, `MANIFEST.json`; D-209, D-210).
+  - **The run:** S-35's panels at φ = 0, 0.3 and 0.6, 304 s on 24 threads, from cbdd234. The projection, recorded before the run, was 314 s (298–330 s): in range, projection / actual 1.03. Its sample was shorter than D-193's minimum, a deviation listed below. Both checks passed: the fits are S-35's in all 243 (φ, scenario) cells, and every unflagged fit has a HAC SE at all three lags.
+  - **Held:**
+    - **H1, PD coverage follows the reference:** 9 of 9 cells within 0.04. The largest gap is B at φ = 0, +0.016 (0.880 against 0.864).
+    - **H3, the gain grows with T:** at φ = 0.6 the paired PD gain over the iid Wald is B +0.068, C +0.108, D +0.134.
+    - **H4, the cost under independence:** at φ = 0 the HAC interval's PD coverage is below the iid Wald's by B 0.043, C 0.030, D 0.017.
+    - **H5, not a fix:** PD coverage at φ = 0.6 is B 0.721, C 0.805, D 0.852, against the AR(1) MLE's 0.910, 0.929 and 0.942.
+    - **H6, the width follows E[Q]:** the RMS HAC/iid SE ratio in logit PD is within 2.4% of the reference in all six cells (D at φ = 0.6: 1.406 against 1.425).
+  - **Not held, H2:** ρ's coverage is within 0.04 in 7 of 9 cells against the 8 required. It is out at φ = 0.6 in B (0.742 against 0.804) and C (0.832 against 0.876), and below the reference in all 9 cells.
+    - Reported without a prediction, and not used to revise the verdict: ρ's HAC/iid SE ratio is below its reference in every group and φ (B at φ = 0.6: 0.930 against 1.082). The ρ misses mostly have the truth above the interval (7,169 above against 1,085 below at φ = 0.6).
+    - A post-hoc reading, not a prediction: the same mapping reproduced the iid Wald's ρ coverage within 0.007 at φ = 0.6 (PREDICTION.md's calibration check). So the miss is in the reference's moments of the HAC SE for ρ, not in the mapping's starting point.
+  - **Reported without a prediction:**
+    - **Fixed-b interval** (b = L/T): it recovers part of the loss without changing the SE. PD coverage at φ = 0 is B 0.923, C 0.935, D 0.941, about the iid Wald's (0.923, 0.936, 0.944); at φ = 0.6 it is B 0.781, C 0.844, D 0.874. It still falls short of nominal and of the AR(1) MLE.
+    - **Lag, PD:** L = 1 covers best at φ = 0 and worst at φ = 0.6, and twice the rule is worst at φ = 0. At φ = 0.6, twice the rule is best or tied with the rule. The largest gap is 0.08 (D at φ = 0.6: 0.785 at L = 1 against 0.865 at twice the rule). For ρ, L = 1 is best in every cell but D at φ = 0.6 (the rule's 0.885 against 0.873).
+    - **ρ:** the HAC interval covers ρ less often than the iid Wald in every group and φ except D at φ = 0.6 (0.885 against 0.864). For ρ the HAC SE costs coverage at these T rather than restoring it.
+    - **Group A** and the per-scenario band verdicts are in `results.txt` and `summary.csv`. PD at φ = 0.6: 74 of 79 scenarios with an unflagged fit are below the band.
+  - **The recommendation (PREDICTION.md):** H3 to H5 held. For PD, the HAC SE is a cheap partial correction at long histories, not a substitute for modelling the dependence. It stays a `native` option, reported beside the iid SE as a diagnostic **for PD only**, and is not recommended as the interval. **HAC is not recommended for ρ, where it covers worse than the iid Wald.** It is not added to the C ABI.
+  - **Monitoring implication (D-152), for PD only:** a HAC/iid SE ratio for PD well above 1 on a long history flags positive dependence. At T = 100 the RMS ratio is 0.97 at φ = 0 and 1.41 at φ = 0.6. At T = 20 it is 0.93 against 1.20, too close to read from one calibration. HAC is not recommended for ρ, where it covers worse than the iid Wald; ρ's ratio is not a diagnostic.
+  - **Deviation from D-193 (the projection's sample length):** the 256-replicate sample ran 84 s, under D-193's 120 s minimum, at the sampler's 256-replicate cap. The projection was recorded and used anyway (PREDICTION.md's runtime addendum). Its range (±1%) and its agreement with the previous sample size (1%) met the target. It landed in range (304 s against 298–330 s).
+  - **Data:** `rows.csv` is on the release `s48-data-2026-10-12` (D-163).
+
 ## The SIMD sweep: P-21 to P-23 proposed, 2026-10-12
 
 - **D-213 — A sweep of the CPU paths for vectorisation not covered by P-6, P-7, P-17 or P-18: three items proposed (P-21 to P-23), a scope note for P-6, and the rest recorded as checked; nothing built, the order left to the owner** (`perf/p21_p23_simd_sweep.md`; `perf/simd_scout.cpp`).
