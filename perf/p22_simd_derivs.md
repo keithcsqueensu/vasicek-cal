@@ -33,7 +33,7 @@
   none (69,681 cached nodes and 63,874 nodes through the functor per combination, 0 differences), and
   `log_contrib_derivs` on 400 periods with the parity rule and its doubled rule, 0 differences.
 
-## Measured (2026-10-12): under the stop rule, not adopted
+## Measured (2026-10-12): the expectation missed; the stop rule borderline
 
 Cloud Xeon 2.8 GHz, GCC 13, one thread, Release.
 
@@ -55,6 +55,11 @@ Cloud Xeon 2.8 GHz, GCC 13, one thread, Release.
   reloads 640 values and loses that overlap. Storing the values node-major (one node's five together) instead of
   by function made no measurable difference. The AVX2 kernel next to the SSE2 erfcx kernel is slower, probably a
   transition or frequency effect between the two instruction sets.
-- **Verdict:** under 3% on both kernels, so by the stop rule written above, P-22 is recorded as measured and not
-  worth its code (about 300 lines, a third kernel family to maintain). The derivative path's remaining cost is the
-  fold and the value's own nodes; a gain there needs the fold itself in lanes (its `exp` is libm, D-199).
+- **Against the expectation:** missed. 8-12% was expected; the measured gain is 0-3%.
+- **Against the stop rule (under 3% on both kernels):** borderline, not cleanly met. SSE2 is under 3% (−1.9%). AVX2
+  is −3.2% in the interleaved benchmark, just over the line with overlapping interquartile ranges, and about 0 in
+  `p7_erfcx`. And the AVX2 derivative kernel beside the SSE2 erfcx kernel is 19% slower, a combination the default
+  selection never makes (both pick AVX2 where it exists) but `VCAL_*_KERNEL` overrides can.
+- **Recommendation (the owner's decision):** do not merge. A gain of at most 3%, inside the noise, does not pay for
+  about 300 lines and a third kernel family to maintain. The derivative path's remaining cost is the fold and the
+  value's own nodes; a real gain there needs the fold itself in lanes (its `exp` is libm, D-199).
