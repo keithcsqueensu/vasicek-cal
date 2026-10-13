@@ -1632,6 +1632,13 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Cost:** about 4.0 million fits; if the projection is too long, arm I at T = 20 is dropped first, then the main arm's θ = 0.25 rules at T = 20, by an addendum before the run.
   - **Before the run:** the generator's D-149 artifacts, the tool and scorer merged, and the runtime projection (D-187, D-193). Nothing is simulated before this registration is merged.
 
+## P-22: rejected, 2026-10-13
+
+- **D-402 (owner) — P-22, the derivative node functions in vector lanes, is rejected** (`perf/p22_simd_derivs.md`; proposed in D-213; the code on the branch `p22-simd-derivs`, not merged).
+  - **Built and checked:** scalar, SSE2 and AVX2 kernels behind `VCAL_DERIVS_KERNEL`, filled once per quadrature call from P-21's node cache; bit for bit against the derivative functor under every erfcx kernel (69,681 cached nodes, 63,874 through the functor, 400 periods of `log_contrib_derivs` on both parity rules; 0 differences).
+  - **Measured:** the kernel alone about 2× faster (16.5-16.9 → 7.2-8.9 ns per node), but `log_contrib_derivs` only 0-3% faster in place (AVX2 15.34 → 14.84 µs, SSE2 14.91 → 14.63 µs; interquartile ranges overlapping), against 8-12% expected. In the per-node path the divisions overlap with the fold's `exp`; the batch adds a store-and-reload pass. The stop rule recorded before the build (under 3% on both kernels) was borderline (AVX2 −3.2%).
+  - **Why rejected:** a gain inside the noise does not pay for about 300 lines and a third kernel family. A real gain on the derivative path needs the fold itself in lanes, which waits on the in-house `exp` (D-199).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
