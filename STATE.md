@@ -38,9 +38,21 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part stays with S-36 (#60), which waits on its two open decisions.
-  - The next decision number is D-214 (P-7 is D-212, #67; the SIMD sweep took D-213, #68).
+  - The next decision number is D-215 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
+    registration is D-214).
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
+
+- **S-6, Pluto–Tasche bounds: registered (D-214), PR 1 of 3.** The bounds are (a) independent and (b) one
+  factor, with an oracle ρ_a and a fixed ρ_a = 0.12. 27 low-default scenarios (n·PD ≤ 1), R = 1,000, seed
+  "S06PLUTO". Exact reference numbers come from scipy, with no simulation. Three choices are open for
+  the owner:
+  - the multi-grade sequence, which needs new DGP code;
+  - the γ set;
+  - the misspecified ρ_a.
+
+  The review recommends dropping the multi-grade sequence (noting it under S-24) and keeping the γ set
+  and ρ_a = 0.12. Next is PR 2, the tool and scorer, merged before any run.
 
 ## Next
 
@@ -136,8 +148,8 @@ The index, registrations and results are in [studies/README.md](studies/README.m
   and L25's qualitative part NOT HELD), S-48's positive-dependence and independence parts (D-211: 5 of 6
   held, H2 NOT HELD), the M6 validation run (`m6-validation`: 7 of 8 strict held, W3
   NOT HELD; D-200, D-202).
-- **Registered, not yet run:** none.
-- **Planned (not registered):** S-6, S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
+- **Registered, not yet run:** S-6 (D-214; tool and scorer next, PR 2).
+- **Planned (not registered):** S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
   S-26, S-29 to S-33, S-36, S-38 to S-48; S-37 is documentation, not a study (D-188).
 
 **Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
