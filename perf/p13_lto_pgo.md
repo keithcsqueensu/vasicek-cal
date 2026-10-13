@@ -46,6 +46,7 @@ A B C C B A; times are in seconds.
 | `study_lrpd_serial_m6` (S-35's M6 tool) | 162.1, 167.4 | 164.2, 163.9 (−0.5%) | 159.4, 158.1 (−3.6%) |
 
 - **Identity:** every output of the LTO and LTO + PGO builds is byte-identical to the Release build's.
+- **Tests:** the full non-slow suite passes under the LTO build (71 of 71, the committed goldens included).
 - **LTO:** nothing, as expected. The hot code is header-only and already lives in one translation unit.
 - **PGO:** nothing on the bootstrap tool, and about 3-4% on the M6 tool. The two Release runs of the M6 tool are
   3% apart, so that gain is at the edge of the noise.
@@ -55,6 +56,16 @@ A B C C B A; times are in seconds.
 - **Against the expectation:** LTO at 0-3% held. PGO at 3-10% held only at its floor, and only on one tool.
 - **Against the stop rule (under 3% on both tools):** borderline, not cleanly met, because the M6 tool shows
   −3.6% with a noise floor of about 3%.
+- **Short of the plan written above:** only GCC was measured here, not Clang. The non-slow suite ran under the LTO
+  build only (below), not under LTO + PGO, whose build covered just the two measured tools.
 - **Not measured: MSVC,** which is what the owner's runs use. MSVC's inliner and code layout without profiles
   differ from GCC's, and its PGO is often worth more. Its LTO and PGO paths are built into the CMake module, but
   untested.
+
+## Status: the owner's decision, after the MSVC measurement
+
+On GCC, LTO is worth nothing and PGO about 0-4%, inside the noise: not worth adding there. The runs that matter,
+the M6-class runs, are built with MSVC, where PGO is often worth more and where these options are untested. So
+the next step is the laptop: `python perf/p13_pgo.py --build-dir build/pgo --generator Ninja --check
+build/cpu-release/tests` in a developer prompt. Then apply the same stop rule (under 3% on both tools: record and
+drop the options). Until then this is a draft and is not merged.
