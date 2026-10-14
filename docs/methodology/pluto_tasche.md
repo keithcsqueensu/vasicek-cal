@@ -1,7 +1,8 @@
 # Pluto and Tasche's most-prudent upper bounds (native benchmark)
 
 This note describes, in plain prose, the most-prudent upper bounds for the PD of a low-default portfolio
-(`benchmark_models/pluto_tasche/bounds.hpp`; D-214, D-215), after Pluto and Tasche (2005). They are a `native`
+(`benchmark_models/pluto_tasche/bounds.hpp`; D-214, D-215, D-216), after Pluto and Tasche (2005); §6 relates them to
+the paper section by section. They are a `native`
 benchmark: they change no parity result and are not in the C ABI. Study S-6 (`studies/pluto-tasche/PREDICTION.md`)
 measures their coverage and conservatism.
 
@@ -72,7 +73,38 @@ computes these sums with scipy, and the study's scorer checks every simulated pa
   `validation/scipy/pluto_tasche.py` with `beta.ppf` and an independent trapezoid quadrature, convolution and
   brentq.
 
+## 6. Against the paper
+
+Read and checked against the working paper, arXiv:cond-mat/0411699v3 (4 April 2005), on 2026-10-13 (D-216).
+
+- **What is the paper's.** The independent bound is its equations (2.2), (3.2) and (A.1): the binomial tail as a beta
+  distribution function, the exact Clopper–Pearson bound. The one-factor bound for one period is its (4.1) and (4.3a),
+  under the Basel one-factor model with ρ = 12% in its examples. Proposition A.1 (and A.2, for (4.1)) gives the
+  uniqueness this note's §3 relies on.
+- **What is not.** The paper's most-prudent principle is about grades: grade k's bound pools grade k with every worse
+  grade, so the bounds are monotone across grades. S-6 has one grade, so its bound is the pooled bound for the whole
+  portfolio; the sequence across grades is study S-52.
+- **The multi-period bound is S-6's own construction, not the paper's.** The paper's §6 follows one cohort of N
+  obligors for T years (each can default once, no newcomers), with the yearly factors jointly normal at correlation
+  ϑ^|s−t|, and integrates over the T factors by Monte Carlo. S-6's bound (b) sums T periods, each with its own n
+  obligors and an independent factor, so it is the paper's one-period (4.3a) per period, convolved. With independent
+  defaults the paper pools the years exactly as S-6's (a) does (its §6, second paragraph). The cohort model is study
+  S-50.
+- **The published examples are reproduced** (`unit_pluto_tasche: pt_reproduces_the_published_tables`): Tables 1–8 and
+  the two values in the text, within 0.01 percentage points (the printed rounding and the paper's numerics; Table 8
+  agrees with its values rounded up).
+- **Errata in the paper** (none changes its method):
+  - Table 4 at γ = 75% prints 0.65% (and Table 11 repeats it). The bound is 0.638%: at 0.65%, P(X ≤ 3) = 0.237, below
+    1 − γ = 0.25, so 0.65% does not satisfy the paper's own (3.2). scipy's `beta.ppf(0.75, 4, 797)` agrees with the
+    engine.
+  - Equation (4.3a) prints G(p, ρ, y)^i, with G the threshold (4.3b); the conditional PD Φ(G(p, ρ, y)) is meant, as in
+    (4.1). Table 8 is reproduced only with Φ.
+  - Table 8 gives grade A's 50% bound as 0.72% and Table 12 as 0.71%; the bound is 0.7106%.
+  - The proof after Proposition A.2 is headed "Proof of Proposition A.1".
+
 ## Reference
 
-Pluto, K. and Tasche, D. (2005). Thinking positively. *Risk*, 18(8), 72–78. (Cited from memory; not yet checked
-against the publisher's page as `docs/references.md` requires, so it is not listed there.)
+Pluto, K. and Tasche, D. (2005). Estimating probabilities of default for low default portfolios. Working paper,
+arXiv:cond-mat/0411699v3 (4 April 2005; v1 28 November 2004), https://arxiv.org/abs/cond-mat/0411699. Read in full.
+Published as "Thinking positively", *Risk*, August 2005, pp. 72–78; the title is confirmed on Risk.net, and the month
+and pages only by secondary listings (the article is paywalled). Listed in `docs/references.md`.

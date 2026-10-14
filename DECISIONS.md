@@ -1713,6 +1713,23 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **The smoke test** checks structure only: two replicates of scenarios 4 and 0, the header, the row count, the field count, the γ order and that the indicators are 0 or 1. Those are replicates 0 and 1 of the study's own panels, as other studies' smoke tests use theirs. It was first run on 2026-10-13 while this PR was written, after the owner approved the registration but before #70 merged. No value was looked at.
   - **The runtime projection,** recorded in PREDICTION.md's dated addendum before the run (D-187, D-193): 7,446 thread-s, 0.086 h (about 311 s on 24 threads), ±1%, or 296–327 s with the machine-state allowance. It comes from a 512-replicate sample that ran 169 s. The sample's rows were deleted unread.
 
+- **D-216 — Pluto and Tasche (2005) was read in full and checked against S-6's method (2026-10-13, at the owner's request). The engine reproduces the paper's published examples. One of the paper's printed values is an erratum, and S-6's multi-period one-factor bound is S-6's own construction, not the paper's §6 model. Four studies come from the paper's open questions, S-49 to S-52, none registered.**
+  - **The source:** the working paper, arXiv:cond-mat/0411699v3 (4 April 2005), read in full. It was published as "Thinking positively", *Risk*, August 2005, pp. 72–78. The title is confirmed on Risk.net; the month and pages come only from secondary listings. It is now listed in `docs/references.md`. The volume "18(8)" in the earlier draft of the methodology note was from memory and is dropped.
+  - **What matches:** the independent bound is the paper's (3.2) and (A.1), the exact Clopper–Pearson bound. The one-period one-factor bound is its (4.1) and (4.3a). `unit_pluto_tasche: pt_reproduces_the_published_tables` reproduces Tables 1–8 and the two values in its text within 0.01 percentage points (`TOL_PT_PAPER_PCT`; observed 0.0094). That is the printed rounding plus the paper's numerics: Table 8 agrees with its values rounded up.
+  - **Errata** (`docs/methodology/pluto_tasche.md` §6); none changes the method:
+    - Table 4 at 75% prints 0.65% (repeated in Table 11), but the bound is 0.638%. At 0.65%, P(X ≤ 3) = 0.237 < 0.25, so the printed value fails the paper's own (3.2). scipy agrees with the engine, and the test checks that cell against the exact value.
+    - (4.3a) prints G where Φ(G) is meant.
+    - Table 8 and Table 12 disagree on grade A's 50% bound (0.72% and 0.71%; the bound is 0.7106%).
+    - A proof heading names the wrong proposition.
+  - **What S-6 does not take from the paper:**
+    - The paper's principle is multi-grade; S-6 has one grade (S-52).
+    - Its multi-period model (§6) follows one cohort under factors correlated at ϑ^|s−t|. S-6's bound (b) sums independent periods, each with its own obligors, using the paper's one-period law convolved over the periods. That is what D-214 registered ("independent period factors"), so the registration stands. The methodology note now says that (b) is not the paper's §6 bound, and S-50 studies that bound.
+  - **The new studies** (`studies/README.md`, addendum):
+    - **S-49:** the confidence level that makes the independent bound cover under correlation (footnote 8). Exact, from S-6's reference.
+    - **S-50:** the §6 cohort bound under an AR(1) factor (M6), checked against the paper's Tables 13–14.
+    - **S-51:** the expected-default count beyond which the bound stops adding to the profile and Jeffreys limits, and §8's claim that average default rates underestimate about as often as a moderate-level bound.
+    - **S-52:** the multi-grade sequence, §5's scaled variants, and non-monotone sequences as a ranking signal. It replaces the S-24 note and waits for S-24's segment streams.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

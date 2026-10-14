@@ -319,6 +319,10 @@ inline constexpr double TOL_PT_SOLVE_LOGIT = 1e-10;
 // S-6 (D-215): the one-factor bound at rho_a = 1e-8 against the independent bound, in logit p. The gap
 // is the model's, linear in rho_a (about 1.7 rho_a): observed 1.7e-8 over 15 cases, rounded up to 5e-8.
 inline constexpr double TOL_PT_RHO_LIMIT_LOGIT = 5e-8;
+// S-6 (D-216): the bounds against Pluto and Tasche (2005)'s published Tables 1-8, in percentage points.
+// The tables print two decimals (0.005) and carry the paper's own numerics (Table 8 matches its values
+// rounded up); observed 0.0094. One printed value (Table 4, 75%) is an erratum, checked exactly instead.
+inline constexpr double TOL_PT_PAPER_PCT = 0.01;
 // S-6 (D-215): the bounds against their committed goldens, in logit p, on every platform: twice the
 // solve's width, since a last-bit difference in the CDF can turn one bisection step near the root.
 inline constexpr double TOL_PT_GOLDEN_LOGIT = 2e-10;

@@ -38,8 +38,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
-  - The next decision number is D-216 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
-    registration is D-214 and its tool D-215). D-400 on is the cloud sessions' block.
+  - The next decision number is D-217 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
+    registration is D-214, its tool D-215, and the paper check D-216). D-400 on is the cloud sessions' block.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
@@ -49,6 +49,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   ρ_a = 0.12, and no multi-grade sequence (noted under S-24).
   - PR 2: the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (native; tests, goldens, scipy
     replication), `study_pluto_tasche` and `score.py`, with the runtime projection in PREDICTION.md.
+  - Pluto and Tasche (2005) read and checked (D-216): Tables 1–8 reproduced, one erratum in the paper
+    (Table 4 at 75%), and four new studies from its open questions, S-49 to S-52 (not registered).
   - Next, PR 3: the run on main after PR 2 merges, scored held / NOT HELD.
 
 ## Next
@@ -147,7 +149,7 @@ The index, registrations and results are in [studies/README.md](studies/README.m
   NOT HELD; D-200, D-202).
 - **Registered, not yet run:** S-6 (D-214; tool and scorer D-215, run next), S-36 (D-401, #60).
 - **Planned (not registered):** S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
-  S-26, S-29 to S-33, S-38 to S-48; S-37 is documentation, not a study (D-188).
+  S-26, S-29 to S-33, S-38 to S-48, S-49 to S-52 (D-216); S-37 is documentation, not a study (D-188).
 
 **Roadmap addendum (D-188, merged):** references in [docs/references.md](docs/references.md).
 

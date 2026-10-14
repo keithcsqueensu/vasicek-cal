@@ -75,6 +75,10 @@ they exist.
 | [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
 | [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
 | [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | **done** (D-211): 5 of 6 held; H2 NOT HELD |
+| [S-49](#s-49-an-equivalent-confidence-level-for-the-independent-bound-pt-equivalent-confidence) | `pt-equivalent-confidence` | What confidence level makes the independent Pluto–Tasche bound cover at γ under correlation? | now (after S-6; exact, no simulation) | not registered (D-216) |
+| [S-50](#s-50-the-multi-period-cohort-bound-pt-multi-period-cohort) | `pt-multi-period-cohort` | Does Pluto and Tasche's multi-period cohort bound cover under a serially correlated factor? | M6 (AR(1) factor; a cohort DGP variant) | not registered (D-216) |
+| [S-51](#s-51-when-to-stop-using-the-most-prudent-bound-pt-switch-point) | `pt-switch-point` | Beyond how many expected defaults does the most-prudent bound stop adding information? | now (after S-6) | not registered (D-216) |
+| [S-52](#s-52-the-multi-grade-most-prudent-sequence-pt-multi-grade) | `pt-multi-grade` | The multi-grade sequence: coverage, scaling to the central tendency, and non-monotone bounds as a ranking signal | after S-24's segment streams | not registered (D-216) |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -1003,9 +1007,9 @@ kind as S-11 and report both targets (D-150).
   value, and the distance from the generating ρ.
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
-- **Deferred here from S-6 (owner, D-214, D-215):** the multi-grade most-prudent sequence (grade k's
-  bound pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needs this study's
-  segment streams, so it waits for them.
+- **Deferred from S-6 (owner, D-214, D-215):** the multi-grade most-prudent sequence (grade k's bound
+  pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needs this study's segment
+  streams, so it waits for them, as study S-52 (D-216).
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
@@ -1895,3 +1899,68 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   long history flags positive dependence (RMS 1.41 at T = 100 and φ = 0.6, against 0.97 at φ = 0). At
   T = 20 the ratio is too noisy to read from one calibration (1.20 against 0.93). The fix for the
   interval is to model the dependence (the AR(1) MLE, D-208), not the HAC SE.
+
+## Addendum: Pluto and Tasche's open questions (S-49 to S-52; D-216, 2026-10-13)
+
+Pluto and Tasche (2005, `docs/references.md`) was read in full against S-6's method
+(`docs/methodology/pluto_tasche.md` §6). Its extensions and the open questions it lists (§5, §6, §8 and
+footnote 8) give four studies. None is registered, and none changes S-6's registration.
+
+### S-49 An equivalent confidence level for the independent bound (`pt-equivalent-confidence`)
+
+- **Question:** the paper's footnote 8 suggests allowing for correlation by raising the independent bound's
+  confidence level, but leaves open how the level could be derived. For a stated γ, which level γ′ makes
+  the independent bound cover at γ under the one-factor model? Is there one γ′ per (γ, ρ), or does it move
+  with n·PD and T?
+- **Method:** exact, with no simulation, from S-6's `reference.py`. The independent bound's coverage at γ′ is
+  P_true(S ≥ D_min(γ′)), a step function of γ′. Per cell and γ, the smallest γ′ whose coverage is ≥ γ, and
+  that γ′'s median bound/true ratio against the oracle's.
+- **Expected:** no single γ′. At n·PD = 1 the shortfalls S-6 registered grow with ρ and T, so γ′ should too.
+- **Verdicts it could change:** none. A rule of thumb for users of the independent bound, if one exists.
+- **Cost:** minutes (scipy), on S-6's cells.
+
+### S-50 The multi-period cohort bound (`pt-multi-period-cohort`)
+
+- **Question:** the paper's §6 bound follows one cohort for T years under yearly factors correlated at
+  ϑ^|s−t|, which is an AR(1) factor with φ = ϑ. Does it cover at γ when ϑ is right, set to 0, or too
+  large? How does it compare with S-6's bounds on the same cohort?
+- **DGP:** a cohort variant: N obligors at the start, each defaulting at most once, no newcomers, under the
+  AR(1) factor (M6). It needs its own prose description and Python mirror.
+- **Method:** the bound is (6.6)–(6.8). The paper integrates over the T factors by Monte Carlo. Here a
+  filter over (Z_t, cumulative defaults), on the AR(1) node placement of `benchmark_models/ar1/`, gives it
+  exactly. Its Tables 13 and 14 (N = 800, 700, 300; T = 5; ρ = 0.12; ϑ = 0.3) are the check.
+- **Verdicts it could change:** none pinned. It completes S-6's scope note: the serially correlated
+  version stays with M6.
+- **Cost:** the cohort DGP and the bound; the run is minutes.
+
+### S-51 When to stop using the most-prudent bound (`pt-switch-point`)
+
+- **Question:** the paper's §8 asks how many defaults it takes before ordinary estimation should replace
+  the most-prudent bound. It also argues for moderate confidence levels: an average of historical default
+  rates, it says, underestimates the true PD about as often as a moderate-level bound does.
+- **Method:** S-6's arms over the recovery grid's full range of n·PD (0.1 to 500), beside the MLE, its
+  profile and Jeffreys upper limits at the same γ, and the average default rate. Per cell it reports:
+  - P(estimate < true PD) for the average default rate, against 1 − γ for the bounds, which tests the §8
+    argument;
+  - the bound's excess over the profile and Jeffreys limits.
+
+  The switch point is the expected-default count above which that excess is within Monte Carlo error of
+  zero.
+- **Cost:** the independent bound is cheap everywhere. The one-factor bound's convolution is O(D² log T),
+  which is too slow at n·PD = 500 and T = 100 (D near 50,000). It needs a normal or saddlepoint
+  approximation there, and checking that approximation is part of the study.
+- **Verdicts it could change:** none.
+
+### S-52 The multi-grade most-prudent sequence (`pt-multi-grade`)
+
+- **Question:** the paper's principle proper: grade k's bound pools grades k..K, so the bounds are monotone
+  across grades. Three parts:
+  - how much each grade's bound over-covers, which grows towards the better grades by construction;
+  - the coverage of the two scaled variants of §5: scaling to the portfolio's default rate, which the paper
+    says loses all conservatism, and to its upper bound;
+  - §8's question of when a non-monotone sequence is evidence that the ranking is wrong, measured as the
+    false-alarm rate under a correct ranking and the power against one swapped pair of grades.
+- **DGP:** the grade scenario matrix (D-151): grades on a shared Z_t, each with its own stream. That needs
+  S-24's segment index, so it waits for S-24's DGP variant.
+- **Verdicts it could change:** none pinned.
+- **Cost:** S-6's bounds per grade; the run is minutes once the DGP exists.

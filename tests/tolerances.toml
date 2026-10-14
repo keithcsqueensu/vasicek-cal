@@ -760,6 +760,16 @@ comment = [
     "is the model's, linear in rho_a (about 1.7 rho_a): observed 1.7e-8 over 15 cases, rounded up to 5e-8.",
 ]
 
+[TOL_PT_PAPER_PCT]
+type = "double"
+value = 0.01
+section = "Pluto-Tasche bounds, S-6"
+comment = [
+    "S-6 (D-216): the bounds against Pluto and Tasche (2005)'s published Tables 1-8, in percentage points.",
+    "The tables print two decimals (0.005) and carry the paper's own numerics (Table 8 matches its values",
+    "rounded up); observed 0.0094. One printed value (Table 4, 75%) is an erratum, checked exactly instead.",
+]
+
 [TOL_PT_GOLDEN_LOGIT]
 type = "double"
 value = 2e-10

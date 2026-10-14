@@ -205,3 +205,30 @@ unbiased scenario-conditional losses.
 **Motivates:**
 - **Study:** S-45.
 - **Feature:** the lifetime PD term structure conditional on a scenario path.
+
+## Pluto and Tasche (2005)
+
+Katja Pluto and Dirk Tasche (2005). "Estimating probabilities of default for low default portfolios". Working
+paper, arXiv:cond-mat/0411699v3 (4 April 2005; v1 28 November 2004),
+<https://arxiv.org/abs/cond-mat/0411699>. Published as "Thinking positively", *Risk*, August 2005, pp. 72–78
+(<https://www.risk.net/derivatives/credit-derivatives/1500251/thinking-positively>).
+- **Verified (2026-10-13):** the working paper, read in full from arXiv: authors, title, versions and dates.
+  The *Risk* article's title and authors, on Risk.net's page title (the article is paywalled).
+- **Secondary only:** the *Risk* issue (August 2005) and pages 72–78, from reference listings (e.g. Scientific
+  Research Publishing's reference record). The volume number is not confirmed.
+
+**Summary.** For portfolios with no or very few defaults, the paper proposes the "most prudent estimation"
+principle: estimate each grade's PD by an upper confidence bound, assuming only that the ordinal ranking of the
+grades is correct. Grade k's bound pools grade k with every worse grade, which makes the bounds monotone across
+grades.
+- **Independent defaults:** the bound is the one-sided Clopper–Pearson bound.
+- **Correlated defaults:** the bound uses the Basel one-factor model (ρ = 12% in its examples).
+- **Extensions:** scaling the bounds to a portfolio's central tendency, and a multi-period cohort model whose
+  yearly factors are correlated at ϑ^|s−t|.
+- **Open questions it leaves:** the confidence level; the number of defaults beyond which ordinary estimation
+  should take over; and what a non-monotone sequence of bounds says about the ranking. In a footnote it also
+  leaves open what enlarged confidence level for the independent bound would allow for correlation.
+
+`docs/methodology/pluto_tasche.md` §6 compares the engine with it and lists its errata.
+
+**Motivates:** S-6 (coverage and conservatism of the bounds), and the open questions as S-49 to S-52.
