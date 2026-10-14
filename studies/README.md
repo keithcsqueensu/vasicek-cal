@@ -10,9 +10,9 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 
 ## At a glance
 
-- **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
+- **Finished:** S-1, S-2, S-3, S-4, S-5, S-6 (D-217), S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
   S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
-- **Running:** none. **Registered, not run:** S-6 (D-214), S-36 (D-401).
+- **Running:** none. **Registered, not run:** S-36 (D-401).
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
 - **The interval recommendation** that the finished studies support is in
@@ -31,7 +31,7 @@ they exist.
 | [S-3](#s-3-jackknife-bias-correction-for-ρ̂-jackknife-bias-rho) | [`jackknife-bias-rho`](jackknife-bias-rho/) | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
 | [S-4](#s-4-bartlett-corrected-profile-threshold-bartlett-profile) | [`bartlett-profile`](bartlett-profile/) | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
 | [S-5](#s-5-bca-intervals-bca-intervals) | [`bca-intervals`](bca-intervals/) | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
-| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | registered (D-214); tool and scorer (D-215); run next |
+| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | **done** (D-217): 5 of 6 held; P5 NOT HELD |
 | [S-7](#s-7-grid-resolution-against-accuracy-and-runtime-grid-resolution) | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | [S-8](#s-8-mle-against-method-of-moments-mle-vs-mom) | [`mle-vs-mom`](mle-vs-mom/) | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
 | [S-9](#s-9-frequentist-coverage-of-grid-bayesian-credible-intervals-bayes-coverage) | [`bayes-coverage`](bayes-coverage/) | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
@@ -556,8 +556,56 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 - **Tool and scorer (D-215):** the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (`docs/methodology/pluto_tasche.md`);
   `study_pluto_tasche` writes the rows and [`pluto-tasche/score.py`](pluto-tasche/score.py) scores them against
   `reference.csv` only.
-- **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Status:** finished 2026-10-13 (D-217). The run took 290 s on 24 threads from c70f9b4, against a projection of
+  311 s (296–327 s), so it was out of range on the fast side. Scored by `score.py` into
+  [`pluto-tasche/results.txt`](pluto-tasche/results.txt) and [`summary.csv`](pluto-tasche/summary.csv); provenance is in
+  [`MANIFEST.json`](pluto-tasche/MANIFEST.json). The per-panel rows are on the release `s6-data-2026-10-13` (D-163).
+  All three pre-scoring checks passed: every simulated bound covers exactly when D ≥ the reference's D_min.
+- **Result:** **the independent bound undercovers once correlation is material, as registered. The one-factor bound
+  covers when its assumed ρ_a is at or above the truth, and falls short when ρ_a is below it.** At γ = 0.95 in the
+  n·PD = 1 cells, pooled:
+
+  | ρ | independent | oracle (ρ_a = ρ) | fixed (ρ_a = 0.12) | profile | Jeffreys |
+  |---|---|---|---|---|---|
+  | 0.02 | 0.942 | 0.958 | 0.994 | 0.948 | 0.983 |
+  | 0.12 | 0.848 | 0.959 | 0.959 | 0.938 | 0.970 |
+  | 0.24 | 0.731 | 0.955 | 0.863 | 0.932 | 0.953 |
+
+- **Comparison with the predictions** (`score.py`, merged before the run): **5 of 6 held; P5 NOT HELD.**
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | P1 | the oracle covers at ≥ γ | exact in 135 of 135; simulated in 90 of 90 | yes |
+  | P2 | the independent bound undercovers at ρ ≥ 0.12, by the exact amounts ±0.02 | exact and simulated below γ in 60 of 60; every pooled shortfall within 0.007 of the exact | yes |
+  | P3 | the ρ_a = 0.12 arm errs high at ρ = 0.02 and low at ρ = 0.24, by the exact amounts | paired dominance in 30 of 30 each way; every pooled excess or shortfall within 0.007; simulated below γ in 28 of 30 at ρ = 0.24 (≥ 26) | yes |
+  | P4 | simulated coverage matches the exact (tier 1) | 270 of 270 in band (≥ 268) | yes |
+  | P5 | the median bound/true ratio in its band in ≥ 403 of 405 cells; rises with γ; the medians at γ = 0.95 | in band in 272 of 405 as scored; rises with γ: yes; 10 of 12 medians at γ = 0.95 in band, the two at n·PD = 0.1, ρ = 0.02 out | **no** |
+  | P6 | the bounds' order on every panel, and coverage and medians in that order | 0 panels out of order; 0 cell pairs out of order | yes |
+
+  - **Why P5 failed, a post-hoc reading that changes no verdict** ([`posthoc_p5.py`](pluto-tasche/posthoc_p5.py),
+    [`posthoc_p5.txt`](pluto-tasche/posthoc_p5.txt)). All 133 misses, and the two medians over scenarios, lie above
+    their bands by at most 4.5e-10 relatively. The band ends are `reference.py`'s bounds (scipy brentq), and the
+    simulated medians are the tool's (bisection to 1e-10 in logit). The scorer allowed 1e-12 of slack, which is
+    narrower than the two solvers agree (`TOL_SCIPY_PT_LOGIT` = 2e-10). In all 405 cells, the totals behind the
+    simulated median lie inside the band's totals [d_lo, d_hi], where no floating point enters. The scorer's slack
+    was the defect, not the bounds. The prediction is still not held as registered.
+- **Reported, not predicted:**
+  - **n·PD = 0.1:** coverage matches the exact values in every cell (0 of 135 out of band). It is driven by
+    totals of 0–2, so every method's coverage jumps with γ rather than tracking it.
+  - **The Jeffreys upper limit** covers at or near γ at every ρ without an assumed ρ (0.983, 0.970 and 0.953 at
+    γ = 0.95). It is a little wider than the oracle: the median ratio is 1.41, 1.70 and 1.96 against 1.32, 1.52 and
+    1.78.
+  - **The profile upper limit** undercovers slightly at every ρ (0.932–0.948 at γ = 0.95).
+  - **By T,** at γ = 0.95, the independent bound's shortfall is about the same at T = 20, 40 and 100 (0.852,
+    0.829 and 0.841 pooled).
+- **Mitigation:** do not use the independent bound as a γ-confidence upper bound when correlation may be material.
+  Use the one-factor bound with a conservative ρ_a (at or above any plausible ρ), or the Jeffreys upper limit,
+  which needs no assumed ρ.
+- **Monitoring implication (D-152):** an independent Pluto–Tasche bound in a low-default portfolio understates the
+  PD a stated confidence requires once correlation is material. At γ = 0.95 with n·PD = 1 it covers 0.85 at
+  ρ = 0.12 and 0.73 at ρ = 0.24. A one-factor bound restores coverage only if ρ_a is not below the truth: ρ_a = 0.12
+  covers 0.86 at ρ = 0.24. A bound used as a monitoring threshold should state the ρ_a it assumes, and it should not
+  be below the portfolio's plausible correlation.
 
 ### S-7 Grid resolution against accuracy and runtime (`grid-resolution`)
 

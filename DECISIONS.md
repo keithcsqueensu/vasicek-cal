@@ -1730,6 +1730,33 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
     - **S-51:** the expected-default count beyond which the bound stops adding to the profile and Jeffreys limits, and §8's claim that average default rates underestimate about as often as a moderate-level bound.
     - **S-52:** the multi-grade sequence, §5's scaled variants, and non-monotone sequences as a ranking signal. It replaces the S-24 note and waits for S-24's segment streams.
 
+## S-6: results, 2026-10-13
+
+- **D-217 — S-6, the Pluto–Tasche most-prudent upper bounds: 5 of 6 held; P5 NOT HELD** (`studies/pluto-tasche/results.txt`, `MANIFEST.json`; D-214, D-215).
+  - **The run:** 27 scenarios × 1,000 replicates × 5 γ, from c70f9b4 (main after #76, tree clean), 290 s on 24 threads at efficiency 0.99. Jeffreys took 86% of the CPU time, the profile 8% and the bounds 6% (1,339 distinct totals). All three checks before scoring passed: the rows are the registered design; every simulated bound covers exactly when D ≥ `reference.csv`'s D_min, on every panel and γ, for all three bounds (the tool and `reference.py` compute the bounds independently); and each bound is a function of D.
+  - **Runtime against the projection:** projected 311 s (296–327 s with the machine-state allowance, D-193) from a 512-replicate sample, recorded before the run. It took 290 s, so it was out of range on the fast side: projection / actual 1.07. Not investigated. The projection's own caveat, that the bounds phase is undercounted, points the other way.
+  - **Held:**
+    - **P1, the oracle covers:** exact ≥ γ in 135 of 135 cells; simulated above γ − 3.29 SE in 90 of 90.
+    - **P2, the independent bound undercovers at ρ ≥ 0.12:** exact and simulated coverage below γ in 60 of 60. Every pooled shortfall is within 0.007 of the exact (at γ = 0.95: 0.102 at ρ = 0.12, 0.219 at ρ = 0.24).
+    - **P3, how the ρ_a = 0.12 arm errs:** at ρ = 0.02 it covers every panel the oracle covers, in 30 of 30 cells, with an excess within 0.002 of the exact. At ρ = 0.24 it is ≤ the oracle in 30 of 30, below γ in 28 of 30 (≥ 26), with every shortfall within 0.007. At ρ = 0.12 it is the oracle on every panel.
+    - **P4:** simulated coverage is in band around the exact in 270 of 270 tier-1 cells.
+    - **P6, the order:** 0 panels out of order, 0 of 270 coverage cell pairs and 0 of 405 median cell pairs.
+  - **Not held, P5:**
+    - **As scored:** (i) the simulated median bound/true ratio is in band in 272 of 405 cells, against ≥ 403. (ii) The medians rise with γ. (iii) and (iv) 10 of the 12 medians over scenarios at γ = 0.95 are in band; the two at n·PD = 0.1, ρ = 0.02 are out.
+    - **A post-hoc diagnosis, which changes no verdict** (`posthoc_p5.py`, `posthoc_p5.txt`, written after the run). Every miss, all 133 and the two medians, lies *above* its band, by 6.3e-12 to 4.5e-10 relatively. The band ends are `reference.py`'s bounds (scipy brentq). The medians are the tool's bounds (bisection to 1e-10 in logit; the bound is the bracket's midpoint). The scorer's 1e-12 of slack is narrower than the two solvers agree: `TOL_SCIPY_PT_LOGIT` is 2e-10, and the scipy replication's worst gap was 6.3e-11. 45 of the misses have a band of zero width (d_lo = d_hi), where any solver difference falls outside.
+    - **In totals, where no floating point enters,** the middle two totals of every cell's 1,000 panels lie in [d_lo, d_hi] in all 405 cells. So the miss is the scorer's, not the bounds'.
+    - **Lesson for later scorers:** when the value compared and its band come from different solvers, the slack is the solvers' agreement (here `TOL_SCIPY_PT_LOGIT`), not a floating-point epsilon. Alternatively, compare the discrete statistic (the total) when one exists. The scorer's self-test used the reference's own values as the fixture's bounds, so it could not catch this.
+  - **Reported without a prediction:**
+    - **n·PD = 0.1:** simulated coverage is in band around the exact in all 135 cells. Coverage there is driven by totals of 0–2.
+    - **Jeffreys** (one-sided γ quantile of the cell-uniform PD marginal) covers 0.983, 0.970 and 0.953 at γ = 0.95, n·PD = 1, ρ = 0.02, 0.12 and 0.24, with no assumed ρ. Its median ratio is 1.41, 1.70 and 1.96, against the oracle's 1.32, 1.52 and 1.78. Paired against the independent bound it covers more panels in every tier-1 cell (z +5.9 to +36.7).
+    - **The profile** upper limit covers 0.948, 0.938 and 0.932 there. Paired, it is below the oracle in 14 of 15 tier-1 cells.
+    - **By T,** the independent bound's tier-1 coverage at γ = 0.95 is 0.852, 0.829 and 0.841 at T = 20, 40 and 100: the shortfall does not shrink with a longer history.
+    - **No profile or Jeffreys limit was missing** on any panel.
+  - **Verdicts it could change:** none pinned. The bounds stay a `native` benchmark, not parity and not in the C ABI.
+  - **The recommendation:** the independent Pluto–Tasche bound is not a γ-confidence upper bound once correlation is material: at γ = 0.95 it covers 0.85 at ρ = 0.12 and 0.73 at ρ = 0.24. Use the one-factor bound with ρ_a at or above any plausible ρ, or the Jeffreys upper limit, which covered at or near γ in these cells without an assumed ρ, at a ratio 7–10% above the oracle's.
+  - **Monitoring implication (D-152), confirmed as registered:** an independent Pluto–Tasche bound in a low-default portfolio understates the PD a stated confidence requires once correlation is material. The one-factor bound restores coverage only if ρ_a is not below the truth (ρ_a = 0.12 covers 0.86 at ρ = 0.24 against γ = 0.95). A bound used as a monitoring threshold should therefore state its ρ_a, and that ρ_a should be conservative.
+  - **Data:** `rows.csv` is on the release `s6-data-2026-10-13` (D-163); its SHA-256 is in `MANIFEST.json`.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
