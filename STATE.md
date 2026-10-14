@@ -38,12 +38,13 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
-  - The next decision number is D-217 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
-    registration is D-214, its tool D-215, and the paper check D-216). D-400 on is the cloud sessions' block.
+  - The next decision number is D-218 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
+    registration is D-214, its tool D-215, the paper check D-216 and its result D-217). D-400 on is the cloud
+    sessions' block.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
-- **S-6, Pluto–Tasche bounds: registered (D-214, #70, approved by the owner), PR 2 of 3 (D-215).** The
+- **S-6, Pluto–Tasche bounds: run and scored, 5 of 6 held, P5 NOT HELD (D-217); PR 3 awaits the owner's OK.** The
   bounds are (a) independent and (b) one factor, with an oracle ρ_a and a fixed ρ_a = 0.12, on 27 low-default
   scenarios (n·PD ≤ 1), R = 1,000, seed "S06PLUTO". The open choices stand as registered: the γ set,
   ρ_a = 0.12, and no multi-grade sequence (noted under S-24).
@@ -51,7 +52,12 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     replication), `study_pluto_tasche` and `score.py`, with the runtime projection in PREDICTION.md.
   - Pluto and Tasche (2005) read and checked (D-216): Tables 1–8 reproduced, one erratum in the paper
     (Table 4 at 75%), and four new studies from its open questions, S-49 to S-52 (not registered).
-  - Next, PR 3: the run on main after PR 2 merges, scored held / NOT HELD.
+  - PR 3, the run (D-217): 290 s from c70f9b4, against a projection of 311 s (296–327 s), so out of range on
+    the fast side. P1–P4 and P6 held. P5 failed only on the scorer's 1e-12 slack, which is narrower than the
+    two solvers agree. A post-hoc check finds every miss within 4.5e-10 relatively, with every median total in
+    band, and the verdict stands. At γ = 0.95, n·PD = 1, the independent bound covers 0.942, 0.848 and 0.731 at
+    ρ = 0.02, 0.12 and 0.24. The oracle covers 0.955–0.959, and the fixed ρ_a = 0.12 covers 0.863 at ρ = 0.24.
+    `rows.csv` is on the release `s6-data-2026-10-13`.
 
 ## Next
 
@@ -142,12 +148,12 @@ and landed in range again on the S-35 M6 arm (34.94 h against 32.9–37.0 h; D-2
 
 The index, registrations and results are in [studies/README.md](studies/README.md) (D-148, D-153).
 
-- **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27,
+- **Finished:** S-1, S-2, S-3, S-4, S-5, S-6 (D-217: 5 of 6 held, P5 NOT HELD), S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27,
   S-28, S-34, S-35 (main arms, D-192; M6 arm, D-208: 9 of 11 strict held, 3 of 4 qualitative; L21, L28
   and L25's qualitative part NOT HELD), S-48's positive-dependence and independence parts (D-211: 5 of 6
   held, H2 NOT HELD), the M6 validation run (`m6-validation`: 7 of 8 strict held, W3
   NOT HELD; D-200, D-202).
-- **Registered, not yet run:** S-6 (D-214; tool and scorer D-215, run next), S-36 (D-401, #60).
+- **Registered, not yet run:** S-36 (D-401, #60).
 - **Planned (not registered):** S-7, S-11, S-12, S-13 (full), S-14, S-16 to S-20, S-22, S-24 to
   S-26, S-29 to S-33, S-38 to S-48, S-49 to S-52 (D-216); S-37 is documentation, not a study (D-188).
 
