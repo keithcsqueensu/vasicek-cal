@@ -547,15 +547,15 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
   - **The arms:** (a) independent, and (b) one factor with ρ_a either the generating ρ or a fixed 0.12.
   - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ ∈ {0.5, 0.75, 0.9, 0.95,
     0.99}; reported, not predicted.
-- **Tool and scorer (D-215):** the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (`docs/methodology/pluto_tasche.md`);
-  `study_pluto_tasche` writes the rows and [`pluto-tasche/score.py`](pluto-tasche/score.py) scores them against
-  `reference.csv` only.
   - **Scope of the predictions:** coverage in the 18 n·PD = 1 scenarios only. In the 9 n·PD = 0.1
     scenarios, coverage is driven by totals of 0–2 and is reported; the bound/true ratio is the headline
     there. The per-panel order of the bounds holds at every total checked
     ([`reference_ordering.csv`](pluto-tasche/reference_ordering.csv): 0 violations in 32,700 pairs).
   - **Exact headline:** at γ = 0.95 in the n·PD = 1 cells, the independent bound covers 0.943, 0.850 and
     0.733 at ρ = 0.02, 0.12 and 0.24, against the oracle's 0.957, 0.958 and 0.956.
+- **Tool and scorer (D-215):** the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (`docs/methodology/pluto_tasche.md`);
+  `study_pluto_tasche` writes the rows and [`pluto-tasche/score.py`](pluto-tasche/score.py) scores them against
+  `reference.csv` only.
 - **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
