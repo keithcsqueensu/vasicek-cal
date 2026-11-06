@@ -35,6 +35,9 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done: `log_contrib_derivs` ~3× faster, `log_contrib` 15% (after P-7) | D-213, D-400 | no | [p21_shared_erfcx.md](p21_shared_erfcx.md) |
 | P-22 | SIMD derivative node functions | **rejected** (measured 0–3%, expected 8–12%; ~300 lines and a third kernel family) | D-213, D-402 | — | [p22_simd_derivs.md](p22_simd_derivs.md) |
 | P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2% of a run: the row fill is cached once per scenario) | D-213, D-405 | — | [p21_p23_simd_sweep.md](p21_p23_simd_sweep.md#p-23-hint-and-extent-search-across-grid-points) |
+| P-24 | Calibrate's log-likelihood from its Hessian pass | built: the fit phase −20% to −33% | D-500, D-407 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
+| P-25 | W* without repeated evaluation points (memo) | built: W* −7% to −8% | D-500, D-408 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
+| P-26 | No zero fill before the cached surface copy | built: the surface phase −34% to −45%; together with P-24 and P-25, S-10 per-replicate work −12% to −17% | D-500, D-409 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
 
 - **The SIMD sweep (D-213):** P-21 done (D-400); P-22 and P-23 rejected (D-402, D-405).
 - **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 rejected (D-403, measured on GCC

@@ -51,8 +51,8 @@ up to 1.7 nats there), and a reduced rule disagrees by 1-100 nats; see C6.
   contraction off) with `-g -fno-omit-frame-pointer` added for the profiler. Every kernel selected at run time was AVX2
   (`dgp_kernel=avx2`; the erfcx, reduce and AR(1) kernels likewise). Timings here are noisy at about 3% and the owner's
   runs use MSVC; shares are the result, not seconds.
-- **Phase shares:** `study_parametric_bootstrap --replicates 2 --scenarios 36,...,44 --threads 1 --timing-out` and
-  `study_lrpd_serial_m6 --replicates 2 --scenarios 36,...,44 --threads 1 --boot-sample 8 --timing-out`: one scenario per
+- **Phase shares:** `study_parametric_bootstrap --replicates 2 --scenarios 36,...,44 --threads 1 --timing-out s10.csv` and
+  `study_lrpd_serial_m6 --replicates 2 --scenarios 36,...,44 --threads 1 --boot-sample 8 --timing-out m6_timing.csv`: one scenario per
   (T, n) cell (PD 1%, ρ 0.12; ids 36-44 cover the nine cells), two replicates each, one thread, 724 s and 686 s of wall
   time. Each cell's cost was scaled by its nine scenarios and the phase schedule of D-187 (Jeffreys 0.05, the S-4 widths
   0.20, fills once; the M6 comparator 0.1 on the subset's scenarios only). `perf/project_runtime.py` on the same samples
@@ -397,7 +397,7 @@ Build `cpu-release` with `-DCMAKE_CXX_FLAGS="-g -fno-omit-frame-pointer"`. Then:
 
 - `study_parametric_bootstrap --replicates 2 --scenarios 36,37,38,39,40,41,42,43,44 --threads 1 --out rows.csv
   --timing-out s10.csv` and `study_lrpd_serial_m6 --replicates 2 --scenarios 36,...,44 --threads 1 --boot-sample 8 --out
-  m6.csv --timing-out m6.csv`; shares per phase and cell from the samples with D-187's schedule (`project_runtime.py`
+  m6.csv --timing-out m6_timing.csv`; shares per phase and cell from the samples with D-187's schedule (`project_runtime.py`
   reads one scenario per cell as a nine-scenario run; multiply by nine, and weight the M6 subset-only phases by the
   subset's cells).
 - Inside the phases: `valgrind --tool=callgrind --read-inline-info=yes` on a driver that, for one scenario and replicate
