@@ -42,9 +42,13 @@
   by row): the only columns that change are the analytic SEs (8 of 24 for PD, 5 for ρ) and the studentised ends
   (8-9 of 24). The largest end-point shift is 1.2e-14 in logit units. **Coverage flips: 0.** Every other column is
   byte-identical.
-- **Still owed before merge:** the full flip check, every fit of the S-10/S-4 run against the run that wrote
-  `studies/parametric-bootstrap/summary.csv`, with the summary refreshed from it (D-177). That run is the owner's
-  laptop's.
+- **The full flip check (2026-11-06; D-406):** the full S-10/S-4 run at f605c45 (this branch with `main`) against
+  the September run's release `fits.parquet`, all 81,000 rows bit for bit. **Coverage flips: 0** for all six
+  intervals, PD and ρ. P-19 moved the analytic SEs and studentised ends (at most 8.2e-11 in logit); P-15, already
+  on `main`, moved calibrate's SEs and, through them, 38 Jeffreys ends and 16 `kFlagNearBound` flags. Every other
+  column is byte-identical, and the refreshed summary equals the committed one byte for byte.
+- **Run-level wall time:** 8,654 s on 24 threads, against the September run's 23,190 s (−63%, with every P-item
+  merged since; not P-19's alone). The analytic SE phase is 937 of 206,927 CPU s (0.5%; 8% in September).
 
 ## Measured (2026-10-13)
 
