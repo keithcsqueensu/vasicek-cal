@@ -1803,6 +1803,39 @@ the D-400 block.
   - **Not re-proposed:** P-9, P-12, P-13, P-22 and P-23; simulate is already P-17's kernel; the comparator's refits need
     the scan. P-numbers and the order are the owner's.
 
+## P-24, P-25 and P-26: three bit-for-bit savings in the S-10 fit, 2026-11-06
+
+From the scouting note's C1, C3 tier A and C2's first step (D-500; `perf/p24_p26_bitwise.md`, expectations committed
+before the build). Cloud D-400 block, continued.
+
+- **D-407 — P-24: calibrate takes its log-likelihood from its Hessian pass; no change in results.** Where calibrate
+  takes the analytic Hessian (P-15), `panel_derivs` hands back each distinct observation's value, which is
+  `log_contrib`'s bit for bit at the same θ (D-170; `out.value` is `from_scaled(r.scaled)`), and `l_primary` is filled
+  from it. Each observation is integrated once at the estimate instead of twice. The doubled rule's check, flagged
+  fits and the finite-difference path keep the value pass.
+  - **Measured** (S-10 tool, A B B A, 10 replicates): the fit phase −33% at T = 100, n = 10,000 and −20% at
+    n = 100; expected −25% to −40%.
+- **D-408 — P-25: `NewtonProfile` answers exact repeats of a point from a memo; no change in results.** The last 8
+  evaluated points are kept with their derivatives; a pair equal bit for bit is answered from them. `evaluations`
+  still counts every point asked for, so every reported count, the C ABI's included, is unchanged.
+  - **Measured:** W* −7% to −8% (expected −6% to −8%); 6.6% of W*'s points answered from the memo in the unit test.
+  - **Not built: the scouting note's tier A′** (seeding the memo with calibrate's own evaluation at the estimate).
+    The memo would then hold a value computed outside the `NewtonProfile`, right only if the caller profiles with
+    the integrator it calibrated with; the C ABI calls the two separately and cannot check that, and a mismatch would
+    be a silent wrong result. It would also hit only where `to_scaled(value)` round-trips exactly (about 75% of
+    panels, D-199), for about 1.5% of S-10.
+- **D-409 — P-26: the cached surface paths no longer zero-fill the surface before overwriting it; no change in
+  results.** `calibrate_cached` and the S-10 tool `resize` instead of `assign`; `evaluate_surface_cached` writes
+  every element.
+  - **Measured:** the surface phase −34% to −45% (expected −30% to −50%).
+- **Together:** S-10 per-replicate work, weighted as the full run weights its phases, −12.4% at (100, 10,000) and
+  −17.0% at (100, 100); about 12-14% of the run expected. The S-10 rows of all four timing runs are byte-identical to
+  `main`'s; the non-slow suite passes with the committed goldens; and the recovery harness's fits (81 scenarios × 50
+  replicates, `--save-fits`, which exercises calibrate, the Newton profile intervals and the bootstrap) equal `main`'s
+  in every field of all 4,050 fits.
+  - **The rest of C2** (a row view and calibrate's argmax bounded by cached tile maxima) waits on the laptop's
+    full-run phase split: after P-26 the surface phase is 4-10% of per-replicate work.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

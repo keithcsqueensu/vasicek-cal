@@ -60,3 +60,67 @@ phase taken out: W* about 36%, argmax + refine + SE about 27%, simulate about 28
 - **Timing:** the S-10 tool on scenarios 42 (T = 100, n = 100) and 44 (T = 100, n = 10,000), one replicate, `main`
   and this branch run A B B A on one machine state, per phase (`--timing-out`). Each item acts on its own phase (fit,
   W*, surface), so one pair of builds attributes all three.
+
+## What was built
+
+- **P-24:** `panel_derivs` and `panel_derivs_natural` (`engine/derivs.hpp`) take an optional `values` array and write
+  each distinct observation's `log_contrib_derivs` value to it. `calibrate_from_surface` (`engine/calibrate.hpp`)
+  takes the Hessian pass first where it takes the analytic Hessian, and fills `l_primary` from those values in period
+  order; the value pass runs only for flagged fits and objectives without derivatives.
+- **P-25:** `NewtonProfile::derivs` (`engine/profile.hpp`) keeps the last 8 evaluated points and their `PanelDerivs`,
+  and answers a pair equal bit for bit from it. `memo_hits` counts the answers; `evaluations` is unchanged in
+  meaning. `memo_enabled()` turns it off, for the identity test only.
+- **P-26:** `calibrate_cached` and the S-10 tool's `fit_panel` `resize` the surface instead of `assign`ing zeros.
+  `evaluate_surface_cached`'s comment now states that it writes every element.
+
+## Identity
+
+- **Unit tests** (all bit for bit):
+  - `calibrate_takes_its_value_pass_from_the_hessian_pass_bit_for_bit` (`unit_profile`): on the profile test's
+    panels, an n = 100 panel with one-sided periods and a grid-edge panel, with the quadrature check on and off,
+    calibrate's log-likelihood, the check's max, total and flagged count, and its flag equal the value pass computed
+    as before P-24. 8 fits took the Hessian pass, 2 the value pass; 0 differ.
+  - `newton_profile_memo_changes_no_number` (`unit_profile`): with the memo on and off, every field of
+    `profile_intervals_newton` and of `profile_lr_statistic` (at a truth-like point and at two profile ends) is the
+    same, the evaluation counts included: 16 calls, 0 differ. W*'s sequence asked for 61 points, of which 4 (6.6%)
+    came from the memo.
+  - `cached_surface_overwrites_every_element` (`unit_surface_cache`): over a NaN-filled buffer and over the previous
+    panel's surface, `evaluate_surface_cached` gives the zeroed fill's result.
+- **The non-slow suite** passes with the committed goldens (81 of 81, GCC 13, warnings as errors).
+- **The recovery harness:** `recovery_harness --replicates 50 --save-fits` on `main` and this branch (81 scenarios
+  × 50, so calibrate, `profile_intervals_newton` with the memo, the bootstrap and q's interval on every scenario):
+  every field of all 4,050 fits identical. The two files are not byte-identical, because `--save-fits` writes
+  `rc::Fit` raw and its two 4-byte padding slots are uninitialised; the comparison skips them.
+- **The S-10 tool's rows**, all four timing runs below (scenarios 42 and 44, 10 replicates each): byte-identical to
+  `main`'s.
+
+## Measured (2026-11-06)
+
+Cloud Xeon, 2 vCPU (AVX2), GCC 13, Release; `study_parametric_bootstrap --replicates 10 --scenarios 42,44
+--threads 2`, `main` (f54db25) and this branch run A B B A; thread-seconds per phase summed over the 10 replicates.
+
+| Phase | (100, 100): `main` | branch | change | (100, 10,000): `main` | branch | change |
+|---|---|---|---|---|---|---|
+| surface | 1.66, 1.60 | 0.89, 0.91 | −44.6% | 3.42, 3.79 | 2.31, 2.47 | −33.7% |
+| argmax + refine + SE | 4.45, 4.32 | 3.40, 3.60 | −20.3% | 15.47, 15.77 | 10.54, 10.43 | −32.8% |
+| W* (S-4b) | 3.79, 3.66 | 3.46, 3.39 | −8.0% | 16.35, 16.26 | 15.16, 15.14 | −7.1% |
+| simulate | 1.16, 1.15 | 1.15, 1.15 | −0.6% | 20.85, 21.16 | 21.25, 21.14 | +0.9% |
+| Jeffreys (unchanged code) | 5.95, 5.98 | 5.98, 5.85 | −0.8% | 39.56, 40.13 | 40.28, 39.81 | +0.5% |
+
+- **Per-replicate work, with the full run's schedule** (Jeffreys on 5% of replicates, the S-4 widths on 20%): 11.4 →
+  9.4 thread-s at (100, 100), **−17.0%**; 59.2 → 51.9 at (100, 10,000), **−12.4%**. The (100, 10,000) cell is 36%
+  of the run.
+- **Against the expectations, by phase:**
+  - **P-24, the fit phase:** expected −25% to −40%; measured −20% at n = 100 and −33% at n = 10,000. Held at
+    n = 10,000, a little under at n = 100, where the value pass is a smaller share of the phase (the scouting note's
+    26%) and the argmax's K × T reduction a larger one.
+  - **P-25, W*:** expected −6% to −8%; measured −7% to −8%. Held.
+  - **P-26, the surface phase:** expected −30% to −50%; measured −34% to −45%. Held.
+- **Against the stop rules:** none triggered (P-24's 4% of per-replicate work, P-25's 3% of W*, P-26's 15% of the
+  surface phase).
+- **Run level:** on the scouting note's shares after P-19, about 12-14% of the S-10/S-4 run. The owner's laptop
+  measures it on the next full run.
+- **Still left in the surface phase:** after P-26 it is about 10% of per-replicate work at (100, 100) and 4% at
+  (100, 10,000). The rest of the scouting note's C2 (a row view in place of the copy, and calibrate's argmax bounded
+  by cached tile maxima) would act on that and on the K × T reduction in the fit phase. It is not proposed until
+  the laptop's full-run phase split shows how much is left.
