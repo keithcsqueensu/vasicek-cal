@@ -155,6 +155,11 @@ add_test(NAME unit_ar1_filter
                  ar1_filter_is_the_same_under_every_kernel)
 add_test(NAME unit_ar1_filter_smooth COMMAND unit_ar1_filter ar1_likelihood_is_smooth_in_phi_and_rho)
 set_tests_properties(unit_ar1_filter_smooth PROPERTIES LABELS slow)
+# S-6 (D-215): Pluto and Tasche's most-prudent upper bounds (benchmark_models/pluto_tasche/bounds.hpp).
+add_executable(unit_pluto_tasche unit/pluto_tasche_test.cpp)
+target_link_libraries(unit_pluto_tasche PRIVATE vcal_test_harness vcal::benchmark_models)
+vcal_target_defaults(unit_pluto_tasche)
+add_test(NAME unit_pluto_tasche COMMAND unit_pluto_tasche)
 # P-18 (D-199): the filter suite under each transition kernel forced; a kernel this machine lacks skips the entry
 # visibly (exit 77).
 foreach(_k scalar sse2 avx2)
@@ -383,6 +388,11 @@ set_tests_properties(study_lrpd_serial_m6_resume PROPERTIES LABELS slow)
 add_executable(ar1_goldens studies/ar1_goldens.cpp)
 target_link_libraries(ar1_goldens PRIVATE vcal::benchmark_models vcal::ref)
 vcal_target_defaults(ar1_goldens)
+# The Pluto-Tasche bound goldens (tests/golden/pluto_tasche/bounds.csv; D-215): bounds at fixed inputs, no panels.
+# Run by hand to regenerate; unit_pluto_tasche checks the engine against them.
+add_executable(pluto_tasche_goldens studies/pluto_tasche_goldens.cpp)
+target_link_libraries(pluto_tasche_goldens PRIVATE vcal::benchmark_models)
+vcal_target_defaults(pluto_tasche_goldens)
 # S-35's M6 arm, model-based reference numbers (D-196): the expected Fisher information of the AR(1) likelihood at
 # the true parameters (scores only, no fit). Run by hand; a two-panel run is a smoke test.
 add_executable(study_ar1_information studies/ar1_information.cpp)
@@ -401,6 +411,14 @@ target_link_libraries(study_hac_se PRIVATE vcal_test_harness vcal::backend_cpu v
 vcal_target_defaults(study_hac_se)
 add_test(NAME study_hac_se_smoke COMMAND study_hac_se --replicates 2 --scenarios 29,2 --phis 0,0.6
          --out hac_se_smoke.csv)
+# S-6 (D-215): Pluto-Tasche bounds against the profile and Jeffreys upper limits on the low-default cells. Run by
+# hand; the smoke test checks the rows' structure only.
+add_executable(study_pluto_tasche studies/pluto_tasche.cpp)
+target_link_libraries(study_pluto_tasche PRIVATE vcal_test_harness vcal::benchmark_models vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(study_pluto_tasche)
+add_test(NAME study_pluto_tasche_smoke
+         COMMAND "${CMAKE_COMMAND}" "-DTOOL=$<TARGET_FILE:study_pluto_tasche>"
+                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}/pluto_tasche_smoke" -P "${CMAKE_CURRENT_SOURCE_DIR}/studies/pluto_tasche_smoke.cmake")
 add_executable(study_parametric_bootstrap studies/parametric_bootstrap.cpp)
 target_link_libraries(study_parametric_bootstrap PRIVATE vcal_test_harness vcal::resample vcal::backend_cpu vcal::dgp)
 vcal_target_defaults(study_parametric_bootstrap)

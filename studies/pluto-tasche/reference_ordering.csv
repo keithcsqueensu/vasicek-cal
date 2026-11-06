@@ -1,0 +1,40 @@
+# S-6 per-D ordering check (studies/pluto-tasche/reference.py): every (n, T, gamma, D, pair) at which the
+# registered ordering lower <= upper fails, D = 0 to each (n, T)'s largest 0.9999 quantile of the true total.
+# per-D ordering: 0 violations and 0 ties (|gap| <= 1e-11 logit) in 32700 pairs
+obligors,periods,gamma,d,lower,upper,bound_lower,bound_upper,gap_logit
+# Exposure: per scenario and gamma, the true probability of a total at which a pair its predictions use
+# (independent vs oracle; oracle vs the fixed arm) is violated.
+scenario,gamma,d,probability
+# Closest approach: per pair and gamma, the smallest logit(upper) - logit(lower) over every (n, T, D)
+# checked, and where it occurs (negative would be a violation).
+lower,upper,gamma,min_gap_logit,obligors,periods,d
+independent,rho_a=0.02,0.5,0.0004282,100,100,197
+independent,rho_a=0.02,0.75,0.002357,100,100,0
+independent,rho_a=0.02,0.9,0.003628,100,100,0
+independent,rho_a=0.02,0.95,0.004529,100,100,0
+independent,rho_a=0.02,0.99,0.00649,100,100,0
+independent,rho_a=0.12,0.5,0.003568,100,100,197
+independent,rho_a=0.12,0.75,0.02704,100,100,0
+independent,rho_a=0.12,0.9,0.03899,100,100,0
+independent,rho_a=0.12,0.95,0.04704,100,100,0
+independent,rho_a=0.12,0.99,0.06365,100,100,0
+independent,rho_a=0.24,0.5,0.009146,100,100,197
+independent,rho_a=0.24,0.75,0.07271,100,100,197
+independent,rho_a=0.24,0.9,0.1278,100,100,197
+independent,rho_a=0.24,0.95,0.1591,100,100,0
+independent,rho_a=0.24,0.99,0.2006,100,100,0
+rho_a=0.02,rho_a=0.12,0.5,0.00314,100,100,197
+rho_a=0.02,rho_a=0.12,0.75,0.02468,100,100,0
+rho_a=0.02,rho_a=0.12,0.9,0.03537,100,100,0
+rho_a=0.02,rho_a=0.12,0.95,0.04251,100,100,0
+rho_a=0.02,rho_a=0.12,0.99,0.05716,100,100,0
+rho_a=0.02,rho_a=0.24,0.5,0.008717,100,100,197
+rho_a=0.02,rho_a=0.24,0.75,0.06668,100,100,197
+rho_a=0.02,rho_a=0.24,0.9,0.1167,100,100,197
+rho_a=0.02,rho_a=0.24,0.95,0.1458,100,100,197
+rho_a=0.02,rho_a=0.24,0.99,0.1941,100,100,0
+rho_a=0.12,rho_a=0.24,0.5,0.005577,100,100,197
+rho_a=0.12,rho_a=0.24,0.75,0.03698,100,100,197
+rho_a=0.12,rho_a=0.24,0.9,0.06365,100,100,197
+rho_a=0.12,rho_a=0.24,0.95,0.07896,100,100,197
+rho_a=0.12,rho_a=0.24,0.99,0.1065,100,100,197

@@ -10,7 +10,7 @@ Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run
 
 ## At a glance
 
-- **Finished:** S-1, S-2, S-3, S-4, S-5, S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
+- **Finished:** S-1, S-2, S-3, S-4, S-5, S-6 (D-217), S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
   S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
 - **Running:** none. **Registered, not run:** S-36 (D-401).
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
@@ -31,7 +31,7 @@ they exist.
 | [S-3](#s-3-jackknife-bias-correction-for-ρ̂-jackknife-bias-rho) | [`jackknife-bias-rho`](jackknife-bias-rho/) | Does jackknife bias correction fix ρ̂'s small-T bias? | now / M3 | finished (D-159) |
 | [S-4](#s-4-bartlett-corrected-profile-threshold-bartlett-profile) | [`bartlett-profile`](bartlett-profile/) | Does a Bartlett-corrected threshold fix the 6 small-T profile findings? | now / M3 | finished (D-181): 6 of 6 held |
 | [S-5](#s-5-bca-intervals-bca-intervals) | [`bca-intervals`](bca-intervals/) | Do BCa intervals fix the 125 percentile findings? | now / M3 | finished (D-159) |
-| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | `pluto-tasche` | How prudent are Pluto–Tasche upper bounds? | now / M3 | not registered |
+| [S-6](#s-6-plutotasche-most-prudent-upper-bounds-pluto-tasche) | [`pluto-tasche`](pluto-tasche/) | How prudent are Pluto–Tasche upper bounds? | now / M3 | **done** (D-217): 5 of 6 held; P5 NOT HELD |
 | [S-7](#s-7-grid-resolution-against-accuracy-and-runtime-grid-resolution) | `grid-resolution` | How do accuracy and runtime depend on grid resolution? | now / M3 | not registered |
 | [S-8](#s-8-mle-against-method-of-moments-mle-vs-mom) | [`mle-vs-mom`](mle-vs-mom/) | How efficient is MoM relative to MLE? | M3 | finished (D-174) |
 | [S-9](#s-9-frequentist-coverage-of-grid-bayesian-credible-intervals-bayes-coverage) | [`bayes-coverage`](bayes-coverage/) | Do grid-Bayesian credible intervals have frequentist coverage? | M3 | finished (D-175) |
@@ -75,6 +75,10 @@ they exist.
 | [S-46](#s-46-tail-loss-with-fixed-lgd-and-ead-fixed-lgd-ead-tail) | `fixed-lgd-ead-tail` | How much tail loss does fixed LGD and EAD understate? | after M5 (study tier only) | not registered (D-188; lowest priority) |
 | [S-47](#s-47-regional-and-sector-factors-regional-sector-factors) | `regional-sector-factors` | National against segment-specific specifications for a commodity-sensitive segment? | M6/M7 (synthetic, with S-41); M8 (public data) | not registered (D-188) |
 | [S-48](#s-48-hac-standard-errors-under-serial-dependence-hac-se) | `hac-se` | Does a HAC (Newey–West) SE restore interval coverage when periods are dependent? | now (positive dependence, independence); the S-36 part with S-36 | **done** (D-211): 5 of 6 held; H2 NOT HELD |
+| [S-49](#s-49-an-equivalent-confidence-level-for-the-independent-bound-pt-equivalent-confidence) | `pt-equivalent-confidence` | What confidence level makes the independent Pluto–Tasche bound cover at γ under correlation? | now (after S-6; exact, no simulation) | not registered (D-216) |
+| [S-50](#s-50-the-multi-period-cohort-bound-pt-multi-period-cohort) | `pt-multi-period-cohort` | Does Pluto and Tasche's multi-period cohort bound cover under a serially correlated factor? | M6 (AR(1) factor; a cohort DGP variant) | not registered (D-216) |
+| [S-51](#s-51-when-to-stop-using-the-most-prudent-bound-pt-switch-point) | `pt-switch-point` | Beyond how many expected defaults does the most-prudent bound stop adding information? | now (after S-6) | not registered (D-216) |
+| [S-52](#s-52-the-multi-grade-most-prudent-sequence-pt-multi-grade) | `pt-multi-grade` | The multi-grade sequence: coverage, scaling to the central tendency, and non-monotone bounds as a ranking signal | after S-24's segment streams | not registered (D-216) |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -535,8 +539,73 @@ same replicates; its coverage, W0 ≤ c·k_b, is over all 1,000.)
 - **Scope:** the serially correlated version needs the AR(1) factor and stays in M6, which already
   lists Pluto–Tasche as a benchmark.
 - **Cost:** minutes for the full matrix.
-- **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
-- **Monitoring implication:** to be filled in when the study finishes (D-152).
+- **Prediction:** registered in [`pluto-tasche/PREDICTION.md`](pluto-tasche/PREDICTION.md) before any
+  panel was simulated (D-214).
+  - **Six predictions,** P1–P6, from exact numbers in [`pluto-tasche/reference.csv`](pluto-tasche/reference.csv)
+    (`reference.py`: scipy only, no simulation).
+  - **The design:** 27 low-default scenarios (n·PD ≤ 1), R = 1,000, a new seed (`0x533036504C55544F`).
+  - **The arms:** (a) independent, and (b) one factor with ρ_a either the generating ρ or a fixed 0.12.
+  - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ ∈ {0.5, 0.75, 0.9, 0.95,
+    0.99}; reported, not predicted.
+  - **Scope of the predictions:** coverage in the 18 n·PD = 1 scenarios only. In the 9 n·PD = 0.1
+    scenarios, coverage is driven by totals of 0–2 and is reported; the bound/true ratio is the headline
+    there. The per-panel order of the bounds holds at every total checked
+    ([`reference_ordering.csv`](pluto-tasche/reference_ordering.csv): 0 violations in 32,700 pairs).
+  - **Exact headline:** at γ = 0.95 in the n·PD = 1 cells, the independent bound covers 0.943, 0.850 and
+    0.733 at ρ = 0.02, 0.12 and 0.24, against the oracle's 0.957, 0.958 and 0.956.
+- **Tool and scorer (D-215):** the bounds in `benchmark_models/pluto_tasche/bounds.hpp` (`docs/methodology/pluto_tasche.md`);
+  `study_pluto_tasche` writes the rows and [`pluto-tasche/score.py`](pluto-tasche/score.py) scores them against
+  `reference.csv` only.
+- **Status:** finished 2026-10-13 (D-217). The run took 290 s on 24 threads from c70f9b4, against a projection of
+  311 s (296–327 s), so it was out of range on the fast side. Scored by `score.py` into
+  [`pluto-tasche/results.txt`](pluto-tasche/results.txt) and [`summary.csv`](pluto-tasche/summary.csv); provenance is in
+  [`MANIFEST.json`](pluto-tasche/MANIFEST.json). The per-panel rows are on the release `s6-data-2026-10-13` (D-163).
+  All three pre-scoring checks passed: every simulated bound covers exactly when D ≥ the reference's D_min.
+- **Result:** **the independent bound undercovers once correlation is material, as registered. The one-factor bound
+  covers when its assumed ρ_a is at or above the truth, and falls short when ρ_a is below it.** At γ = 0.95 in the
+  n·PD = 1 cells, pooled:
+
+  | ρ | independent | oracle (ρ_a = ρ) | fixed (ρ_a = 0.12) | profile | Jeffreys |
+  |---|---|---|---|---|---|
+  | 0.02 | 0.942 | 0.958 | 0.994 | 0.948 | 0.983 |
+  | 0.12 | 0.848 | 0.959 | 0.959 | 0.938 | 0.970 |
+  | 0.24 | 0.731 | 0.955 | 0.863 | 0.932 | 0.953 |
+
+- **Comparison with the predictions** (`score.py`, merged before the run): **5 of 6 held; P5 NOT HELD.**
+
+  | # | Prediction | Result | Held |
+  |---|---|---|---|
+  | P1 | the oracle covers at ≥ γ | exact in 135 of 135; simulated in 90 of 90 | yes |
+  | P2 | the independent bound undercovers at ρ ≥ 0.12, by the exact amounts ±0.02 | exact and simulated below γ in 60 of 60; every pooled shortfall within 0.007 of the exact | yes |
+  | P3 | the ρ_a = 0.12 arm errs high at ρ = 0.02 and low at ρ = 0.24, by the exact amounts | paired dominance in 30 of 30 each way; every pooled excess or shortfall within 0.007; simulated below γ in 28 of 30 at ρ = 0.24 (≥ 26) | yes |
+  | P4 | simulated coverage matches the exact (tier 1) | 270 of 270 in band (≥ 268) | yes |
+  | P5 | the median bound/true ratio in its band in ≥ 403 of 405 cells; rises with γ; the medians at γ = 0.95 | in band in 272 of 405 as scored; rises with γ: yes; 10 of 12 medians at γ = 0.95 in band, the two at n·PD = 0.1, ρ = 0.02 out | **no** |
+  | P6 | the bounds' order on every panel, and coverage and medians in that order | 0 panels out of order; 0 cell pairs out of order | yes |
+
+  - **Why P5 failed, a post-hoc reading that changes no verdict** ([`posthoc_p5.py`](pluto-tasche/posthoc_p5.py),
+    [`posthoc_p5.txt`](pluto-tasche/posthoc_p5.txt)). All 133 misses, and the two medians over scenarios, lie above
+    their bands by at most 4.5e-10 relatively. The band ends are `reference.py`'s bounds (scipy brentq), and the
+    simulated medians are the tool's (bisection to 1e-10 in logit). The scorer allowed 1e-12 of slack, which is
+    narrower than the two solvers agree (`TOL_SCIPY_PT_LOGIT` = 2e-10). In all 405 cells, the totals behind the
+    simulated median lie inside the band's totals [d_lo, d_hi], where no floating point enters. The scorer's slack
+    was the defect, not the bounds. The prediction is still not held as registered.
+- **Reported, not predicted:**
+  - **n·PD = 0.1:** coverage matches the exact values in every cell (0 of 135 out of band). It is driven by
+    totals of 0–2, so every method's coverage jumps with γ rather than tracking it.
+  - **The Jeffreys upper limit** covers at or near γ at every ρ without an assumed ρ (0.983, 0.970 and 0.953 at
+    γ = 0.95). It is a little wider than the oracle: the median ratio is 1.41, 1.70 and 1.96 against 1.32, 1.52 and
+    1.78.
+  - **The profile upper limit** undercovers slightly at every ρ (0.932–0.948 at γ = 0.95).
+  - **By T,** at γ = 0.95, the independent bound's shortfall is about the same at T = 20, 40 and 100 (0.852,
+    0.829 and 0.841 pooled).
+- **Mitigation:** do not use the independent bound as a γ-confidence upper bound when correlation may be material.
+  Use the one-factor bound with a conservative ρ_a (at or above any plausible ρ), or the Jeffreys upper limit,
+  which needs no assumed ρ.
+- **Monitoring implication (D-152):** an independent Pluto–Tasche bound in a low-default portfolio understates the
+  PD a stated confidence requires once correlation is material. At γ = 0.95 with n·PD = 1 it covers 0.85 at
+  ρ = 0.12 and 0.73 at ρ = 0.24. A one-factor bound restores coverage only if ρ_a is not below the truth: ρ_a = 0.12
+  covers 0.86 at ρ = 0.24. A bound used as a monitoring threshold should state the ρ_a it assumes, and it should not
+  be below the portfolio's plausible correlation.
 
 ### S-7 Grid resolution against accuracy and runtime (`grid-resolution`)
 
@@ -986,6 +1055,9 @@ kind as S-11 and report both targets (D-150).
   value, and the distance from the generating ρ.
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
+- **Deferred from S-6 (owner, D-214, D-215):** the multi-grade most-prudent sequence (grade k's bound
+  pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needs this study's segment
+  streams, so it waits for them, as study S-52 (D-216).
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
@@ -1875,3 +1947,68 @@ None is registered: **Prediction:** not registered. **Result:** not run. **Mitig
   long history flags positive dependence (RMS 1.41 at T = 100 and φ = 0.6, against 0.97 at φ = 0). At
   T = 20 the ratio is too noisy to read from one calibration (1.20 against 0.93). The fix for the
   interval is to model the dependence (the AR(1) MLE, D-208), not the HAC SE.
+
+## Addendum: Pluto and Tasche's open questions (S-49 to S-52; D-216, 2026-10-13)
+
+Pluto and Tasche (2005, `docs/references.md`) was read in full against S-6's method
+(`docs/methodology/pluto_tasche.md` §6). Its extensions and the open questions it lists (§5, §6, §8 and
+footnote 8) give four studies. None is registered, and none changes S-6's registration.
+
+### S-49 An equivalent confidence level for the independent bound (`pt-equivalent-confidence`)
+
+- **Question:** the paper's footnote 8 suggests allowing for correlation by raising the independent bound's
+  confidence level, but leaves open how the level could be derived. For a stated γ, which level γ′ makes
+  the independent bound cover at γ under the one-factor model? Is there one γ′ per (γ, ρ), or does it move
+  with n·PD and T?
+- **Method:** exact, with no simulation, from S-6's `reference.py`. The independent bound's coverage at γ′ is
+  P_true(S ≥ D_min(γ′)), a step function of γ′. Per cell and γ, the smallest γ′ whose coverage is ≥ γ, and
+  that γ′'s median bound/true ratio against the oracle's.
+- **Expected:** no single γ′. At n·PD = 1 the shortfalls S-6 registered grow with ρ and T, so γ′ should too.
+- **Verdicts it could change:** none. A rule of thumb for users of the independent bound, if one exists.
+- **Cost:** minutes (scipy), on S-6's cells.
+
+### S-50 The multi-period cohort bound (`pt-multi-period-cohort`)
+
+- **Question:** the paper's §6 bound follows one cohort for T years under yearly factors correlated at
+  ϑ^|s−t|, which is an AR(1) factor with φ = ϑ. Does it cover at γ when ϑ is right, set to 0, or too
+  large? How does it compare with S-6's bounds on the same cohort?
+- **DGP:** a cohort variant: N obligors at the start, each defaulting at most once, no newcomers, under the
+  AR(1) factor (M6). It needs its own prose description and Python mirror.
+- **Method:** the bound is (6.6)–(6.8). The paper integrates over the T factors by Monte Carlo. Here a
+  filter over (Z_t, cumulative defaults), on the AR(1) node placement of `benchmark_models/ar1/`, gives it
+  exactly. Its Tables 13 and 14 (N = 800, 700, 300; T = 5; ρ = 0.12; ϑ = 0.3) are the check.
+- **Verdicts it could change:** none pinned. It completes S-6's scope note: the serially correlated
+  version stays with M6.
+- **Cost:** the cohort DGP and the bound; the run is minutes.
+
+### S-51 When to stop using the most-prudent bound (`pt-switch-point`)
+
+- **Question:** the paper's §8 asks how many defaults it takes before ordinary estimation should replace
+  the most-prudent bound. It also argues for moderate confidence levels: an average of historical default
+  rates, it says, underestimates the true PD about as often as a moderate-level bound does.
+- **Method:** S-6's arms over the recovery grid's full range of n·PD (0.1 to 500), beside the MLE, its
+  profile and Jeffreys upper limits at the same γ, and the average default rate. Per cell it reports:
+  - P(estimate < true PD) for the average default rate, against 1 − γ for the bounds, which tests the §8
+    argument;
+  - the bound's excess over the profile and Jeffreys limits.
+
+  The switch point is the expected-default count above which that excess is within Monte Carlo error of
+  zero.
+- **Cost:** the independent bound is cheap everywhere. The one-factor bound's convolution is O(D² log T),
+  which is too slow at n·PD = 500 and T = 100 (D near 50,000). It needs a normal or saddlepoint
+  approximation there, and checking that approximation is part of the study.
+- **Verdicts it could change:** none.
+
+### S-52 The multi-grade most-prudent sequence (`pt-multi-grade`)
+
+- **Question:** the paper's principle proper: grade k's bound pools grades k..K, so the bounds are monotone
+  across grades. Three parts:
+  - how much each grade's bound over-covers, which grows towards the better grades by construction;
+  - the coverage of the two scaled variants of §5: scaling to the portfolio's default rate, which the paper
+    says loses all conservatism, and to its upper bound;
+  - §8's question of when a non-monotone sequence is evidence that the ranking is wrong, measured as the
+    false-alarm rate under a correct ranking and the power against one swapped pair of grades.
+- **DGP:** the grade scenario matrix (D-151): grades on a shared Z_t, each with its own stream. That needs
+  S-24's segment index, so it waits for S-24's DGP variant.
+- **Verdicts it could change:** none pinned.
+- **Cost:** S-6's bounds per grade; the run is minutes once the DGP exists.

@@ -1609,6 +1609,41 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
   - **Left to the in-house `log`/`exp` decision (D-199), not new items:** the remaining libm calls (`log_phi`'s log, log1p and exp pair, the log-sum-exp's exp per node, the composite rule's sinh, cosh and log, the posterior's masses, the AR(1) filter's `weighted_moments`).
   - **Checked, not proposed:** bootstrap index draws (under 1% of S-10), per-grid-point `make_vasicek1f` (tens of ns per evaluation), and the DGP's factor draws (T per panel).
 
+## S-6: Pluto–Tasche bounds, the registration, 2026-10-12
+
+- **D-214 — S-6, Pluto–Tasche most-prudent upper bounds, is registered before any panel is simulated (D-148).** The record is in `studies/pluto-tasche/PREDICTION.md` (P1–P6) and in `reference.py`, which writes `reference.csv`: exact numbers, scipy only, with no simulation. There are three PRs, each approved by the owner before the next: this registration; the tool and scorer, merged before any run; then the run.
+  - **The bounds,** per panel at γ ∈ {0.5, 0.75, 0.9, 0.95, 0.99}:
+    - **(a) independent:** one-sided Clopper–Pearson on N = Σ n_t and D = Σ d_t;
+    - **(b) one factor:** the T Vasicek mixed-binomial PMFs, from the existing quadrature in log space, convolved on 0..D. ρ_a is assumed: either the generating ρ (oracle) or a fixed 0.12.
+    - Both are solved by bisection on logit p.
+  - **The comparators:** the profile and Jeffreys upper limits, one-sided at γ.
+  - **The scenarios:** the recovery grid's low-default cells, n·PD ≤ 1. That is 27 scenarios: 9 at n·PD = 0.1 and 18 at n·PD = 1. The latter include the subset's PD 0.1% cells, 4 and 7. R = 1,000.
+  - **The seed:** `0x533036504C55544F` ("S06PLUTO"), reserved here. It collides with none in the code or in DECISIONS.md. The recovery seed is not reused.
+  - **Exact coverage without simulation.**
+    - Both bounds depend on the panel only through D, and bound(D) ≥ PD exactly when P_a(S ≤ D | PD) ≥ 1 − γ. So coverage is P_true(S ≥ D_min), with D_min the assumed law's (1 − γ) quantile at the true PD.
+    - For the oracle this makes coverage ≥ γ hold by construction.
+    - The brief's wording, summing up to "the largest D whose bound still covers", had the direction reversed. The bound rises with D, and PREDICTION.md records the correct identity.
+  - **Headline (exact),** at γ = 0.95 in the 18 n·PD = 1 scenarios, as mean coverage:
+    - **independent:** 0.943, 0.850 and 0.733 at ρ = 0.02, 0.12 and 0.24;
+    - **oracle:** 0.957, 0.958 and 0.956;
+    - **fixed ρ_a = 0.12:** 0.993, the oracle, and 0.869.
+    - At n·PD = 0.1 discreteness dominates: totals are mostly 0–2, and every method covers above γ on average.
+  - **Coverage is predicted in the 18 n·PD = 1 scenarios only (review).** In the 9 n·PD = 0.1 scenarios it is reported, not predicted, and the bound/true ratio is the headline there: at γ = 0.95 the oracle's median bound is 2.32, 2.55 and 3.02 times the true PD at ρ = 0.02, 0.12 and 0.24.
+  - **Checks in `reference.py`:**
+    - the trapezoid PMF against `scipy.integrate.quad`: 1.6e-13 relative;
+    - (a) at D = 0 against 1 − (1 − γ)^(1/N): exact;
+    - (b) at ρ_a = 1e-10 against (a): 1.7e-10;
+    - the per-panel ordering independent ≤ (b, 0.02) ≤ (b, 0.12) ≤ (b, 0.24), every pair at every D up to each (n, T)'s 0.9999 quantile of the true total and at all five γ: **0 violations and 0 ties in 32,700 pairs** (`reference_ordering.csv`). The closest approach is 4.3e-4 in logit, at γ = 0.5 (independent against 0.02, n = 100, T = 100, D = 197). The review asked that P6 be narrowed to where the check holds, with the exceptions listed, rather than loosened; there are no exceptions, so P6 stands as written. At γ = 0.5 the gaps narrow with D, so the scorer also checks the order on every simulated panel;
+    - the closest any bound comes to the truth where coverage switches: 8.4e-5 in logit, far above the planned 1e-10 solver tolerance.
+  - **Two departures from the brief, for the owner:**
+    - **The profile and Jeffreys ordering is reported, not predicted.** Their limits depend on the whole count vector, so the reference cannot give their exact coverage. Their ordering against the bounds is reported paired, with D-176's z.
+    - **The solver tolerance goes into `tolerances.md` with the code in PR 2.** The register's sync check needs the id in `tests/tolerances.toml`.
+  - **Open choices for the owner (not decided here; the review's recommendation in brackets):**
+    - **(i) The multi-grade most-prudent sequence** (grade k's bound pools grades k..K) on the grade scenario matrix (D-151). The existing generator does **not** support it without new code. `dgp::simulate_panel` takes one PD per panel, and the grade matrix draws grade k under S-24's segment index on a shared Z_t. That stream is not built, and needs its own prose, Python mirror and reference-panel hash (D-149). The bound itself needs only a convolution over grades within each period; its exact coverage could also be computed without simulation. [Drop it from S-6 and note it under S-24.]
+    - **(ii) The γ set:** registered as {0.5, 0.75, 0.9, 0.95, 0.99}. [Keep.]
+    - **(iii) The misspecified ρ_a:** registered as 0.12, which equals the oracle on the 0.12 scale, so that arm adds information on two scales only. [Keep 0.12.]
+  - **Placement:** the bounds will be a `native` benchmark, not parity and not in the C ABI. The proposed home is `benchmark_models/`, beside the AR(1) model; PR 2's D-entry justifies the placement. The serially correlated version stays with M6.
+
 ## P-21: one erfcx per node on the derivative path, 2026-10-12
 
 Numbered from D-400: entries made in a cloud session while the laptop agent continues the main sequence (D-214 on),
@@ -1668,6 +1703,66 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Built:** `Estimate2::scaled` and `hess_u`, and `analytic_se_from_hessian`, `analytic_se_at_scaled` and `analytic_se_of` in `engine/profile.hpp` (`analytic_se_scaled` is kept). Test: `analytic_se_of_is_calibrates_hessian_bit_for_bit`; non-slow suite 79/79.
   - **Measured:** the analytic SE phase −93%, per-replicate work −6.9% (expected 8-13%; stop rule under 5%, not triggered).
   - **Before merge (D-177):** the full S-10/S-4 run, every fit flip-checked against the run that wrote `studies/parametric-bootstrap/summary.csv`, the flip counts reported even if zero, and the summary refreshed from it, in its own commit.
+## S-6: the bound code, the tool and the scorer, 2026-10-13
+
+- **D-215 — S-6's PR 2: the Pluto–Tasche bounds are a header-only `native` benchmark in `benchmark_models/pluto_tasche/bounds.hpp`, with their tests, goldens and scipy replication; `study_pluto_tasche` writes the rows and `studies/pluto-tasche/score.py` scores them, reading only `rows.csv` and `reference.csv`.** Nothing in parity, the engine or the C ABI changes.
+  - **The owner approved the registration (D-214, #70) on 2026-10-13,** with its open choices as registered: γ ∈ {0.5, 0.75, 0.9, 0.95, 0.99}, ρ_a = 0.12, and no multi-grade sequence in S-6 (it waits for S-24's segment streams, and is noted there).
+  - **Placement.** The bounds are a benchmark model (ARCHITECTURE.md lists Pluto–Tasche under `benchmark_models/`), beside the AR(1) model. They use core's objective and quadrature and nothing else, which the layering check allows. They are not an engine estimator: they invert one statistic's law rather than fit a surface. They are not parity or in the C ABI, since S-6 decides whether they are worth recommending. Header-only: nothing needs separate compilation or strict-FP kernels.
+  - **The method** (`docs/methodology/pluto_tasche.md`). The per-period law is exp of the objective's `log_contrib` on 0..min(D, n); the T-fold power is taken by repeated squaring, truncated at D, every term a log-sum-exp shifted by its own largest pair. The solve is bisection on logit p from [−30, 15] to a bracket 1e-10 wide (`TOL_PT_SOLVE_LOGIT`, the planned value), keeping the root inside; the bound is the midpoint. A bound with no sign change over the bracket is flagged, and the tool stops on any flagged bound.
+  - **Tests** (`unit_pluto_tasche`): the zero-default closed form, to the solve's tolerance (observed 4.1e-11); (b) → (a) as ρ_a falls from 1e-2 to 1e-8, the gap falling strictly and within `TOL_PT_RHO_LIMIT_LOGIT` = 5e-8 at 1e-8 (observed 1.7e-8, about 1.7 ρ_a, the model's own gap); strict monotonicity in D and γ and P6's order on 195 adjacent pairs, the closest 4.28e-4 in logit (the registration's reference found 4.3e-4 at the same cell, n = 100, T = 100, D = 197, γ = 0.5); flags on invalid input; and 192 goldens (`tests/golden/pluto_tasche/bounds.csv`, `TOL_PT_GOLDEN_LOGIT` = 2e-10). `validation/scipy/pluto_tasche.py` replicates the goldens with `beta.ppf` and an independent trapezoid quadrature, convolution and brentq: 6.3e-11 at worst (`TOL_SCIPY_PT_LOGIT` = 2e-10), in CI's scipy job.
+  - **The tool** (`tests/studies/pluto_tasche.cpp`). Panels are `dgp::simulate_panel` on S-6's seed, n constant over the T periods. Per panel and γ it writes D, the three bounds, the profile and Jeffreys upper limits, a coverage indicator for each (a missing limit does not cover, D-131) and the flags. Readings fixed here:
+    - the bounds are solved once per scenario and distinct total and reused, since they are a pure function of (n, T, D, ρ_a, γ); which job solves one first cannot change it;
+    - the fit is the recovery fit (the cached surface, then `calibrate_from_surface` with the quadrature check);
+    - the profile upper limit at γ is the PD profile's upper end at the threshold Φ⁻¹(γ)²/2 (`engine::profile_intervals`); at γ = 0.5 it is the polished MLE, the profile's own maximum (`max_at`), from the γ = 0.75 call;
+    - the Jeffreys upper limit is the γ quantile of the Jeffreys posterior's cell-uniform PD marginal, resolution rule on, the local grid seeded by calibrate's SE as S-9's and S-10's tools do; a refused or numeric posterior has none;
+    - NaN is written as `nan` on every platform.
+  - **The scorer** (`studies/pluto-tasche/score.py`, standard library only, its self-test in CI). Before scoring it checks that the rows are the registered design, that every bound covers exactly when D ≥ the reference's D_min (the tool and `reference.py` compute the bounds independently, so this checks both), and that each bound is a function of D. Any failure stops the scoring. Its readings are in its docstring, fixed before the run. P5 (iii) and (iv) are scored as stated in its docstring: the exact numbers against `reference.csv`, and the simulated medians over scenarios within the medians of the cells' bands.
+  - **The smoke test** checks structure only: two replicates of scenarios 4 and 0, the header, the row count, the field count, the γ order and that the indicators are 0 or 1. Those are replicates 0 and 1 of the study's own panels, as other studies' smoke tests use theirs. It was first run on 2026-10-13 while this PR was written, after the owner approved the registration but before #70 merged. No value was looked at.
+  - **The runtime projection,** recorded in PREDICTION.md's dated addendum before the run (D-187, D-193): 7,446 thread-s, 0.086 h (about 311 s on 24 threads), ±1%, or 296–327 s with the machine-state allowance. It comes from a 512-replicate sample that ran 169 s. The sample's rows were deleted unread.
+
+- **D-216 — Pluto and Tasche (2005) was read in full and checked against S-6's method (2026-10-13, at the owner's request). The engine reproduces the paper's published examples. One of the paper's printed values is an erratum, and S-6's multi-period one-factor bound is S-6's own construction, not the paper's §6 model. Four studies come from the paper's open questions, S-49 to S-52, none registered.**
+  - **The source:** the working paper, arXiv:cond-mat/0411699v3 (4 April 2005), read in full. It was published as "Thinking positively", *Risk*, August 2005, pp. 72–78. The title is confirmed on Risk.net; the month and pages come only from secondary listings. It is now listed in `docs/references.md`. The volume "18(8)" in the earlier draft of the methodology note was from memory and is dropped.
+  - **What matches:** the independent bound is the paper's (3.2) and (A.1), the exact Clopper–Pearson bound. The one-period one-factor bound is its (4.1) and (4.3a). `unit_pluto_tasche: pt_reproduces_the_published_tables` reproduces Tables 1–8 and the two values in its text within 0.01 percentage points (`TOL_PT_PAPER_PCT`; observed 0.0094). That is the printed rounding plus the paper's numerics: Table 8 agrees with its values rounded up.
+  - **Errata** (`docs/methodology/pluto_tasche.md` §6); none changes the method:
+    - Table 4 at 75% prints 0.65% (repeated in Table 11), but the bound is 0.638%. At 0.65%, P(X ≤ 3) = 0.237 < 0.25, so the printed value fails the paper's own (3.2). scipy agrees with the engine, and the test checks that cell against the exact value.
+    - (4.3a) prints G where Φ(G) is meant.
+    - Table 8 and Table 12 disagree on grade A's 50% bound (0.72% and 0.71%; the bound is 0.7106%).
+    - A proof heading names the wrong proposition.
+  - **What S-6 does not take from the paper:**
+    - The paper's principle is multi-grade; S-6 has one grade (S-52).
+    - Its multi-period model (§6) follows one cohort under factors correlated at ϑ^|s−t|. S-6's bound (b) sums independent periods, each with its own obligors, using the paper's one-period law convolved over the periods. That is what D-214 registered ("independent period factors"), so the registration stands. The methodology note now says that (b) is not the paper's §6 bound, and S-50 studies that bound.
+  - **The new studies** (`studies/README.md`, addendum):
+    - **S-49:** the confidence level that makes the independent bound cover under correlation (footnote 8). Exact, from S-6's reference.
+    - **S-50:** the §6 cohort bound under an AR(1) factor (M6), checked against the paper's Tables 13–14.
+    - **S-51:** the expected-default count beyond which the bound stops adding to the profile and Jeffreys limits, and §8's claim that average default rates underestimate about as often as a moderate-level bound.
+    - **S-52:** the multi-grade sequence, §5's scaled variants, and non-monotone sequences as a ranking signal. It replaces the S-24 note and waits for S-24's segment streams.
+
+## S-6: results, 2026-10-13
+
+- **D-217 — S-6, the Pluto–Tasche most-prudent upper bounds: 5 of 6 held; P5 NOT HELD** (`studies/pluto-tasche/results.txt`, `MANIFEST.json`; D-214, D-215).
+  - **The run:** 27 scenarios × 1,000 replicates × 5 γ, from c70f9b4 (main after #76, tree clean), 290 s on 24 threads at efficiency 0.99. Jeffreys took 86% of the CPU time, the profile 8% and the bounds 6% (1,339 distinct totals). All three checks before scoring passed: the rows are the registered design; every simulated bound covers exactly when D ≥ `reference.csv`'s D_min, on every panel and γ, for all three bounds (the tool and `reference.py` compute the bounds independently); and each bound is a function of D.
+  - **Runtime against the projection:** projected 311 s (296–327 s with the machine-state allowance, D-193) from a 512-replicate sample, recorded before the run. It took 290 s, so it was out of range on the fast side: projection / actual 1.07. Not investigated. The projection's own caveat, that the bounds phase is undercounted, points the other way.
+  - **Held:**
+    - **P1, the oracle covers:** exact ≥ γ in 135 of 135 cells; simulated above γ − 3.29 SE in 90 of 90.
+    - **P2, the independent bound undercovers at ρ ≥ 0.12:** exact and simulated coverage below γ in 60 of 60. Every pooled shortfall is within 0.007 of the exact (at γ = 0.95: 0.102 at ρ = 0.12, 0.219 at ρ = 0.24).
+    - **P3, how the ρ_a = 0.12 arm errs:** at ρ = 0.02 it covers every panel the oracle covers, in 30 of 30 cells, with an excess within 0.002 of the exact. At ρ = 0.24 it is ≤ the oracle in 30 of 30, below γ in 28 of 30 (≥ 26), with every shortfall within 0.007. At ρ = 0.12 it is the oracle on every panel.
+    - **P4:** simulated coverage is in band around the exact in 270 of 270 tier-1 cells.
+    - **P6, the order:** 0 panels out of order, 0 of 270 coverage cell pairs and 0 of 405 median cell pairs.
+  - **Not held, P5:**
+    - **As scored:** (i) the simulated median bound/true ratio is in band in 272 of 405 cells, against ≥ 403. (ii) The medians rise with γ. (iii) and (iv) 10 of the 12 medians over scenarios at γ = 0.95 are in band; the two at n·PD = 0.1, ρ = 0.02 are out.
+    - **A post-hoc diagnosis, which changes no verdict** (`posthoc_p5.py`, `posthoc_p5.txt`, written after the run). Every miss, all 133 and the two medians, lies *above* its band, by 6.3e-12 to 4.5e-10 relatively. The band ends are `reference.py`'s bounds (scipy brentq). The medians are the tool's bounds (bisection to 1e-10 in logit; the bound is the bracket's midpoint). The scorer's 1e-12 of slack is narrower than the two solvers agree: `TOL_SCIPY_PT_LOGIT` is 2e-10, and the scipy replication's worst gap was 6.3e-11. 45 of the misses have a band of zero width (d_lo = d_hi), where any solver difference falls outside.
+    - **In totals, where no floating point enters,** the middle two totals of every cell's 1,000 panels lie in [d_lo, d_hi] in all 405 cells. So the miss is the scorer's, not the bounds'.
+    - **Lesson for later scorers:** when the value compared and its band come from different solvers, the slack is the solvers' agreement (here `TOL_SCIPY_PT_LOGIT`), not a floating-point epsilon. Alternatively, compare the discrete statistic (the total) when one exists. The scorer's self-test used the reference's own values as the fixture's bounds, so it could not catch this.
+  - **Reported without a prediction:**
+    - **n·PD = 0.1:** simulated coverage is in band around the exact in all 135 cells. Coverage there is driven by totals of 0–2.
+    - **Jeffreys** (one-sided γ quantile of the cell-uniform PD marginal) covers 0.983, 0.970 and 0.953 at γ = 0.95, n·PD = 1, ρ = 0.02, 0.12 and 0.24, with no assumed ρ. Its median ratio is 1.41, 1.70 and 1.96, against the oracle's 1.32, 1.52 and 1.78. Paired against the independent bound it covers more panels in every tier-1 cell (z +5.9 to +36.7).
+    - **The profile** upper limit covers 0.948, 0.938 and 0.932 there. Paired, it is below the oracle in 14 of 15 tier-1 cells.
+    - **By T,** the independent bound's tier-1 coverage at γ = 0.95 is 0.852, 0.829 and 0.841 at T = 20, 40 and 100: the shortfall does not shrink with a longer history.
+    - **No profile or Jeffreys limit was missing** on any panel.
+  - **Verdicts it could change:** none pinned. The bounds stay a `native` benchmark, not parity and not in the C ABI.
+  - **The recommendation:** the independent Pluto–Tasche bound is not a γ-confidence upper bound once correlation is material: at γ = 0.95 it covers 0.85 at ρ = 0.12 and 0.73 at ρ = 0.24. Use the one-factor bound with ρ_a at or above any plausible ρ, or the Jeffreys upper limit, which covered at or near γ in these cells without an assumed ρ, at a ratio 7–10% above the oracle's.
+  - **Monitoring implication (D-152), confirmed as registered:** an independent Pluto–Tasche bound in a low-default portfolio understates the PD a stated confidence requires once correlation is material. The one-factor bound restores coverage only if ρ_a is not below the truth (ρ_a = 0.12 covers 0.86 at ρ = 0.24 against γ = 0.95). A bound used as a monitoring threshold should therefore state its ρ_a, and that ρ_a should be conservative.
+  - **Data:** `rows.csv` is on the release `s6-data-2026-10-13` (D-163); its SHA-256 is in `MANIFEST.json`.
 
 ## Open
 

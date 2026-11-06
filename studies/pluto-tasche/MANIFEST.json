@@ -1,0 +1,28 @@
+{
+  "study": "S-6, Pluto-Tasche most-prudent upper bounds: coverage and conservatism of the independent and one-factor bounds in low-default portfolios (D-214, D-215, D-216, D-217)",
+  "prediction": "studies/pluto-tasche/PREDICTION.md: P1-P6 registered in de618c6 (PR #70, merged as 9956da4, approved by the owner) before any bound was computed on a study panel; the runtime addendum in e547d15 (PR #76, merged as c70f9b4), before the run started",
+  "scoring": "score.py, merged in e547d15 (PR #76) before the run, unchanged since; tested only on its synthetic fixture (D-215). Run as: python studies/pluto-tasche/score.py rows.csv --summary-out summary.csv (standard library only); its output is results.txt",
+  "compiler": "MSVC 1951, Release",
+  "run": {
+    "command": "study_pluto_tasche --out rows.csv --timing-out timing.csv (seed 0x533036504C55544F, 27 scenarios x 1,000 replicates x gamma 0.5, 0.75, 0.9, 0.95, 0.99; 24 threads, dgp_kernel avx2)",
+    "commit": "c70f9b4 (main after #76, tree clean)",
+    "executable_sha256": "112860b9a4308873591c899f7c217b448ce21e141692ab9a7aee8427205b8ac9",
+    "start": "2026-10-13T21:20:43-04:00",
+    "end": "2026-10-13T21:25:34-04:00",
+    "wall_seconds": 290,
+    "cpu_seconds": 6909,
+    "efficiency": "6,909 / (24 x 290) = 0.99",
+    "phase_split": "Jeffreys 86%, profile 8%, bounds 6% (1,339 distinct totals, each solved once), fit, simulate and cache fill under 1%",
+    "projection": "0.086 h, 311 s (90% range +/-1%; 296-327 s with the machine-state allowance), from a 512-replicate sample, recorded in PREDICTION.md before the run (D-187, D-193). Took 290 s: out of range, faster than its lower end; projection / actual 1.07",
+    "checks": "check 1: the rows are the registered design; check 2: every simulated bound covers exactly when D >= reference.csv's D_min, for all three bounds on every panel and gamma; check 3: each bound is a function of D within its scenario. 0 failures in each"
+  },
+  "files": {
+    "results.txt": "sha256 f3e05cb59ec0d67dbfabf06cb3e3498a4afb4d1a3011e4e18fa84c1a7c62824f; score.py's output",
+    "summary.csv": "sha256 74fd51b7058298010ce3f172beb12ea8920bbb630da95fb24f83522d3110de1c; score.py --summary-out (one row per scenario, method and gamma)",
+    "posthoc_p5.py": "sha256 f8e7a09986e4620b7955c9fe8832c01b386f3f629a2ea4fc00f7684c446082d6; written after the run, changes no verdict (D-217): how far outside its band each P5 (i) miss lies",
+    "posthoc_p5.txt": "sha256 786aa8b7b4766ee62003c86c8122a002d562746821d719d8590c23a1440ecef0; posthoc_p5.py's output",
+    "reference.csv": "the registered exact numbers (reference.py), from the model only",
+    "rows.csv (not committed, D-163)": "sha256 dfee06397ae63f02a436f07a2f57cef4020553a4f69c4d0c77d3c7218375a796, 23,148,040 bytes; attached to the release https://github.com/keithcsqueensu/vasicek-cal/releases/tag/s6-data-2026-10-13 and checked after download; regenerable exactly by the command above at its commit"
+  },
+  "result": "5 of 6 held (P1, P2, P3, P4, P6). Not held: P5 ((i) simulated median bound/true ratio in band in 272 of 405 cells against >= 403; (iii)/(iv) 2 of 12 medians over scenarios out, at n PD 0.1, rho 0.02). Post hoc, changing no verdict: all 133 cell misses and both medians lie above their bands by at most 4.5e-10 relatively, within the two solvers' agreement and above score.py's 1e-12 slack, and in all 405 cells the median's totals lie in the band's totals"
+}

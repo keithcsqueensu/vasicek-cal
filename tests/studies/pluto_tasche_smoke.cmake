@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# S-6's smoke test (D-215): structure only. Runs study_pluto_tasche on two replicates of scenarios 4 and 0 and checks
+# the rows' shape: the header, one row per (scenario, replicate, gamma), every row with the header's field count,
+# the five gammas in order, and coverage indicators of 0 or 1. No value is checked: the values are the run's.
+#
+#   cmake -DTOOL=<study_pluto_tasche> -DWORK=<dir> -P pluto_tasche_smoke.cmake
+
+file(REMOVE_RECURSE "${WORK}")
+file(MAKE_DIRECTORY "${WORK}")
+execute_process(COMMAND "${TOOL}" --replicates 2 --scenarios 4,0 --threads 2 --out "${WORK}/rows.csv"
+                RESULT_VARIABLE rc)
+if(NOT rc EQUAL 0)
+    message(FATAL_ERROR "study_pluto_tasche failed: ${rc}")
+endif()
+
+set(header "scenario,replicate,pd_true,rho_true,periods,obligors,gamma,d_total,independent,oracle,fixed,profile,jeffreys,cov_independent,cov_oracle,cov_fixed,cov_profile,cov_jeffreys,fit_flags,profile_flags,jeffreys_flags")
+string(REPLACE "," ";" header_fields "${header}")
+list(LENGTH header_fields nfields)
+list(FIND header_fields "gamma" i_gamma)
+list(FIND header_fields "cov_independent" i_cov0)
+list(FIND header_fields "cov_jeffreys" i_cov4)
+
+file(STRINGS "${WORK}/rows.csv" lines)
+set(data "")
+set(seen_header FALSE)
+foreach(line IN LISTS lines)
+    if(line MATCHES "^#")
+        continue()
+    endif()
+    if(NOT seen_header)
+        if(NOT line STREQUAL header)
+            message(FATAL_ERROR "unexpected header:\n${line}")
+        endif()
+        set(seen_header TRUE)
+        continue()
+    endif()
+    list(APPEND data "${line}")
+endforeach()
+list(LENGTH data nrows)
+if(NOT nrows EQUAL 20)
+    message(FATAL_ERROR "expected 20 rows (2 scenarios x 2 replicates x 5 gammas), got ${nrows}")
+endif()
+
+set(gammas 0.5 0.75 0.90000000000000002 0.94999999999999996 0.98999999999999999)
+set(k 0)
+foreach(line IN LISTS data)
+    string(REPLACE "," ";" f "${line}")
+    list(LENGTH f n)
+    if(NOT n EQUAL nfields)
+        message(FATAL_ERROR "row has ${n} fields, header ${nfields}:\n${line}")
+    endif()
+    math(EXPR g "${k} % 5")
+    list(GET gammas ${g} want)
+    list(GET f ${i_gamma} got)
+    if(NOT got STREQUAL want)
+        message(FATAL_ERROR "row ${k}: gamma ${got}, expected ${want}")
+    endif()
+    foreach(i RANGE ${i_cov0} ${i_cov4})
+        list(GET f ${i} c)
+        if(NOT (c STREQUAL "0" OR c STREQUAL "1"))
+            message(FATAL_ERROR "row ${k}: coverage indicator ${c}")
+        endif()
+    endforeach()
+    math(EXPR k "${k} + 1")
+endforeach()
+message(STATUS "study_pluto_tasche smoke: ${nrows} rows, ${nfields} fields each")
