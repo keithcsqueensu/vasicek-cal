@@ -41,6 +41,7 @@
 #pragma once
 
 #include <cmath>
+#include <cstring>
 #include <cstdint>
 #include <limits>
 #include <type_traits>
@@ -459,9 +460,27 @@ public:
         ax[1] = &grid.axis[1];
     }
 
+    // P-25 (D-408): a point asked for again, bit for bit the same pair, is answered from the memo of the last
+    // kMemo points evaluated: panel_derivs is a pure function of the point for this panel and rule, so the memo is
+    // the number the integration would give. W* asks for about one repeat per panel (start_axis1 re-evaluates the
+    // polished maximum, which an inner solve evaluated). evaluations counts every point asked for, repeats
+    // included, so every reported count is as before.
     PanelDerivs derivs(double u0, double u1) {
         ++evaluations;
-        return panel_derivs(objective_, primary_, obs_, first_, count_, ax, u0, u1);
+        for (int i = 0; memo_enabled() && i < memo_used_; ++i) {
+            const Memo& m = memo_[i];
+            if (std::memcmp(&m.u0, &u0, sizeof u0) == 0 && std::memcmp(&m.u1, &u1, sizeof u1) == 0) {
+                ++memo_hits;
+                return m.d;
+            }
+        }
+        Memo& m = memo_[memo_next_];
+        m.u0 = u0;
+        m.u1 = u1;
+        m.d = panel_derivs(objective_, primary_, obs_, first_, count_, ax, u0, u1);
+        memo_next_ = (memo_next_ + 1) % kMemo;
+        if (memo_used_ < kMemo) ++memo_used_;
+        return m.d;
     }
 
     double surface(int a, std::int32_t i, std::int32_t j) const {
@@ -569,8 +588,23 @@ public:
                        std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
                        std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()}};
     std::int64_t evaluations = 0;
+    std::int64_t memo_hits = 0;  // of evaluations, answered from the memo (P-25)
+
+    // The memo's switch, for the identity test only (unit_profile): off, every point is integrated.
+    static bool& memo_enabled() {
+        static bool on = true;
+        return on;
+    }
 
 private:
+    struct Memo {
+        double u0, u1;
+        PanelDerivs d;
+    };
+    static constexpr int kMemo = 8;
+    Memo memo_[kMemo] = {};
+    int memo_used_ = 0, memo_next_ = 0;
+
     const Objective& objective_;
     const Integrator& primary_;
     const typename Objective::Obs* obs_;

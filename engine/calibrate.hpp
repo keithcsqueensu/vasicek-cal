@@ -142,12 +142,31 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
         while (!(obs[u] == obs[t])) ++u;
         first[static_cast<std::size_t>(t)] = u;
     }
+    // P-24 (D-407): where the analytic Hessian is taken (below), it is taken first, and each distinct observation's
+    // value from it is l_primary's: log_contrib_derivs's value is log_contrib's bit for bit (D-170), at the same theta
+    // (out.value is from_scaled(r.scaled), where panel_derivs evaluates). So each observation is integrated once at
+    // the estimate, not twice, and every number below is the one it replaces.
+    const bool take_hessian = !(out.flags & (kFlagGridEdge | kFlagFlatSurface));
+    constexpr bool analytic = profile_detail::has_contrib_derivs<Objective, Integrator>::value;
+    std::vector<std::int64_t> df, dc;
+    std::vector<double> dvalue;
+    profile_detail::PanelDerivs at_estimate{};
+    if constexpr (analytic) {
+        if (take_hessian) {
+            profile_detail::distinct_observations(obs, periods, df, dc);
+            dvalue.resize(df.size());
+            const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
+            at_estimate = profile_detail::panel_derivs(objective, primary, obs, df, dc, ax, r.scaled[0], r.scaled[1],
+                                                       dvalue.data());
+        }
+    }
     const auto theta = Objective::theta(out.value);
     std::vector<double> l_primary(static_cast<std::size_t>(periods)), l_check(static_cast<std::size_t>(periods));
+    for (std::size_t j = 0; j < df.size(); ++j) l_primary[static_cast<std::size_t>(df[j])] = dvalue[j];
     for (std::int64_t t = 0; t < periods; ++t) {
         const std::int64_t u = first[static_cast<std::size_t>(t)];
         if (u == t) {
-            l_primary[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, primary);
+            if (df.empty()) l_primary[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, primary);
             if (quadrature_check) l_check[static_cast<std::size_t>(t)] = objective.log_contrib(obs[t], theta, check);
         } else {
             l_primary[static_cast<std::size_t>(t)] = l_primary[static_cast<std::size_t>(u)];
@@ -173,14 +192,11 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
 
     // Observed information at the estimate from the objective itself: analytic (P-15, D-185) where the
     // objective gives its derivatives, else by central differences (D-119).
-    if (!(out.flags & (kFlagGridEdge | kFlagFlatSurface))) {
+    if (take_hessian) {
         double h00, h11, h01;
-        if constexpr (profile_detail::has_contrib_derivs<Objective, Integrator>::value) {
+        if constexpr (analytic) {
             (void)hessian_step_fraction;
-            std::vector<std::int64_t> df, dc;
-            profile_detail::distinct_observations(obs, periods, df, dc);
-            const Axis* const ax[2] = {&grid.axis[0], &grid.axis[1]};
-            const auto d = profile_detail::panel_derivs(objective, primary, obs, df, dc, ax, r.scaled[0], r.scaled[1]);
+            const profile_detail::PanelDerivs& d = at_estimate;  // taken above (P-24)
             h00 = d.h[0];
             h11 = d.h[1];
             h01 = d.h[2];
@@ -253,7 +269,9 @@ Status calibrate_cached(const Backend& backend, SurfaceRowCache& cache, const Ob
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
     const std::int64_t K = grid.size();
-    L.assign(static_cast<std::size_t>(periods * K), 0.0);
+    // P-26 (D-409): no zero fill; evaluate_surface_cached writes every element (a full row per period), so a reused
+    // vector of the right size is overwritten as it stands, and a new one is still value-initialised by resize.
+    L.resize(static_cast<std::size_t>(periods * K));
     evaluate_surface_cached(backend, cache, objective, primary, obs, periods, grid, L.data());
     return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out, hessian_step_fraction);
 }

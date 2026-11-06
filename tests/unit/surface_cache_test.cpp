@@ -63,6 +63,31 @@ VCAL_TEST(cached_surfaces_equal_evaluate_surface_bit_for_bit) {
     VCAL_CHECK_EQ(cache.hits(), 3);  // (1000, 12) and (1000, 0) in panel 2, (1000, 12) in panel 3
 }
 
+// P-26 (D-409): evaluate_surface_cached writes every element, so a reused surface needs no clearing: over a
+// buffer filled with a NaN pattern, and over a previous panel's surface of the same size, the result equals the
+// zeroed fill's bit for bit; and calibrate_cached on a reused vector equals the fit on a fresh one.
+VCAL_TEST(cached_surface_overwrites_every_element) {
+    const auto in = q::parity_rule();
+    const auto g = small_grid();
+    const std::vector<std::vector<Binomial::Obs>> panels = {
+        {{1000, 3}, {1000, 12}, {1000, 3}, {1000, 0}}, {{1000, 12}, {1000, 7}, {1000, 0}, {1000, 7}}};
+    e::SurfaceRowCache cache;
+    std::vector<double> reused;
+    for (const auto& p : panels) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        std::vector<double> zeroed(static_cast<std::size_t>(T * g.size()), 0.0);
+        std::vector<double> junk(zeroed.size());
+        const std::uint64_t pattern = 0x7FF8DEADBEEF0001ull;  // a quiet NaN with a payload
+        for (double& x : junk) std::memcpy(&x, &pattern, sizeof x);
+        e::evaluate_surface_cached(Backend{1}, cache, Binomial{}, in, p.data(), T, g, zeroed.data());
+        e::evaluate_surface_cached(Backend{1}, cache, Binomial{}, in, p.data(), T, g, junk.data());
+        reused.resize(zeroed.size());  // as calibrate_cached: the previous panel's values stay
+        e::evaluate_surface_cached(Backend{1}, cache, Binomial{}, in, p.data(), T, g, reused.data());
+        VCAL_CHECK(same_bits(zeroed, junk));
+        VCAL_CHECK(same_bits(zeroed, reused));
+    }
+}
+
 // Every setting that determines a row is part of its key: changing any one of them is a miss, and the
 // row returned is the one that configuration computes.
 VCAL_TEST(changing_any_row_setting_is_a_cache_miss) {
