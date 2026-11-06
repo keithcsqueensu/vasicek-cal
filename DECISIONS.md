@@ -1117,6 +1117,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **S-10 workload:** the calibrate phase is 2.7× faster (ABBA, 664 → 244 thread-seconds), which would take about a quarter off the S-10/S-4 run's CPU.
     - **Recovery harness:** no measurable change, since its fits are dominated by the bootstrap and the profile.
   - **Committed study results are unchanged:** S-8, S-9 and S-10 were computed with D-119's SEs and stay as run, reproducible at their build commits. The S-10 tool's rows differ only in its two calibrate-SE columns, and its Jeffreys ends are identical.
+  - **Correction (2026-11-06, found by P-19's full flip check, D-406):** not quite. The S-10 tool seeds the Jeffreys posterior's local grid with calibrate's SE and sets `kFlagNearBound` from it, so on the full run P-15 also moves the Jeffreys ends of 38 of the 4,050 recomputed replicates (at most 4.3e-3 in logit) and the near-bound flag in 16 rows, with 0 coverage flips and a byte-identical summary. The sentence above held on the sample it was checked on. As a result, `compare.py`'s registered check (the recomputed Jeffreys ends equal S-9's rows bit for bit) cannot pass on any S-10 run after P-15, since S-9's rows predate it. A future rescore of S-10 needs S-9's Jeffreys rows regenerated on the same engine first; the check is not loosened.
 - **D-186 — The S-10/S-4 runtime miss (5 h projected, 6.4 h actual) was not thread scheduling on hybrid cores: it was the projection's extrapolation from a subset unrepresentative of cost.** The owner's question for P-15's profiling.
   - **Not the machine:** on the 9 subset scenarios, the phases whose code did not change cost the same in the full run as in the subset run (ratio 1.00 per phase, within 2% per scenario).
   - **Not idle threads:** 555,004 thread-seconds over 24 threads is 23,125 s against 23,190 s wall, 99.7% busy. The tool already hands out replicates dynamically.
@@ -1696,6 +1697,19 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
   - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
 
+## P-19: the analytic SE shared with calibrate, 2026-10-13
+
+- **D-406 — P-19 is built: S-10's studentised SE comes from calibrate's own analytic Hessian at its scaled estimate, instead of a second Hessian at `to_scaled(value)`; within rounding, not merged before the full flip check** (`perf/p19_shared_se.md`; D-199).
+  - **Changes results: within rounding.** The SE becomes one computation at one point; before, it was computed again after the estimate's round trip through the natural scale. In a 24-row sample the analytic SEs and studentised ends change in about a third of rows, by at most 1.2e-14 in logit units, with 0 coverage flips; every other column is byte-identical.
+  - **Built:** `Estimate2::scaled` and `hess_u`, and `analytic_se_from_hessian`, `analytic_se_at_scaled` and `analytic_se_of` in `engine/profile.hpp` (`analytic_se_scaled` is kept). Test: `analytic_se_of_is_calibrates_hessian_bit_for_bit`; non-slow suite 79/79.
+  - **Measured:** the analytic SE phase −93%, per-replicate work −6.9% (expected 8-13%; stop rule under 5%, not triggered). On the full run (owner's laptop, MSVC, 24 threads, baseline then P-19 on one machine state): CPU −9.8% (173,440 → 156,440 s), the analytic SE phase −95.9%; inside the expected 8-13%.
+  - **Before merge (D-177):** the full S-10/S-4 run, every fit flip-checked against the run that wrote `studies/parametric-bootstrap/summary.csv`, the flip counts reported even if zero, and the summary refreshed from it, in its own commit.
+  - **The full flip check, done (2026-11-06):** the full run (81 × 1,000, B = 999, 24 threads, 8,654 s wall) at f605c45, this branch merged with `main`, against the release `fits.parquet` of the September run (d800d34), all 81,000 rows and 59 columns compared bit for bit. **Coverage flips: 0** for every interval (profile, Jeffreys, percentile, studentised, S-4a, S-4b; PD and ρ). The changed columns:
+    - **P-19:** the analytic SEs (18,886 rows PD, 14,703 ρ; at most 3.5e-11 in u) and the studentised ends (19,299-22,042 rows; at most 8.2e-11 in logit).
+    - **P-15 (D-185), already on `main`, not this branch:** calibrate's SEs (72,341 rows); through them the Jeffreys ends of 38 of the 4,050 recomputed replicates (the posterior's local grid is seeded by calibrate's SE; at most 4.3e-3 in logit) and `kFlagNearBound` in 16 rows (set from that SE; no other flag bit differs).
+    - Every other column is byte-identical, the estimates included.
+  - **The summary refreshed from the run is byte-identical** to the committed `summary.csv` (sha256 0d3d67a4…), and so is the scored table; nothing in the study's results changes. The other checks hold: profile ends and flags 0 of 162,000 differ from S-9's rows, W0 ≤ c against profile coverage 0 of 162,000 disagree, quadrature check 0 original and 0 sampled bootstrap fits flagged.
+  - **The scorer's own Jeffreys check fails on this run, because of P-15:** `compare.py` requires the recomputed Jeffreys ends to equal S-9's rows bit for bit, and S-9's rows predate P-15, so 38 of 4,050 differ and the script stops. The summary above was scored by a scratch copy with only that exit removed (not committed). Any post-P-15 rerun of S-10 hits the same stop; amending the registered check is the owner's call and is not done here.
 ## S-6: the bound code, the tool and the scorer, 2026-10-13
 
 - **D-215 — S-6's PR 2: the Pluto–Tasche bounds are a header-only `native` benchmark in `benchmark_models/pluto_tasche/bounds.hpp`, with their tests, goldens and scipy replication; `study_pluto_tasche` writes the rows and `studies/pluto-tasche/score.py` scores them, reading only `rows.csv` and `reference.csv`.** Nothing in parity, the engine or the C ABI changes.
@@ -1756,6 +1770,38 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **The recommendation:** the independent Pluto–Tasche bound is not a γ-confidence upper bound once correlation is material: at γ = 0.95 it covers 0.85 at ρ = 0.12 and 0.73 at ρ = 0.24. Use the one-factor bound with ρ_a at or above any plausible ρ, or the Jeffreys upper limit, which covered at or near γ in these cells without an assumed ρ, at a ratio 7–10% above the oracle's.
   - **Monitoring implication (D-152), confirmed as registered:** an independent Pluto–Tasche bound in a low-default portfolio understates the PD a stated confidence requires once correlation is material. The one-factor bound restores coverage only if ρ_a is not below the truth (ρ_a = 0.12 covers 0.86 at ρ = 0.24 against γ = 0.95). A bound used as a monitoring threshold should therefore state its ρ_a, and that ρ_a should be conservative.
   - **Data:** `rows.csv` is on the release `s6-data-2026-10-13` (D-163); its SHA-256 is in `MANIFEST.json`.
+
+## Performance scouting: the re-profile on main, 2026-10-14
+
+Numbered from D-500: a cloud scouting session, so that it collides neither with the laptop sequence (D-214 on) nor with
+the D-400 block.
+
+- **D-500 — The S-10 and M6 tools re-profiled on `main` (c70f9b4) after P-6, P-7, P-15, P-17 and P-21; six candidates
+  proposed, nothing built** (`perf/scouting_2026-10.md`, branch `perf-scouting-2026-10`, draft PR).
+  - **S-10/S-4** (one scenario per (T, n) cell, two replicates, one thread, GCC 13 on a cloud Xeon; shares of the projected
+    run with D-187's schedule): W* (S-4b) 31.6%, argmax + refine + SE 26.7%, simulate 21.2%, analytic SE 11.5%, surface
+    4.5%, Jeffreys 3.2%; the T = 100, n = 10,000 cell 36%. D-199's shares (W* 39.8%, simulate 12.5%) are superseded. Inside:
+    a bootstrap fit is one value pass, one Hessian pass (calibrate) and one more (the analytic SE), and W* is about 13
+    Hessian passes on 199 of 999 panels, about one of them an exact repeat of a point; libm's `exp`, `log` and `log1p` are a
+    quarter of the instructions in the largest cell (the number the in-house `log`/`exp` decision of D-199 waited for).
+  - **The S-35 M6 arm's tool:** the PD and ρ profiles 60-70% of a job, the point estimate 30-35%; the cell weights agree
+    with D-199's; the AR(1) transition kernels are 72% of the instructions at T = 100, n = 100, where one-sided periods'
+    256 composite nodes make each transition pair 2-4× a 128 × 128 one. New: in the n = 10,000 cells about half of all
+    filter evaluations are rejected line-search points (a downhill full step after BFGS updates, then 5-7 halvings); about
+    a quarter of the arm's line-search evaluations weighted by cell.
+  - **Candidates, ranked** (details, stop rules and tests in the note): C1 calibrate's value pass taken from its Hessian
+    pass (bit for bit; about 8% of S-10; the per-observation value identity re-checked on 28,800 cases under every erfcx
+    kernel, 0 differences); C2 bootstrap fits on cached rows in place with the bounded argmax from cached tile maxima
+    (bit for bit; 6-9%); C3 W* without repeated evaluations (bit for bit, 2%, plus 2% with P-19) and P-20's concrete form,
+    a two-dimensional polish from calibrate's Hessian (within solver tolerance; about 5%); C4 the M6 search's line search
+    by interpolation (within solver tolerance; 4-11% of the arm, with the M6 validation's flip check as the cost); C5 the
+    composite rule's nodes through P-7's batch and P-21's cache (bit for bit; about 1%); C6 eight composite panels in the
+    AR(1) filter (within a stated tolerance, ≤ 3.4e-10 observed; 10-15% of the arm; not recommended as is, since it breaks
+    the φ = 0 bit-for-bit identity). The interior rule's node count is not a candidate: 64 nodes reproduce the parity
+    filter to rounding near the data but are 1-140 nats off in the box's corners at n = 10,000, where the filter's own
+    doubled rule is already 0.2-1.7 nats off.
+  - **Not re-proposed:** P-9, P-12, P-13, P-22 and P-23; simulate is already P-17's kernel; the comparator's refits need
+    the scan. P-numbers and the order are the owner's.
 
 ## Correctness audit, PR A, 2026-11-06
 

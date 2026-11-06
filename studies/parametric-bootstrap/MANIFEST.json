@@ -22,6 +22,19 @@
       "phase_split": "simulate 23%, surface 1%, argmax + refine + SE 43%, analytic SE 8%, W* (S-4b) 23%, Jeffreys 2%; profile, W0 and the S-4 widths under 1% each",
       "projection": "about 5 h after P-14 (STATE.md); took 6.4 h, a miss of about 28%. The run was CPU-bound throughout (555,004 CPU s over 24 threads is 23,125 s against 23,190 s wall), so the miss is in the projected CPU, not in scheduling; its cause is not diagnosed beyond the phase split above",
       "checks": "Jeffreys recomputed on replicates 0-49 (4,050 rows): 0 differ from S-9's; profile ends and flags: 0 of 162,000 differ from S-9's; W0 <= c against profile coverage: 0 of 162,000 disagree; quadrature check (P-16): 0 of 81,000 original fits and 0 of 4,050,000 sampled bootstrap fits flagged"
+    },
+    "p19_flip_check": {
+      "purpose": "D-406 / D-177: P-19's full flip check; every fit compared with the release fits.parquet of the full run above, and the summary refreshed from it",
+      "command": "study_parametric_bootstrap --checkpoint ck --out rows.csv --timing-out timing.csv --threads 24 (81 scenarios x 1,000 replicates, B = 999)",
+      "commit": "f605c45e7f45f96c1f4f21d0804be0448cb4624c (tree clean; p19-shared-se merged with main)",
+      "executable_sha256": "bb660fd27b92a44686b6367a288630584f7400febfbf7c8bb3d2290159d8c733",
+      "finished": "2026-11-06T03:00:43-05:00",
+      "wall_seconds": 8654,
+      "cpu_seconds": 206927,
+      "rows.csv sha256": "52dbe743af0a48fc880a78f808a572f8c4ef7c22dda5db2e4d4fe6e16e555941",
+      "fits.parquet sha256 (not committed or released)": "dd017fe649a62a6bb69681a083f2cdc8e944d6e6709767bd2fd1ce75df04ebc8",
+      "result": "0 coverage flips for every interval; changed columns: analytic SEs and studentised ends (P-19), calibrate's SEs and through them 38 Jeffreys ends and 16 kFlagNearBound flags (P-15); every other column byte-identical. summary.csv refreshed from this run is byte-identical to the committed one",
+      "checks": "Jeffreys recomputed on 4,050 rows: 38 differ from S-9's (P-15; the scorer's check stops, scored with that exit removed in a scratch copy); profile ends and flags 0 of 162,000 differ; W0 <= c 0 of 162,000 disagree; quadrature check 0 original and 0 sampled bootstrap fits flagged"
     }
   },
   "files": {
