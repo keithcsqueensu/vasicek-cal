@@ -8,9 +8,9 @@
 // the engine's own checks remain as a second line, and a disagreement between the two is reported
 // as VCAL_E_INTERNAL. Outputs are computed in full before any output struct is written.
 //
-// v0 serves one tuple: BinomialMixture<PrecisionF64> with the parity rule (D-118) and its doubled
-// check, the ArgMax reducer and the CPU backend. The dispatch registry of ARCHITECTURE.md §3
-// arrives with the second tuple.
+// v0 serves the binomial mixture (BinomialMixture<PrecisionF64>) and, from 0.3, the Vasicek-rate
+// objectives at F64, each with the parity rule (D-118) and its doubled check, the ArgMax reducer and
+// the CPU backend, dispatched by hand. The dispatch registry of ARCHITECTURE.md §3 is not built yet.
 #include "vcal/vcal.h"
 
 #include <algorithm>
@@ -160,8 +160,9 @@ vcal_status guard(const char* function, F&& body) noexcept {
 
 // ---- struct versioning (vcal.h, "Structs") ----
 
-// The size of each struct in ABI 0.1, the smallest a caller may pass. Later minor versions append
-// fields, so sizeof grows while these stay.
+// The size of each struct as this library knows it (every struct is still at the size it was added
+// with), the smallest a caller may pass. Later minor versions append fields, so sizeof grows while
+// these stay.
 template <class T>
 constexpr std::uint32_t kMinSize = static_cast<std::uint32_t>(sizeof(T));
 
@@ -170,7 +171,7 @@ void check_size(const T* p, const char* name) {
     if (p == nullptr) invalid(std::string(name) + " is NULL");
     if (p->struct_size < kMinSize<T>) {
         invalid(std::string(name) + ".struct_size = " + num(p->struct_size) + " is below " + num(kMinSize<T>) +
-                ", the size in ABI 0.1: set it to sizeof the struct");
+                ", the size this library knows: set it to sizeof the struct");
     }
 }
 
@@ -185,7 +186,7 @@ T read_in(const T* p, const char* name) {
             if (bytes[i] != 0) {
                 throw AbiError(VCAL_E_UNSUPPORTED, std::string(name) + " has a nonzero byte at offset " +
                                                        num(static_cast<std::uint64_t>(i)) +
-                                                       ", beyond the fields this library knows (ABI 0.1)");
+                                                       ", beyond the fields this library knows");
             }
         }
     }

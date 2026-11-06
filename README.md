@@ -128,7 +128,7 @@ Start with the methodology note. It is self-contained.
 | [dgp.md](docs/methodology/dgp.md) | The synthetic data generator, precise enough to re-implement |
 | [parity_signoff.md](docs/methodology/parity_signoff.md) | The M1 exit: requirements, deferred verdicts and their M2 re-assessment |
 | [studies/README.md](studies/README.md) | Index of research studies and `native` variants: each study's question, experiment, pre-registered prediction, result, mitigation (D-148, D-153) |
-| `validation/scipy/binomial_mixture_mle.py` | A 125-line scipy replication, run in CI |
+| `validation/scipy/binomial_mixture_mle.py` | A short (about 130-line) scipy replication, run in CI |
 
 [DECISIONS.md](DECISIONS.md) records every design decision and its rationale (D-nnn).
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the design, and [STATE.md](STATE.md) the current

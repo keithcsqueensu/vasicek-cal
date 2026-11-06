@@ -38,9 +38,9 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
-  - The next decision number is D-219 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
+  - The next decision number is D-220 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
     registration is D-214, its tool D-215, the paper check D-216 and its result D-217; the correctness
-    audit is D-218). D-400 on is the cloud sessions' block.
+    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
@@ -70,10 +70,9 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 1. **Audit fix PRs**, one each:
    - **A, correctness:** the fresh audit's fixes (D-218), in review;
-   - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
-     D-201, PR #55), plus the header's `VCAL_E_UNSUPPORTED` description (D-218, finding 12). The rest of
-     the original audit's B and C items were not recovered;
-   - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
+   - **B and C, in one PR (D-219), in review:** a fresh docs-accuracy check and its corrections, and
+     every study script's flag bits from `tests/engine_flags.json` (the MANIFEST `sha256` check was
+     split out earlier: D-201, PR #55). The original audit's B and C items were not recovered.
 2. **The performance pass, in the owner's order** (D-199): P-7 and P-6 done (D-212, D-404); P-13 rejected
    (D-403); P-19 with the next golden refresh.
 3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves

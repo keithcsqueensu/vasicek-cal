@@ -8,8 +8,9 @@
  * bug fixes, not a break).
  * The only public header.
  *
- * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
- * consumer as C99 and as C11 so that anything C++-only fails the build.
+ * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles the
+ * header alone as C99 with pedantic errors (C11 under MSVC) and a C11 consumer, so that anything
+ * C++-only fails the build.
  *
  * Conventions
  * - Names: every function and type starts with vcal_, every macro and enumerator with VCAL_.
@@ -99,7 +100,10 @@ enum {
     VCAL_OK = 0,
     VCAL_E_INVALID_ARGUMENT = 1,  /* a NULL pointer, a value out of range, an inconsistent panel */
     VCAL_E_BUFFER_TOO_SMALL = 2,  /* *required holds the length needed */
-    VCAL_E_UNSUPPORTED = 3,       /* a nonzero field this library does not know (newer caller) */
+    VCAL_E_UNSUPPORTED = 3,       /* a nonzero field or reserved value this library does not know
+                                     (newer caller); also a request this build cannot serve: a
+                                     non-logit posterior axis, the Jeffreys prior with unequal n,
+                                     VCAL_DGP_KERNEL naming a kernel this CPU or build lacks */
     VCAL_E_NUMERIC = 4,           /* no finite log-likelihood anywhere on the grid, or similar */
     VCAL_E_OUT_OF_MEMORY = 5,
     VCAL_E_FP_ENVIRONMENT = 6,    /* flush-to-zero or denormals-are-zero is on (the DGP refuses) */
@@ -218,7 +222,8 @@ typedef struct vcal_estimate {
     uint32_t flags; /* VCAL_FLAG_* */
     double pd, rho;
     double se_pd, se_rho, corr_pd_rho; /* observed information at the estimate; NaN if unavailable */
-    double loglik;                     /* log-likelihood at the estimate, including log C(n, d) */
+    double loglik;                     /* log-likelihood at the estimate: including log C(n, d) for
+                                          counts; the rate log density for vcal_calibrate_rate */
     double quad_check_max;             /* max_t |l_t(rule) - l_t(doubled rule)| at the estimate */
     double quad_check_total;           /* sum_t of the same */
     int64_t quad_check_flagged;        /* periods above the D-120 threshold */
@@ -265,8 +270,8 @@ typedef struct vcal_rate_series {
 } vcal_rate_series;
 
 /* What the Vasicek-rate MLE does with a rate of exactly 0 or 1, which has no density (D-044,
- * D-164). Explicit options only: which to prefer is study S-28's question, and no default is
- * recommended until it reports. VCAL_ZERO_RATES_REFUSE is the parity behaviour; the others are
+ * D-164). Explicit options only, no default (D-169). S-28 (D-174) recommends the binomial MLE
+ * on counts and, with rates only, VCAL_ZERO_RATES_CENSOR. VCAL_ZERO_RATES_REFUSE is the parity behaviour; the others are
  * native enhancements and need a VCAL_PROFILE_NATIVE context. */
 enum {
     VCAL_ZERO_RATES_REFUSE = 0,     /* no estimate; vcal_last_error names the periods */
@@ -329,9 +334,10 @@ typedef struct vcal_posterior {
 
 /* The grid-Bayesian estimator (docs/methodology/grid_bayesian.md) for a count panel: flat
  * (natural scale) or Jeffreys prior, the resolution rule of at least 4 grid points per posterior
- * SD with local refinement, equal-tailed and HPD intervals. The Jeffreys prior needs the same n in
- * every period, at most VCAL_JEFFREYS_MAX_OBLIGORS; its table is computed once per (n, grid) and kept
- * in the context. */
+ * SD with local refinement, equal-tailed and HPD intervals. Both axes must be VCAL_SCALE_LOGIT, and
+ * the Jeffreys prior needs the same n in every period; otherwise VCAL_E_UNSUPPORTED. With Jeffreys,
+ * n above VCAL_JEFFREYS_MAX_OBLIGORS is VCAL_E_INVALID_ARGUMENT. The Jeffreys table is computed once
+ * per (n, grid) and kept in the context. */
 VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, const vcal_panel* panel,
                                                         const vcal_grid* grid, int32_t prior,
                                                         vcal_posterior* posterior);
@@ -343,15 +349,16 @@ typedef struct vcal_resample_spec {
     uint32_t struct_size;
     int32_t scheme;         /* VCAL_RESAMPLE_* */
     uint64_t seed;          /* bootstrap schemes: the stream is (seed, scheme, replicate, draw) */
-    int64_t replicates;     /* bootstrap, INDICES, WEIGHTS: B >= 1 (bootstrap: B < 2^32) */
+    int64_t replicates;     /* bootstrap, INDICES, WEIGHTS: B >= 1 (bootstrap: B < 2^32, T <= 2^31);
+                               JACKKNIFE needs T >= 2 */
     int64_t block_length;   /* BLOCK_BOOTSTRAP: 1 <= l <= T; 0 = ceil(T^(1/3)) */
-    int64_t window;         /* WALK_FORWARD: window length; 0 = expanding from period 0 */
+    int64_t window;         /* WALK_FORWARD: window length, <= first_end; 0 = expanding from period 0 */
     int64_t first_end;      /* WALK_FORWARD: first window ends before this period, 1 <= first_end <= T */
     int64_t step;           /* WALK_FORWARD: >= 1; windows end at first_end + b * step <= T */
     int64_t draws;          /* INDICES: indices per replicate */
     double level;           /* percentile interval level; 0 = 0.95 */
     const int64_t* indices; /* INDICES: replicates x draws, each in [0, T) */
-    const double* weights;  /* WEIGHTS: replicates x T, finite and >= 0 */
+    const double* weights;  /* WEIGHTS: replicates x T, finite and >= 0, each row with a positive weight */
 } vcal_resample_spec;
 
 /* Per-replicate outputs as caller-owned arrays of `capacity` elements; any may be NULL. */
@@ -437,7 +444,8 @@ typedef struct vcal_bartlett_intervals {
 
 /* Fits the panel as vcal_calibrate (estimate), then the Bartlett-corrected intervals. Needs a
  * VCAL_PROFILE_NATIVE context; every n_obligors at most 2^33 - 2^17 (the DGP's limit). Deterministic
- * in (panel, grid, spec), whatever the thread count. Costs about B fits. */
+ * in (panel, grid, spec), whatever the thread count. Costs about B fits. VCAL_DGP_KERNEL naming a
+ * kernel this CPU or build lacks is VCAL_E_UNSUPPORTED. */
 VCAL_API vcal_status VCAL_CALL vcal_calibrate_bartlett(vcal_context* context, const vcal_panel* panel,
                                                        const vcal_grid* grid, const vcal_bartlett_spec* spec,
                                                        vcal_estimate* estimate, vcal_bartlett_intervals* intervals);
@@ -458,7 +466,8 @@ typedef struct vcal_dgp_spec {
     const int64_t* n_obligors; /* n_periods values, 0 <= n <= 2^33 - 2^17 */
 } vcal_dgp_spec;
 
-/* n_defaults (and factors, the Z_t, if not NULL) receive n_periods values. */
+/* n_defaults (and factors, the Z_t, if not NULL) receive n_periods values. VCAL_DGP_KERNEL naming a
+ * kernel this CPU or build lacks is VCAL_E_UNSUPPORTED. */
 VCAL_API vcal_status VCAL_CALL vcal_dgp_simulate(vcal_context* context, const vcal_dgp_spec* spec, int64_t* n_defaults,
                                                  double* factors, int64_t capacity, int64_t* required);
 

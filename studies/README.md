@@ -6,12 +6,12 @@ beside this index, in `studies/<slug>/` (D-153). Performance work is not here: s
 
 Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run](#how-studies-are-run) ·
 [The study subset](#the-study-subset-approved-d-150) · [Priority order](#priority-order-d-151) ·
-[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-48 and M6-V, below.
+[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-52 and M6-V, below.
 
 ## At a glance
 
 - **Finished:** S-1, S-2, S-3, S-4, S-5, S-6 (D-217), S-8, S-9, S-10, S-13 (targeted part), S-15, S-21, S-23, S-27, S-28,
-  S-34, S-35 (main arms and the AR(1)-aware MLE arm), and the M6 validation run.
+  S-34, S-35 (main arms and the AR(1)-aware MLE arm), S-48 (D-211), and the M6 validation run.
 - **Running:** none. **Registered, not run:** S-36 (D-401).
 - **Deferred to M7:** S-18, S-19, S-20. **Documentation, not a study:** S-37, now documented.
 - **Not registered yet:** every other entry. Nothing is run before its `PREDICTION.md` is committed.
