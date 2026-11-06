@@ -1771,6 +1771,38 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **Monitoring implication (D-152), confirmed as registered:** an independent Pluto–Tasche bound in a low-default portfolio understates the PD a stated confidence requires once correlation is material. The one-factor bound restores coverage only if ρ_a is not below the truth (ρ_a = 0.12 covers 0.86 at ρ = 0.24 against γ = 0.95). A bound used as a monitoring threshold should therefore state its ρ_a, and that ρ_a should be conservative.
   - **Data:** `rows.csv` is on the release `s6-data-2026-10-13` (D-163); its SHA-256 is in `MANIFEST.json`.
 
+## Performance scouting: the re-profile on main, 2026-10-14
+
+Numbered from D-500: a cloud scouting session, so that it collides neither with the laptop sequence (D-214 on) nor with
+the D-400 block.
+
+- **D-500 — The S-10 and M6 tools re-profiled on `main` (c70f9b4) after P-6, P-7, P-15, P-17 and P-21; six candidates
+  proposed, nothing built** (`perf/scouting_2026-10.md`, branch `perf-scouting-2026-10`, draft PR).
+  - **S-10/S-4** (one scenario per (T, n) cell, two replicates, one thread, GCC 13 on a cloud Xeon; shares of the projected
+    run with D-187's schedule): W* (S-4b) 31.6%, argmax + refine + SE 26.7%, simulate 21.2%, analytic SE 11.5%, surface
+    4.5%, Jeffreys 3.2%; the T = 100, n = 10,000 cell 36%. D-199's shares (W* 39.8%, simulate 12.5%) are superseded. Inside:
+    a bootstrap fit is one value pass, one Hessian pass (calibrate) and one more (the analytic SE), and W* is about 13
+    Hessian passes on 199 of 999 panels, about one of them an exact repeat of a point; libm's `exp`, `log` and `log1p` are a
+    quarter of the instructions in the largest cell (the number the in-house `log`/`exp` decision of D-199 waited for).
+  - **The S-35 M6 arm's tool:** the PD and ρ profiles 60-70% of a job, the point estimate 30-35%; the cell weights agree
+    with D-199's; the AR(1) transition kernels are 72% of the instructions at T = 100, n = 100, where one-sided periods'
+    256 composite nodes make each transition pair 2-4× a 128 × 128 one. New: in the n = 10,000 cells about half of all
+    filter evaluations are rejected line-search points (a downhill full step after BFGS updates, then 5-7 halvings); about
+    a quarter of the arm's line-search evaluations weighted by cell.
+  - **Candidates, ranked** (details, stop rules and tests in the note): C1 calibrate's value pass taken from its Hessian
+    pass (bit for bit; about 8% of S-10; the per-observation value identity re-checked on 28,800 cases under every erfcx
+    kernel, 0 differences); C2 bootstrap fits on cached rows in place with the bounded argmax from cached tile maxima
+    (bit for bit; 6-9%); C3 W* without repeated evaluations (bit for bit, 2%, plus 2% with P-19) and P-20's concrete form,
+    a two-dimensional polish from calibrate's Hessian (within solver tolerance; about 5%); C4 the M6 search's line search
+    by interpolation (within solver tolerance; 4-11% of the arm, with the M6 validation's flip check as the cost); C5 the
+    composite rule's nodes through P-7's batch and P-21's cache (bit for bit; about 1%); C6 eight composite panels in the
+    AR(1) filter (within a stated tolerance, ≤ 3.4e-10 observed; 10-15% of the arm; not recommended as is, since it breaks
+    the φ = 0 bit-for-bit identity). The interior rule's node count is not a candidate: 64 nodes reproduce the parity
+    filter to rounding near the data but are 1-140 nats off in the box's corners at n = 10,000, where the filter's own
+    doubled rule is already 0.2-1.7 nats off.
+  - **Not re-proposed:** P-9, P-12, P-13, P-22 and P-23; simulate is already P-17's kernel; the comparator's refits need
+    the scan. P-numbers and the order are the owner's.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
