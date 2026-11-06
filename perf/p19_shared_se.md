@@ -47,6 +47,12 @@
   intervals, PD and ρ. P-19 moved the analytic SEs and studentised ends (at most 8.2e-11 in logit); P-15, already
   on `main`, moved calibrate's SEs and, through them, 38 Jeffreys ends and 16 `kFlagNearBound` flags. Every other
   column is byte-identical, and the refreshed summary equals the committed one byte for byte.
+- **The study tool's two SE columns agree to rounding, not bit for bit.** Where calibrate took its Hessian (72,341
+  rows), `se_analytic_u` equals `se_calib_u` bit for bit in 57,142 rows for PD and 55,229 for ρ; the rest differ by
+  at most 1.8e-15 relative (8.4e-11 before P-19). The gap is the tool's, not P-19's: it rebuilds `se_calib_u` by
+  dividing calibrate's natural-scale SE by the scale transform's slope recomputed from the estimate
+  (`tests/studies/parametric_bootstrap.cpp`, line 199), while calibrate multiplied by the slope at the scaled
+  point. The unit test above, which compares the SEs themselves at one point, is unaffected.
 - **Run-level wall time:** 8,654 s on 24 threads, against the September run's 23,190 s (−63%, with every P-item
   merged since; not P-19's alone). The analytic SE phase is 937 of 206,927 CPU s (0.5%; 8% in September).
 
@@ -64,3 +70,21 @@ Cloud Xeon 2.8 GHz, GCC 13, one thread, Release; `main` with P-6.
   per-replicate work in this sample, against D-199's 13.5% of the whole run. D-199's profile spans every cell; this
   sample has three.
 - **Against the stop rule (under 5%):** not triggered.
+
+## Measured on the full run (2026-10-14, the owner's laptop)
+
+MSVC, Release, 24 threads, all 81 scenarios × 1,000 replicates; the baseline (d5f6eda, the merge base with `main`)
+and P-19 (13072d8) run one after the other on one machine state.
+
+| | Baseline | P-19 | Change |
+|---|---|---|---|
+| Wall | 7,256 s | 6,550 s | −9.7% |
+| CPU | 173,440 s | 156,440 s | −9.8% |
+| Analytic SE phase | 18,260 s (11%) | 741 s (0.5%) | −95.9% |
+
+- Every other phase within 0.6%. Baseline split: simulate 25%, surface 4%, argmax + refine + SE 24%, analytic SE
+  11%, W* 32%, Jeffreys 3%, the rest 1% or less.
+- **Against the expectation, on the run it was made for:** held. 8-13% was expected; the full run saves 9.8% of
+  CPU. The cloud sample's 6.9% above came from three cells, where the phase was a smaller share than over the
+  whole matrix.
+- The two runs' rows against each other are the flip check's P-19 columns (above): 0 coverage flips.
