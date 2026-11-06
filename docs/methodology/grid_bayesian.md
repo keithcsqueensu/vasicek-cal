@@ -92,7 +92,5 @@ the engine's final grid, and both intervals (within 3.0·10⁻⁵ in logit). It 
 
 ## 7. What is not here yet
 
-- Frequentist coverage of these intervals (S-9) and simulation-based calibration (S-15): their
-  registered runs.
 - An interval for the 99.9% conditional PD from the posterior.
 - (The C ABI exposes the estimator from 0.3 as `vcal_calibrate_posterior`, D-169.)

@@ -14,5 +14,6 @@
     "rows.csv (not committed, 68 MB)": "sha256 88c57950ddee8c5bc6e20335abd19a42c538099bfbf71c9c53375d32b6d8ee74"
   },
   "scoring": "compare.py (committed before the run) on fits.parquet; export_fits.py's NaN handling was fixed (0e26548, originally 8b017cd, 00:00:07) while the run was in progress, before any result was seen",
+  "scoring_edits": "2026-11-06 (D-219, after the result): the flag bits are read from tests/engine_flags.json instead of literals; on the committed fits.parquet the output and summary.csv are byte for byte unchanged (summary.csv's SHA-256 above)",
   "result": "3 of 5 predictions held (F2, F3, F5); F1 and F4 did not"
 }

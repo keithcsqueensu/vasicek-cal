@@ -13,5 +13,6 @@
     "fits_r10000.parquet": "sha256 8dfe5d2256369a0a627c80b970b137937824994c787c6b85303af253b7994e72; written by export_fits.py (pyarrow 25.0.1, zstd 19)",
     "r10000.fits (not committed, 162 MB)": "sha256 8c3eaf03a7c88991005ad05053878c4918b72e0dace46816638ffbecb7989da2"
   },
-  "scoring": "compare.py (committed before the results) on summary_r10000.csv and fits_r10000.parquet"
+  "scoring": "compare.py (committed before the results) on summary_r10000.csv and fits_r10000.parquet",
+  "scoring_edits": "2026-11-06 (D-219, after the result): INTERVAL_NOT_COMPUTED is read from tests/engine_flags.json instead of a literal; on the committed summary and fits the output is byte for byte unchanged"
 }
