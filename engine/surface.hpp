@@ -35,6 +35,7 @@ inline constexpr std::int64_t kReduceTileSize = 1024;
 // k at once, in vector lanes outside device code, bit for bit; P-6, D-404) live in core/reducers/weighted_sum.hpp.
 using reducers::weighted_sum;
 using reducers::weighted_sums;
+using reducers::weighted_sum_rows;
 
 template <class Backend, class Objective, class Integrator, int D>
 void evaluate_surface(const Backend& backend, const Objective& objective, const Integrator& integrator,

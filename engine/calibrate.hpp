@@ -23,7 +23,9 @@
 // The caller owns L (resized here) so resampling can reuse it (M2).
 #pragma once
 
+#include <algorithm>
 #include <cfloat>
+#include <cstring>
 #include <cmath>
 #include <cstdint>
 #include <type_traits>
@@ -32,6 +34,7 @@
 
 #include "core/grid.hpp"
 #include "core/reducers/argmax.hpp"
+#include "engine/argmax_tiles.hpp"
 #include "engine/derivs.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
@@ -92,28 +95,18 @@ struct Estimate2 {
 // compute for this panel, grid and primary integrator (row t = log_contrib(obs[t], theta_k, primary)),
 // for example assembled from rows cached across panels with the same observations. Given the same L
 // the result is bit for bit calibrate's.
-template <class Backend, class Objective, class Integrator>
-Status calibrate_from_surface(const Backend& backend, const Objective& objective, const Integrator& primary,
-                              const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
-                              const Grid<2>& grid, const std::vector<double>& L, Estimate2& out,
-                              double hessian_step_fraction = kHessianStepFraction,
-                              bool quadrature_check = true) {
-    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
-    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
-    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
-    const std::int64_t K = grid.size();
-    if (static_cast<std::int64_t>(L.size()) != periods * K) return Status::InvalidGrid;
+namespace detail {
 
+// Steps 3 to 6 of calibrate, from the grid argmax on: refinement through value_at(i0, i1) (the surface summed over
+// periods at a grid point, as weighted_sum computes it), the estimate, the quadrature check and the observed
+// information. Shared by calibrate_from_surface and calibrate_from_rows (P-27, D-410), so given the same argmax and
+// the same values the two give the same estimate bit for bit.
+template <class Objective, class Integrator, class ValueAt>
+Status calibrate_from_argmax(const Objective& objective, const Integrator& primary, const Integrator& check,
+                             const typename Objective::Obs* obs, std::int64_t periods, const Grid<2>& grid,
+                             const reducers::ArgMax::State& best, const ValueAt& value_at, Estimate2& out,
+                             double hessian_step_fraction, bool quadrature_check) {
     const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
-    const reducers::ArgMax argmax;
-    reducers::ArgMax::State best{};
-    reduce_weighted(backend, argmax, L.data(), periods, K, ones.data(), 1, &best);
-    if (best.k < 0) return Status::SurfaceUndefined;
-
-    const auto value_at = [&](std::int32_t i0, std::int32_t i1) {
-        const std::int32_t idx[2] = {i0, i1};
-        return weighted_sum(L.data(), periods, K, ones.data(), grid.flatten(idx));
-    };
     const Refined2 r = refine_2d(grid, best.k, value_at);
 
     out = Estimate2{};
@@ -243,6 +236,116 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
         }
     }
     return Status::Ok;
+}
+
+}  // namespace detail
+
+// Steps 2 to 6 of calibrate on a surface already evaluated: L must hold exactly what stage 1 would
+// compute for this panel, grid and primary integrator (row t = log_contrib(obs[t], theta_k, primary)),
+// for example assembled from rows cached across panels with the same observations. Given the same L
+// the result is bit for bit calibrate's.
+template <class Backend, class Objective, class Integrator>
+Status calibrate_from_surface(const Backend& backend, const Objective& objective, const Integrator& primary,
+                              const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
+                              const Grid<2>& grid, const std::vector<double>& L, Estimate2& out,
+                              double hessian_step_fraction = kHessianStepFraction,
+                              bool quadrature_check = true) {
+    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
+    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
+    const std::int64_t K = grid.size();
+    if (static_cast<std::int64_t>(L.size()) != periods * K) return Status::InvalidGrid;
+
+    const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
+    const reducers::ArgMax argmax;
+    reducers::ArgMax::State best{};
+    reduce_weighted(backend, argmax, L.data(), periods, K, ones.data(), 1, &best);
+    if (best.k < 0) return Status::SurfaceUndefined;
+
+    const auto value_at = [&](std::int32_t i0, std::int32_t i1) {
+        const std::int32_t idx[2] = {i0, i1};
+        return weighted_sum(L.data(), periods, K, ones.data(), grid.flatten(idx));
+    };
+    return detail::calibrate_from_argmax(objective, primary, check, obs, periods, grid, best, value_at, out,
+                                         hessian_step_fraction, quadrature_check);
+}
+
+// calibrate_from_surface on cached rows in place (P-27, D-410): the surface is the row cache's rows by pointer
+// (surface_rows_cached), not a T x K copy. The grid argmax is the bounded search of D-172 on unit weights, with each
+// row's tile maxima kept in the cache: it finds the full grid's argmax exactly (index, value, tie-break), so the
+// estimate is calibrate_from_surface's on the copied rows, bit for bit. Where a row holds a non-finite value the
+// bound does not apply (D-172's guard), and the rows are copied into L and calibrate_from_surface runs on them; L is
+// otherwise left as it is.
+template <class Backend, class Objective, class Integrator>
+Status calibrate_from_rows(const Backend& backend, const Objective& objective, const Integrator& primary,
+                           const Integrator& check, const typename Objective::Obs* obs, std::int64_t periods,
+                           const Grid<2>& grid, const SurfaceRows& rows, std::vector<double>& L, Estimate2& out,
+                           double hessian_step_fraction = kHessianStepFraction, bool quadrature_check = true) {
+    static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    if (grid_error(grid) != nullptr) return Status::InvalidGrid;
+    if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
+    const std::int64_t K = grid.size();
+    if (rows.periods != periods || rows.K != K) return Status::InvalidGrid;
+    if (!rows.finite) {
+        L.resize(static_cast<std::size_t>(periods * K));
+        copy_rows(rows, L.data());
+        return calibrate_from_surface(backend, objective, primary, check, obs, periods, grid, L, out,
+                                      hessian_step_fraction, quadrature_check);
+    }
+    const std::vector<double> ones(static_cast<std::size_t>(periods), 1.0);
+    const double* const* R = rows.row.data();
+
+    // The bounded search (resample::detail::argmax_bounded, one replicate, unit weights): every tile's bound, the
+    // tiles visited in descending order of it, each evaluated in full, until the next bound is strictly below the
+    // best value found.
+    const std::int32_t n0 = grid.axis[0].n, n1 = grid.axis[1].n;
+    const std::int32_t t1 = (n1 + kArgmaxTile - 1) / kArgmaxTile;
+    const std::int64_t tiles = argmax_tiles(grid);
+    std::vector<double> U(static_cast<std::size_t>(periods * tiles));
+    for (std::int64_t t = 0; t < periods; ++t) {
+        std::memcpy(U.data() + t * tiles, rows.tile_max[static_cast<std::size_t>(t)],
+                    static_cast<std::size_t>(tiles) * sizeof(double));
+    }
+    std::vector<double> bound(static_cast<std::size_t>(tiles));
+    if (!reducers::sum_batch::tile_bounds(U.data(), periods, tiles, ones.data(), kArgmaxBoundMargin, bound.data())) {
+        for (std::int64_t tile = 0; tile < tiles; ++tile) {
+            double s = 0.0, mag = 0.0;
+            for (std::int64_t j = 0; j < periods; ++j) {
+                const double x = ones[static_cast<std::size_t>(j)] * U[static_cast<std::size_t>(j * tiles + tile)];
+                s += x;
+                mag += std::fabs(x);
+            }
+            bound[static_cast<std::size_t>(tile)] = s + kArgmaxBoundMargin * mag;
+        }
+    }
+    std::vector<std::int64_t> order(static_cast<std::size_t>(tiles));
+    for (std::int64_t tile = 0; tile < tiles; ++tile) order[static_cast<std::size_t>(tile)] = tile;
+    std::sort(order.begin(), order.end(), [&](std::int64_t x, std::int64_t y) {
+        const double bx = bound[static_cast<std::size_t>(x)], by = bound[static_cast<std::size_t>(y)];
+        return bx > by || (bx == by && x < y);
+    });
+    const reducers::ArgMax argmax{};
+    auto best = argmax.init();
+    for (const std::int64_t tile : order) {
+        if (best.k >= 0 && bound[static_cast<std::size_t>(tile)] < best.best) break;
+        const std::int32_t a0 = static_cast<std::int32_t>(tile / t1) * kArgmaxTile;
+        const std::int32_t a1 = static_cast<std::int32_t>(tile % t1) * kArgmaxTile;
+        for (std::int32_t i0 = a0; i0 < a0 + kArgmaxTile && i0 < n0; ++i0) {
+            for (std::int32_t i1 = a1; i1 < a1 + kArgmaxTile && i1 < n1; ++i1) {
+                const std::int32_t idx[2] = {i0, i1};
+                const std::int64_t k = grid.flatten(idx);
+                argmax.push(best, k, weighted_sum_rows(R, periods, ones.data(), k));
+            }
+        }
+    }
+    if (best.k < 0) return Status::SurfaceUndefined;
+
+    const auto value_at = [&](std::int32_t i0, std::int32_t i1) {
+        const std::int32_t idx[2] = {i0, i1};
+        return weighted_sum_rows(R, periods, ones.data(), grid.flatten(idx));
+    };
+    return detail::calibrate_from_argmax(objective, primary, check, obs, periods, grid, best, value_at, out,
+                                         hessian_step_fraction, quadrature_check);
 }
 
 template <class Backend, class Objective, class Integrator>

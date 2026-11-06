@@ -168,6 +168,38 @@ e::Estimate2 fit_panel(Context& ctx, const std::vector<rc::Objective::Obs>& obs,
     return est;
 }
 
+// A bootstrap panel's fit on the cache's rows in place (P-27, D-410): calibrate_from_rows, with the rows copied into
+// L only where W* needs a contiguous surface (want_L) or a row is non-finite (calibrate's fallback); identical to
+// fit_panel's estimate bit for bit.
+e::Estimate2 fit_panel_rows(Context& ctx, const std::vector<rc::Objective::Obs>& obs, e::SurfaceRows& rows,
+                            std::vector<double>& L, bool want_L, double* sec, bool quad_check) {
+    static const auto primary = quadrature::parity_rule();
+    static const auto check = quadrature::parity_rule(true);
+    const Grid<2> g = rc::grid();
+    const auto T = static_cast<std::int64_t>(obs.size());
+    e::Estimate2 est{};
+    if (vcal::grid_error(g) != nullptr || rc::Objective::panel_error(obs.data(), T) != nullptr) std::abort();
+    {
+        const vcal::test::FillMeter fills;
+        {
+            Timer t{&sec[kSurface]};
+            e::surface_rows_cached(backends::CpuBackend{1}, ctx.cache, rc::Objective{}, primary, obs.data(), T, g, rows);
+            if (want_L) {
+                L.resize(static_cast<std::size_t>(T * g.size()));
+                e::copy_rows(rows, L.data());
+            }
+        }
+        sec[kSurface] -= fills.seconds();  // a fill is paid once per run, not per replicate (D-193)
+        sec[kCacheFill] += fills.seconds();
+    }
+    Timer t{&sec[kFit]};
+    if (e::calibrate_from_rows(backends::CpuBackend{1}, rc::Objective{}, primary, check, obs.data(), T, g, rows, L, est,
+                               e::kHessianStepFraction, quad_check) != e::Status::Ok) {
+        std::abort();
+    }
+    return est;
+}
+
 std::vector<rc::Objective::Obs> as_obs(const std::vector<std::int64_t>& d, std::int64_t n) {
     std::vector<rc::Objective::Obs> obs(d.size());
     for (std::size_t t = 0; t < d.size(); ++t) obs[t] = {n, d[t]};
@@ -241,6 +273,7 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
     std::vector<std::pair<std::uint32_t, std::uint64_t>> s10_panels, s4b_panels;
     std::vector<std::int64_t> n(static_cast<std::size_t>(T), s.obligors), db(n.size());
     std::vector<double> Lb;
+    e::SurfaceRows rows_b;
     for (std::uint32_t b = 0; b < kB; ++b) {
         {
             Timer t{&sec[kSimulate]};
@@ -250,7 +283,8 @@ Row fit_one(Context& ctx, const rc::Scenario& s, std::uint32_t r) {
         if (b < kBartlettPanels) s10_panels.emplace_back(b, panel_hash(db));
         const auto obs_b = as_obs(db, s.obligors);
         const bool checked = b % kQuadCheckEvery == 0;
-        const e::Estimate2 eb = fit_panel(ctx, obs_b, Lb, sec, checked);
+        // W* (b < kBartlettPanels) fits from a contiguous surface; the other panels read the cache's rows in place.
+        const e::Estimate2 eb = fit_panel_rows(ctx, obs_b, rows_b, Lb, b < kBartlettPanels, sec, checked);
         if (checked) {
             ++row.boot_quad_checked;
             row.boot_quad_flagged += eb.quad_check_flagged > 0 ? 1 : 0;
