@@ -1117,6 +1117,7 @@ Numbered from D-300 so that entries made in parallel sessions do not collide.
     - **S-10 workload:** the calibrate phase is 2.7× faster (ABBA, 664 → 244 thread-seconds), which would take about a quarter off the S-10/S-4 run's CPU.
     - **Recovery harness:** no measurable change, since its fits are dominated by the bootstrap and the profile.
   - **Committed study results are unchanged:** S-8, S-9 and S-10 were computed with D-119's SEs and stay as run, reproducible at their build commits. The S-10 tool's rows differ only in its two calibrate-SE columns, and its Jeffreys ends are identical.
+  - **Correction (2026-11-06, found by P-19's full flip check, D-406):** not quite. The S-10 tool seeds the Jeffreys posterior's local grid with calibrate's SE and sets `kFlagNearBound` from it, so on the full run P-15 also moves the Jeffreys ends of 38 of the 4,050 recomputed replicates (at most 4.3e-3 in logit) and the near-bound flag in 16 rows, with 0 coverage flips and a byte-identical summary. The sentence above held on the sample it was checked on. As a result, `compare.py`'s registered check (the recomputed Jeffreys ends equal S-9's rows bit for bit) cannot pass on any S-10 run after P-15, since S-9's rows predate it. A future rescore of S-10 needs S-9's Jeffreys rows regenerated on the same engine first; the check is not loosened.
 - **D-186 — The S-10/S-4 runtime miss (5 h projected, 6.4 h actual) was not thread scheduling on hybrid cores: it was the projection's extrapolation from a subset unrepresentative of cost.** The owner's question for P-15's profiling.
   - **Not the machine:** on the 9 subset scenarios, the phases whose code did not change cost the same in the full run as in the subset run (ratio 1.00 per phase, within 2% per scenario).
   - **Not idle threads:** 555,004 thread-seconds over 24 threads is 23,125 s against 23,190 s wall, 99.7% busy. The tool already hands out replicates dynamically.
@@ -1696,6 +1697,19 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
   - **A defect found on MSVC, not fixed:** the instrumented binaries write their `.pgc` files next to the executables, not next to the `.pgd` files, so the USE link merged no counts and the script's check timed an untrained build. The MSVC PGO figures above are from a build corrected by hand.
   - **Why LTO does nothing here:** the hot code is header-only, so each study tool's hot path is already one translation unit.
 
+## P-19: the analytic SE shared with calibrate, 2026-10-13
+
+- **D-406 — P-19 is built: S-10's studentised SE comes from calibrate's own analytic Hessian at its scaled estimate, instead of a second Hessian at `to_scaled(value)`; within rounding, not merged before the full flip check** (`perf/p19_shared_se.md`; D-199).
+  - **Changes results: within rounding.** The SE becomes one computation at one point; before, it was computed again after the estimate's round trip through the natural scale. In a 24-row sample the analytic SEs and studentised ends change in about a third of rows, by at most 1.2e-14 in logit units, with 0 coverage flips; every other column is byte-identical.
+  - **Built:** `Estimate2::scaled` and `hess_u`, and `analytic_se_from_hessian`, `analytic_se_at_scaled` and `analytic_se_of` in `engine/profile.hpp` (`analytic_se_scaled` is kept). Test: `analytic_se_of_is_calibrates_hessian_bit_for_bit`; non-slow suite 79/79.
+  - **Measured:** the analytic SE phase −93%, per-replicate work −6.9% (expected 8-13%; stop rule under 5%, not triggered). On the full run (owner's laptop, MSVC, 24 threads, baseline then P-19 on one machine state): CPU −9.8% (173,440 → 156,440 s), the analytic SE phase −95.9%; inside the expected 8-13%.
+  - **Before merge (D-177):** the full S-10/S-4 run, every fit flip-checked against the run that wrote `studies/parametric-bootstrap/summary.csv`, the flip counts reported even if zero, and the summary refreshed from it, in its own commit.
+  - **The full flip check, done (2026-11-06):** the full run (81 × 1,000, B = 999, 24 threads, 8,654 s wall) at f605c45, this branch merged with `main`, against the release `fits.parquet` of the September run (d800d34), all 81,000 rows and 59 columns compared bit for bit. **Coverage flips: 0** for every interval (profile, Jeffreys, percentile, studentised, S-4a, S-4b; PD and ρ). The changed columns:
+    - **P-19:** the analytic SEs (18,886 rows PD, 14,703 ρ; at most 3.5e-11 in u) and the studentised ends (19,299-22,042 rows; at most 8.2e-11 in logit).
+    - **P-15 (D-185), already on `main`, not this branch:** calibrate's SEs (72,341 rows); through them the Jeffreys ends of 38 of the 4,050 recomputed replicates (the posterior's local grid is seeded by calibrate's SE; at most 4.3e-3 in logit) and `kFlagNearBound` in 16 rows (set from that SE; no other flag bit differs).
+    - Every other column is byte-identical, the estimates included.
+  - **The summary refreshed from the run is byte-identical** to the committed `summary.csv` (sha256 0d3d67a4…), and so is the scored table; nothing in the study's results changes. The other checks hold: profile ends and flags 0 of 162,000 differ from S-9's rows, W0 ≤ c against profile coverage 0 of 162,000 disagree, quadrature check 0 original and 0 sampled bootstrap fits flagged.
+  - **The scorer's own Jeffreys check fails on this run, because of P-15:** `compare.py` requires the recomputed Jeffreys ends to equal S-9's rows bit for bit, and S-9's rows predate P-15, so 38 of 4,050 differ and the script stops. The summary above was scored by a scratch copy with only that exit removed (not committed). Any post-P-15 rerun of S-10 hits the same stop; amending the registered check is the owner's call and is not done here.
 ## S-6: the bound code, the tool and the scorer, 2026-10-13
 
 - **D-215 — S-6's PR 2: the Pluto–Tasche bounds are a header-only `native` benchmark in `benchmark_models/pluto_tasche/bounds.hpp`, with their tests, goldens and scipy replication; `study_pluto_tasche` writes the rows and `studies/pluto-tasche/score.py` scores them, reading only `rows.csv` and `reference.csv`.** Nothing in parity, the engine or the C ABI changes.
@@ -1729,6 +1743,33 @@ Cloud-session block, numbered from D-400 (see P-21's section, above); the laptop
     - **S-50:** the §6 cohort bound under an AR(1) factor (M6), checked against the paper's Tables 13–14.
     - **S-51:** the expected-default count beyond which the bound stops adding to the profile and Jeffreys limits, and §8's claim that average default rates underestimate about as often as a moderate-level bound.
     - **S-52:** the multi-grade sequence, §5's scaled variants, and non-monotone sequences as a ranking signal. It replaces the S-24 note and waits for S-24's segment streams.
+
+## S-6: results, 2026-10-13
+
+- **D-217 — S-6, the Pluto–Tasche most-prudent upper bounds: 5 of 6 held; P5 NOT HELD** (`studies/pluto-tasche/results.txt`, `MANIFEST.json`; D-214, D-215).
+  - **The run:** 27 scenarios × 1,000 replicates × 5 γ, from c70f9b4 (main after #76, tree clean), 290 s on 24 threads at efficiency 0.99. Jeffreys took 86% of the CPU time, the profile 8% and the bounds 6% (1,339 distinct totals). All three checks before scoring passed: the rows are the registered design; every simulated bound covers exactly when D ≥ `reference.csv`'s D_min, on every panel and γ, for all three bounds (the tool and `reference.py` compute the bounds independently); and each bound is a function of D.
+  - **Runtime against the projection:** projected 311 s (296–327 s with the machine-state allowance, D-193) from a 512-replicate sample, recorded before the run. It took 290 s, so it was out of range on the fast side: projection / actual 1.07. Not investigated. The projection's own caveat, that the bounds phase is undercounted, points the other way.
+  - **Held:**
+    - **P1, the oracle covers:** exact ≥ γ in 135 of 135 cells; simulated above γ − 3.29 SE in 90 of 90.
+    - **P2, the independent bound undercovers at ρ ≥ 0.12:** exact and simulated coverage below γ in 60 of 60. Every pooled shortfall is within 0.007 of the exact (at γ = 0.95: 0.102 at ρ = 0.12, 0.219 at ρ = 0.24).
+    - **P3, how the ρ_a = 0.12 arm errs:** at ρ = 0.02 it covers every panel the oracle covers, in 30 of 30 cells, with an excess within 0.002 of the exact. At ρ = 0.24 it is ≤ the oracle in 30 of 30, below γ in 28 of 30 (≥ 26), with every shortfall within 0.007. At ρ = 0.12 it is the oracle on every panel.
+    - **P4:** simulated coverage is in band around the exact in 270 of 270 tier-1 cells.
+    - **P6, the order:** 0 panels out of order, 0 of 270 coverage cell pairs and 0 of 405 median cell pairs.
+  - **Not held, P5:**
+    - **As scored:** (i) the simulated median bound/true ratio is in band in 272 of 405 cells, against ≥ 403. (ii) The medians rise with γ. (iii) and (iv) 10 of the 12 medians over scenarios at γ = 0.95 are in band; the two at n·PD = 0.1, ρ = 0.02 are out.
+    - **A post-hoc diagnosis, which changes no verdict** (`posthoc_p5.py`, `posthoc_p5.txt`, written after the run). Every miss, all 133 and the two medians, lies *above* its band, by 6.3e-12 to 4.5e-10 relatively. The band ends are `reference.py`'s bounds (scipy brentq). The medians are the tool's bounds (bisection to 1e-10 in logit; the bound is the bracket's midpoint). The scorer's 1e-12 of slack is narrower than the two solvers agree: `TOL_SCIPY_PT_LOGIT` is 2e-10, and the scipy replication's worst gap was 6.3e-11. 45 of the misses have a band of zero width (d_lo = d_hi), where any solver difference falls outside.
+    - **In totals, where no floating point enters,** the middle two totals of every cell's 1,000 panels lie in [d_lo, d_hi] in all 405 cells. So the miss is the scorer's, not the bounds'.
+    - **Lesson for later scorers:** when the value compared and its band come from different solvers, the slack is the solvers' agreement (here `TOL_SCIPY_PT_LOGIT`), not a floating-point epsilon. Alternatively, compare the discrete statistic (the total) when one exists. The scorer's self-test used the reference's own values as the fixture's bounds, so it could not catch this.
+  - **Reported without a prediction:**
+    - **n·PD = 0.1:** simulated coverage is in band around the exact in all 135 cells. Coverage there is driven by totals of 0–2.
+    - **Jeffreys** (one-sided γ quantile of the cell-uniform PD marginal) covers 0.983, 0.970 and 0.953 at γ = 0.95, n·PD = 1, ρ = 0.02, 0.12 and 0.24, with no assumed ρ. Its median ratio is 1.41, 1.70 and 1.96, against the oracle's 1.32, 1.52 and 1.78. Paired against the independent bound it covers more panels in every tier-1 cell (z +5.9 to +36.7).
+    - **The profile** upper limit covers 0.948, 0.938 and 0.932 there. Paired, it is below the oracle in 14 of 15 tier-1 cells.
+    - **By T,** the independent bound's tier-1 coverage at γ = 0.95 is 0.852, 0.829 and 0.841 at T = 20, 40 and 100: the shortfall does not shrink with a longer history.
+    - **No profile or Jeffreys limit was missing** on any panel.
+  - **Verdicts it could change:** none pinned. The bounds stay a `native` benchmark, not parity and not in the C ABI.
+  - **The recommendation:** the independent Pluto–Tasche bound is not a γ-confidence upper bound once correlation is material: at γ = 0.95 it covers 0.85 at ρ = 0.12 and 0.73 at ρ = 0.24. Use the one-factor bound with ρ_a at or above any plausible ρ, or the Jeffreys upper limit, which covered at or near γ in these cells without an assumed ρ, at a ratio 7–10% above the oracle's.
+  - **Monitoring implication (D-152), confirmed as registered:** an independent Pluto–Tasche bound in a low-default portfolio understates the PD a stated confidence requires once correlation is material. The one-factor bound restores coverage only if ρ_a is not below the truth (ρ_a = 0.12 covers 0.86 at ρ = 0.24 against γ = 0.95). A bound used as a monitoring threshold should therefore state its ρ_a, and that ρ_a should be conservative.
+  - **Data:** `rows.csv` is on the release `s6-data-2026-10-13` (D-163); its SHA-256 is in `MANIFEST.json`.
 
 ## Performance scouting: the re-profile on main, 2026-10-14
 

@@ -35,6 +35,12 @@ falls downhill, and the search halves it five to seven times.
 | 5 | [C5: one `erfcx` batch for the composite rule, and its nodes cached for the derivatives](#c5-one-erfcx-batch-for-the-composite-rule-and-its-nodes-cached-for-the-derivatives) | one-sided periods (d ∈ {0, n}): S-10's n = 100 cells, M6's binomial terms | no | S-10 about 1%; M6 under 1% |
 | 6 | [C6: fewer composite panels in the AR(1) filter](#c6-fewer-composite-panels-in-the-ar1-filter) | M6 transitions into and out of one-sided periods (n = 100 cells, 43% of the arm) | within a stated tolerance (observed ≤ 3.4e-10 in l); breaks the φ = 0 bit-for-bit identity | M6 arm 10-15%; **not recommended as is** |
 
+**Since this note (2026-11-06): P-19 has merged** (D-406). Its full run measured the analytic SE phase at 11% before
+and 0.5% after, on the owner's laptop (MSVC, 24 threads), whose baseline split (simulate 25%, argmax + refine + SE 24%,
+analytic SE 11%, W* 32%, surface 4%, Jeffreys 3%) agrees with this re-profile. With P-19 the other phases are about 12%
+larger each (W* about 36%, argmax + refine + SE about 27%, simulate about 28%), so C1's and C3's expected gains rise by
+the same factor: C1 about 10% of S-10, C3's tiers A and A′ about 4-5%. The tables below are left as measured.
+
 The interior rule's node count is **not** a candidate: 64 or 32 Gauss-Hermite nodes reproduce the parity filter to rounding
 near the data, but the filter itself is unconverged in the box's corners at n = 10,000 (its own doubled rule disagrees by
 up to 1.7 nats there), and a reduced rule disagrees by 1-100 nats; see C6.
@@ -204,7 +210,7 @@ GCC 11, MSVC 14.39 and CUDA 11.8; AVX2 chosen at run time with SSE2 and scalar f
   same comparison.
 - **Prior art:** P-14 (each distinct observation integrated once per evaluation point) and P-19 (one computation shared
   by two users at the same point). P-14 removed repeats across periods within a pass; this removes the repeat between the
-  two passes. P-19 (in flight) shares calibrate's Hessian with the studentised SE; with both, an unflagged bootstrap fit
+  two passes. P-19 (merged since, D-406) shares calibrate's Hessian with the studentised SE; with both, an unflagged bootstrap fit
   integrates each distinct observation once with derivatives instead of three times (value, Hessian, SE), about
   3.5 → 1.25 in value-pass units on the integration part of calibrate plus the SE phase.
 
@@ -262,7 +268,8 @@ evaluations), then the inner solve at θ̂ for each parameter (about 7 together)
 - **Tier A′, with P-19:** once `Estimate2` carries the calibrate's scaled coordinates (P-19's pass-through), the polish's
   first evaluation, `inner(0, û₀)` started at `w₀ = û₁`, is calibrate's Hessian evaluation at the same pair. Passing that
   `PanelDerivs` into `NewtonProfile` as a seeded memo entry saves one more pass per panel, bit for bit. **About 2% of
-  S-10**, conditional on P-19's form; not to be built against P-19's branch (in flight).
+  S-10**; P-19 has since merged (D-406) in the form assumed here, with `Estimate2::scaled` and `hess_u`, so this tier can
+  now be built.
 - **Tier B, P-20 made concrete (within solver tolerance):** replace the nested polish in `profile_lr_statistic` with a
   two-dimensional safeguarded Newton on (u₀, u₁) from the estimate, using the analytic Hessian `panel_derivs` already
   returns (the refined vertex is within O(h²) ≈ 1e-3 of the maximum in u, so two steps reach `kProfileMaxTol`, three
