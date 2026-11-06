@@ -443,7 +443,8 @@ VCAL_TEST(analytic_se_of_is_calibrates_hessian_bit_for_bit) {
         const auto of = e::analytic_se_of(Objective{}, r.primary, p.data(), T, g, est);
         const double u[2] = {est.scaled[0], est.scaled[1]};
         const auto at = e::analytic_se_at_scaled(Objective{}, r.primary, p.data(), T, g, u);
-        const bool has_h = std::isfinite(est.hess_u[0]);
+        const bool has_h = std::isfinite(est.hess_u[0]) && std::isfinite(est.hess_u[1]) &&
+                           std::isfinite(est.hess_u[2]);  // analytic_se_of's condition
         (has_h ? from_hessian : computed) += 1;
         VCAL_CHECK(has_h || (est.flags & (e::kFlagGridEdge | e::kFlagFlatSurface)));  // only those skip the Hessian
         const bool same = of.ok == at.ok && (!of.ok || (std::memcmp(of.se_u, at.se_u, sizeof of.se_u) == 0));
