@@ -79,6 +79,13 @@ struct Estimate2 {
     std::int64_t grid_index;      // argmax k* before refinement
     std::int64_t nan_count;       // NaN surface values seen by the reducer
     std::uint32_t flags;
+    // P-19 (D-406): the refined estimate in the grid's scaled coordinates (refine_2d's; value is their from_scaled,
+    // or the grid point's own value when refinement did not move off a grid point), and the
+    // panel log-likelihood's analytic Hessian there in scaled units, (h_00, h_11, h_01), when calibrate took it
+    // (an analytic objective and no grid-edge or flat flag); NaN otherwise. analytic_se_from_hessian gives the
+    // studentised SE from it, the same computation as analytic_se_at_scaled at these coordinates.
+    double scaled[2];
+    double hess_u[3];
 };
 
 // Steps 2 to 6 of calibrate on a surface already evaluated: L must hold exactly what stage 1 would
@@ -112,6 +119,9 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
     out = Estimate2{};
     out.value[0] = r.value[0];
     out.value[1] = r.value[1];
+    out.scaled[0] = r.scaled[0];
+    out.scaled[1] = r.scaled[1];
+    out.hess_u[0] = out.hess_u[1] = out.hess_u[2] = std::nan("");
     out.se[0] = r.se[0];
     out.se[1] = r.se[1];
     out.corr = r.corr;
@@ -174,6 +184,9 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
             h00 = d.h[0];
             h11 = d.h[1];
             h01 = d.h[2];
+            out.hess_u[0] = h00;  // P-19 (D-406): kept for the studentised SE
+            out.hess_u[1] = h11;
+            out.hess_u[2] = h01;
         } else {
             const double s0 = hessian_step_fraction * r.se_scaled[0];
             const double s1 = hessian_step_fraction * r.se_scaled[1];
