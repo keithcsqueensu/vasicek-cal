@@ -32,6 +32,7 @@ Readings fixed before the subset run (the addenda of 2026-09-29 in both PREDICTI
 
 import argparse
 import csv
+import json
 import math
 import sys
 from pathlib import Path
@@ -39,8 +40,9 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parents[2]
-NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed
-REFUSED, NUMERIC = 1 << 1, 1 << 3  # engine::kPosterior*
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+NOT_COMPUTED = FLAGS["interval"]["kIntervalNotComputed"]["value"]
+REFUSED, NUMERIC = FLAGS["posterior"]["kPosteriorRefused"]["value"], FLAGS["posterior"]["kPosteriorNumeric"]["value"]
 C = 3.841458820694124  # chi2_1 0.95 quantile = 2 x kProfileThreshold95
 FINDINGS = [(29, "pd"), (29, "rho"), (55, "rho"), (68, "pd"), (72, "rho"), (74, "rho")]
 PARAMS = ("pd", "rho")
