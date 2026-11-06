@@ -12,7 +12,7 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
 > - **M1, the parity sign-off for the binomial-mixture MLE, is complete** and tagged
 >   `v0.1.0-parity-binomial`.
 > - **M2 and M3 are done:** profile-likelihood intervals, the resampling engine, the Vasicek-rate
->   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.4.
+>   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.5.
 > - **In progress:** M6. Its AR(1)-aware binomial MLE is finished and tested on S-35's panels (D-208);
 >   the other benchmark models remain. The CUDA backend (M4) comes after M6 (D-168).
 
@@ -53,7 +53,7 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
   of panels cheaply.
 - **Deterministic results.** They are bitwise identical for any thread count, and agree across
   platforms within documented tolerances.
-- **A flat C ABI** (`include/vcal/vcal.h`, plain C99, version 0.4): calibrate with profile
+- **A flat C ABI** (`include/vcal/vcal.h`, plain C99, version 0.5): calibrate with profile
   intervals, the M3 estimators, the S-4b interval, resample, surface, simulate and build
   provenance. It is tested from a C11 program, and every number it returns is bitwise what the
   engine gives.

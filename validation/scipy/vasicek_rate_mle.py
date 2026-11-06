@@ -87,6 +87,11 @@ class Panel:
         return stats.norm.cdf(mu / math.sqrt(1 + v)), v / (1 + v)
 
 
+def nan_inf(x):
+    """x, or inf for a NaN: a running max() would otherwise drop a NaN and a check would pass (D-218)."""
+    return math.inf if math.isnan(x) else x
+
+
 def main():
     with open(ROOT / "tests" / "tolerances.toml", "rb") as f:
         tol = {k: v["value"] for k, v in tomllib.load(f).items()}
@@ -103,16 +108,17 @@ def main():
         pd_e, rho_e, ll_e = h(row["pd_hex"]), h(row["rho_hex"]), h(row["loglik_max_hex"])
         pd_s, rho_s, ll_s = p.maximum()
         du = max(abs(logit(pd_s) - logit(pd_e)), abs(logit(rho_s) - logit(rho_e)))
-        worst["estimate_u"] = max(worst["estimate_u"], du)
-        worst["loglik"] = max(worst["loglik"], abs(ll_s - ll_e))
-        if du > tol["TOL_SCIPY_RATE_ESTIMATE_U"] or abs(ll_s - ll_e) > tol["TOL_SCIPY_RATE_LOGLIK_ABS"]:
+        worst["estimate_u"] = max(worst["estimate_u"], nan_inf(du))
+        dl = abs(ll_s - ll_e)
+        worst["loglik"] = max(worst["loglik"], nan_inf(dl))
+        if not du <= tol["TOL_SCIPY_RATE_ESTIMATE_U"] or not dl <= tol["TOL_SCIPY_RATE_LOGLIK_ABS"]:  # `not x <= tol` so that a NaN fails (D-218)
             failures.append(f"{at}: maximum differs (logit {du:.3g}, loglik {abs(ll_s - ll_e):.3g})")
         if row["kind"] == "rates":
             pd_c, rho_c = p.closed_form()
             if PD_BOX[0] < pd_c < PD_BOX[1] and RHO_BOX[0] < rho_c < RHO_BOX[1]:
                 dc = max(abs(logit(pd_c) - logit(pd_e)), abs(logit(rho_c) - logit(rho_e)))
-                worst["closed_form_u"] = max(worst["closed_form_u"], dc)
-                if dc > tol["TOL_SCIPY_RATE_ESTIMATE_U"]:
+                worst["closed_form_u"] = max(worst["closed_form_u"], nan_inf(dc))
+                if not dc <= tol["TOL_SCIPY_RATE_ESTIMATE_U"]:
                     failures.append(f"{at}: closed form differs by {dc:.3g} in logit")
         flags = int(row["interval_flags"])
         target = ll_s - THRESHOLD
@@ -134,8 +140,9 @@ def main():
                 while g(u0 - w) * g(u0 + w) > 0 and w < 1.0:
                     w *= 2
                 u_s = optimize.brentq(g, u0 - w, u0 + w, xtol=1e-12)
-                worst["end_u"] = max(worst["end_u"], abs(u_s - u0))
-                if abs(u_s - u0) > tol["TOL_SCIPY_RATE_PROFILE_U"]:
+                de = abs(u_s - u0)
+                worst["end_u"] = max(worst["end_u"], nan_inf(de))
+                if not de <= tol["TOL_SCIPY_RATE_PROFILE_U"]:
                     failures.append(f"{at}: axis {axis} end {end} differs by {abs(u_s - u0):.3g} in logit")
     print(f"{len(rows)} panels ({sum(r['kind'] == 'counts' for r in rows)} censored count panels)")
     for k, v in worst.items():

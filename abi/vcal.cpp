@@ -87,6 +87,7 @@ static_assert(std::uint32_t{VCAL_POSTERIOR_REFINED} == std::uint32_t{vcal::engin
 static_assert(std::uint32_t{VCAL_POSTERIOR_REFUSED} == std::uint32_t{vcal::engine::kPosteriorRefused});
 static_assert(std::uint32_t{VCAL_POSTERIOR_MASS_OUTSIDE_LOCAL} == std::uint32_t{vcal::engine::kPosteriorMassOutsideLocal});
 static_assert(std::uint32_t{VCAL_POSTERIOR_NUMERIC} == std::uint32_t{vcal::engine::kPosteriorNumeric});
+static_assert(std::uint32_t{VCAL_POSTERIOR_NAN_CELLS} == std::uint32_t{vcal::engine::kPosteriorNanCells});
 
 // ---- the ABI's constants are the engine's ----
 
@@ -261,10 +262,11 @@ vcal::Axis read_axis(double lo, double hi, std::int32_t points, std::int32_t sca
     if (scale < VCAL_SCALE_LINEAR || scale > VCAL_SCALE_PROBIT) {
         invalid(std::string("grid.") + name + "_scale = " + num(scale) + " is not a VCAL_SCALE_* value");
     }
-    // Both parameters are probabilities, whatever the axis scale.
-    if (!(lo > 0.0 && lo < hi && hi < 1.0)) {
+    // Both parameters are probabilities, whatever the axis scale. The floor (D-218) keeps the natural-scale
+    // score and Hessian finite: they overflow to NaN below about PD 1e-150 and rho 1e-200.
+    if (!(lo >= VCAL_GRID_MIN_PROBABILITY && lo < hi && hi < 1.0)) {
         invalid(std::string("grid.") + name + "_lo = " + num(lo) + ", " + name + "_hi = " + num(hi) +
-                ": need 0 < lo < hi < 1");
+                ": need " + num(VCAL_GRID_MIN_PROBABILITY) + " <= lo < hi < 1");
     }
     const vcal::Axis a{lo, hi, points, static_cast<vcal::AxisScale>(scale)};
     if (const char* msg = vcal::axis_error(a)) invalid(std::string("grid, ") + name + " axis: " + msg);
@@ -393,8 +395,12 @@ void fit_rates(const vcal_context& c, const std::vector<o3::RateObs>& obs, const
             throw AbiError(VCAL_E_NUMERIC, "the log-likelihood is not finite at any grid point");
         default: throw std::logic_error("the engine rejected a grid or panel that the ABI accepted");
     }
-    write_out(estimate, estimate_out(est));
-    if (profile != nullptr) write_out(profile, profile_out(e::profile_intervals(O{}, primary_rule(), obs.data(), T, g, L, est)));
+    // Everything is computed before any output is written (D-218), as the file's header promises.
+    const vcal_estimate eout = estimate_out(est);
+    vcal_profile_intervals prof{};
+    if (profile != nullptr) prof = profile_out(e::profile_intervals(O{}, primary_rule(), obs.data(), T, g, L, est));
+    write_out(estimate, eout);
+    if (profile != nullptr) write_out(profile, prof);
 }
 
 struct Resample {
@@ -592,7 +598,10 @@ VCAL_API vcal_status VCAL_CALL vcal_context_create(const vcal_context_options* o
         if (o.profile != VCAL_PROFILE_PARITY && o.profile != VCAL_PROFILE_NATIVE) {
             invalid("options.profile = " + num(o.profile) + " is not a VCAL_PROFILE_* value");
         }
-        if (o.n_threads < 0) invalid("options.n_threads = " + num(o.n_threads) + ": need >= 0 (0 = the OpenMP default)");
+        if (o.n_threads < 0 || o.n_threads > VCAL_MAX_THREADS) {
+            invalid("options.n_threads = " + num(o.n_threads) + ": need 0 <= n_threads <= " + num(VCAL_MAX_THREADS) +
+                    " (0 = the OpenMP default)");
+        }
         *context = new vcal_context{o.profile, o.n_threads, {}};
     });
 }
@@ -783,6 +792,11 @@ VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, c
                 if (y.n != obs[0].n) {
                     throw AbiError(VCAL_E_UNSUPPORTED, "the Jeffreys prior needs the same n in every period (ABI 0.3)");
                 }
+            }
+            // The table costs n + 1 log-likelihoods per grid point (D-218).
+            if (obs[0].n > VCAL_JEFFREYS_MAX_OBLIGORS) {
+                invalid("the Jeffreys prior needs n_obligors <= " + num(std::int64_t{VCAL_JEFFREYS_MAX_OBLIGORS}) +
+                        ", got " + num(obs[0].n));
             }
             const std::string key = num(obs[0].n) + "|" + e::surface_configuration(Objective{}, primary_rule(), g);
             auto it = c.jeffreys.find(key);

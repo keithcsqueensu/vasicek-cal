@@ -129,7 +129,7 @@ static void test_version_and_build_info(void) {
     CHECK_ERROR_MENTIONS("capacity 4");
     CHECK_STATUS(vcal_build_info(info, (int64_t)sizeof info, &again), VCAL_OK);
     CHECK((int64_t)strlen(info) + 1 == required);
-    CHECK(strstr(info, "abi_version=0.4\n") != NULL);
+    CHECK(strstr(info, "abi_version=0.5\n") != NULL);
     CHECK(strstr(info, "git_commit=") != NULL);
     CHECK(strstr(info, "profiles=parity,native\n") != NULL);
     CHECK(strstr(info, "dgp_kernel=") != NULL);
@@ -175,6 +175,16 @@ static void test_errors_and_context(void) {
     CHECK_STATUS(vcal_last_error(tiny, (int64_t)sizeof tiny, &required), VCAL_E_BUFFER_TOO_SMALL);
     CHECK(required == (int64_t)strlen(last_error()) + 1);
     CHECK_STATUS(vcal_last_error(NULL, 0, NULL), VCAL_E_INVALID_ARGUMENT);
+
+    /* ABI 0.5 (D-218): n_threads above VCAL_MAX_THREADS is refused, not handed to OpenMP. */
+    o.n_threads = VCAL_MAX_THREADS + 1;
+    CHECK_STATUS(vcal_context_create(&o, &ctx), VCAL_E_INVALID_ARGUMENT);
+    CHECK(ctx == NULL);
+    CHECK_ERROR_MENTIONS("n_threads <= 4096");
+    o.n_threads = VCAL_MAX_THREADS;
+    CHECK_STATUS(vcal_context_create(&o, &ctx), VCAL_OK);
+    CHECK_STATUS(vcal_context_destroy(ctx), VCAL_OK);
+    ctx = NULL;
 
     o.n_threads = 0;
     o.profile = 7;
@@ -558,6 +568,38 @@ static void test_m3_estimators(vcal_context* parity) {
     CHECK_ERROR_MENTIONS("exactly one of counts and rates");
     CHECK_STATUS(vcal_calibrate_posterior(parity, &p, &g, VCAL_PRIOR_FLAT, &post), VCAL_OK);
     CHECK((post.flags & VCAL_POSTERIOR_REFUSED) == 0 && post.pd_et_lo < post.pd_et_hi && post.rho_et_lo < post.rho_et_hi);
+    CHECK((post.flags & VCAL_POSTERIOR_NAN_CELLS) == 0);
+    /* ABI 0.5 (D-218): the input limits. A grid end below VCAL_GRID_MIN_PROBABILITY is refused (the
+     * score and Hessian would overflow there), and so is a Jeffreys prior for n above
+     * VCAL_JEFFREYS_MAX_OBLIGORS (its table costs n + 1 evaluations per grid point; a huge n used to
+     * abort the process from inside an OpenMP region). */
+    {
+        vcal_grid low = g;
+        int64_t big_n[T];
+        int64_t zero_d[T];
+        vcal_panel big = p;
+        int t;
+        low.pd_lo = 1e-101;
+        CHECK_STATUS(vcal_calibrate(parity, &p, &low, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+        CHECK_ERROR_MENTIONS("grid.pd_lo");
+        low = g;
+        low.rho_lo = 1e-101;
+        CHECK_STATUS(vcal_calibrate(parity, &p, &low, &est, NULL), VCAL_E_INVALID_ARGUMENT);
+        CHECK_ERROR_MENTIONS("grid.rho_lo");
+        low.rho_lo = VCAL_GRID_MIN_PROBABILITY;
+        CHECK_STATUS(vcal_calibrate_moments(parity, &p, NULL, &low, &mom), VCAL_OK);
+        for (t = 0; t < T; ++t) {
+            big_n[t] = (int64_t)VCAL_JEFFREYS_MAX_OBLIGORS + 1;
+            zero_d[t] = 0;
+        }
+        big.n_obligors = big_n;
+        big.n_defaults = zero_d;
+        CHECK_STATUS(vcal_calibrate_posterior(parity, &big, &g, VCAL_PRIOR_JEFFREYS, &post), VCAL_E_INVALID_ARGUMENT);
+        CHECK_ERROR_MENTIONS("n_obligors <= 1000000");
+        big_n[0] = (int64_t)1 << 50; /* used to try a 2^53-byte allocation in every thread */
+        for (t = 1; t < T; ++t) big_n[t] = big_n[0];
+        CHECK_STATUS(vcal_calibrate_posterior(parity, &big, &g, VCAL_PRIOR_JEFFREYS, &post), VCAL_E_INVALID_ARGUMENT);
+    }
     /* Parity refuses a zero rate, and names the period; the native treatments need a native context. */
     CHECK_STATUS(vcal_calibrate_rate(parity, NULL, &rs, &g, VCAL_ZERO_RATES_REFUSE, &est, NULL), VCAL_E_INVALID_ARGUMENT);
     CHECK_ERROR_MENTIONS("periods 1 have a default rate of 0 or 1");

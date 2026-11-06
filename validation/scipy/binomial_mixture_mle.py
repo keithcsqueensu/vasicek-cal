@@ -86,6 +86,11 @@ def read_csv(path):
         return list(csv.DictReader(line for line in f if not line.startswith("#")))
 
 
+def nan_inf(x):
+    """x, or inf for a NaN: a running max() would otherwise drop a NaN and a check would pass (D-218)."""
+    return math.inf if math.isnan(x) else x
+
+
 def main():
     with open(ROOT / "tests" / "tolerances.toml", "rb") as f:
         tol = {k: v["value"] for k, v in tomllib.load(f).items()}
@@ -99,6 +104,7 @@ def main():
     for r in read_csv(GOLDEN / "validation" / "surface.csv"):
         pd, rho, core = (float.fromhex(r[k]) for k in ("pd_hex", "rho_hex", "loglik_hex"))
         rel = abs(panel_loglik(pd, rho, panels[int(r["scenario"])]) / core - 1.0)
+        rel = nan_inf(rel)  # a NaN is recorded as the worst, so it fails (D-218)
         if rel > worst:
             worst, where = rel, f"scenario {r['scenario']}, PD {pd:.4g}, rho {rho:.4g}"
     passed = worst <= tol["TOL_SCIPY_SURFACE_LL_REL"]

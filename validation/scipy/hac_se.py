@@ -160,6 +160,8 @@ def main():
         iid_corr = iid[0, 1] / (iid_se[0] * iid_se[1])
         want = [float.fromhex(r0[k]) for k in ("iid_se_u_pd_hex", "iid_se_u_rho_hex", "iid_corr_hex")]
         d_iid = max(abs(iid_se[0] / want[0] - 1), abs(iid_se[1] / want[1] - 1), abs(iid_corr - want[2]))
+        if not all(math.isfinite(x) for x in (*iid_se, iid_corr, *want)):  # max() drops a NaN (D-218)
+            d_iid = math.inf
         worst_iid = max(worst_iid, d_iid)
         line = [f"scenario {s}: PD {pd:.5g} rho {rho:.5g} | 2. iid SE difference {d_iid:.2g}"]
         to_bound = [min(u[a] - math.log(lo / (1 - lo)), math.log(hi / (1 - hi)) - u[a]) / iid_se[a]
@@ -184,7 +186,7 @@ def main():
                 ok = False
                 line.append(f"L {r['lag']}: computed on a flagged fit (flags {f}) FAIL")
             d = max(abs(se[0] / want[0] - 1), abs(se[1] / want[1] - 1), abs(corr - want[2]))
-            if not math.isfinite(d):
+            if not math.isfinite(d) or not all(math.isfinite(x) for x in (*se, corr)):  # max() drops a NaN
                 d = math.inf
             worst_hac = max(worst_hac, d)
             line.append(f"L {r['lag']}: SE {se[0]:.6g}, {se[1]:.6g} (iid {iid_se[0]:.6g}, {iid_se[1]:.6g}) diff {d:.2g}")

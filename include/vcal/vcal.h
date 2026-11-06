@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0
  *
- * vasicek-cal C ABI, version 0.4 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
+ * vasicek-cal C ABI, version 0.5 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
  * 0.3 adds the M3 estimators and the native profile, D-169; 0.4 adds the Bartlett-corrected profile
- * interval, a native option, D-182, D-184).
+ * interval, a native option, D-182, D-184; 0.5 adds VCAL_POSTERIOR_NAN_CELLS and three input limits,
+ * VCAL_MAX_THREADS, VCAL_GRID_MIN_PROBABILITY and VCAL_JEFFREYS_MAX_OBLIGORS, D-218. The limits
+ * refuse only inputs that 0.4 accepted and then crashed, hung or returned NaN on, so they are
+ * bug fixes, not a break).
  * The only public header.
  *
  * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
@@ -75,8 +78,19 @@ extern "C" {
 #endif
 
 #define VCAL_ABI_VERSION_MAJOR 0
-#define VCAL_ABI_VERSION_MINOR 4
+#define VCAL_ABI_VERSION_MINOR 5
 #define VCAL_ABI_VERSION ((VCAL_ABI_VERSION_MAJOR << 16) | VCAL_ABI_VERSION_MINOR)
+
+/* ---- limits (ABI 0.5, D-218) ------------------------------------------------------------- */
+
+/* vcal_context_options.n_threads must be at most this. */
+#define VCAL_MAX_THREADS 4096
+/* Every grid axis needs lo >= this: below about 1e-150 (PD) and 1e-200 (rho) the score and
+ * Hessian overflow, although the log-likelihood itself stays accurate. */
+#define VCAL_GRID_MIN_PROBABILITY 1e-100
+/* vcal_calibrate_posterior with VCAL_PRIOR_JEFFREYS needs n <= this: the prior's table costs n + 1
+ * log-likelihood evaluations per grid point. */
+#define VCAL_JEFFREYS_MAX_OBLIGORS 1000000
 
 /* ---- status codes ------------------------------------------------------------------------- */
 
@@ -156,7 +170,8 @@ typedef struct vcal_context vcal_context; /* opaque (D-045) */
 typedef struct vcal_context_options {
     uint32_t struct_size;
     int32_t profile;   /* VCAL_PROFILE_PARITY */
-    int32_t n_threads; /* CPU threads; 0 = the OpenMP default. Results do not depend on it. */
+    int32_t n_threads; /* CPU threads, 0 <= n_threads <= VCAL_MAX_THREADS; 0 = the OpenMP default.
+                          Results do not depend on it. */
     uint32_t reserved;
 } vcal_context_options;
 
@@ -177,7 +192,8 @@ typedef struct vcal_panel {
 } vcal_panel;
 
 /* The parameter grid: two axes, each uniform in its scaled coordinate (logit for the default),
- * with both ends included and at least 3 points. Grid point k = i_pd * rho_points + i_rho. */
+ * with both ends included and at least 3 points, and VCAL_GRID_MIN_PROBABILITY <= lo < hi < 1.
+ * Grid point k = i_pd * rho_points + i_rho. */
 typedef struct vcal_grid {
     uint32_t struct_size;
     uint32_t reserved;
@@ -295,7 +311,9 @@ enum {
     VCAL_POSTERIOR_REFINED = 1u << 0,             /* the grid failed the resolution rule; a local grid was used */
     VCAL_POSTERIOR_REFUSED = 1u << 1,             /* the rule could not be met: no intervals */
     VCAL_POSTERIOR_MASS_OUTSIDE_LOCAL = 1u << 2,  /* refused: a local grid would have dropped posterior mass */
-    VCAL_POSTERIOR_NUMERIC = 1u << 3              /* no finite posterior mass */
+    VCAL_POSTERIOR_NUMERIC = 1u << 3,             /* no finite posterior mass */
+    VCAL_POSTERIOR_NAN_CELLS = 1u << 4            /* ABI 0.5: some grid points had a NaN log posterior and
+                                                     were given zero mass; the intervals are from the rest */
 };
 
 typedef struct vcal_posterior {
@@ -312,7 +330,8 @@ typedef struct vcal_posterior {
 /* The grid-Bayesian estimator (docs/methodology/grid_bayesian.md) for a count panel: flat
  * (natural scale) or Jeffreys prior, the resolution rule of at least 4 grid points per posterior
  * SD with local refinement, equal-tailed and HPD intervals. The Jeffreys prior needs the same n in
- * every period; its table is computed once per (n, grid) and kept in the context. */
+ * every period, at most VCAL_JEFFREYS_MAX_OBLIGORS; its table is computed once per (n, grid) and kept
+ * in the context. */
 VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, const vcal_panel* panel,
                                                         const vcal_grid* grid, int32_t prior,
                                                         vcal_posterior* posterior);

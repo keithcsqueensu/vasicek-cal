@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <new>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -336,6 +338,55 @@ VCAL_TEST(calibrate_rejects_invalid_input) {
     g.axis[1].hi = 1.0;  // logit axis must stay below 1
     run(0, panel(), g, L, &st);
     VCAL_CHECK(st == e::Status::InvalidGrid);
+}
+
+// D-218: an Estimate2 reused across panels is reset on the error returns too, so a failing call
+// never leaves the previous panel's estimate in it.
+VCAL_TEST(calibrate_resets_the_estimate_on_error) {
+    const Rules r;
+    std::vector<double> L;
+    const auto p = panel();
+    e::Estimate2 est{};
+    VCAL_CHECK(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), static_cast<std::int64_t>(p.size()),
+                            coarse_grid(), L, est) == e::Status::Ok);
+    VCAL_CHECK(est.value[0] > 0.0);
+    vcal::Grid<2> g = coarse_grid();
+    g.axis[1].hi = 1.0;
+    VCAL_CHECK(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), static_cast<std::int64_t>(p.size()),
+                            g, L, est) == e::Status::InvalidGrid);
+    VCAL_CHECK(est.value[0] == 0.0 && est.value[1] == 0.0 && est.loglik == 0.0 && est.flags == 0u);
+}
+
+// D-218: an exception thrown by an item leaves parallel_for for the caller (rather than calling
+// std::terminate from inside the OpenMP region), for any thread count; the other items still run
+// normally when nothing throws.
+VCAL_TEST(parallel_for_rethrows_an_item_exception) {
+    for (const int threads : {1, 3, 8}) {
+        const Backend b{threads};
+        bool caught = false;
+        try {
+            b.parallel_for(1000, [](std::int64_t i) {
+                if (i == 617) throw std::runtime_error("item 617");
+            });
+        } catch (const std::runtime_error& ex) {
+            caught = std::string(ex.what()) == "item 617";
+        }
+        VCAL_CHECK(caught);
+        bool oom = false;
+        try {
+            b.parallel_for(64, [](std::int64_t i) {
+                if (i % 7 == 3) throw std::bad_alloc();
+            });
+        } catch (const std::bad_alloc&) {
+            oom = true;
+        }
+        VCAL_CHECK(oom);
+        std::vector<int> seen(500, 0);
+        b.parallel_for(500, [&](std::int64_t i) { seen[static_cast<std::size_t>(i)] += 1; });
+        int total = 0;
+        for (const int x : seen) total += x;
+        VCAL_CHECK_EQ(total, 500);
+    }
 }
 
 // --- SEs from the objective's Hessian at the estimate (D-119) ------------------------------------

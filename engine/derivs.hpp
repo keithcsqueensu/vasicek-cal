@@ -56,19 +56,26 @@ PanelDerivs panel_derivs_natural(const Objective& objective, const Integrator& p
                                  const typename Objective::Obs* obs, const std::vector<std::int64_t>& first,
                                  const std::vector<std::int64_t>& count, const double (&v)[2]) {
     const auto th = Objective::theta(v);
-    double sum = 0.0, comp = 0.0;
+    double sum = 0.0, comp = 0.0, nonfinite = 0.0;
+    bool any_nonfinite = false;
     double gv[2] = {0.0, 0.0}, hv[3] = {0.0, 0.0, 0.0};
     for (std::size_t j = 0; j < first.size(); ++j) {
         double gj[2], hj[3];
         const double m = static_cast<double>(count[j]);
         const double x = m * objective.log_contrib_derivs(obs[first[j]], th, primary, gj, hj);
+        for (int i = 0; i < 2; ++i) gv[i] += m * gj[i];
+        for (int i = 0; i < 3; ++i) hv[i] += m * hj[i];
+        if (!std::isfinite(x)) {  // as reducers::weighted_sum: a -inf term would poison the compensation (D-218)
+            nonfinite += x;
+            any_nonfinite = true;
+            continue;
+        }
         const double s = sum + x;
         comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
         sum = s;
-        for (int i = 0; i < 2; ++i) gv[i] += m * gj[i];
-        for (int i = 0; i < 3; ++i) hv[i] += m * hj[i];
     }
-    return {sum + comp, {gv[0], gv[1]}, {hv[0], hv[1], hv[2]}};
+    const double value = any_nonfinite ? nonfinite + (sum + comp) : sum + comp;
+    return {value, {gv[0], gv[1]}, {hv[0], hv[1], hv[2]}};
 }
 
 // In the axes' scaled coordinates (u0, u1): the natural derivatives by the chain rule, v = v(u)
