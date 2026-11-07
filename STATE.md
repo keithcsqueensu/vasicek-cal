@@ -144,9 +144,10 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 | P-22 | SIMD derivative node functions | **rejected** (measured 0–3%) | D-213, D-402 | — |
 | P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2%) | D-213, D-405 | — |
-| P-24 | Calibrate's log-likelihood from its Hessian pass | built (fit phase −20% to −33%) | D-500, D-407 | no |
-| P-25 | W* without repeated evaluation points (memo) | built (W* −7% to −8%) | D-500, D-408 | no |
-| P-26 | No zero fill before the cached surface copy | built (surface phase −34% to −45%) | D-500, D-409 | no |
+| P-24 | Calibrate's log-likelihood from its Hessian pass | done (fit phase −20% to −33%) | D-500, D-407 | no |
+| P-25 | W* without repeated evaluation points (memo) | done (W* −7% to −8%) | D-500, D-408 | no |
+| P-26 | No zero fill before the cached surface copy | done (surface phase −34% to −45%) | D-500, D-409 | no |
+| P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | built (S-10 per-replicate −5% to −17%) | D-500, D-410 | no |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design

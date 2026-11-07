@@ -17,6 +17,7 @@
 #pragma once
 
 #include <atomic>
+#include <cmath>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -29,6 +30,7 @@
 #include <vector>
 
 #include "core/grid.hpp"
+#include "engine/argmax_tiles.hpp"
 #include "core/quadrature/composite_legendre.hpp"
 #include "core/quadrature/gauss_hermite.hpp"
 #include "core/quadrature/integrator.hpp"
@@ -126,11 +128,27 @@ public:
         return tally;
     }
 
+    // A cached row with what is computed from it once, at fill time (P-27, D-410): on a two-dimensional grid its
+    // tile maxima for the bounded argmax (engine/argmax_tiles.hpp), and whether every value is finite. Never
+    // changed after the fill, and never moved (entries are held by pointer), so callers may keep pointers into it.
+    struct CachedRow {
+        std::vector<double> row;
+        std::vector<double> tile_max;  // empty unless D == 2
+        bool finite = false;
+    };
+
     // The row for observation y under this configuration (config = surface_configuration(...)),
     // computed on first request with the backend's parallel_for over grid points.
     template <class Backend, class Objective, class Integrator, int D>
     const std::vector<double>& row(const Backend& backend, const std::string& config, const Objective& objective,
                                    const Integrator& integrator, const Grid<D>& grid, const typename Objective::Obs& y) {
+        return entry(backend, config, objective, integrator, grid, y).row;
+    }
+
+    // The same row with its tile maxima and finiteness (P-27).
+    template <class Backend, class Objective, class Integrator, int D>
+    const CachedRow& entry(const Backend& backend, const std::string& config, const Objective& objective,
+                           const Integrator& integrator, const Grid<D>& grid, const typename Objective::Obs& y) {
         using Obs = typename Objective::Obs;
         static_assert(std::is_trivially_copyable_v<Obs> && sizeof(Obs) % 8 == 0,
                       "vcal: an observation must be trivially copyable, with 8-byte fields only, to key the cache");
@@ -154,13 +172,19 @@ public:
                 grid.values(k, v);
                 e->row[static_cast<std::size_t>(k)] = objective.log_contrib(y, Objective::theta(v), integrator);
             });
+            e->finite = true;
+            for (const double x : e->row) e->finite = e->finite && std::isfinite(x);
+            if constexpr (D == 2) {
+                e->tile_max.resize(static_cast<std::size_t>(argmax_tiles(grid)));
+                tile_maxima(grid, e->row.data(), e->tile_max.data());
+            }
             computed = true;
             FillTally& tally = thread_fills();
             tally.seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
             ++tally.rows;
         });
         (computed ? misses_ : hits_).fetch_add(1, std::memory_order_relaxed);
-        return e->row;
+        return *e;
     }
 
     std::int64_t hits() const { return hits_.load(); }
@@ -171,9 +195,8 @@ public:
     }
 
 private:
-    struct Entry {
+    struct Entry : CachedRow {
         std::once_flag once;
-        std::vector<double> row;
     };
     mutable std::mutex mutex_;
     std::unordered_map<std::string, std::unique_ptr<Entry>> rows_;
@@ -198,6 +221,51 @@ void evaluate_surface_cached(const Backend& backend, SurfaceRowCache& cache, con
         }
         const auto& r = cache.row(backend, config, objective, integrator, grid, obs[t]);
         std::memcpy(L + t * K, r.data(), static_cast<std::size_t>(K) * sizeof(double));
+    }
+}
+
+// A panel's surface as pointers into the row cache instead of a T x K copy (P-27, D-410): row[t] is
+// L[t][.] as evaluate_surface_cached would write it, tile_max[t] that row's tile maxima, and finite whether every
+// value of every row is finite. Valid while the cache lives.
+struct SurfaceRows {
+    std::vector<const double*> row;
+    std::vector<const double*> tile_max;
+    bool finite = true;
+    std::int64_t periods = 0;
+    std::int64_t K = 0;
+};
+
+// The rows of evaluate_surface_cached, as pointers: the same lookups (one per distinct observation, in period
+// order), so the cache's fills, hits and misses are as before.
+template <class Backend, class Objective, class Integrator>
+void surface_rows_cached(const Backend& backend, SurfaceRowCache& cache, const Objective& objective,
+                         const Integrator& integrator, const typename Objective::Obs* obs, std::int64_t periods,
+                         const Grid<2>& grid, SurfaceRows& out) {
+    const std::string config = surface_configuration(objective, integrator, grid);
+    out.periods = periods;
+    out.K = grid.size();
+    out.finite = true;
+    out.row.resize(static_cast<std::size_t>(periods));
+    out.tile_max.resize(static_cast<std::size_t>(periods));
+    for (std::int64_t t = 0; t < periods; ++t) {
+        std::int64_t u = 0;
+        while (!(obs[u] == obs[t])) ++u;
+        if (u < t) {
+            out.row[static_cast<std::size_t>(t)] = out.row[static_cast<std::size_t>(u)];
+            out.tile_max[static_cast<std::size_t>(t)] = out.tile_max[static_cast<std::size_t>(u)];
+            continue;
+        }
+        const auto& e = cache.entry(backend, config, objective, integrator, grid, obs[t]);
+        out.row[static_cast<std::size_t>(t)] = e.row.data();
+        out.tile_max[static_cast<std::size_t>(t)] = e.tile_max.data();
+        out.finite = out.finite && e.finite;
+    }
+}
+
+// The contiguous surface the rows stand for, as evaluate_surface_cached writes it (L holds periods x K values).
+inline void copy_rows(const SurfaceRows& s, double* L) {
+    for (std::int64_t t = 0; t < s.periods; ++t) {
+        std::memcpy(L + t * s.K, s.row[static_cast<std::size_t>(t)], static_cast<std::size_t>(s.K) * sizeof(double));
     }
 }
 

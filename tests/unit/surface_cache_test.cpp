@@ -2,6 +2,7 @@
 // engine/surface_cache.hpp (D-167): rows cached across panels are identical to evaluate_surface's; a
 // change in any one setting that determines a row is a cache miss, never a stale hit; rows are filled
 // on demand; and a recovery fit through the cache equals the fit without it, bit for bit.
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -14,6 +15,7 @@
 #include "core/quadrature/composite_legendre.hpp"
 #include "core/quadrature/gauss_hermite.hpp"
 #include "core/quadrature/parity.hpp"
+#include "engine/calibrate.hpp"
 #include "engine/surface.hpp"
 #include "engine/surface_cache.hpp"
 #include "tests/harness/vcal_test.hpp"
@@ -175,4 +177,122 @@ VCAL_TEST(recovery_fits_through_the_cache_are_identical) {
     }
     VCAL_CHECK_EQ(differing, 0);
     VCAL_CHECK(cache.hits() > 0);  // replicates of one scenario share rows
+}
+
+// P-27 (D-410): calibrate_from_rows (the cache's rows in place, the argmax bounded by the rows' cached tile maxima)
+// gives calibrate_from_surface's estimate on the copied rows, bit for bit, in every field:
+//   - on recovery panels of every scenario (two replicates each) and on bootstrap-like panels drawn at their
+//     estimates, through the cache;
+//   - on adversarial finite surfaces (flat stretches, ties, huge and tiny values), where the bound visits many tiles;
+//   - on surfaces with an infinite or NaN value, which take the full grid (D-172's guard) on the copied rows.
+// The cache's row tile maxima equal tile_maxima on the row, and its finiteness flag is the row's.
+VCAL_TEST(calibrate_from_rows_is_calibrate_from_surface_bit_for_bit) {
+    namespace rc = vcal::recovery;
+    using Obs = rc::Objective::Obs;
+    const auto primary = q::parity_rule();
+    const auto check = q::parity_rule(true);
+    const auto g = rc::grid();
+    const std::int64_t K = g.size();
+    auto same_est = [](const e::Estimate2& a, const e::Estimate2& b) {
+        auto eq = [](double x, double y) { return std::memcmp(&x, &y, sizeof x) == 0; };
+        bool s = a.grid_index == b.grid_index && a.flags == b.flags && a.nan_count == b.nan_count &&
+                 eq(a.loglik, b.loglik) && eq(a.corr, b.corr) && eq(a.quad_check_max, b.quad_check_max) &&
+                 eq(a.quad_check_total, b.quad_check_total) && a.quad_check_flagged == b.quad_check_flagged;
+        for (int i = 0; i < 2; ++i) s = s && eq(a.value[i], b.value[i]) && eq(a.se[i], b.se[i]) && eq(a.scaled[i], b.scaled[i]);
+        for (int i = 0; i < 3; ++i) s = s && eq(a.hess_u[i], b.hess_u[i]);
+        return s;
+    };
+    e::SurfaceRowCache cache;
+    int fits = 0, bad = 0, tiles_bad = 0;
+    auto check_panel = [&](const std::vector<Obs>& obs, bool qc) {
+        const auto T = static_cast<std::int64_t>(obs.size());
+        std::vector<double> L(static_cast<std::size_t>(T * K)), Lr;
+        e::evaluate_surface_cached(Backend{1}, cache, rc::Objective{}, primary, obs.data(), T, g, L.data());
+        e::SurfaceRows rows;
+        e::surface_rows_cached(Backend{1}, cache, rc::Objective{}, primary, obs.data(), T, g, rows);
+        for (std::int64_t t = 0; t < T; ++t) {
+            std::vector<double> U(static_cast<std::size_t>(e::argmax_tiles(g)));
+            e::tile_maxima(g, rows.row[static_cast<std::size_t>(t)], U.data());
+            tiles_bad += std::memcmp(U.data(), rows.tile_max[static_cast<std::size_t>(t)], U.size() * sizeof(double)) == 0 ? 0 : 1;
+        }
+        e::Estimate2 a{}, b{};
+        const auto sa = e::calibrate_from_surface(Backend{1}, rc::Objective{}, primary, check, obs.data(), T, g, L, a,
+                                                  e::kHessianStepFraction, qc);
+        const auto sb = e::calibrate_from_rows(Backend{1}, rc::Objective{}, primary, check, obs.data(), T, g, rows, Lr, b,
+                                               e::kHessianStepFraction, qc);
+        ++fits;
+        bad += (sa == sb && (sa != e::Status::Ok || same_est(a, b))) ? 0 : 1;
+        return a;
+    };
+    for (std::uint32_t id = 0; id < rc::kScenarios; ++id) {
+        const auto s = rc::scenario(id);
+        for (std::uint32_t r = 0; r < 2; ++r) {
+            std::vector<Obs> obs;
+            for (const auto d : rc::panel(s, r)) obs.push_back({s.obligors, d});
+            const auto est = check_panel(obs, r == 0);
+            // A bootstrap-like panel: drawn at the estimate, as S-10 draws its parametric bootstrap.
+            if (std::isfinite(est.value[0]) && std::isfinite(est.value[1])) {
+                std::vector<std::int64_t> n(obs.size(), s.obligors), d(obs.size());
+                const vcal::dgp::PanelSpec spec{0x5031u, id, 7u + r, est.value[0], est.value[1], n.data(),
+                                                static_cast<std::int64_t>(obs.size())};
+                if (vcal::dgp::simulate_panel(spec, d.data(), nullptr) == vcal::dgp::Status::Ok) {
+                    std::vector<Obs> ob;
+                    for (const auto x : d) ob.push_back({s.obligors, x});
+                    check_panel(ob, false);
+                }
+            }
+        }
+    }
+    vcal::test::note(std::to_string(fits) + " cached panels, " + std::to_string(bad) + " estimates differ, " +
+                     std::to_string(tiles_bad) + " tile-maxima rows differ");
+    VCAL_CHECK(bad == 0 && tiles_bad == 0);
+
+    // Hand-made surfaces through row pointers: adversarial finite ones, and ones with a non-finite value.
+    std::uint64_t st = 0x27u;
+    auto uni = [&] {
+        st = st * 6364136223846793005ull + 1442695040888963407ull;
+        return static_cast<double>(st >> 11) * 0x1p-53;
+    };
+    int made = 0, made_bad = 0;
+    for (int trial = 0; trial < 60; ++trial) {
+        const std::int64_t T = 1 + trial % 13;
+        std::vector<double> L(static_cast<std::size_t>(T * K));
+        const int kind = trial % 4;  // 0 smooth, 1 flat stretches and ties, 2 huge and tiny, 3 a non-finite value
+        for (std::int64_t t = 0; t < T; ++t) {
+            for (std::int64_t k = 0; k < K; ++k) {
+                const double x = static_cast<double>(k % 61) - 30.0, y = static_cast<double>(k / 61) - 20.0;
+                double v = -(x * x + 0.7 * y * y) * (1.0 + 0.1 * static_cast<double>(t)) - 3.0 * uni();
+                if (kind == 1) v = -std::floor(std::fabs(x) / 7.0) - std::floor(std::fabs(y) / 5.0);
+                if (kind == 2 && uni() < 0.2) v = uni() < 0.5 ? -1e300 * uni() : -1e-300 * uni();
+                L[static_cast<std::size_t>(t * K + k)] = v;
+            }
+        }
+        if (kind == 3) {
+            const double bad_values[] = {-HUGE_VAL, HUGE_VAL, std::nan("")};
+            L[static_cast<std::size_t>((trial % static_cast<int>(T)) * K + (trial * 37) % K)] = bad_values[trial % 3];
+        }
+        e::SurfaceRows rows;
+        rows.periods = T;
+        rows.K = K;
+        std::vector<std::vector<double>> U(static_cast<std::size_t>(T));
+        for (std::int64_t t = 0; t < T; ++t) {
+            const double* row = L.data() + t * K;
+            U[static_cast<std::size_t>(t)].resize(static_cast<std::size_t>(e::argmax_tiles(g)));
+            e::tile_maxima(g, row, U[static_cast<std::size_t>(t)].data());
+            rows.row.push_back(row);
+            rows.tile_max.push_back(U[static_cast<std::size_t>(t)].data());
+            for (std::int64_t k = 0; k < K; ++k) rows.finite = rows.finite && std::isfinite(row[k]);
+        }
+        std::vector<Obs> obs(static_cast<std::size_t>(T), Obs{1000, 3});
+        std::vector<double> Lr;
+        e::Estimate2 a{}, b{};
+        const auto sa = e::calibrate_from_surface(Backend{1}, rc::Objective{}, primary, check, obs.data(), T, g, L, a);
+        const auto sb = e::calibrate_from_rows(Backend{1}, rc::Objective{}, primary, check, obs.data(), T, g, rows, Lr, b);
+        ++made;
+        made_bad += (sa == sb && (sa != e::Status::Ok || same_est(a, b))) ? 0 : 1;
+        if (kind == 3) VCAL_CHECK(!rows.finite && Lr.size() == static_cast<std::size_t>(T * K));
+    }
+    vcal::test::note(std::to_string(made) + " hand-made surfaces (15 with a non-finite value), " +
+                     std::to_string(made_bad) + " differ");
+    VCAL_CHECK(made_bad == 0);
 }
