@@ -295,3 +295,69 @@ VCAL_TEST(posterior_reference_results_reproduce) {
     vcal::test::note("worst relative difference: " + sci(worst));
     VCAL_CHECK_EQ(bad, 0);
 }
+
+// D-218: a table corner with zero interpolation weight is skipped, so a -inf corner (det I_u <= 0)
+// beside a point on a table node leaves that node's finite value alone instead of making it
+// 0 x -inf = NaN; and with every corner finite the result is the plain bilinear formula.
+VCAL_TEST(jeffreys_interpolation_ignores_zero_weight_corners) {
+    // Step 1 exactly, so the nodes' coordinates and interpolation fractions are exact.
+    const vcal::Grid<2> g{{{0.0, 3.0, 4, vcal::AxisScale::Linear}, {0.0, 3.0, 4, vcal::AxisScale::Linear}}};
+    e::JeffreysTable jt{g, std::vector<double>(static_cast<std::size_t>(g.size()))};
+    for (std::int64_t k = 0; k < g.size(); ++k) jt.log_prior[static_cast<std::size_t>(k)] = 0.25 * static_cast<double>(k);
+    const auto at = [&](std::int32_t a, std::int32_t b) {
+        const std::int32_t idx[2] = {a, b};
+        return jt.log_prior[static_cast<std::size_t>(g.flatten(idx))];
+    };
+    const double u1 = g.axis[0].scaled_at(1), u2 = g.axis[1].scaled_at(2);
+    VCAL_CHECK(e::jeffreys_log_prior(jt, u1, u2) == at(1, 2));
+    VCAL_CHECK(e::jeffreys_log_prior(jt, g.axis[0].scaled_at(3), g.axis[1].scaled_at(3)) == at(3, 3));  // top corner, f = 1
+    const double mid0 = 0.5 * (u1 + g.axis[0].scaled_at(2));
+    const double want = 0.5 * (at(1, 2) + at(2, 2));
+    VCAL_CHECK(std::fabs(e::jeffreys_log_prior(jt, mid0, u2) - want) <= 1e-15 * std::fabs(want));
+    // Every neighbour of node (1, 2) at -inf: the node's own value survives.
+    for (std::int32_t a = 0; a < 4; ++a) {
+        for (std::int32_t b = 0; b < 4; ++b) {
+            if (a == 1 && b == 2) continue;
+            const std::int32_t idx[2] = {a, b};
+            jt.log_prior[static_cast<std::size_t>(g.flatten(idx))] = -HUGE_VAL;
+        }
+    }
+    VCAL_CHECK(e::jeffreys_log_prior(jt, u1, u2) == 0.25 * 6.0);
+    VCAL_CHECK(e::jeffreys_log_prior(jt, mid0, u2) == -HUGE_VAL);  // a -inf corner with weight: -inf, not NaN
+}
+
+namespace {
+
+// NormalInU with a NaN log-likelihood on a stripe 0.05 < PD < 0.06.
+struct NanStripe : NormalInU {
+    template <class I>
+    double log_contrib(const Obs& o, const Theta& th, const I& i) const {
+        if (th.pd > 0.05 && th.pd < 0.06) return std::nan("");
+        return NormalInU::log_contrib(o, th, i);
+    }
+};
+
+}  // namespace
+
+// D-218: grid points whose log posterior is NaN get zero mass, as before, but are now flagged.
+VCAL_TEST(posterior_flags_nan_cells) {
+    NanStripe obj;
+    obj.mu[0] = logit(0.02);
+    obj.mu[1] = logit(0.1);
+    obj.sigma[0] = obj.sigma[1] = 0.5;
+    const auto integrator = vcal::quadrature::parity_rule();
+    const auto g = box_grid();
+    const NanStripe::Obs obs[1] = {{0}};
+    std::vector<double> L(static_cast<std::size_t>(g.size()));
+    e::evaluate_surface(Backend{1}, obj, integrator, obs, 1, g, L.data());
+    const auto r = e::grid_posterior(Backend{1}, obj, integrator, obs, 1, g, L, e::Prior::Flat, nullptr, nullptr, false);
+    VCAL_CHECK((r.flags & e::kPosteriorNanCells) != 0);
+    VCAL_CHECK((r.flags & e::kPosteriorNumeric) == 0);
+    VCAL_CHECK(std::isfinite(r.et_lo[0]) && r.et_lo[0] < r.et_hi[0]);
+
+    NormalInU clean;
+    clean.mu[0] = obj.mu[0];
+    clean.mu[1] = obj.mu[1];
+    clean.sigma[0] = clean.sigma[1] = 0.5;
+    VCAL_CHECK((posterior_of(clean, Backend{1}, nullptr, false).flags & e::kPosteriorNanCells) == 0);
+}

@@ -56,7 +56,9 @@ struct Draw {
 // The prior's cell masses on the parity grid, cumulated in grid order.
 std::vector<double> cumulative_prior(e::Prior prior, const e::JeffreysTable* jt, const Grid<2>& g) {
     std::vector<double> m;
-    if (!e::posterior_detail::masses(prior, jt, g, std::vector<double>(static_cast<std::size_t>(g.size()), 0.0), m)) {
+    bool nan_cells = false;
+    if (!e::posterior_detail::masses(prior, jt, g, std::vector<double>(static_cast<std::size_t>(g.size()), 0.0), m,
+                                     nan_cells)) {
         std::abort();
     }
     for (std::size_t k = 1; k < m.size(); ++k) m[k] += m[k - 1];

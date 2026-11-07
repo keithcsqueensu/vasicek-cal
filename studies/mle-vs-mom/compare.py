@@ -32,6 +32,7 @@ states the same readings):
 
 import argparse
 import csv
+import json
 import math
 import sys
 from pathlib import Path
@@ -43,7 +44,8 @@ import model_reference as ref  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 BAND_Z = 3.29  # TOL_RECOVERY_COVERAGE_BAND_Z (tests/tolerances.toml)
-MOM_REFUSED = 1 << 0  # engine::kMomRefused (engine/moments.hpp)
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+MOM_REFUSED = FLAGS["moments"]["kMomRefused"]["value"]
 TREATMENTS = ("refuse", "drop", "censor", "substitute")
 PDS, RHOS, TS = (0.001, 0.01, 0.05), (0.02, 0.12, 0.24), (20, 40, 100)
 INDISTINGUISHABLE_SE = 0.1

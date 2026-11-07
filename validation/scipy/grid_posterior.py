@@ -160,6 +160,11 @@ def hpd(ax, mass):
     return a, b
 
 
+def nan_inf(x):
+    """x, or inf for a NaN: a running max() would otherwise drop a NaN and a check would pass (D-218)."""
+    return math.inf if math.isnan(x) else x
+
+
 def main():
     with open(ROOT / "tests" / "tolerances.toml", "rb") as f:
         tol = {k: v["value"] for k, v in tomllib.load(f).items()}
@@ -173,7 +178,7 @@ def main():
     got = np.array([jeffreys_quad(int(jrows[0]["n"]), a, b) for a, b in zip(u0, u1)])
     want = np.array([h(r["log_prior_hex"]) for r in jrows])
     worst_j = float(np.max(np.abs(got - want)))
-    if worst_j > tol["TOL_SCIPY_JEFFREYS_LOG_ABS"]:
+    if not worst_j <= tol["TOL_SCIPY_JEFFREYS_LOG_ABS"]:  # `not x <= tol` so that a NaN fails (D-218)
         failures.append(f"Jeffreys table differs by {worst_j:.3g}")
     # The parity grid's table for the posterior's Jeffreys prior (bilinear in log, as the engine).
     pa0, pa1 = Axis(*PD_BOX, 61), Axis(*RHO_BOX, 41)
@@ -215,8 +220,8 @@ def main():
             ends["hpd_lo"], ends["hpd_hi"] = hpd(ax, mg)
             for key, u in ends.items():
                 du = abs(u - logit(h(r[f"{name}_{key}_hex"])))
-                worst_u = max(worst_u, du)
-                if du > tol["TOL_SCIPY_POSTERIOR_END_U"]:
+                worst_u = max(worst_u, nan_inf(du))
+                if not du <= tol["TOL_SCIPY_POSTERIOR_END_U"]:
                     failures.append(f"{at}: {name} {key} differs by {du:.3g} in logit")
     print(f"Jeffreys table: {len(jrows)} points, worst |log difference| {worst_j:.3g}")
     print(f"posteriors: {len(prows)} fits, worst interval end difference {worst_u:.3g} in logit")

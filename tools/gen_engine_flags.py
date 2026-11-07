@@ -3,8 +3,9 @@
 
 Scoring scripts read the engine's flag bits from this file instead of writing them as literals, so a script cannot
 disagree with the engine (a scorer once had kFlagQuadratureUnconverged on bit 3; the engine has it on bit 2).
-Two groups: the estimate flags (kFlag*, in Estimate2/Estimate3's flags field) and the interval flags (kInterval*,
-in a profile interval's flags). A group may not use one bit twice. Standard library only.
+Four groups: the estimate flags (kFlag*, in Estimate2/Estimate3's flags field), the interval flags (kInterval*,
+in a profile interval's flags) and, from D-219, the grid posterior's flags (kPosterior*, in PosteriorResult's
+flags) and the method of moments' flags (kMom*). A group may not use one bit twice. Standard library only.
 
     python tools/gen_engine_flags.py           write tests/engine_flags.json
     python tools/gen_engine_flags.py --check   fail if the committed file is stale
@@ -24,20 +25,23 @@ SOURCES = (
     "engine/refine.hpp",
     "engine/profile.hpp",
     "engine/conditional_pd.hpp",
+    "engine/posterior.hpp",
+    "engine/moments.hpp",
     "benchmark_models/ar1/search.hpp",
 )
-PATTERN = re.compile(r"\b(k(Flag|Interval)\w+)\s*=\s*1u\s*<<\s*(\d+)")
+PATTERN = re.compile(r"\b(k(Flag|Interval|Posterior|Mom)\w+)\s*=\s*1u\s*<<\s*(\d+)")
+GROUP = {"Flag": "estimate", "Interval": "interval", "Posterior": "posterior", "Mom": "moments"}
 
 
 def build() -> str:
-    groups: dict[str, dict[str, dict[str, int | str]]] = {"estimate": {}, "interval": {}}
+    groups: dict[str, dict[str, dict[str, int | str]]] = {g: {} for g in GROUP.values()}
     for src in SOURCES:
         for line in (ROOT / src).read_text(encoding="utf-8").splitlines():
             m = PATTERN.search(line)
             if not m:
                 continue
             name, kind, bit = m.group(1), m.group(2), int(m.group(3))
-            group = groups["estimate" if kind == "Flag" else "interval"]
+            group = groups[GROUP[kind]]
             if name in group:
                 sys.exit(f"{name} is defined twice ({group[name]['source']} and {src})")
             clash = [n for n, v in group.items() if v["bit"] == bit]
@@ -46,8 +50,7 @@ def build() -> str:
             group[name] = {"bit": bit, "value": 1 << bit, "source": src}
     doc = {
         "generated_by": "tools/gen_engine_flags.py (D-200); do not edit",
-        "estimate": dict(sorted(groups["estimate"].items(), key=lambda kv: int(kv[1]["bit"]))),
-        "interval": dict(sorted(groups["interval"].items(), key=lambda kv: int(kv[1]["bit"]))),
+        **{g: dict(sorted(groups[g].items(), key=lambda kv: int(kv[1]["bit"]))) for g in GROUP.values()},
     }
     return json.dumps(doc, indent=2) + "\n"
 

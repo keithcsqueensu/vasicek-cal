@@ -494,7 +494,8 @@ D-138–D-144) is summarised below.
     `vcal_calibrate: panel.n_defaults[3] = 1001: need 0 <= d <= n_obligors[3] = 1000`.
   - Each entry point runs inside a catch-all, so no C++ exception crosses the boundary.
 - **Context (D-141, D-045).** An opaque `vcal_context`, made by `vcal_context_create` and freed
-  by `vcal_context_destroy`, holds the profile (`VCAL_PROFILE_PARITY`) and the thread count.
+  by `vcal_context_destroy`, holds the profile (`VCAL_PROFILE_PARITY` or `VCAL_PROFILE_NATIVE`), the thread count and the
+  Jeffreys tables.
   - Results are bitwise identical for any thread count.
   - A context must not be used by two threads at once; distinct contexts are independent.
 
@@ -510,7 +511,7 @@ D-138–D-144) is summarised below.
 | `vcal_resample` | Replicate estimates from W × L (§5.2) for the iid and moving-block bootstrap, jackknife, walk-forward, a supplied index matrix or a supplied weight matrix, with type-7 percentile intervals |
 | `vcal_resample_weights` | The W a scheme implies, so any replicate can be rebuilt elsewhere |
 | `vcal_dgp_simulate` | One synthetic panel, bitwise identical on every platform (D-052–D-057) |
-| `vcal_calibrate_rate` (0.3) | The Vasicek-rate MLE on count data or a rate series, with profile intervals; zero rates by an explicit `VCAL_ZERO_RATES_*` option: refuse (parity, D-044) or, in a `VCAL_PROFILE_NATIVE` context, censor, substitute or drop. No default is recommended until S-28 reports |
+| `vcal_calibrate_rate` (0.3) | The Vasicek-rate MLE on count data or a rate series, with profile intervals; zero rates by an explicit `VCAL_ZERO_RATES_*` option: refuse (parity, D-044) or, in a `VCAL_PROFILE_NATIVE` context, censor, substitute or drop. No default (D-169); S-28 (D-174) recommends the binomial MLE on counts and, with rates only, `VCAL_ZERO_RATES_CENSOR` |
 | `vcal_calibrate_moments` (0.3) | The joint-default-probability method of moments, counts or rates |
 | `vcal_calibrate_posterior` (0.3) | The grid posterior, flat or Jeffreys prior, with the resolution rule; equal-tailed and HPD intervals. Jeffreys tables are kept in the context per (n, grid) |
 | `vcal_calibrate_bartlett` (0.4) | A native option (`VCAL_PROFILE_NATIVE`, D-182): the fit and the Bartlett-corrected profile-likelihood intervals, whose threshold is scaled by a parametric-bootstrap estimate of E[W] (S-4b; `docs/methodology/bartlett_profile.md`). The most accurate interval at T = 20 in S-4, at about 4–5% more width and B (default 199) fits per estimate; the preferred interval stays Jeffreys equal-tailed |
@@ -518,8 +519,7 @@ D-138–D-144) is summarised below.
 **Deliberately absent from v0.** These arrive as appended fields or new functions, under the
 same conventions:
 
-- model selection (objective, integrator, precision), the dispatch registry, and the `native`
-  profile (M3);
+- model selection (objective, integrator, precision) and the dispatch registry;
 - the CUDA backend and device selection (M4);
 - backtests and the ledger (M5);
 - multi-segment models (M6);
@@ -651,7 +651,7 @@ observed panel (n_t, d_t) ──► per-period and pooled tests:
 
 - CMake ≥ 3.25 (D-047). C++20 (D-025) except device-visible code, which is C++17 and checked by
   a `-std=c++17` TU (D-058), Ninja via `CMakePresets.json`
-  (`cpu-debug`, `cpu-release`). On Windows, configure from a VS developer shell.
+  (`cpu-debug`, `cpu-release`, `cuda-release`). On Windows, configure from a VS developer shell.
 - Every target goes through `vcal_target_defaults()` (`cmake/VcalTargetDefaults.cmake`):
   C++20, warnings (`/W4 /permissive-` or `-Wall -Wextra -Wpedantic -Wconversion -Wshadow`),
   optional warnings-as-errors (D-049), and FP-contraction off (D-048). `dgp/` additionally gets `/fp:strict` on MSVC (D-056).

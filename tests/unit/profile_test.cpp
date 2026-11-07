@@ -486,6 +486,53 @@ VCAL_TEST(calibrate_se_is_the_analytic_observed_information) {
     VCAL_CHECK(worst <= tol::TOL_CALIBRATE_SE_VS_ANALYTIC_REL);
 }
 
+namespace {
+
+// Obs.v == 1 is impossible (log contribution -inf); any other v contributes -v.
+struct ImpossibleObs {
+    struct Obs {
+        int v;
+        friend bool operator==(const Obs& a, const Obs& b) { return a.v == b.v; }
+    };
+    struct Theta {
+        double a, b;
+    };
+    static Theta theta(const double (&v)[2]) { return {v[0], v[1]}; }
+    template <class I>
+    double log_contrib(const Obs& o, const Theta&, const I&) const {
+        return o.v == 1 ? -HUGE_VAL : -static_cast<double>(o.v);
+    }
+    template <class I>
+    double log_contrib_derivs(const Obs& o, const Theta& th, const I& i, double (&g)[2], double (&h)[3]) const {
+        g[0] = g[1] = 0.0;
+        h[0] = h[1] = h[2] = 0.0;
+        return log_contrib(o, th, i);
+    }
+};
+
+}  // namespace
+
+// D-218: an impossible period makes the panel log-likelihood -inf, as reducers::weighted_sum does,
+// not NaN (the compensation step would compute -inf - -inf); finite panels are bit for bit unchanged.
+VCAL_TEST(panel_loglik_of_an_impossible_period_is_minus_infinity) {
+    namespace pd = e::profile_detail;
+    const ImpossibleObs obj;
+    const int integrator = 0;
+    const double v[2] = {0.1, 0.2};
+    const std::vector<ImpossibleObs::Obs> bad{{3}, {1}, {2}, {3}};
+    std::vector<std::int64_t> first, count;
+    pd::distinct_observations(bad.data(), static_cast<std::int64_t>(bad.size()), first, count);
+    VCAL_CHECK(pd::panel_loglik(obj, integrator, bad.data(), first, count, v) == -HUGE_VAL);
+    VCAL_CHECK(pd::panel_derivs_natural(obj, integrator, bad.data(), first, count, v).l == -HUGE_VAL);
+
+    const std::vector<ImpossibleObs::Obs> good{{3}, {2}, {3}, {7}};
+    first.clear();
+    count.clear();
+    pd::distinct_observations(good.data(), static_cast<std::int64_t>(good.size()), first, count);
+    VCAL_CHECK(pd::panel_loglik(obj, integrator, good.data(), first, count, v) == -15.0);
+    VCAL_CHECK(pd::panel_derivs_natural(obj, integrator, good.data(), first, count, v).l == -15.0);
+}
+
 // P-24 (D-407): calibrate takes l_primary from its Hessian pass. Every field that l_primary feeds (the
 // log-likelihood, the quadrature check's max, total and count, its flag) is, bit for bit, what the value pass
 // (log_contrib per distinct observation, in period order) gives, as calibrate computed it before P-24; on panels

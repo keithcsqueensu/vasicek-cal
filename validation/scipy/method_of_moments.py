@@ -55,6 +55,11 @@ def invert(pd, pd2):
     return 1.0 / (1.0 + math.exp(-u)), flags
 
 
+def nan_inf(x):
+    """x, or inf for a NaN: a running max() would otherwise drop a NaN and a check would pass (D-218)."""
+    return math.inf if math.isnan(x) else x
+
+
 def main():
     with open(ROOT / "tests" / "tolerances.toml", "rb") as f:
         tol = {k: v["value"] for k, v in tomllib.load(f).items()}
@@ -79,15 +84,15 @@ def main():
         for got, col in ((pd, "pd_hat_hex"), (pd2, "pd2_hat_hex")):
             want = h(r[col])
             rel = abs(got / want - 1.0)
-            worst_m = max(worst_m, rel)
-            if rel > tol["TOL_SCIPY_MOM_MOMENT_REL"]:
+            worst_m = max(worst_m, nan_inf(rel))
+            if not rel <= tol["TOL_SCIPY_MOM_MOMENT_REL"]:  # `not x <= tol` so that a NaN fails (D-218)
                 failures.append(f"{at}: {col} differs by {rel:.3g} relative")
         if flags != int(r["flags"]):
             failures.append(f"{at}: flags {flags}, engine {r['flags']}")
         elif not flags & REFUSED:
             du = abs(logit(rho) - logit(h(r["rho_hat_hex"])))
-            worst_u = max(worst_u, du)
-            if du > tol["TOL_SCIPY_MOM_RHO_U"]:
+            worst_u = max(worst_u, nan_inf(du))
+            if not du <= tol["TOL_SCIPY_MOM_RHO_U"]:
                 failures.append(f"{at}: rho-hat differs by {du:.3g} in logit")
     print(f"{len(rows)} panels; worst moment difference {worst_m:.3g} relative, worst rho-hat {worst_u:.3g} in logit")
     for line in failures:

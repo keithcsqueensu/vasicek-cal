@@ -19,6 +19,7 @@ coverage on the same panels, D-175). Three parts:
 """
 
 import csv
+import json
 import math
 from pathlib import Path
 
@@ -26,6 +27,8 @@ import pyarrow.parquet as pq
 from scipy.stats import chi2, norm
 
 REPO = Path(__file__).resolve().parents[2]
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+NOT_COMPUTED = FLAGS["interval"]["kIntervalNotComputed"]["value"]
 C95 = chi2.ppf(0.95, 1)
 
 
@@ -81,7 +84,7 @@ def gap(rows):
         g = grp[r["scenario"]]
         for p in ("pd", "rho"):
             t = r[f"{p}_true"]
-            prof = not r[f"prof_flags_{p}"] & 4 and r[f"prof_lo_{p}"] <= t <= r[f"prof_hi_{p}"]
+            prof = not r[f"prof_flags_{p}"] & NOT_COMPUTED and r[f"prof_lo_{p}"] <= t <= r[f"prof_hi_{p}"]
             jef = r[f"jeffreys_et_lo_{p}"] <= t <= r[f"jeffreys_et_hi_{p}"]
             a = acc.setdefault((g, p), [0, 0, 0])
             a[0] += prof

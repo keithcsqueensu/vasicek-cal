@@ -73,5 +73,54 @@
       "value": 16,
       "source": "engine/conditional_pd.hpp"
     }
+  },
+  "posterior": {
+    "kPosteriorRefined": {
+      "bit": 0,
+      "value": 1,
+      "source": "engine/posterior.hpp"
+    },
+    "kPosteriorRefused": {
+      "bit": 1,
+      "value": 2,
+      "source": "engine/posterior.hpp"
+    },
+    "kPosteriorMassOutsideLocal": {
+      "bit": 2,
+      "value": 4,
+      "source": "engine/posterior.hpp"
+    },
+    "kPosteriorNumeric": {
+      "bit": 3,
+      "value": 8,
+      "source": "engine/posterior.hpp"
+    },
+    "kPosteriorNanCells": {
+      "bit": 4,
+      "value": 16,
+      "source": "engine/posterior.hpp"
+    }
+  },
+  "moments": {
+    "kMomRefused": {
+      "bit": 0,
+      "value": 1,
+      "source": "engine/moments.hpp"
+    },
+    "kMomRhoAtFloor": {
+      "bit": 1,
+      "value": 2,
+      "source": "engine/moments.hpp"
+    },
+    "kMomRhoAtCap": {
+      "bit": 2,
+      "value": 4,
+      "source": "engine/moments.hpp"
+    },
+    "kMomPdOutsideBox": {
+      "bit": 3,
+      "value": 8,
+      "source": "engine/moments.hpp"
+    }
   }
 }

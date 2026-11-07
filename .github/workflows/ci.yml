@@ -103,7 +103,9 @@ jobs:
                 *) code=true ;;
               esac
               if [ "$code" = true ]; then echo "code change: $f"; break; fi
-            done < <(git diff --name-only "$range")
+            # --no-renames: a rename lists both its source and its destination, so moving a code
+            # file (or a code_md file) to a prose path is still a code change (D-218).
+            done < <(git diff --name-only --no-renames "$range")
           fi
           [ "$code" = true ] || { echo "prose-only change: nothing to build"; run=false; }
           configs='[
