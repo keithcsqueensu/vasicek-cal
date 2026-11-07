@@ -40,6 +40,28 @@ VCAL_HD double weighted_sum(const double* L, std::int64_t T, std::int64_t K, con
     return any_nonfinite ? nonfinite + (sum + comp) : sum + comp;
 }
 
+// weighted_sum with row t at rows[t] instead of L + t * K (P-27, D-410): the same operations in the same order, so
+// the same value bit for bit.
+VCAL_HD double weighted_sum_rows(const double* const* rows, std::int64_t T, const double* w, std::int64_t k) {
+    double sum = 0.0;
+    double comp = 0.0;
+    double nonfinite = 0.0;
+    bool any_nonfinite = false;
+    for (std::int64_t t = 0; t < T; ++t) {
+        if (w[t] == 0.0) continue;
+        const double x = w[t] * rows[t][k];
+        if (!std::isfinite(x)) {
+            nonfinite += x;
+            any_nonfinite = true;
+            continue;
+        }
+        const double s = sum + x;
+        comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
+        sum = s;
+    }
+    return any_nonfinite ? nonfinite + (sum + comp) : sum + comp;
+}
+
 VCAL_HD void weighted_sums(const double* L, std::int64_t T, std::int64_t K, const double* w, std::int64_t k0,
                            std::int64_t n, double* out) {
 #if !defined(__CUDA_ARCH__)

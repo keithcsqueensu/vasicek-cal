@@ -50,18 +50,16 @@
 
 #include "core/grid.hpp"
 #include "core/reducers/argmax.hpp"
+#include "engine/argmax_tiles.hpp"
 #include "engine/refine.hpp"
 #include "engine/surface.hpp"
 
 namespace vcal::resample {
 
 enum class ArgmaxSearch { Full, Bounded };
-inline constexpr std::int32_t kArgmaxTile = 4;
-// Rounding allowance on a tile's bound, relative to sum_j |M[b][j] U[j][T]|. A computed s_b[k]
-// differs from its exact value by a few eps times sum_j |M[b][j] R[j][k]|; a point with
-// |R[j][k]| much larger than |U[j][T]| lies far below the bound, so the allowance only needs to
-// cover points near it. 1e-9 is about 1e7 eps: generous, and it costs only an occasional extra tile.
-inline constexpr double kArgmaxBoundMargin = 1e-9;
+// The tiling and the bound's rounding allowance live in engine/argmax_tiles.hpp (P-27, D-410), shared with calibrate.
+using engine::kArgmaxTile;
+using engine::kArgmaxBoundMargin;
 
 struct Replicate2 {
     double value[2];      // natural scale, grid axis order

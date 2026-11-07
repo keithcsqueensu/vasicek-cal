@@ -1836,6 +1836,27 @@ before the build). Cloud D-400 block, continued.
   - **The rest of C2** (a row view and calibrate's argmax bounded by cached tile maxima) waits on the laptop's
     full-run phase split: after P-26 the surface phase is 4-10% of per-replicate work.
 
+## P-27: bootstrap fits on cached rows in place, 2026-11-06
+
+- **D-410 — P-27: S-10's bootstrap fits read the row cache in place, and calibrate's argmax there is D-172's bounded
+  search with each row's tile maxima kept in the cache; no change in results** (`perf/p27_row_view.md`; the ceiling
+  measured and the expectation committed before the build; the scouting note's C2, D-500).
+  - **What:** `calibrate_from_rows` takes the cache's rows by pointer (`SurfaceRows`, `surface_rows_cached`). Its
+    argmax is the bounded search on unit weights, which finds the full grid's argmax exactly (D-172), and the rest of
+    calibrate is `detail::calibrate_from_argmax`, shared verbatim with `calibrate_from_surface`. A panel with a
+    non-finite row copies its rows and takes the contiguous path. The cache keeps each row's tile maxima and
+    finiteness from its fill. D-172's tiling constants move to `engine/argmax_tiles.hpp` unchanged. In the S-10 tool
+    only W*'s 199 of 999 panels still copy their rows.
+  - **The ceiling, measured first:** after P-26, calibrate's full-grid argmax was over half of the fit phase in the
+    n = 100 cells (about 0.18 ms per fit at T = 100), more than the scouting note's instruction counts showed; with
+    the copy, about 25-28% of per-replicate work at (100, 100) and 6.7% at (100, 10,000), about 10% of the run.
+  - **Measured** (A B B A, 10 replicates): per-replicate work −17.3% at (100, 100), −4.9% at (100, 10,000); about 7% of
+    the run. The surface phase −60% and calibrate's argmax about −60%, both less than expected (−80%, −85-90%): the
+    row lookups and the bounded search's own cost stay. Stop rule (under 3%): not triggered.
+  - **Identity:** a unit test on 324 cached panels and 60 hand-made surfaces (15 non-finite), every `Estimate2` field;
+    the non-slow suite and the slow argmax and S-10 tests; the S-10 rows of four timing runs byte-identical to `main`'s;
+    and the recovery harness's 4,050 fits at R = 50 identical to `main`'s in every field.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
