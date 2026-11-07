@@ -1855,7 +1855,7 @@ before the build). Cloud D-400 block, continued.
     row lookups and the bounded search's own cost stay. Stop rule (under 3%): not triggered.
   - **Identity:** a unit test on 324 cached panels and 60 hand-made surfaces (15 non-finite), every `Estimate2` field;
     the non-slow suite and the slow argmax and S-10 tests; the S-10 rows of four timing runs byte-identical to `main`'s;
-    the recovery harness's fits pending.
+    and the recovery harness's 4,050 fits at R = 50 identical to `main`'s in every field.
 
 ## Open
 

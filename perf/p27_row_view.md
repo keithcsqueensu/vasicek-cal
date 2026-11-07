@@ -77,7 +77,9 @@ well above the stop rule's 4% for building at all.
   `study_argmax_check`, `study_parametric_bootstrap_smoke` and `study_parametric_bootstrap_resume`.
 - **The S-10 tool's rows** of all four timing runs below: byte-identical to `main`'s.
 - **The recovery harness** (which fits through `calibrate_cached`, the contiguous path, and so checks the split of
-  calibrate and the moved constants): pending (results to follow in this file).
+  calibrate and the moved constants): `--replicates 50 --save-fits` on `main` and this branch, every field of all
+  4,050 fits identical (the two 4-byte padding slots of the raw `rc::Fit` records skipped), and the printed summaries
+  identical.
 
 ## Measured (2026-11-06)
 
