@@ -153,7 +153,7 @@ e::Estimate2 fit_panel(Context& ctx, const std::vector<rc::Objective::Obs>& obs,
         const vcal::test::FillMeter fills;
         {
             Timer t{&sec[kSurface]};
-            L.assign(static_cast<std::size_t>(T * g.size()), 0.0);
+            L.resize(static_cast<std::size_t>(T * g.size()));  // no zero fill: every element is written (P-26)
             e::evaluate_surface_cached(backends::CpuBackend{1}, ctx.cache, rc::Objective{}, primary, obs.data(), T, g,
                                        L.data());
         }

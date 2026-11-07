@@ -181,7 +181,8 @@ private:
 };
 
 // evaluate_surface through the cache: L[t][k] for every period, each distinct observation's row
-// taken from the cache (computed on first request). Identical to evaluate_surface bit for bit.
+// taken from the cache (computed on first request). Identical to evaluate_surface bit for bit. Writes every
+// element of L (periods x K), whatever it held before, so callers need not clear it (P-26, D-409).
 template <class Backend, class Objective, class Integrator, int D>
 void evaluate_surface_cached(const Backend& backend, SurfaceRowCache& cache, const Objective& objective,
                              const Integrator& integrator, const typename Objective::Obs* obs, std::int64_t periods,

@@ -50,11 +50,14 @@ struct PanelDerivs {
     double h[3];
 };
 
-// In the natural parameters v (grid axis order).
+// In the natural parameters v (grid axis order). If values is given, values[j] is distinct observation j's
+// contribution, log_contrib_derivs's value: log_contrib's at the same theta bit for bit (D-170), so calibrate
+// takes its log-likelihood from it (P-24, D-407).
 template <class Objective, class Integrator>
 PanelDerivs panel_derivs_natural(const Objective& objective, const Integrator& primary,
                                  const typename Objective::Obs* obs, const std::vector<std::int64_t>& first,
-                                 const std::vector<std::int64_t>& count, const double (&v)[2]) {
+                                 const std::vector<std::int64_t>& count, const double (&v)[2],
+                                 double* values = nullptr) {
     const auto th = Objective::theta(v);
     double sum = 0.0, comp = 0.0, nonfinite = 0.0;
     bool any_nonfinite = false;
@@ -62,7 +65,9 @@ PanelDerivs panel_derivs_natural(const Objective& objective, const Integrator& p
     for (std::size_t j = 0; j < first.size(); ++j) {
         double gj[2], hj[3];
         const double m = static_cast<double>(count[j]);
-        const double x = m * objective.log_contrib_derivs(obs[first[j]], th, primary, gj, hj);
+        const double lj = objective.log_contrib_derivs(obs[first[j]], th, primary, gj, hj);
+        if (values != nullptr) values[j] = lj;
+        const double x = m * lj;
         for (int i = 0; i < 2; ++i) gv[i] += m * gj[i];
         for (int i = 0; i < 3; ++i) hv[i] += m * hj[i];
         if (!std::isfinite(x)) {  // as reducers::weighted_sum: a -inf term would poison the compensation (D-218)
@@ -83,10 +88,10 @@ PanelDerivs panel_derivs_natural(const Objective& objective, const Integrator& p
 template <class Objective, class Integrator>
 PanelDerivs panel_derivs(const Objective& objective, const Integrator& primary, const typename Objective::Obs* obs,
                          const std::vector<std::int64_t>& first, const std::vector<std::int64_t>& count,
-                         const Axis* const (&ax)[2], double u0, double u1) {
+                         const Axis* const (&ax)[2], double u0, double u1, double* values = nullptr) {
     const double u[2] = {u0, u1};
     const double v[2] = {grid::from_scaled(ax[0]->scale, u0), grid::from_scaled(ax[1]->scale, u1)};
-    const PanelDerivs n = panel_derivs_natural(objective, primary, obs, first, count, v);
+    const PanelDerivs n = panel_derivs_natural(objective, primary, obs, first, count, v, values);
     double j1[2], j2[2];
     for (int a = 0; a < 2; ++a) {
         j1[a] = grid::dvalue_dscaled(ax[a]->scale, u[a]);

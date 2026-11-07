@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // engine/profile.hpp (M2): profile-likelihood intervals (D-128..D-130); engine/conditional_pd.hpp (S-23).
+#include <cfloat>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -530,4 +531,148 @@ VCAL_TEST(panel_loglik_of_an_impossible_period_is_minus_infinity) {
     pd::distinct_observations(good.data(), static_cast<std::int64_t>(good.size()), first, count);
     VCAL_CHECK(pd::panel_loglik(obj, integrator, good.data(), first, count, v) == -15.0);
     VCAL_CHECK(pd::panel_derivs_natural(obj, integrator, good.data(), first, count, v).l == -15.0);
+}
+
+// P-24 (D-407): calibrate takes l_primary from its Hessian pass. Every field that l_primary feeds (the
+// log-likelihood, the quadrature check's max, total and count, its flag) is, bit for bit, what the value pass
+// (log_contrib per distinct observation, in period order) gives, as calibrate computed it before P-24; on panels
+// with one-sided periods, a grid-edge panel (which keeps the value pass) and the check on and off.
+VCAL_TEST(calibrate_takes_its_value_pass_from_the_hessian_pass_bit_for_bit) {
+    const Rules r;
+    const auto g = grid();
+    int with_hessian = 0, edge = 0, bad = 0;
+    auto run = [&](const std::vector<Obs>& p, bool qc) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        std::vector<double> L;
+        e::Estimate2 est{};
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        if (!qc) {  // the same surface, unchecked (P-16)
+            VCAL_REQUIRE(e::calibrate_from_surface(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est,
+                                                   e::kHessianStepFraction, false) == e::Status::Ok);
+        }
+        (std::isfinite(est.hess_u[0]) ? with_hessian : edge) += 1;
+        // The value pass, verbatim from calibrate before P-24.
+        const auto theta = Objective::theta(est.value);
+        std::vector<double> lp(static_cast<std::size_t>(T)), lc(static_cast<std::size_t>(T));
+        for (std::int64_t t = 0; t < T; ++t) {
+            std::int64_t u = 0;
+            while (!(p[static_cast<std::size_t>(u)] == p[static_cast<std::size_t>(t)])) ++u;
+            lp[static_cast<std::size_t>(t)] = u == t ? Objective{}.log_contrib(p[static_cast<std::size_t>(t)], theta, r.primary)
+                                                     : lp[static_cast<std::size_t>(u)];
+            lc[static_cast<std::size_t>(t)] = u == t ? Objective{}.log_contrib(p[static_cast<std::size_t>(t)], theta, r.check)
+                                                     : lc[static_cast<std::size_t>(u)];
+        }
+        double mx = 0.0, tot = 0.0;
+        std::int64_t flagged = 0;
+        for (std::int64_t t = 0; t < T; ++t) {
+            const double a = lp[static_cast<std::size_t>(t)], b = lc[static_cast<std::size_t>(t)];
+            const double diff = std::fabs(a - b);
+            const double thr = std::fmax(e::kQuadratureCheckFlagAbs, e::kQuadratureCheckRoundingUlps * DBL_EPSILON *
+                                                                          Objective::rounding_scale(p[static_cast<std::size_t>(t)], a));
+            mx = std::fmax(mx, diff);
+            tot += diff;
+            if (!(diff <= thr)) ++flagged;
+        }
+        const std::vector<double> ones(static_cast<std::size_t>(T), 1.0);
+        const double ll = vcal::reducers::weighted_sum(lp.data(), T, 1, ones.data(), 0);
+        bool same = bits_equal(est.loglik, ll);
+        if (qc) {
+            same = same && bits_equal(est.quad_check_max, mx) && bits_equal(est.quad_check_total, tot) &&
+                   est.quad_check_flagged == flagged &&
+                   ((est.flags & e::kFlagQuadratureUnconverged) != 0) == (flagged > 0);
+        }
+        bad += same ? 0 : 1;
+    };
+    std::vector<std::vector<Obs>> panels = lr_panels();
+    {
+        std::vector<Obs> p;  // n = 100: many one-sided periods (d = 0), the composite rule's case
+        const std::int64_t d[] = {0, 1, 0, 0, 3, 0, 2, 0, 0, 1, 0, 5, 0, 0, 1, 2, 0, 0, 0, 1};
+        for (const auto x : d) p.push_back({100, x});
+        panels.push_back(p);
+    }
+    {
+        std::vector<Obs> zero;  // the grid's PD floor: grid edge, so the value pass is kept
+        for (int t = 0; t < 20; ++t) zero.push_back({1000, 0});
+        panels.push_back(zero);
+    }
+    for (const auto& p : panels) {
+        run(p, true);
+        run(p, false);
+    }
+    vcal::test::note(std::to_string(with_hessian) + " fits from the Hessian pass, " + std::to_string(edge) +
+                     " with the value pass, " + std::to_string(bad) + " differ");
+    VCAL_CHECK(with_hessian >= 6 && edge >= 2);
+    VCAL_CHECK(bad == 0);
+}
+
+// P-25 (D-408): NewtonProfile answers an exact repeat of a point from its memo. With the memo on and off, every
+// field of the profile intervals and of W* (the polished maximum, W at the truth-like points and the profile ends,
+// and the evaluation counts) is the same, bit for bit; the note reports how many points W* repeats.
+VCAL_TEST(newton_profile_memo_changes_no_number) {
+    using NP = e::profile_detail::NewtonProfile<Objective, Adaptive>;
+    const Rules r;
+    const auto g = grid();
+    std::vector<std::vector<Obs>> panels = lr_panels();
+    {
+        std::vector<Obs> p;  // n = 100 with one-sided periods
+        const std::int64_t d[] = {0, 1, 0, 0, 3, 0, 2, 0, 0, 1, 0, 5, 0, 0, 1, 2, 0, 0, 0, 1};
+        for (const auto x : d) p.push_back({100, x});
+        panels.push_back(p);
+    }
+    auto same_lr = [](const e::ProfileLr& a, const e::ProfileLr& b) {
+        return bits_equal(a.loglik_max, b.loglik_max) && bits_equal(a.max_at[0], b.max_at[0]) &&
+               bits_equal(a.max_at[1], b.max_at[1]) && bits_equal(a.w[0], b.w[0]) && bits_equal(a.w[1], b.w[1]) &&
+               a.evaluations == b.evaluations;
+    };
+    auto same_prof = [](const e::ProfileIntervals2& a, const e::ProfileIntervals2& b) {
+        bool s = bits_equal(a.loglik_max, b.loglik_max) && bits_equal(a.residual_max, b.residual_max) &&
+                 a.evaluations == b.evaluations;
+        for (int i = 0; i < 2; ++i) {
+            s = s && bits_equal(a.lo[i], b.lo[i]) && bits_equal(a.hi[i], b.hi[i]) && a.flags[i] == b.flags[i] &&
+                bits_equal(a.max_at[i], b.max_at[i]);
+        }
+        return s;
+    };
+    int bad = 0, calls = 0;
+    std::int64_t asked = 0, hits = 0;
+    for (const auto& p : panels) {
+        const auto T = static_cast<std::int64_t>(p.size());
+        e::Estimate2 est{};
+        std::vector<double> L;
+        VCAL_REQUIRE(e::calibrate(Backend{1}, Objective{}, r.primary, r.check, p.data(), T, g, L, est) == e::Status::Ok);
+        struct Run {
+            e::ProfileIntervals2 prof;
+            std::vector<e::ProfileLr> lr;
+        };
+        auto run = [&](bool memo) {
+            NP::memo_enabled() = memo;
+            Run out{e::profile_intervals_newton(Objective{}, r.primary, p.data(), T, g, L, est), {}};
+            const double pts[3][2] = {{1.3 * est.value[0], 0.8 * est.value[1]},
+                                      {out.prof.lo[0], out.prof.max_at[1]},
+                                      {out.prof.max_at[0], out.prof.hi[1]}};
+            for (const auto& at : pts) out.lr.push_back(e::profile_lr_statistic(Objective{}, r.primary, p.data(), T, g, L, est, at));
+            NP::memo_enabled() = true;
+            return out;
+        };
+        const Run off = run(false), on = run(true);
+        bad += same_prof(on.prof, off.prof) ? 0 : 1;
+        for (std::size_t i = 0; i < on.lr.size(); ++i) bad += same_lr(on.lr[i], off.lr[i]) ? 0 : 1;
+        calls += 1 + static_cast<int>(on.lr.size());
+        // W*'s sequence (profile_lr_statistic), with the memo's hits counted.
+        NP np(Objective{}, r.primary, p.data(), T, g, L);
+        const auto top = np.polish(est);
+        const double u_max[2] = {top.x, top.w};
+        np.start_axis1(u_max);
+        const e::profile_detail::Point1 start[2] = {top, np.last[1]};
+        for (int a = 0; a < 2; ++a) {
+            np.last[a] = start[a];
+            np.inner(a, vcal::grid::to_scaled(np.ax[a]->scale, 1.3 * est.value[a]));
+        }
+        asked += np.evaluations;
+        hits += np.memo_hits;
+    }
+    vcal::test::note(std::to_string(calls) + " profile and W* calls, " + std::to_string(bad) + " differ; W*: " +
+                     std::to_string(hits) + " of " + std::to_string(asked) + " points answered from the memo");
+    VCAL_CHECK(bad == 0);
+    VCAL_CHECK(hits >= static_cast<std::int64_t>(panels.size()));  // start_axis1's repeat, at least, in every panel
 }
