@@ -2,6 +2,7 @@
   "study": "S-10, parametric bootstrap intervals, and S-4, the Bartlett-corrected profile threshold, in one run (D-176, D-181)",
   "prediction": "studies/parametric-bootstrap/PREDICTION.md (K1-K5) and studies/bartlett-profile/PREDICTION.md (H1-H6), registered in 9fbe961 (D-176); the scoring addenda of 2026-09-29 committed with the tool and compare.py in e88ecf2, before the subset run",
   "scoring": "compare.py, committed in e88ecf2 before the subset run; unchanged since except the P-16 quadrature report (f180dfe, before the full run). Run as: uv run --no-project --with pyarrow==25.0.1 python studies/parametric-bootstrap/compare.py fits.parquet --summary-out summary.csv",
+  "scoring_edits": "2026-11-06, after the result: compare.py's consistency check compares ends NaN-aware (D-218), and compare.py and reference.py read their flag bits from tests/engine_flags.json instead of literals (D-219); on the committed fits both outputs are byte for byte unchanged",
   "compiler": "MSVC 1951, Release",
   "runs": {
     "subset": {

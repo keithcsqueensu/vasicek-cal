@@ -32,6 +32,7 @@ Readings fixed before the subset run (the addenda of 2026-09-29 in both PREDICTI
 
 import argparse
 import csv
+import json
 import math
 import sys
 from pathlib import Path
@@ -39,11 +40,17 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parents[2]
-NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed
-REFUSED, NUMERIC = 1 << 1, 1 << 3  # engine::kPosterior*
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+NOT_COMPUTED = FLAGS["interval"]["kIntervalNotComputed"]["value"]
+REFUSED, NUMERIC = FLAGS["posterior"]["kPosteriorRefused"]["value"], FLAGS["posterior"]["kPosteriorNumeric"]["value"]
 C = 3.841458820694124  # chi2_1 0.95 quantile = 2 x kProfileThreshold95
 FINDINGS = [(29, "pd"), (29, "rho"), (55, "rho"), (68, "pd"), (72, "rho"), (74, "rho")]
 PARAMS = ("pd", "rho")
+
+
+def same_value(a, b):
+    """Equal, with NaN equal to NaN (an end not computed on both sides); `==` alone calls two NaNs different (D-218)."""
+    return a == b or (math.isnan(a) and math.isnan(b))
 
 
 def logit(v):
@@ -77,14 +84,14 @@ def check_and_join(rows):
     for r in rows:
         o = s9[(r["scenario"], r["replicate"])]
         for p in PARAMS:
-            if (r[f"prof_lo_{p}"], r[f"prof_hi_{p}"], r[f"prof_flags_{p}"]) != (o[f"prof_lo_{p}"], o[f"prof_hi_{p}"],
-                                                                                 o[f"prof_flags_{p}"]):
-                if not (math.isnan(r[f"prof_lo_{p}"]) and math.isnan(o[f"prof_lo_{p}"])):
-                    prof_bad += 1
+            if not (same_value(r[f"prof_lo_{p}"], o[f"prof_lo_{p}"]) and same_value(r[f"prof_hi_{p}"], o[f"prof_hi_{p}"])
+                    and r[f"prof_flags_{p}"] == o[f"prof_flags_{p}"]):
+                prof_bad += 1
         if r["replicate"] < 50:
             jef_checked += 1
             same = r["jef_flags"] == o["jeffreys_flags"] and all(
-                r[f"jef_lo_{p}"] == o[f"jeffreys_et_lo_{p}"] and r[f"jef_hi_{p}"] == o[f"jeffreys_et_hi_{p}"] for p in PARAMS)
+                same_value(r[f"jef_lo_{p}"], o[f"jeffreys_et_lo_{p}"]) and same_value(r[f"jef_hi_{p}"], o[f"jeffreys_et_hi_{p}"])
+                for p in PARAMS)
             jef_bad += not same
         else:
             r["jef_flags"] = o["jeffreys_flags"]

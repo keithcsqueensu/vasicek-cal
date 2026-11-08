@@ -15,5 +15,6 @@
     "rows.csv (not committed, 62 MB)": "sha256 50a432dfdfacf520a31a84e2d8506dabf9095781c6da5d9cfcbe732e24050fd2"
   },
   "scoring": "compare.py (committed before the run) on fits.parquet; export_fits.py's null handling was fixed after the run (\"nan\" had become a null, which stopped compare.py at E8); the rows and the scoring code are unchanged",
+  "scoring_edits": "2026-11-06 (D-219, after the result): MOM_REFUSED is read from tests/engine_flags.json instead of a literal; on the committed fits.parquet the output and summary.csv are byte for byte unchanged (summary.csv's SHA-256 above)",
   "result": "11 of 13 predictions held; E12 (censored: 41 of 54, 76%) and E13 (23 of 30, 77%) did not"
 }

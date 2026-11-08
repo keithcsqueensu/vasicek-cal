@@ -12,7 +12,7 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
 > - **M1, the parity sign-off for the binomial-mixture MLE, is complete** and tagged
 >   `v0.1.0-parity-binomial`.
 > - **M2 and M3 are done:** profile-likelihood intervals, the resampling engine, the Vasicek-rate
->   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.4.
+>   MLE, the method of moments and the grid-Bayesian estimator; the C ABI is at 0.5.
 > - **In progress:** M6. Its AR(1)-aware binomial MLE is finished and tested on S-35's panels (D-208);
 >   the other benchmark models remain. The CUDA backend (M4) comes after M6 (D-168).
 
@@ -53,7 +53,7 @@ vasicek-cal is a personal open-source project by Keith Yip, developed independen
   of panels cheaply.
 - **Deterministic results.** They are bitwise identical for any thread count, and agree across
   platforms within documented tolerances.
-- **A flat C ABI** (`include/vcal/vcal.h`, plain C99, version 0.4): calibrate with profile
+- **A flat C ABI** (`include/vcal/vcal.h`, plain C99, version 0.5): calibrate with profile
   intervals, the M3 estimators, the S-4b interval, resample, surface, simulate and build
   provenance. It is tested from a C11 program, and every number it returns is bitwise what the
   engine gives.
@@ -128,7 +128,7 @@ Start with the methodology note. It is self-contained.
 | [dgp.md](docs/methodology/dgp.md) | The synthetic data generator, precise enough to re-implement |
 | [parity_signoff.md](docs/methodology/parity_signoff.md) | The M1 exit: requirements, deferred verdicts and their M2 re-assessment |
 | [studies/README.md](studies/README.md) | Index of research studies and `native` variants: each study's question, experiment, pre-registered prediction, result, mitigation (D-148, D-153) |
-| `validation/scipy/binomial_mixture_mle.py` | A 125-line scipy replication, run in CI |
+| `validation/scipy/binomial_mixture_mle.py` | A short (about 130-line) scipy replication, run in CI |
 
 [DECISIONS.md](DECISIONS.md) records every design decision and its rationale (D-nnn).
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the design, and [STATE.md](STATE.md) the current

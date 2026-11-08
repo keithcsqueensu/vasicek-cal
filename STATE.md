@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-10-12
+Last updated: 2026-11-06
 
 The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
 detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
@@ -38,13 +38,13 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - The HAC SE stays a `native` diagnostic for PD only, reported beside the iid SE, not added to the C
     ABI. HAC is not recommended for ρ, where it covers worse than the iid Wald.
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
-  - The next decision number is D-218 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
-    registration is D-214, its tool D-215, the paper check D-216 and its result D-217). D-400 on is the cloud
-    sessions' block.
+  - The next decision number is D-220 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
+    registration is D-214, its tool D-215, the paper check D-216 and its result D-217; the correctness
+    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
-- **S-6, Pluto–Tasche bounds: run and scored, 5 of 6 held, P5 NOT HELD (D-217); PR 3 awaits the owner's OK.** The
+- **S-6, Pluto–Tasche bounds: run and scored, 5 of 6 held, P5 NOT HELD (D-217); merged (#77).** The
   bounds are (a) independent and (b) one factor, with an oracle ρ_a and a fixed ρ_a = 0.12, on 27 low-default
   scenarios (n·PD ≤ 1), R = 1,000, seed "S06PLUTO". The open choices stand as registered: the γ set,
   ρ_a = 0.12, and no multi-grade sequence (noted under S-24).
@@ -59,13 +59,20 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     ρ = 0.02, 0.12 and 0.24. The oracle covers 0.955–0.959, and the fixed ρ_a = 0.12 covers 0.863 at ρ = 0.24.
     `rows.csv` is on the release `s6-data-2026-10-13`.
 
+- **The correctness audit and its PR A (D-218): in review.** The Copilot audit's findings were never
+  committed, so a fresh audit was run; its record is `docs/audits/2026-11-correctness.md`. No golden or
+  recorded verdict changes. PR A fixes the correctness findings: NaN-blind scipy checks, CI's rename gap,
+  exceptions inside OpenMP regions, −inf in two compensated sums, the posterior's unflagged NaN cells, two
+  ABI output-order issues and three ABI input limits. The C ABI moves to 0.5 (a new posterior flag; the
+  limits are treated as bug fixes).
+
 ## Next
 
-1. **Copilot-audit fix PRs**, one each:
-   - **A, correctness;**
-   - **B, data integrity and docs accuracy** (the MANIFEST `sha256` check was split out and is done:
-     D-201, PR #55);
-   - **C, cosmetic,** plus converting the study scripts' engine flags to `tests/engine_flags.json`.
+1. **Audit fix PRs**, one each:
+   - **A, correctness:** the fresh audit's fixes (D-218), in review;
+   - **B and C, in one PR (D-219), in review:** a fresh docs-accuracy check and its corrections, and
+     every study script's flag bits from `tests/engine_flags.json` (the MANIFEST `sha256` check was
+     split out earlier: D-201, PR #55). The original audit's B and C items were not recovered.
 2. **The performance pass, in the owner's order** (D-199): P-7 and P-6 done (D-212, D-404); P-13 rejected
    (D-403); P-19 with the next golden refresh.
 3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves

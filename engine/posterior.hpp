@@ -64,6 +64,7 @@ enum : std::uint32_t {
     kPosteriorRefused = 1u << 1,       // the rule still failed after kPosteriorMaxRefinements local grids
     kPosteriorMassOutsideLocal = 1u << 2,  // too much parity-grid mass outside the local grid: refused
     kPosteriorNumeric = 1u << 3,       // no finite posterior mass
+    kPosteriorNanCells = 1u << 4,      // some grid points had a NaN log posterior and were given zero mass (D-218)
 };
 
 // Jeffreys prior table: log sqrt det I_u at every point of `grid`.
@@ -73,6 +74,9 @@ struct JeffreysTable {
 };
 
 // Bilinear interpolation of log sqrt det I_u at (u0, u1); outside the table, the nearest edge value.
+// A corner with zero weight is skipped rather than multiplied by 0, so a -inf corner (det <= 0) next to
+// a point on a table node cannot turn its finite value into 0 x -inf = NaN (D-218). For finite corners
+// this is bit for bit the plain formula (x + 0 * y == x).
 inline double jeffreys_log_prior(const JeffreysTable& jt, double u0, double u1) {
     const Grid<2>& g = jt.grid;
     double f[2];
@@ -88,8 +92,15 @@ inline double jeffreys_log_prior(const JeffreysTable& jt, double u0, double u1) 
         const std::int32_t idx[2] = {a, b};
         return jt.log_prior[static_cast<std::size_t>(g.flatten(idx))];
     };
-    return (1 - f[0]) * ((1 - f[1]) * at(i[0], i[1]) + f[1] * at(i[0], i[1] + 1)) +
-           f[0] * ((1 - f[1]) * at(i[0] + 1, i[1]) + f[1] * at(i[0] + 1, i[1] + 1));
+    const auto lerp = [](double w, double a, double b) {
+        if (w == 0.0) return a;
+        if (w == 1.0) return b;
+        return (1 - w) * a + w * b;
+    };
+    const auto row = [&](std::int32_t a) { return lerp(f[1], at(a, i[1]), at(a, i[1] + 1)); };
+    if (f[0] == 0.0) return row(i[0]);
+    if (f[0] == 1.0) return row(i[0] + 1);
+    return (1 - f[0]) * row(i[0]) + f[0] * row(i[0] + 1);
 }
 
 // The Jeffreys table for periods of n obligors, on `grid` (logit axes). I_u = sum_d P(d) g_d g_d^T,
@@ -161,9 +172,10 @@ inline double cell_width(const Axis& a, std::int32_t i) {
 }
 
 // Point masses on grid g from the log likelihood ll[k]: density x cell area, normalised. Returns false
-// if no mass is finite.
+// if no mass is finite. A point whose log posterior is NaN gets zero mass, and nan_cells is set, so the
+// caller can flag it (D-218); -inf is a legitimate zero and is not counted.
 inline bool masses(Prior prior, const JeffreysTable* jt, const Grid<2>& g, const std::vector<double>& ll,
-                   std::vector<double>& m) {
+                   std::vector<double>& m, bool& nan_cells) {
     const std::int64_t K = g.size();
     std::vector<double> lp(static_cast<std::size_t>(K));
     double top = -HUGE_VAL;
@@ -174,6 +186,7 @@ inline bool masses(Prior prior, const JeffreysTable* jt, const Grid<2>& g, const
         const double v = ll[static_cast<std::size_t>(k)] + log_prior_at(prior, jt, g, u0, u1) +
                          std::log(cell_width(g.axis[0], i[0]) * cell_width(g.axis[1], i[1]));
         lp[static_cast<std::size_t>(k)] = v;
+        if (std::isnan(v)) nan_cells = true;
         if (v > top) top = v;
     }
     if (!std::isfinite(top)) return false;
@@ -319,7 +332,10 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
     std::vector<double> ll(static_cast<std::size_t>(parity.size()));
     weighted_sums(L.data(), periods, parity.size(), ones.data(), 0, parity.size(), ll.data());  // P-6, D-404
     std::vector<double> m;
-    if (!pd::masses(prior, jt, parity, ll, m)) {
+    bool nan_cells = false;
+    const bool finite = pd::masses(prior, jt, parity, ll, m, nan_cells);
+    if (nan_cells) out.flags |= kPosteriorNanCells;
+    if (!finite) {
         out.flags |= kPosteriorNumeric;
         return out;
     }
@@ -384,7 +400,10 @@ PosteriorResult grid_posterior(const Backend& backend, const Objective& objectiv
         evaluate_surface(backend, objective, integrator, obs, periods, g, Lloc.data());
         ll.assign(static_cast<std::size_t>(g.size()), 0.0);
         weighted_sums(Lloc.data(), periods, g.size(), ones.data(), 0, g.size(), ll.data());  // P-6, D-404
-        if (!pd::masses(prior, jt, g, ll, m)) {
+        nan_cells = false;
+        const bool local_finite = pd::masses(prior, jt, g, ll, m, nan_cells);
+        if (nan_cells) out.flags |= kPosteriorNanCells;
+        if (!local_finite) {
             out.flags |= kPosteriorNumeric;
             return out;
         }

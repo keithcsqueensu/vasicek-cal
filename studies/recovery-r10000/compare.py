@@ -11,8 +11,10 @@ Committed before the run's results were seen.
 """
 
 import csv
+import json
 import math
 import sys
+from pathlib import Path
 
 import pyarrow.parquet as pq
 
@@ -27,7 +29,9 @@ A_UPPER_PASS = [(1, "pd"), (7, "rho"), (27, "pd"), (15, "pd"), (24, "pd"), (54, 
 ALL38 = (GROUP_B + [(68, "pd"), (41, "pd"), (31, "rho"), (49, "rho"), (59, "pd"), (72, "rho")] + A_LOWER
          + A_CONSERVATIVE + A_UPPER_PASS)
 PDS, RHOS = (0.001, 0.01, 0.05), (0.02, 0.12, 0.24)
-INTERVAL_NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed (engine/profile.hpp)
+REPO = Path(__file__).resolve().parents[2]
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+INTERVAL_NOT_COMPUTED = FLAGS["interval"]["kIntervalNotComputed"]["value"]
 
 
 def coverage(rows, sid, p):

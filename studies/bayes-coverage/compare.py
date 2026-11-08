@@ -25,6 +25,7 @@ states the same readings):
 
 import argparse
 import csv
+import json
 import math
 from pathlib import Path
 
@@ -32,8 +33,10 @@ import pyarrow.parquet as pq
 
 REPO = Path(__file__).resolve().parents[2]
 BAND_Z = 3.29  # TOL_RECOVERY_COVERAGE_BAND_Z (tests/tolerances.toml)
-REFINED, REFUSED, NUMERIC = 1 << 0, 1 << 1, 1 << 3  # engine::kPosterior* (engine/posterior.hpp)
-NOT_COMPUTED = 1 << 2  # engine::kIntervalNotComputed (engine/profile.hpp)
+FLAGS = json.loads((REPO / "tests" / "engine_flags.json").read_text(encoding="utf-8"))  # D-200, D-219
+REFINED, REFUSED, NUMERIC = (FLAGS["posterior"]["kPosteriorRefined"]["value"], FLAGS["posterior"]["kPosteriorRefused"]["value"],
+                             FLAGS["posterior"]["kPosteriorNumeric"]["value"])
+NOT_COMPUTED = FLAGS["interval"]["kIntervalNotComputed"]["value"]
 ARMS = ("flat", "jeffreys", "flat_norule", "jeffreys_norule")
 COARSE = (8, 32, 34, 35, 58, 59, 61, 62)
 

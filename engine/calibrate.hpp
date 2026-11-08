@@ -251,6 +251,7 @@ Status calibrate_from_surface(const Backend& backend, const Objective& objective
                               double hessian_step_fraction = kHessianStepFraction,
                               bool quadrature_check = true) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    out = Estimate2{};  // also on the error returns, so a reused Estimate2 never keeps a previous fit (D-218)
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
     const std::int64_t K = grid.size();
@@ -282,6 +283,7 @@ Status calibrate_from_rows(const Backend& backend, const Objective& objective, c
                            const Grid<2>& grid, const SurfaceRows& rows, std::vector<double>& L, Estimate2& out,
                            double hessian_step_fraction = kHessianStepFraction, bool quadrature_check = true) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    out = Estimate2{};  // also on the error returns, so a reused Estimate2 never keeps a previous fit (D-218)
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
     const std::int64_t K = grid.size();
@@ -354,6 +356,7 @@ Status calibrate(const Backend& backend, const Objective& objective, const Integ
                  const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
                  double hessian_step_fraction = kHessianStepFraction) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    out = Estimate2{};  // also on the error returns, so a reused Estimate2 never keeps a previous fit (D-218)
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
     const std::int64_t K = grid.size();
@@ -369,6 +372,7 @@ Status calibrate_cached(const Backend& backend, SurfaceRowCache& cache, const Ob
                         std::int64_t periods, const Grid<2>& grid, std::vector<double>& L, Estimate2& out,
                         double hessian_step_fraction = kHessianStepFraction) {
     static_assert(Objective::n_params == 2, "calibrate handles 2-parameter objectives");
+    out = Estimate2{};  // also on the error returns, so a reused Estimate2 never keeps a previous fit (D-218)
     if (grid_error(grid) != nullptr) return Status::InvalidGrid;
     if (Objective::panel_error(obs, periods) != nullptr) return Status::InvalidPanel;
     const std::int64_t K = grid.size();

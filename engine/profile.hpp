@@ -178,14 +178,20 @@ template <class Objective, class Integrator>
 double panel_loglik(const Objective& objective, const Integrator& primary, const typename Objective::Obs* obs,
                     const std::vector<std::int64_t>& first, const std::vector<std::int64_t>& count, const double (&v)[2]) {
     const auto th = Objective::theta(v);
-    double sum = 0.0, comp = 0.0;
+    double sum = 0.0, comp = 0.0, nonfinite = 0.0;
+    bool any_nonfinite = false;
     for (std::size_t j = 0; j < first.size(); ++j) {
         const double x = static_cast<double>(count[j]) * objective.log_contrib(obs[first[j]], th, primary);
+        if (!std::isfinite(x)) {  // as reducers::weighted_sum: a -inf term would poison the compensation (D-218)
+            nonfinite += x;
+            any_nonfinite = true;
+            continue;
+        }
         const double s = sum + x;
         comp += std::fabs(sum) >= std::fabs(x) ? (sum - s) + x : (x - s) + sum;
         sum = s;
     }
-    return sum + comp;
+    return any_nonfinite ? nonfinite + (sum + comp) : sum + comp;
 }
 
 // The surface summed over periods, S[k].

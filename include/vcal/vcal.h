@@ -1,12 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0
  *
- * vasicek-cal C ABI, version 0.4 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
+ * vasicek-cal C ABI, version 0.5 (M2c; D-138..D-144; 0.2 adds VCAL_FLAG_RHO_NOT_IDENTIFIED, D-302;
  * 0.3 adds the M3 estimators and the native profile, D-169; 0.4 adds the Bartlett-corrected profile
- * interval, a native option, D-182, D-184).
+ * interval, a native option, D-182, D-184; 0.5 adds VCAL_POSTERIOR_NAN_CELLS and three input limits,
+ * VCAL_MAX_THREADS, VCAL_GRID_MIN_PROBABILITY and VCAL_JEFFREYS_MAX_OBLIGORS, D-218. The limits
+ * refuse only inputs that 0.4 accepted and then crashed, hung or returned NaN on, so they are
+ * bug fixes, not a break).
  * The only public header.
  *
- * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles a
- * consumer as C99 and as C11 so that anything C++-only fails the build.
+ * Plain C99: fixed-width integers, doubles and pointers, nothing else. tests/abi compiles the
+ * header alone as C99 with pedantic errors (C11 under MSVC) and a C11 consumer, so that anything
+ * C++-only fails the build.
  *
  * Conventions
  * - Names: every function and type starts with vcal_, every macro and enumerator with VCAL_.
@@ -75,8 +79,19 @@ extern "C" {
 #endif
 
 #define VCAL_ABI_VERSION_MAJOR 0
-#define VCAL_ABI_VERSION_MINOR 4
+#define VCAL_ABI_VERSION_MINOR 5
 #define VCAL_ABI_VERSION ((VCAL_ABI_VERSION_MAJOR << 16) | VCAL_ABI_VERSION_MINOR)
+
+/* ---- limits (ABI 0.5, D-218) ------------------------------------------------------------- */
+
+/* vcal_context_options.n_threads must be at most this. */
+#define VCAL_MAX_THREADS 4096
+/* Every grid axis needs lo >= this: below about 1e-150 (PD) and 1e-200 (rho) the score and
+ * Hessian overflow, although the log-likelihood itself stays accurate. */
+#define VCAL_GRID_MIN_PROBABILITY 1e-100
+/* vcal_calibrate_posterior with VCAL_PRIOR_JEFFREYS needs n <= this: the prior's table costs n + 1
+ * log-likelihood evaluations per grid point. */
+#define VCAL_JEFFREYS_MAX_OBLIGORS 1000000
 
 /* ---- status codes ------------------------------------------------------------------------- */
 
@@ -85,7 +100,10 @@ enum {
     VCAL_OK = 0,
     VCAL_E_INVALID_ARGUMENT = 1,  /* a NULL pointer, a value out of range, an inconsistent panel */
     VCAL_E_BUFFER_TOO_SMALL = 2,  /* *required holds the length needed */
-    VCAL_E_UNSUPPORTED = 3,       /* a nonzero field this library does not know (newer caller) */
+    VCAL_E_UNSUPPORTED = 3,       /* a nonzero field or reserved value this library does not know
+                                     (newer caller); also a request this build cannot serve: a
+                                     non-logit posterior axis, the Jeffreys prior with unequal n,
+                                     VCAL_DGP_KERNEL naming a kernel this CPU or build lacks */
     VCAL_E_NUMERIC = 4,           /* no finite log-likelihood anywhere on the grid, or similar */
     VCAL_E_OUT_OF_MEMORY = 5,
     VCAL_E_FP_ENVIRONMENT = 6,    /* flush-to-zero or denormals-are-zero is on (the DGP refuses) */
@@ -156,7 +174,8 @@ typedef struct vcal_context vcal_context; /* opaque (D-045) */
 typedef struct vcal_context_options {
     uint32_t struct_size;
     int32_t profile;   /* VCAL_PROFILE_PARITY */
-    int32_t n_threads; /* CPU threads; 0 = the OpenMP default. Results do not depend on it. */
+    int32_t n_threads; /* CPU threads, 0 <= n_threads <= VCAL_MAX_THREADS; 0 = the OpenMP default.
+                          Results do not depend on it. */
     uint32_t reserved;
 } vcal_context_options;
 
@@ -177,7 +196,8 @@ typedef struct vcal_panel {
 } vcal_panel;
 
 /* The parameter grid: two axes, each uniform in its scaled coordinate (logit for the default),
- * with both ends included and at least 3 points. Grid point k = i_pd * rho_points + i_rho. */
+ * with both ends included and at least 3 points, and VCAL_GRID_MIN_PROBABILITY <= lo < hi < 1.
+ * Grid point k = i_pd * rho_points + i_rho. */
 typedef struct vcal_grid {
     uint32_t struct_size;
     uint32_t reserved;
@@ -202,7 +222,8 @@ typedef struct vcal_estimate {
     uint32_t flags; /* VCAL_FLAG_* */
     double pd, rho;
     double se_pd, se_rho, corr_pd_rho; /* observed information at the estimate; NaN if unavailable */
-    double loglik;                     /* log-likelihood at the estimate, including log C(n, d) */
+    double loglik;                     /* log-likelihood at the estimate: including log C(n, d) for
+                                          counts; the rate log density for vcal_calibrate_rate */
     double quad_check_max;             /* max_t |l_t(rule) - l_t(doubled rule)| at the estimate */
     double quad_check_total;           /* sum_t of the same */
     int64_t quad_check_flagged;        /* periods above the D-120 threshold */
@@ -249,8 +270,8 @@ typedef struct vcal_rate_series {
 } vcal_rate_series;
 
 /* What the Vasicek-rate MLE does with a rate of exactly 0 or 1, which has no density (D-044,
- * D-164). Explicit options only: which to prefer is study S-28's question, and no default is
- * recommended until it reports. VCAL_ZERO_RATES_REFUSE is the parity behaviour; the others are
+ * D-164). Explicit options only, no default (D-169). S-28 (D-174) recommends the binomial MLE
+ * on counts and, with rates only, VCAL_ZERO_RATES_CENSOR. VCAL_ZERO_RATES_REFUSE is the parity behaviour; the others are
  * native enhancements and need a VCAL_PROFILE_NATIVE context. */
 enum {
     VCAL_ZERO_RATES_REFUSE = 0,     /* no estimate; vcal_last_error names the periods */
@@ -295,7 +316,9 @@ enum {
     VCAL_POSTERIOR_REFINED = 1u << 0,             /* the grid failed the resolution rule; a local grid was used */
     VCAL_POSTERIOR_REFUSED = 1u << 1,             /* the rule could not be met: no intervals */
     VCAL_POSTERIOR_MASS_OUTSIDE_LOCAL = 1u << 2,  /* refused: a local grid would have dropped posterior mass */
-    VCAL_POSTERIOR_NUMERIC = 1u << 3              /* no finite posterior mass */
+    VCAL_POSTERIOR_NUMERIC = 1u << 3,             /* no finite posterior mass */
+    VCAL_POSTERIOR_NAN_CELLS = 1u << 4            /* ABI 0.5: some grid points had a NaN log posterior and
+                                                     were given zero mass; the intervals are from the rest */
 };
 
 typedef struct vcal_posterior {
@@ -311,8 +334,10 @@ typedef struct vcal_posterior {
 
 /* The grid-Bayesian estimator (docs/methodology/grid_bayesian.md) for a count panel: flat
  * (natural scale) or Jeffreys prior, the resolution rule of at least 4 grid points per posterior
- * SD with local refinement, equal-tailed and HPD intervals. The Jeffreys prior needs the same n in
- * every period; its table is computed once per (n, grid) and kept in the context. */
+ * SD with local refinement, equal-tailed and HPD intervals. Both axes must be VCAL_SCALE_LOGIT, and
+ * the Jeffreys prior needs the same n in every period; otherwise VCAL_E_UNSUPPORTED. With Jeffreys,
+ * n above VCAL_JEFFREYS_MAX_OBLIGORS is VCAL_E_INVALID_ARGUMENT. The Jeffreys table is computed once
+ * per (n, grid) and kept in the context. */
 VCAL_API vcal_status VCAL_CALL vcal_calibrate_posterior(vcal_context* context, const vcal_panel* panel,
                                                         const vcal_grid* grid, int32_t prior,
                                                         vcal_posterior* posterior);
@@ -324,15 +349,16 @@ typedef struct vcal_resample_spec {
     uint32_t struct_size;
     int32_t scheme;         /* VCAL_RESAMPLE_* */
     uint64_t seed;          /* bootstrap schemes: the stream is (seed, scheme, replicate, draw) */
-    int64_t replicates;     /* bootstrap, INDICES, WEIGHTS: B >= 1 (bootstrap: B < 2^32) */
+    int64_t replicates;     /* bootstrap, INDICES, WEIGHTS: B >= 1 (bootstrap: B < 2^32, T <= 2^31);
+                               JACKKNIFE needs T >= 2 */
     int64_t block_length;   /* BLOCK_BOOTSTRAP: 1 <= l <= T; 0 = ceil(T^(1/3)) */
-    int64_t window;         /* WALK_FORWARD: window length; 0 = expanding from period 0 */
+    int64_t window;         /* WALK_FORWARD: window length, <= first_end; 0 = expanding from period 0 */
     int64_t first_end;      /* WALK_FORWARD: first window ends before this period, 1 <= first_end <= T */
     int64_t step;           /* WALK_FORWARD: >= 1; windows end at first_end + b * step <= T */
     int64_t draws;          /* INDICES: indices per replicate */
     double level;           /* percentile interval level; 0 = 0.95 */
     const int64_t* indices; /* INDICES: replicates x draws, each in [0, T) */
-    const double* weights;  /* WEIGHTS: replicates x T, finite and >= 0 */
+    const double* weights;  /* WEIGHTS: replicates x T, finite and >= 0, each row with a positive weight */
 } vcal_resample_spec;
 
 /* Per-replicate outputs as caller-owned arrays of `capacity` elements; any may be NULL. */
@@ -418,7 +444,8 @@ typedef struct vcal_bartlett_intervals {
 
 /* Fits the panel as vcal_calibrate (estimate), then the Bartlett-corrected intervals. Needs a
  * VCAL_PROFILE_NATIVE context; every n_obligors at most 2^33 - 2^17 (the DGP's limit). Deterministic
- * in (panel, grid, spec), whatever the thread count. Costs about B fits. */
+ * in (panel, grid, spec), whatever the thread count. Costs about B fits. VCAL_DGP_KERNEL naming a
+ * kernel this CPU or build lacks is VCAL_E_UNSUPPORTED. */
 VCAL_API vcal_status VCAL_CALL vcal_calibrate_bartlett(vcal_context* context, const vcal_panel* panel,
                                                        const vcal_grid* grid, const vcal_bartlett_spec* spec,
                                                        vcal_estimate* estimate, vcal_bartlett_intervals* intervals);
@@ -439,7 +466,8 @@ typedef struct vcal_dgp_spec {
     const int64_t* n_obligors; /* n_periods values, 0 <= n <= 2^33 - 2^17 */
 } vcal_dgp_spec;
 
-/* n_defaults (and factors, the Z_t, if not NULL) receive n_periods values. */
+/* n_defaults (and factors, the Z_t, if not NULL) receive n_periods values. VCAL_DGP_KERNEL naming a
+ * kernel this CPU or build lacks is VCAL_E_UNSUPPORTED. */
 VCAL_API vcal_status VCAL_CALL vcal_dgp_simulate(vcal_context* context, const vcal_dgp_spec* spec, int64_t* n_defaults,
                                                  double* factors, int64_t capacity, int64_t* required);
 
