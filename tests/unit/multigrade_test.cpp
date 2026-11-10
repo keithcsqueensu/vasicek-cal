@@ -195,19 +195,19 @@ struct Logit {
 };
 
 Logit logit_derivs(const std::vector<GradeCount>& y, const std::vector<double>& u, const q::SplitRule<vcal::PrecisionF64>& rule) {
-    const int K = static_cast<int>(y.size());
-    const int n = K + 1;
+    const std::size_t K = y.size();
+    const std::size_t n = K + 1;
     std::vector<double> v(n), v1(n), v2(n);
-    for (int i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         v[i] = 1.0 / (1.0 + std::exp(-u[i]));
         v1[i] = v[i] * (1.0 - v[i]);
         v2[i] = v1[i] * (1.0 - 2.0 * v[i]);
     }
     std::vector<double> g(n), h(n * n);
-    Logit out{o::multigrade_log_contrib_derivs(y.data(), K, v.data(), v[K], rule, g.data(), h.data()), g, h};
-    for (int i = 0; i < n; ++i) {
+    Logit out{o::multigrade_log_contrib_derivs(y.data(), static_cast<int>(K), v.data(), v[K], rule, g.data(), h.data()), g, h};
+    for (std::size_t i = 0; i < n; ++i) {
         out.g[i] = g[i] * v1[i];
-        for (int j = 0; j < n; ++j) out.h[i * n + j] = h[i * n + j] * v1[i] * v1[j] + (i == j ? g[i] * v2[i] : 0.0);
+        for (std::size_t j = 0; j < n; ++j) out.h[i * n + j] = h[i * n + j] * v1[i] * v1[j] + (i == j ? g[i] * v2[i] : 0.0);
     }
     return out;
 }
@@ -229,46 +229,46 @@ VCAL_TEST(multigrade_score_and_hessian_match_central_differences) {
     std::string where_g[2], where_h[2];
     std::size_t value_bits = 0;
     for (const auto& c : golden_cases()) {
-        const int K = static_cast<int>(c.grades.size());
-        const int n = K + 1;
+        const std::size_t K = c.grades.size();
+        const std::size_t n = K + 1;
         std::vector<double> u(n);
-        for (int k = 0; k < K; ++k) u[k] = logit(c.pd[k]);
+        for (std::size_t k = 0; k < K; ++k) u[k] = logit(c.pd[k]);
         u[K] = logit(c.rho);
         const Logit a = logit_derivs(c.grades, u, rule);
-        const double plain = o::multigrade_log_contrib(c.grades.data(), K, c.pd.data(), c.rho, rule);
+        const double plain = o::multigrade_log_contrib(c.grades.data(), static_cast<int>(K), c.pd.data(), c.rho, rule);
         // the value via the logit round trip is at a slightly different point; compare at the exact inputs
         std::vector<double> gg(n), hh(n * n);
-        const double via = o::multigrade_log_contrib_derivs(c.grades.data(), K, c.pd.data(), c.rho, rule, gg.data(), hh.data());
+        const double via = o::multigrade_log_contrib_derivs(c.grades.data(), static_cast<int>(K), c.pd.data(), c.rho, rule, gg.data(), hh.data());
         value_bits += same(plain, via) ? 0 : 1;
         if (!std::isfinite(a.l)) continue;
         std::int64_t nmax = 0;
         for (const auto& gr : c.grades) nmax = std::max(nmax, gr.n);
         const int tier = nmax <= 100000 ? 0 : 1;
         std::vector<double> step(n);
-        for (int i = 0; i < n; ++i) step[i] = 0.01 / std::sqrt(std::fmax(1.0, std::fabs(a.h[i * n + i])));
+        for (std::size_t i = 0; i < n; ++i) step[i] = 0.01 / std::sqrt(std::fmax(1.0, std::fabs(a.h[i * n + i])));
         auto diff = [&](double scale, std::vector<double>& dg, std::vector<double>& dh) {
             dg.assign(n, 0.0);
             dh.assign(n * n, 0.0);
-            for (int j = 0; j < n; ++j) {
+            for (std::size_t j = 0; j < n; ++j) {
                 std::vector<double> up = u, um = u;
                 up[j] += scale * step[j];
                 um[j] -= scale * step[j];
                 const Logit p = logit_derivs(c.grades, up, rule), m = logit_derivs(c.grades, um, rule);
                 dg[j] = (p.l - m.l) / (2 * scale * step[j]);
-                for (int i = 0; i < n; ++i) dh[i * n + j] = (p.g[i] - m.g[i]) / (2 * scale * step[j]);
+                for (std::size_t i = 0; i < n; ++i) dh[i * n + j] = (p.g[i] - m.g[i]) / (2 * scale * step[j]);
             }
         };
         std::vector<double> g1, h1, g2, h2;
         diff(1.0, g1, h1);
         diff(0.5, g2, h2);
-        for (int i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             const double fd = (4.0 * g2[i] - g1[i]) / 3.0;
             const double e = std::fabs(a.g[i] - fd) / std::fmax(1.0, std::fabs(a.g[i]));
             if (!(e <= worst_g[tier])) {
                 worst_g[tier] = e;
                 where_g[tier] = c.label() + " g" + std::to_string(i);
             }
-            for (int j = 0; j < n; ++j) {
+            for (std::size_t j = 0; j < n; ++j) {
                 const double fdh = (4.0 * h2[i * n + j] - h1[i * n + j]) / 3.0;
                 const double eh = std::fabs(a.h[i * n + j] - fdh) / std::fmax(1.0, std::fabs(a.h[i * n + j]));
                 if (!(eh <= worst_h[tier])) {
@@ -334,7 +334,7 @@ VCAL_TEST(small_rho_factorises_into_the_grades_binomials) {
     for (int r = 0; r < 2; ++r) {
         const double l = o::multigrade_log_contrib(gg.data(), 4, pds, rhos[r], rule);
         double closed = 0.0;
-        for (int k = 0; k < 4; ++k) {
+        for (std::size_t k = 0; k < 4; ++k) {
             const double nn = static_cast<double>(gg[k].n), dd = static_cast<double>(gg[k].d);
             closed += vcal::special::lbinom(gg[k].n, gg[k].d) + (dd > 0 ? dd * std::log(pds[k]) : 0.0) +
                       (nn - dd > 0 ? (nn - dd) * std::log1p(-pds[k]) : 0.0);
