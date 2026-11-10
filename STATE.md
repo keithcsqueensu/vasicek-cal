@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-11-06
+Last updated: 2026-11-10
 
 The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
 detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
@@ -40,7 +40,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
   - The next decision number is D-220 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
     registration is D-214, its tool D-215, the paper check D-216 and its result D-217; the correctness
-    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block.
+    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block (next D-411); D-500 is
+    the October scouting note's.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
 
@@ -59,22 +60,23 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     ρ = 0.02, 0.12 and 0.24. The oracle covers 0.955–0.959, and the fixed ρ_a = 0.12 covers 0.863 at ρ = 0.24.
     `rows.csv` is on the release `s6-data-2026-10-13`.
 
-- **The correctness audit and its PR A (D-218): in review.** The Copilot audit's findings were never
-  committed, so a fresh audit was run; its record is `docs/audits/2026-11-correctness.md`. No golden or
-  recorded verdict changes. PR A fixes the correctness findings: NaN-blind scipy checks, CI's rename gap,
+- **The correctness audit: done (D-218, D-219); PR A merged (#79), PRs B and C merged (#80).** The
+  Copilot audit's findings were never committed, so a fresh audit was run; its record is
+  `docs/audits/2026-11-correctness.md`. No golden or recorded verdict changes. PR A fixes the correctness findings: NaN-blind scipy checks, CI's rename gap,
   exceptions inside OpenMP regions, −inf in two compensated sums, the posterior's unflagged NaN cells, two
-  ABI output-order issues and three ABI input limits. The C ABI moves to 0.5 (a new posterior flag; the
-  limits are treated as bug fixes).
+  ABI output-order issues and three ABI input limits. The C ABI moved to 0.5 (a new posterior flag; the
+  limits are treated as bug fixes). B and C corrected the docs where they disagreed with the code and took
+  every study script's flag bits from `tests/engine_flags.json`.
 
 ## Next
 
-1. **Audit fix PRs**, one each:
-   - **A, correctness:** the fresh audit's fixes (D-218), in review;
-   - **B and C, in one PR (D-219), in review:** a fresh docs-accuracy check and its corrections, and
-     every study script's flag bits from `tests/engine_flags.json` (the MANIFEST `sha256` check was
-     split out earlier: D-201, PR #55). The original audit's B and C items were not recovered.
-2. **The performance pass, in the owner's order** (D-199): P-7 and P-6 done (D-212, D-404); P-13 rejected
-   (D-403); P-19 with the next golden refresh.
+1. **Measure the performance pass on the owner's laptop,** on the next full S-10/S-4 run: P-24 to P-27
+   (D-407–D-410) are measured only on the cloud machine (GCC), about 19–21% of a run together. The
+   run's phase split decides what comes next.
+2. **The performance pass, in the owner's order** (D-199; the scouting note D-500): P-6, P-7, P-19, P-21
+   and P-24 to P-27 done; P-13, P-22 and P-23 rejected. Left, each a decision of its own: P-20 (the
+   scouting note's C3 tier B), the M6 line search (C4), cached-row lookups resolved once per panel (after
+   P-27), and the in-house `log`/`exp`.
 3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
    (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
    S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
@@ -140,14 +142,14 @@ refresh with a flip check. Every item with its benchmark and write-up: [perf/REA
 | P-17 | SIMD Philox for the DGP's Bernoulli draws | done | D-194 | no |
 | P-18 | AR(1) transition sums on kernels with shared `det_exp` | done | D-199 | within rounding (≤ 7.2e-15) |
 | P-19 | Analytic SE shared with calibrate | done (full run CPU −9.8%; flip check 0 flips, summary byte-identical) | D-199, D-406 | within rounding; 0 flips |
-| P-20 | Warm-start S-4b's W* refits (40% of S-10) | future | D-199 | yes; own flip check |
+| P-20 | Warm-start S-4b's W* refits (about a third of S-10 after P-19 and P-25; the scouting note's C3 tier B) | future | D-199 | yes; own flip check |
 | P-21 | One `erfcx` per node on the derivative path and in the hint | done (derivatives ~3× faster) | D-213, D-400 | no |
 | P-22 | SIMD derivative node functions | **rejected** (measured 0–3%) | D-213, D-402 | — |
 | P-23 | Hint and extent search across grid points | **rejected** (ceiling under 0.2%) | D-213, D-405 | — |
 | P-24 | Calibrate's log-likelihood from its Hessian pass | done (fit phase −20% to −33%) | D-500, D-407 | no |
 | P-25 | W* without repeated evaluation points (memo) | done (W* −7% to −8%) | D-500, D-408 | no |
 | P-26 | No zero fill before the cached surface copy | done (surface phase −34% to −45%) | D-500, D-409 | no |
-| P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | built (S-10 per-replicate −5% to −17%) | D-500, D-410 | no |
+| P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | done (S-10 per-replicate −5% to −17%) | D-500, D-410 | no |
 
 Also future (D-199): the in-house `log`/`exp` for `log_phi`, a decision of its own (within rounding;
 would make results platform-independent). Rejected: sequential stopping of Monte Carlo runs (a design

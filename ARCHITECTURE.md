@@ -44,7 +44,8 @@ vasicek-cal/
 │   ├── objectives/         per-period contribution policies
 │   ├── reducers/           ArgMax, LogSumExp (posterior), moment inversion; weighted_sum and its lanes (P-6)
 │   └── grid.hpp            axes, flattening, point lookup
-├── engine/                 backend-agnostic surface evaluation + weighted reduction templates
+├── engine/                 backend-agnostic surface evaluation + weighted reduction templates; the surface row
+│                           cache (D-167) and fits on its rows in place (P-27, D-410)
 ├── backends/
 │   ├── cpu/                OpenMP
 │   └── cuda/               .cu kernels; built only when VCAL_ENABLE_CUDA=ON (D-030)
@@ -498,8 +499,13 @@ D-138–D-144) is summarised below.
   Jeffreys tables.
   - Results are bitwise identical for any thread count.
   - A context must not be used by two threads at once; distinct contexts are independent.
+- **Input limits (0.5, D-218).** `n_threads` ≤ `VCAL_MAX_THREADS` (4096); every grid axis's lower end
+  ≥ `VCAL_GRID_MIN_PROBABILITY` (1e-100), where the natural-scale score and Hessian stay finite; and
+  the Jeffreys prior's `n_obligors` ≤ `VCAL_JEFFREYS_MAX_OBLIGORS` (10⁶), since its table costs n + 1
+  log-likelihoods per grid point. Each refused input previously crashed, hung or gave NaN.
 
-**Functions (v0.1; v0.3 adds the M3 estimators, D-169; v0.4 the Bartlett-corrected profile interval, D-184)**
+**Functions (v0.1; v0.3 adds the M3 estimators, D-169; v0.4 the Bartlett-corrected profile interval, D-184;
+0.5 the posterior flag `VCAL_POSTERIOR_NAN_CELLS` and three input limits, D-218)**
 
 | Function | What it does |
 |---|---|
@@ -540,8 +546,9 @@ panel (n_t, d_t) ──► validate: n_t > 0, 0 ≤ d_t ≤ n_t, T ≥ 2 ──�
                      W = [1 … 1]  (1 × T) ──► reduce_weighted(ArgMax) ───┴──► k*, ℓ(k*)
                                                                                 │
    2nd pass on the 3×3 stencil around k*, in scaled coordinates: quadratic vertex with cross
-   term (D-095). SEs from the objective's own Hessian at the vertex, step 0.15 × the stencil
-   SE, delta method (D-119). Flags: edge / flat surface / quadrature unconverged /
+   term (D-095). SEs from the observed information at the vertex: the objective's analytic
+   Hessian where it gives one (D-185), otherwise central differences, step 0.15 × the stencil
+   SE (D-119); delta method. Flags: edge / flat surface / quadrature unconverged /
    near a bound (within 2 SEs)  (never silently clamp)                           │
                                                                                 ▼
                                                                          vcal_estimate
@@ -549,6 +556,17 @@ panel (n_t, d_t) ──► validate: n_t > 0, 0 ≤ d_t ≤ n_t, T ≥ 2 ──�
 
 `evaluate_surface` evaluates each distinct observation once per grid point and copies the row
 to the periods that repeat it (D-122). The copy is bitwise what a second evaluation would give.
+
+At the refined estimate, calibrate integrates each distinct observation once: where it takes the
+analytic Hessian, that pass also gives the log-likelihood and the quadrature check's primary values,
+which are the value pass's bit for bit (P-24, D-407).
+
+Studies that fit many panels sharing observations (the bootstraps, S-10) take rows from a
+`SurfaceRowCache` (D-167), filled once per (observation, objective, integrator, grid) and identical
+to `evaluate_surface`'s. `calibrate_cached` copies the rows into L. `calibrate_from_rows` reads
+them in place (P-27, D-410): its argmax is §5.2's bounded search on unit weights, with each row's
+tile maxima kept in the cache, so it is the full grid's argmax exactly, and a panel with a
+non-finite row is copied and takes the path above. All three give the same estimate bit for bit.
 
 After calibration, `engine::profile_intervals` (D-128–D-130) gives each parameter's 95%
 profile-likelihood interval. It is bracketed from the same L, solved against the objective at
