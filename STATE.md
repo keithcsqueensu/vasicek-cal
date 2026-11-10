@@ -114,7 +114,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 | M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 (S-4b) | **done** | D-164–D-166, D-169, D-184 |
 | M4 | CUDA backend, CPU↔GPU parity suite | after M6; nvcc compile-only CI exists | D-168, D-100 |
 | M5 | Monitoring: backtests, run ledger, report data, threshold table | planned | D-152 |
-| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress**: the AR(1)-aware MLE done; single-grade Pluto–Tasche done (S-6) | D-151, D-195–D-202, D-208, D-217 |
+| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress**: the AR(1)-aware MLE is done, and so are the single-grade Pluto–Tasche bounds (S-6) | D-151, D-195–D-202, D-208, D-217 |
 | M7 | Macro pipeline: transforms, pre-screens, batched fits, scorers, ranker | planned | D-148, R-2 |
 | M8 | Public-data demonstrations, scipy replication set, ABI 1.0 | planned | D-046, D-188 |
 
