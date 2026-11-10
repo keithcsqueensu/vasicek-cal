@@ -40,7 +40,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
   - The next decision number is D-220 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
     registration is D-214, its tool D-215, the paper check D-216 and its result D-217; the correctness
-    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block (next D-411); D-500 is
+    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block (next D-412); D-500 is
     the October scouting note's.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
@@ -86,7 +86,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
    from M7; D-177). Not started.
 6. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
-7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
+7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40; planned in
+   `docs/methodology/multigrade_mle.md`, D-411, built next in three PRs), multi-segment
    factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
    R-1. Then M4 (D-168).
 
