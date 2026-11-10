@@ -86,8 +86,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
    from M7; D-177). Not started.
 6. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
-7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40; planned in
-   `docs/methodology/multigrade_mle.md`, D-411, built next in three PRs), multi-segment
+7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
    factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
    R-1. Then M4 (D-168).
 
