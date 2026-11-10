@@ -62,9 +62,10 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 - **The correctness audit: done (D-218, D-219); PR A merged (#79), PRs B and C merged (#80).** The
   Copilot audit's findings were never committed, so a fresh audit was run; its record is
-  `docs/audits/2026-11-correctness.md`. No golden or recorded verdict changes. PR A fixes the correctness findings: NaN-blind scipy checks, CI's rename gap,
-  exceptions inside OpenMP regions, −inf in two compensated sums, the posterior's unflagged NaN cells, two
-  ABI output-order issues and three ABI input limits. The C ABI moved to 0.5 (a new posterior flag; the
+  `docs/audits/2026-11-correctness.md`. No golden or recorded verdict changes. PR A fixes the correctness
+  findings: NaN-blind scipy checks, CI's rename gap, exceptions inside OpenMP regions, −inf in two
+  compensated sums, the posterior's unflagged NaN cells, two ABI output-order issues and three ABI input
+  limits. The C ABI moved to 0.5 (a new posterior flag; the
   limits are treated as bug fixes). B and C corrected the docs where they disagreed with the code and took
   every study script's flag bits from `tests/engine_flags.json`.
 

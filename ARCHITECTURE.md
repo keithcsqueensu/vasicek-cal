@@ -505,7 +505,7 @@ D-138–D-144) is summarised below.
   log-likelihoods per grid point. Each refused input previously crashed, hung or gave NaN.
 
 **Functions (v0.1; v0.3 adds the M3 estimators, D-169; v0.4 the Bartlett-corrected profile interval, D-184;
-0.5 the posterior flag `VCAL_POSTERIOR_NAN_CELLS` and three input limits, D-218)**
+v0.5 the posterior flag `VCAL_POSTERIOR_NAN_CELLS` and three input limits, D-218)**
 
 | Function | What it does |
 |---|---|
