@@ -336,7 +336,7 @@ struct MultiGradeLogIntegrandDerivs {
 
     VCAL_HD void operator()(double z, double* f) const {
         const int K = grades;
-        double g1[kMaxGrades], gx_[kMaxGrades], gxx_[kMaxGrades], x2_[kMaxGrades], x22_[kMaxGrades];
+        double g1[kMaxGrades], gx_[kMaxGrades], gxx_[kMaxGrades], x2_[kMaxGrades];
         double gr = 0.0;   // g_rho
         double grr = 0.0;  // g_rho,rho
         const double b2 = b * b;
@@ -372,7 +372,6 @@ struct MultiGradeLogIntegrandDerivs {
             gx_[k] = gx;
             gxx_[k] = gxx;
             x2_[k] = x2;
-            x22_[k] = x22;
             gr += gx * x2;
             grr += gxx * x2 * x2 + gx * x22;
         }
@@ -387,7 +386,6 @@ struct MultiGradeLogIntegrandDerivs {
             f[second(K, i, K)] = gxx_[i] * x1 * x2_[i] + gx_[i] * x12 + g1[i] * gr;
         }
         f[second(K, K, K)] = grr + gr * gr;
-        (void)x22_;
     }
 };
 
