@@ -170,6 +170,16 @@ inline constexpr double TOL_SCORE_HESSIAN_FD_REL = 1e-8;
 // (Hessian). Worst x 4, rounded up.
 inline constexpr double TOL_SCORE_HESSIAN_FD_REL_LARGE_N = 1e-7;
 
+// --- multi-grade likelihood, M6 (D-411) ----------------------------------------------------------
+// Two grades with one PD against the pooled single grade plus the log ratio of the binomial coefficients
+// (exact in arithmetic), in eps of the terms' size |log C1| + |log C2| + |log C12| + |l|: 4 PDs x 6 rho up
+// to 0.9 x 6 pairs, interior and one-sided, n up to 1e6. Observed 5.8. Worst x 4, rounded up.
+inline constexpr double TOL_MULTIGRADE_POOLING_EPS = 24;
+// The K-grade l_t at rho = 1e-14 against the closed-form product of the grades' binomials, absolute: four
+// grades, n up to 1000, interior, d = 0 and d = n. Observed 1.8e-13, which is rho's own first-order effect
+// (1.8e-11 at rho = 1e-12; the test also checks the growth). Worst x 4, rounded up.
+inline constexpr double TOL_MULTIGRADE_RHO_ZERO_ABS = 1e-12;
+
 // --- conditional PD, S-23 ------------------------------------------------------------------------
 // q = Phi((Phi^-1(PD) + sqrt(rho) z_0.999) / sqrt(1 - rho)) and logit(q) against mpmath (40 digits),
 // relative, at the recovery truths and the box corners. Observed 2.9e-15 (MSVC), doubled and rounded up.
@@ -224,6 +234,10 @@ inline constexpr double TOL_SCIPY_RATE_LOGLIK_ABS = 1e-12;
 // Observed 2.3e-10; set to the engine's own root tolerance (1e-9) so that a platform's last digits
 // cannot fail it.
 inline constexpr double TOL_SCIPY_RATE_PROFILE_U = 1e-9;
+// M6 (D-411): validation/scipy/multigrade_mle.py, the K-grade period log-likelihood (binom.logpmf products,
+// quad on the e^-50 window around the mode) vs every row of tests/golden/multigrade/likelihood.csv plus the
+// binomial coefficients, relative to max(1, |l|). Observed 1.5e-13. Held at ref's 1e-12, as the AR(1) script.
+inline constexpr double TOL_SCIPY_MULTIGRADE_LL_REL = 1e-12;
 // M6 (D-197): validation/scipy/ar1_binomial_mle.py, the AR(1)-factor log-likelihood in the Markov
 // formulation (a uniform Simpson-grid filter on every golden row; nested quad for T <= 3, n <= 1000) vs
 // the engine, relative to max(1, |l|). Observed 2.9e-14 (grid), 7.5e-15 (nested). Held at ref's 1e-12.

@@ -39,7 +39,8 @@ vasicek-cal/
 │                           reduction's sum kernels (P-6, D-404)
 │   ├── precision.hpp       Precision policies, VCAL_HD macro
 │   ├── special/            log_phi, erfcx, probit, log_add_exp, lbinom; generated/ from tools/
-│   ├── model/              Vasicek1F (conditional PD), binomial-mixture log-integrand + adaptive hint
+│   ├── model/              Vasicek1F (conditional PD), binomial-mixture log-integrand + adaptive hint; the
+│                           multi-grade product integrand on a shared factor (M6, D-412)
 │   ├── quadrature/         Integrator contract, Gauss–Hermite policies; generated/ rules from tools/ (D-080)
 │   ├── objectives/         per-period contribution policies
 │   ├── reducers/           ArgMax, LogSumExp (posterior), moment inversion; weighted_sum and its lanes (P-6)

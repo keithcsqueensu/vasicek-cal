@@ -145,6 +145,60 @@ private:
     bool inf_ = false;
 };
 
+// OnlineLogSumExpMoments with the number of functions m <= MaxM set at run time (the multi-grade derivatives, D-411):
+// the same fold, in the same order, so for the same m functions each mean is OnlineLogSumExpMoments's bit for bit.
+// F is callable as void(double z, double* f) and writes f[0..m-1].
+template <class F, int MaxM>
+class OnlineLogSumExpMomentsN {
+public:
+    VCAL_HD OnlineLogSumExpMomentsN(const F& f, int m) : f_(f), m_n_(m < 0 ? 0 : (m > MaxM ? MaxM : m)) {}
+
+    VCAL_HD void add(double v, double node) {
+        double w;
+        if (std::isnan(v)) {
+            nan_ = true;
+            return;
+        } else if (v == HUGE_VAL) {
+            inf_ = true;
+            return;
+        } else if (v == -HUGE_VAL) {
+            return;
+        } else if (v > max_) {
+            const double r = std::exp(max_ - v);
+            sum_ = sum_ * r + 1.0;
+            for (int j = 0; j < m_n_; ++j) m_[j] *= r;
+            max_ = v;
+            w = 1.0;
+        } else {
+            w = std::exp(v - max_);
+            sum_ += w;
+        }
+        if (w == 0.0) return;
+        double f[MaxM];
+        f_(node, f);
+        for (int j = 0; j < m_n_; ++j) m_[j] += w * f[j];
+    }
+
+    VCAL_HD double result() const {
+        if (nan_) return static_cast<double>(NAN);
+        if (inf_) return HUGE_VAL;
+        if (max_ == -HUGE_VAL) return -HUGE_VAL;
+        return max_ + std::log(sum_);
+    }
+    VCAL_HD double mean(int j) const {
+        return nan_ || inf_ || max_ == -HUGE_VAL ? static_cast<double>(NAN) : m_[j] / sum_;
+    }
+
+private:
+    const F& f_;
+    int m_n_;
+    double max_ = -HUGE_VAL;
+    double sum_ = 0.0;
+    double m_[MaxM] = {};
+    bool nan_ = false;
+    bool inf_ = false;
+};
+
 struct LogIntegrandArchetype {
     VCAL_HD double operator()(double) const { return 0.0; }
 };

@@ -1898,6 +1898,29 @@ before the build). Cloud D-400 block, continued.
   - **Open, each before the PR that needs it:** the PD box [1e-5, 0.5]; Wald PD intervals in PR 2 with
     per-grade profile intervals later; `native` until the recovery study, then parity reconsidered.
 
+## The multi-grade model, PR 1: the likelihood, 2026-11-10
+
+- **D-412 — The multi-grade period log-likelihood is built as D-411 planned it, with no change to the parity
+  rule: the risk D-411 named does not occur.**
+  - **What:** `core/model/multigrade_mixture.hpp` (the product integrand, its batch evaluation through the
+    erfcx kernels, its hint, its parameter derivatives) and `core/objectives/multigrade.hpp` (the period
+    log-likelihood and its score and Hessian in all K + 1 coordinates); `vcalref::log_mixture_grades`;
+    `tools/gen_multigrade_goldens.py` with 65 mpmath goldens; `validation/scipy/multigrade_mle.py`, the
+    likelihood half; `unit_multigrade`, six tests. `OnlineLogSumExpMomentsN` is the moment fold with its
+    count set at run time, the same arithmetic as `OnlineLogSumExpMoments`.
+  - **The named risk, measured:** a d = 0 grade of n = 10⁶ beside interior grades at ρ = 0.9 is within
+    3.6 ε of mpmath under adaptive Gauss–Hermite (`TOL_PARITY_MIXTURE_EPS`, 24). The classification by
+    counts stands; no period moves to the composite rule.
+  - **Anchors:** K = 1 bit for bit, value and derivatives (2,384 cases); pooling 5.8 ε; ρ → 0 1.8e-13;
+    core vs ref 3.5 ε, ref vs mpmath 3.1 ε; derivatives within the single-grade tolerances; scipy 1.5e-13.
+  - **Two departures from the plan, both recorded in the note:** the mode hint starts from the
+    precision-weighted mean of the grades' own starts, not a pooled root solve (no solve, and the
+    single-grade start at K = 1); the two new tolerances (`TOL_MULTIGRADE_POOLING_EPS`,
+    `TOL_MULTIGRADE_RHO_ZERO_ABS`) were set from their measurements, worst × 4, not stated first.
+  - **Results change: no.** No existing value, golden or study row moves; the only shared-code change is
+    ref's single-grade integral moved into a helper with the same operations (its tests and the
+    cross-reference pass unchanged).
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
