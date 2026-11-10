@@ -283,7 +283,7 @@ build/cpu-release/tests/recovery_harness --write           # regenerate the reco
 | M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 with S-4b | **Done** |
 | M4 | CUDA backend and CPU↔GPU parity suite. Today CI only compiles device code with nvcc 11.8 and 12.8 | Planned, after M6 (D-168) |
 | M5 | Monitoring: backtests, run ledger, report data | Planned |
-| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | **In progress:** the AR(1)-aware MLE is finished (D-208); the other models remain |
+| M6 | Benchmark models: multi-segment, AR(1) factor, alternative mixing distributions, Pluto–Tasche, window and influence analysis | **In progress:** the AR(1)-aware MLE is finished (D-208), and the single-grade Pluto–Tasche bounds (S-6, D-217); the multi-grade and multi-period Pluto–Tasche bounds (S-52, S-50) and the other models remain |
 | M7 | Macro pipeline: transforms with lineage, pre-screens, batched fits, scorers, ranker | Planned |
 | M8 | Public-data demonstrations (FDIC, FRED, StatCan), the full scipy replication set, ABI 1.0 | Planned |
 
