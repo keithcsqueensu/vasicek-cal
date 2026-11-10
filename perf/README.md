@@ -38,7 +38,7 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-24 | Calibrate's log-likelihood from its Hessian pass | done: the fit phase −20% to −33% | D-500, D-407 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
 | P-25 | W* without repeated evaluation points (memo) | done: W* −7% to −8% | D-500, D-408 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
 | P-26 | No zero fill before the cached surface copy | done: the surface phase −34% to −45%; together with P-24 and P-25, S-10 per-replicate work −12% to −17% | D-500, D-409 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
-| P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | built: S-10 per-replicate work −17% (T = 100, n = 100), −5% (n = 10,000); about 7% of the run | D-500, D-410 | no | [p27_row_view.md](p27_row_view.md) |
+| P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | done: S-10 per-replicate work −17% (T = 100, n = 100), −5% (n = 10,000); about 7% of the run | D-500, D-410 | no | [p27_row_view.md](p27_row_view.md) |
 
 - **The SIMD sweep (D-213):** P-21 done (D-400); P-22 and P-23 rejected (D-402, D-405).
 - **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 rejected (D-403, measured on GCC
