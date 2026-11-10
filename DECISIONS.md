@@ -1875,6 +1875,29 @@ before the build). Cloud D-400 block, continued.
     the non-slow suite and the slow argmax and S-10 tests; the S-10 rows of four timing runs byte-identical to `main`'s;
     and the recovery harness's 4,050 fits at R = 50 identical to `main`'s in every field.
 
+## The multi-grade shared-ρ model: the plan, 2026-11-10
+
+- **D-411 — The multi-grade binomial MLE with a shared ρ (D-151's M6 item) is planned before the build,
+  in `docs/methodology/multigrade_mle.md`, and built in three PRs: the likelihood, the estimator, then the
+  shared multi-grade DGP layer with the grade scenario matrix.**
+  - **Owner's choices (2026-11-10):** plan first, then the PRs; a grade with no defaults over the panel
+    sits at its PD box's lower end with a per-grade edge flag and a NaN SE, never clamped silently, and ρ
+    is still estimated from all grades (not excluded, no monotone constraint); no C ABI entry point until
+    the recovery study has run.
+  - **The model and estimator are D-151's:** K grades on one factor, one ρ; one integral per period over
+    the product of the grades' binomials; a 41-point logit ρ grid, the K PDs by safeguarded Newton with
+    the dense analytic Hessian at each ρ, then ρ refined on its profile.
+  - **The integrand is strictly concave in z** (each grade's term is log Φ of affine functions), so the
+    single-grade rules carry over with each period classified by its counts: interior periods by
+    adaptive Gauss–Hermite at the summed mode, one-sided periods by the composite rule at the product's
+    transition point. **Named risk:** a d = 0 grade of large n beside interior grades may not be resolved
+    by 128 Gauss–Hermite nodes (D-116's finding, single-grade). PR 1 measures it against mpmath; on a
+    miss, mixed periods take the composite rule, and the note is amended before PR 1 merges.
+  - **Anchors:** K = 1 is the single-grade likelihood bit for bit; equal PDs pool exactly; ρ → 0
+    factorises.
+  - **Open, each before the PR that needs it:** the PD box [1e-5, 0.5]; Wald PD intervals in PR 2 with
+    per-grade profile intervals later; `native` until the recovery study, then parity reconsidered.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
