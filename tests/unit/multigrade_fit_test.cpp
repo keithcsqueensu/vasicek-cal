@@ -407,9 +407,12 @@ namespace {
 
 // One recovery cell (D-413's assertions): R panels from make(r), fitted, and rho's profile coverage, the bias
 // of v, the pooled PD Wald coverage (grades with n PD T >= 20) and the flags checked and reported.
+// known_profile_finding: rho's profile coverage is a reviewed KNOWN FINDING for this cell (D-414), so it must
+// be below the band; returning to the band fails too, so the list is revisited, as in the single-grade
+// recovery's kKnownFindings.
 template <class Make>
 void recovery_cell(const std::string& cell, const std::vector<double>& pd, const std::vector<std::int64_t>& n,
-                   double rho, std::int64_t T, int R, Make make) {
+                   double rho, std::int64_t T, int R, Make make, bool known_profile_finding = false) {
     const double band = 0.95 - vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * std::sqrt(0.95 * 0.05 / R);
     int covered = 0, flat = 0, bad = 0, edge = 0, grade_edge = 0, wald_n = 0, wald_covered = 0, low = 0;
     int miss_edge = 0, truncated = 0;
@@ -443,20 +446,42 @@ void recovery_cell(const std::string& cell, const std::vector<double>& pd, const
     const double mean = sum / R;
     const double sd = std::sqrt(std::fmax(0.0, sum2 / R - mean * mean));
     const double wald = wald_n > 0 ? static_cast<double>(wald_covered) / wald_n : 1.0;
-    if (!(cov >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": profile coverage " + describe(cov));
+    if (known_profile_finding) {
+        if (cov >= band) {
+            vcal::test::report_failure(__FILE__, __LINE__,
+                                       cell + ": a listed KNOWN FINDING is back in the band, profile coverage " +
+                                           describe(cov) + "; revisit kGradeMatrixKnownFindings");
+        }
+    } else if (!(cov >= band)) {
+        vcal::test::report_failure(__FILE__, __LINE__, cell + ": profile coverage " + describe(cov));
+    }
     if (!(std::fabs(mean) <= 0.5 * sd + vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * sd / std::sqrt(R))) {
         vcal::test::report_failure(__FILE__, __LINE__, cell + ": bias " + describe(mean) + ", sd " + describe(sd));
     }
     if (!(wald >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": Wald coverage " + describe(wald));
     VCAL_CHECK_EQ(bad, 0);
     VCAL_CHECK(flat <= R / 20);
-    vcal::test::note(cell + ": profile coverage " + describe(cov) + " (misses " + std::to_string(R - covered) +
+    vcal::test::note(cell + ": profile coverage " + describe(cov) + (known_profile_finding ? " KNOWN FINDING" : "") +
+                     " (misses " + std::to_string(R - covered) +
                      ": " + std::to_string(low) + " below the truth, " + std::to_string(miss_edge) +
                      " with a grade on the box; " + std::to_string(truncated) + " truncated), bias " + describe(mean) + " (sd " +
                      describe(sd) + "), Wald " + describe(wald) + " over " + std::to_string(wald_n) +
                      ", rho on the box " + std::to_string(edge) + ", a grade on the box " +
                      std::to_string(grade_edge) + ", flat " + std::to_string(flat) + ", " +
                      std::to_string(evals / R) + " evaluations a fit");
+}
+
+// The grade scenarios whose rho profile coverage is a reviewed KNOWN FINDING (owner, 2026-11-11, D-414):
+// scenario 6 (H, T = 20, rho = 0.02), 0.87 at R = 100 and 0.9125 at R = 400 (band 0.914). It is the
+// single-grade fit's known undercoverage at T = 20 and rho = 0.02 (0.926 to 0.927, reviewed in the pinned
+// recovery), not the multi-grade fit's: a grade on the PD box is not over-represented among its misses.
+constexpr int kGradeMatrixKnownFindings[] = {6};
+
+bool grade_known_finding(int id) {
+    for (const int k : kGradeMatrixKnownFindings) {
+        if (k == id) return true;
+    }
+    return false;
 }
 
 // Replicate r of grade scenario id as a Panel.
@@ -560,7 +585,8 @@ VCAL_TEST(grade_matrix_replicate_zero_fits) {
     }
 }
 
-// Recovery on the grade scenario matrix (slow; D-414), with D-413's assertions, R = 100 unless
+// Recovery on the grade scenario matrix (slow; D-414), with D-413's assertions except for the reviewed
+// KNOWN FINDINGs above, R = 100 unless
 // VCAL_MG_RECOVERY_R sets it. VCAL_MG_GRADE_SCENARIO runs one scenario (0 .. 8). About 70 CPU-minutes at
 // R = 100, two thirds of it the three T = 100 scenarios.
 VCAL_TEST(multigrade_fit_recovers_on_the_grade_matrix) {
@@ -574,6 +600,6 @@ VCAL_TEST(multigrade_fit_recovers_on_the_grade_matrix) {
         recovery_cell(std::string("grade scenario ") + std::to_string(id) + " (" + sc.scale->name + ", T " +
                           std::to_string(sc.periods) + ", rho " + describe(sc.scale->rho) + ")",
                       pd, gm::obligors(*sc.scale), sc.scale->rho, sc.periods, R,
-                      [&](std::uint32_t r) { return grade_panel(id, r); });
+                      [&](std::uint32_t r) { return grade_panel(id, r); }, grade_known_finding(id));
     }
 }

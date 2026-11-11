@@ -1972,6 +1972,51 @@ before the build). Cloud D-400 block, continued.
     `TOL_SCIPY_MULTIGRADE_FIT_LOGIT` (1e-4) and `TOL_SCIPY_MULTIGRADE_FIT_LL_ABS` (1e-8).
   - **Results change: no.** New code and files only; no existing value, golden or study row moves.
 
+- **D-414 — The multi-grade DGP layer: segments on one factor, the grade scenario matrix in code, and
+  recovery on it. One cell is a reviewed KNOWN FINDING (owner).**
+  - **What:** `dgp::simulate_panel_segments`, specified first in `docs/methodology/dgp.md` ("Segments on one
+    factor"). Each period has one Z_t, the base factor on the base key, and then each segment's defaults by
+    the base Bernoulli step.
+    - Segment 0 draws on the base key, so one segment is the base panel bit for bit.
+    - Segment s ≥ 1 draws on the key of seed ⊕ `0x5345474D454E5453` ("SEGMENTS") ⊕ s.
+    - The counter and the Bernoulli kernels are unchanged.
+  - **Why this layout:** D-150 approved S-24's separate stream key for the second segment, and D-149 gives
+    independent segments their own key domain. Segment 0 keeping the base stream is the same reasoning as
+    D-190's: a one-segment panel is a version of the base panel, not an independent segment. It buys an
+    exact identity test, and grade 1 of a grade panel is the base panel at its PD.
+  - **Specified like the base DGP (D-149):**
+    - **Mirror:** a line-for-line Python mirror (`Mirror.panel_segments`). Its step 3 is factored out into
+      `Mirror.bernoulli` with the same operations, and every existing generated file is unchanged.
+    - **Reference panels:** six, K = 1 to 17, with their SHA-256, matched bit for bit under the scalar,
+      SSE2 and AVX2 kernels.
+    - **Definition tests:** against the base DGP directly. The base factor is shared; each count is
+      `count_defaults` on the segment's key; a segment does not move when another changes or one is added;
+      two segments with one PD draw different uniforms; invalid input is refused.
+  - **The grade scenario matrix** (D-151) is in `tests/recovery/grade_matrix.hpp`:
+    - the master scale; the obligor rule, with shares by `dgp::det_exp` so the counts are the same on every
+      platform; seed "GRADESCN"; grade k as segment k − 1;
+    - the counts equal `studies/README.md`'s lists, which sum to 10,000 and give its portfolio PDs;
+    - the studies index's data line now names the variant and the segment mapping. S-24's variant and
+      S-52's dependency are marked built.
+  - **Tests:**
+    - **In CI:** replicate 0 of the six T ∈ {20, 40} scenarios is fitted, converged, finite and not flat
+      (11 s).
+    - **Slow:** recovery on all nine scenarios, R = 100, with D-413's assertions, and the expectation stated
+      before the run (all nine pass). Eight pass.
+  - **The finding:** scenario 6 (H, T = 20, ρ = 0.02) has ρ profile coverage 0.87 at R = 100, and 0.9125 at
+    R = 400 against a band of 0.914.
+    - Its misses lean low: 24 of 35 lie below the true ρ.
+    - The grade on the PD box (89.5% of fits) is not over-represented among the misses (80%).
+    - It is the single-grade fit's reviewed undercoverage at T = 20 and ρ = 0.02 (0.926 to 0.927), within
+      about one Monte Carlo standard error. Scenario 3 at R = 400 covers 0.9525.
+  - **The owner's decision (2026-11-11):** a reviewed KNOWN FINDING, as in the single-grade recovery.
+    `kGradeMatrixKnownFindings` lists scenario 6's profile verdict. Any other cell below the band fails, and
+    so does scenario 6 if it returns to the band. The stated assertion was not loosened elsewhere.
+  - **Not in this PR: D-151's observation layer** (relabelling, misrecording and dropping recorded counts, for
+    S-29 and S-31 to S-33). Each study defines its thinning in its `PREDICTION.md`, so the layer is built with
+    the first of them.
+  - **Results change: no.** No existing panel, golden or study row moves.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

@@ -288,7 +288,38 @@ Every item ships with synthetic recovery tests and golden values (CLAUDE.md).
   - the grade matrix's counts equal the studies index's lists, summing to 10,000, with its portfolio PDs;
   - in CI, replicate 0 of the six T ∈ {20, 40} scenarios is fitted, converged, finite and not flat
     (11 s);
-  - RECOVERY_PLACEHOLDER
+  - **Recovery on the nine grade scenarios** (slow, R = 100, D-413's assertions, expectation stated before the
+    run). Eight pass. The table shows ρ's profile coverage, the PDs' Wald coverage, the bias of logit ρ̂ (sd),
+    and the fits with a grade on the PD box:
+
+    | Scenario | Scale, T | ρ profile | PD Wald | Bias (sd) | Grade on the box |
+    |---|---|---|---|---|---|
+    | 0 | L, 20 | 0.94 | 0.934 | −0.09 (0.35) | 11 |
+    | 1 | L, 40 | 0.95 | 0.970 | −0.07 (0.23) | 2 |
+    | 2 | L, 100 | 0.98 | 0.961 | −0.01 (0.13) | 0 |
+    | 3 | M, 20 | 0.95 | 0.928 | −0.12 (0.32) | 33 |
+    | 4 | M, 40 | 0.95 | 0.955 | −0.04 (0.24) | 10 |
+    | 5 | M, 100 | 0.98 | 0.947 | −0.02 (0.13) | 0 |
+    | **6** | **H, 20** | **0.87** | 0.951 | −0.09 (0.42) | 89 |
+    | 7 | H, 40 | 0.94 | 0.948 | −0.05 (0.25) | 65 |
+    | 8 | H, 100 | 0.93 | 0.952 | −0.01 (0.16) | 25 |
+
+    No fit failed to converge, gave a non-finite value or a flat surface, and none put ρ on the box.
+
+    **Scenario 6** (H, T = 20, ρ = 0.02) is below the band, 0.878. Rerun at R = 400 its coverage is 0.9125,
+    and the band there is 0.914. Its misses lean low: 24 of the 35 intervals lie below the true ρ.
+    - **The grade on the box is not the cause.** 358 of the 400 fits have the 0.03% grade (46 obligors,
+      0.28 expected defaults) on the box, but only 28 of the 35 misses do, so it is not over-represented.
+    - **It is the single-grade fit's known finding.** At T = 20 and ρ = 0.02, the single-grade profile
+      interval undercovers too: 0.927 at PD 1% with 10,000 obligors, and 0.926 at PD 5% with 1,000. Both
+      are reviewed KNOWN FINDINGs in the pinned recovery (D-154 expects about a point of undercoverage at
+      T = 20). Scenario 6 is about one Monte Carlo standard error (0.014) below those.
+    - **For comparison,** scenario 3 at R = 400 covers 0.9525.
+
+    The cell is a finding of the method, not of the multi-grade fit. The owner made it a reviewed KNOWN
+    FINDING (2026-11-11, D-414), as in the single-grade recovery. Scenario 6's profile verdict is listed in
+    `kGradeMatrixKnownFindings`. Any other cell below the band fails the test, and so does scenario 6 if it
+    returns to the band, so the list is revisited.
 
 ## 8. The PRs, and what is not in this work
 
