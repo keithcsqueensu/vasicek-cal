@@ -106,6 +106,7 @@ vcal_add_compile_fail_test(contract_fail_precision_message contract_fail_precisi
 vcal_add_test_executable(unit_precision SOURCES unit/precision_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_special SOURCES unit/special_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_quadrature SOURCES unit/quadrature_test.cpp LIBS vcal::core)
+vcal_add_test_executable(unit_multigrade SOURCES unit/multigrade_test.cpp LIBS vcal::core vcal::ref)
 vcal_add_test_executable(unit_grid SOURCES unit/grid_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_reducer SOURCES unit/reducer_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::engine vcal::backend_cpu)

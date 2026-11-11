@@ -448,6 +448,26 @@ comment = [
     "(Hessian). Worst x 4, rounded up.",
 ]
 
+[TOL_MULTIGRADE_POOLING_EPS]
+type = "double"
+value = 24
+section = "multi-grade likelihood, M6 (D-411)"
+comment = [
+    "Two grades with one PD against the pooled single grade plus the log ratio of the binomial coefficients",
+    "(exact in arithmetic), in eps of the terms' size |log C1| + |log C2| + |log C12| + |l|: 4 PDs x 6 rho up",
+    "to 0.9 x 6 pairs, interior and one-sided, n up to 1e6. Observed 5.8. Worst x 4, rounded up.",
+]
+
+[TOL_MULTIGRADE_RHO_ZERO_ABS]
+type = "double"
+value = 1e-12
+section = "multi-grade likelihood, M6 (D-411)"
+comment = [
+    "The K-grade l_t at rho = 1e-14 against the closed-form product of the grades' binomials, absolute: four",
+    "grades, n up to 1000, interior, d = 0 and d = n. Observed 1.8e-13, which is rho's own first-order effect",
+    "(1.8e-11 at rho = 1e-12; the test also checks the growth). Worst x 4, rounded up.",
+]
+
 [TOL_CONDITIONAL_PD_REL]
 type = "double"
 value = 6e-15
@@ -557,6 +577,16 @@ comment = [
     "M3: the PD and rho profile-interval end points, scipy's brentq vs the engine, in logit units.",
     "Observed 2.3e-10; set to the engine's own root tolerance (1e-9) so that a platform's last digits",
     "cannot fail it.",
+]
+
+[TOL_SCIPY_MULTIGRADE_LL_REL]
+type = "double"
+value = 1e-12
+section = "scipy replication, M1.9: a plain scipy script against the engine (D-126)"
+comment = [
+    "M6 (D-411): validation/scipy/multigrade_mle.py, the K-grade period log-likelihood (binom.logpmf products,",
+    "quad on the e^-50 window around the mode) vs every row of tests/golden/multigrade/likelihood.csv plus the",
+    "binomial coefficients, relative to max(1, |l|). Observed 1.5e-13. Held at ref's 1e-12, as the AR(1) script.",
 ]
 
 [TOL_SCIPY_AR1_LOGLIK_REL]

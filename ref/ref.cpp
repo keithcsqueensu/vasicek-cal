@@ -239,21 +239,13 @@ double lchoose(std::int64_t n, std::int64_t k) {
     return s.value();
 }
 
-double log_mixture(double pd, double rho, std::int64_t n, std::int64_t d) {
-    if (!(pd > 0.0 && pd < 1.0 && rho > 0.0 && rho < 1.0 && n >= 1 && d >= 0 && d <= n)) return kNaN;
-    const double c = ncdf_inv(pd);
-    const double sr = std::sqrt(rho);
-    const double s1 = std::sqrt(1.0 - rho);
-    const double dd = static_cast<double>(d);
-    const double ss = static_cast<double>(n - d);
-    const auto h = [&](double z) {  // log integrand including the N(0,1) kernel (up to 1/sqrt(2 pi))
-        const double x = (c - sr * z) / s1;
-        double v = -0.5 * z * z;
-        if (dd > 0.0) v += dd * log_ncdf(x);
-        if (ss > 0.0) v += ss * log_ncdf(-x);
-        return v;
-    };
+namespace {
 
+// log of the integral of exp(h(z)) dz / sqrt(2 pi), for a strictly concave h that includes the N(0,1) kernel's
+// -z^2/2: bracket the maximum, golden-section, then adaptive Gauss-Legendre on panels around the mode. The body of
+// log_mixture, shared with log_mixture_grades (M6, D-411).
+template <class H>
+double log_integral_concave(const H& h) {
     // h is concave (log Phi is), so it is unimodal: bracket its maximum, then golden-section.
     // After expansion h(lo) < h(inner) >= h(outer), so the maximum lies in [lo, hi].
     double lo = -1.0;
@@ -318,6 +310,60 @@ double log_mixture(double pd, double rho, std::int64_t n, std::int64_t d) {
         total.add(adaptive(f, edges[i], edges[i + 1], tol, noise_rel, 0));
     }
     return hm + std::log(total.value()) - kLogSqrt2Pi;
+}
+
+}  // namespace
+
+double log_mixture(double pd, double rho, std::int64_t n, std::int64_t d) {
+    if (!(pd > 0.0 && pd < 1.0 && rho > 0.0 && rho < 1.0 && n >= 1 && d >= 0 && d <= n)) return kNaN;
+    const double c = ncdf_inv(pd);
+    const double sr = std::sqrt(rho);
+    const double s1 = std::sqrt(1.0 - rho);
+    const double dd = static_cast<double>(d);
+    const double ss = static_cast<double>(n - d);
+    const auto h = [&](double z) {  // log integrand including the N(0,1) kernel (up to 1/sqrt(2 pi))
+        const double x = (c - sr * z) / s1;
+        double v = -0.5 * z * z;
+        if (dd > 0.0) v += dd * log_ncdf(x);
+        if (ss > 0.0) v += ss * log_ncdf(-x);
+        return v;
+    };
+    return log_integral_concave(h);
+}
+
+double log_mixture_grades(const std::vector<double>& pd, double rho, const std::vector<Period>& grades) {
+    if (pd.size() != grades.size() || !(rho > 0.0 && rho < 1.0)) return kNaN;
+    std::vector<double> c, dd, ss;
+    for (std::size_t k = 0; k < grades.size(); ++k) {
+        const Period& y = grades[k];
+        if (!(y.n >= 0 && y.d >= 0 && y.d <= y.n)) return kNaN;
+        if (y.n == 0) continue;
+        if (!(pd[k] > 0.0 && pd[k] < 1.0)) return kNaN;
+        c.push_back(ncdf_inv(pd[k]));
+        dd.push_back(static_cast<double>(y.d));
+        ss.push_back(static_cast<double>(y.n - y.d));
+    }
+    if (c.empty()) return kNaN;
+    const double sr = std::sqrt(rho);
+    const double s1 = std::sqrt(1.0 - rho);
+    const auto h = [&](double z) {
+        double v = -0.5 * z * z;
+        for (std::size_t k = 0; k < c.size(); ++k) {
+            const double x = (c[k] - sr * z) / s1;
+            if (dd[k] > 0.0) v += dd[k] * log_ncdf(x);
+            if (ss[k] > 0.0) v += ss[k] * log_ncdf(-x);
+        }
+        return v;
+    };
+    return log_integral_concave(h);
+}
+
+double period_loglik_grades(const std::vector<double>& pd, double rho, const std::vector<Period>& grades) {
+    Sum lc;
+    for (const auto& y : grades) {
+        if (y.n > 0) lc.add(lchoose(y.n, y.d));
+    }
+    return lc.value() + log_mixture_grades(pd, rho, grades);
 }
 
 double period_loglik(double pd, double rho, const Period& y) {

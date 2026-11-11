@@ -188,6 +188,7 @@ jobs:
           .venv/bin/python tools/gen_dgp_tables.py --check
           .venv/bin/python tools/gen_vasicek_rate_goldens.py --check
           .venv/bin/python tools/gen_moments_goldens.py --check
+          .venv/bin/python tools/gen_multigrade_goldens.py --check
           .venv/bin/python tools/gen_tolerances.py --check
           .venv/bin/python tools/gen_engine_flags.py --check
 
@@ -219,6 +220,8 @@ jobs:
         run: .venv/bin/python validation/scipy/grid_posterior.py
       - name: AR(1)-factor likelihood against the engine, two formulations (M6)
         run: .venv/bin/python validation/scipy/ar1_binomial_mle.py
+      - name: Multi-grade likelihood against the engine's goldens (M6, D-411)
+        run: .venv/bin/python validation/scipy/multigrade_mle.py
       - name: HAC sandwich SE against the engine (S-48, D-209)
         run: .venv/bin/python validation/scipy/hac_se.py
       - name: Pluto-Tasche bounds against the engine (S-6, D-215)

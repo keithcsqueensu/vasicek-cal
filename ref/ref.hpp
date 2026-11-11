@@ -38,6 +38,11 @@ struct Period {
 double log_mixture(double pd, double rho, std::int64_t n, std::int64_t d);
 
 double period_loglik(double pd, double rho, const Period& y);  // lchoose(n, d) + log_mixture
+// The multi-grade period (M6, D-411): log E[prod_k p_k(Z)^d_k (1 - p_k(Z))^(n_k - d_k)], K grades on one factor with a
+// shared rho, p_k from pd[k]; grades with n = 0 are skipped. The same bracket, golden-section and adaptive
+// Gauss-Legendre as log_mixture, on the summed log-integrand: no code shared with core's K-grade rule.
+double log_mixture_grades(const std::vector<double>& pd, double rho, const std::vector<Period>& grades);
+double period_loglik_grades(const std::vector<double>& pd, double rho, const std::vector<Period>& grades);
 double loglik(double pd, double rho, const std::vector<Period>& panel);
 
 struct Fit {

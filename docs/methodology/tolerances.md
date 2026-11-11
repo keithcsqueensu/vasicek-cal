@@ -259,6 +259,23 @@ The forward filter over each period's own nodes, placed for the law of Z_t given
 | `TOL_AR1_SMOOTH_D2_REL` | 1e-11 | 6.4e-13 | Second differences of core minus ref along lines in φ and ρ, as a fraction of core's own largest | The node placement moves with θ; a clamp, branch or floor in it would put a kink into the likelihood (owner's condition, as Q16's test). Rounding alone gives 5e-14 to 6.4e-13. | `unit_ar1_filter_smooth` (slow) |
 | `TOL_AR1_SCORE_REL` | 1e-8 | 6.8e-10 | The analytic score against Richardson-extrapolated central differences, relative to max(1, \|derivative\|) | The differences' own noise: last-bit noise in l over steps of 1e-3 relative. | `unit_ar1_filter: ar1_score_matches_richardson_differences` |
 
+## Multi-grade likelihood (M6)
+
+The K-grade period log-likelihood, one integral per period over the product of the grades' binomials on a shared
+factor (`core/objectives/multigrade.hpp`; D-411, `docs/methodology/multigrade_mle.md`). It reuses the parity rule and
+its tolerance unchanged; the rows below are the checks that are new. The rule against mpmath on the 65 K-grade
+goldens (`tests/golden/multigrade/likelihood.csv`) is within `TOL_PARITY_MIXTURE_EPS`: worst 3.6 ε interior (a d = 0
+grade of n = 10⁶ beside interior grades at ρ = 0.9, the case D-411 named as the risk), 5.6 ε one-sided. Core against
+ref's K-grade integral is within `TOL_XREF_PERIOD_LL_EPS` (worst 3.5 ε), ref against mpmath within
+`TOL_REF_LOG_MIXTURE_EPS` (3.1 ε), and the score and Hessian in all K + 1 coordinates within
+`TOL_SCORE_HESSIAN_FD_REL` and `TOL_SCORE_HESSIAN_FD_REL_LARGE_N` (1.3e-9 and 3.8e-8) at half the single-grade test's
+step. K = 1 is the single-grade likelihood bit for bit, value and derivatives (2,384 cases).
+
+| Id | Value | Observed | Applies to | Rationale | Enforced by |
+|---|---|---|---|---|---|
+| `TOL_MULTIGRADE_POOLING_EPS` | 24 | 5.8 | Two grades with one PD against the pooled single grade plus log C(n₁, d₁) + log C(n₂, d₂) − log C(n₁ + n₂, d₁ + d₂), in ε of the terms' size: 4 PDs × 6 ρ up to 0.9 × 6 pairs, interior and one-sided, n up to 10⁶ | An identity in arithmetic; the two sides are different sums, so it holds to rounding. Worst × 4, rounded up. | `unit_multigrade: two_grades_with_one_pd_pool_exactly` |
+| `TOL_MULTIGRADE_RHO_ZERO_ABS` | 1e-12 | 1.8e-13 | The K-grade l_t at ρ = 10⁻¹⁴ against the closed-form product of the grades' binomials, absolute; four grades, n up to 1000 | What is measured is ρ's own first-order effect, not error: the gap grows 100-fold at ρ = 10⁻¹², which the test also checks. Worst × 4, rounded up. | `unit_multigrade: small_rho_factorises_into_the_grades_binomials` |
+
 ## Pluto–Tasche bounds (S-6)
 
 The most-prudent upper bounds (`benchmark_models/pluto_tasche/bounds.hpp`; D-214, D-215;
@@ -327,6 +344,7 @@ versions on Linux (job `validation (scipy)`).
 | `TOL_SCIPY_JEFFREYS_LOG_ABS` | 3e-9 | 1.45e-9 | M3: the Jeffreys table (n = 100, 13 × 9 points), scipy's adaptive quad vs the engine's parity rule | Both score by central differences with step 1e-4, which divide each probability's error by 2e-4. Observed, doubled, rounded up. | `validation/scipy/grid_posterior.py` |
 | `TOL_SCIPY_POSTERIOR_END_U` | 1e-4 | 3.0e-5 | M3: grid-posterior interval ends, scipy (a fixed 200-node Gauss–Hermite rule, vectorised) vs the engine, logit units, 16 reference fits | The fixed rule's error in log P(d) (about 5·10⁻⁷ at worst for n = 100) summed over 20 periods. Observed, doubled, rounded up. | same |
 | `TOL_SCIPY_AR1_LOGLIK_REL` | 1e-12 | 2.9e-14 (grid filter, 66 rows), 7.5e-15 (nested quad, 36 rows) | M6: the AR(1)-factor log-likelihood on `tests/golden/ar1/likelihood.csv`, in the Markov formulation (transition densities), scipy vs the engine, relative to max(1, \|l\|) | A uniform composite-Simpson grid filter over [−12, 12] and, for T ≤ 3 and n ≤ 1000, nested 1-D `quad` (given Z₂ the other factors are independent). Held at ref's 1e-12 (`TOL_AR1_REFERENCE_REL`). | `validation/scipy/ar1_binomial_mle.py` |
+| `TOL_SCIPY_MULTIGRADE_LL_REL` | 1e-12 | 1.5e-13 (65 rows) | M6: the K-grade period log-likelihood on `tests/golden/multigrade/likelihood.csv` plus the binomial coefficients, scipy vs the goldens the engine is tested against, relative to max(1, \|l\|) | `binom.logpmf` products and `quad` on the e⁻⁵⁰ window around the mode found by Brent's method. Held at ref's 1e-12, as the AR(1) script. | `validation/scipy/multigrade_mle.py` |
 | `TOL_SCIPY_AR1_JOINT_REL` | 1e-10 | 1.8e-14 (48 rows, T ≤ 3, every n) | M6: the same rows in the joint formulation: adaptive 3-D cubature (`scipy.integrate.cubature`) of the explicit multivariate normal density with Toeplitz covariance φ^\|i−j\| | Shares no transition density with the engine, so an error derived the same way in the engine and the Markov checks (the 1 − φ² variance, the prior-ratio term) would show here (owner). Looser by the owner's choice, above the cubature's requested 1e-11. | same |
 | `TOL_SCIPY_HAC_SE_REL` | 2e-9 | 5.7e-10 (iid SEs from scipy's H), 2.5e-10 (HAC SEs); 4 computed fits × 3 lags, 2 near-bound fits not computed | S-48 (D-209): the HAC sandwich SE in logit units, scipy vs the engine (`tests/golden/hac/validation.csv`, the six M1.7 panels), relative; absolute for the correlations | scipy's per-period scores are posterior means of d log binom.pmf / du by `quad` (relative 1e-12, absolute 1e-12 of the score's scale, since they integrate to about 0), not the engine's moment accumulators; its H is central differences of them (step 1e-5). Observed, doubled, rounded up. | `validation/scipy/hac_se.py` |
 | `TOL_SCIPY_PT_LOGIT` | 2e-10 | 4.0e-11 (independent), 6.3e-11 (one factor); 192 rows | S-6 (D-215): the Pluto–Tasche bounds on `tests/golden/pluto_tasche/bounds.csv`, scipy vs the engine, logit p. scipy: `beta.ppf` for the independent bound; a trapezoid PMF over z in log space, the truncated convolution and brentq at 1e-13 for the one-factor bound | Within the engine's bisection half-width; held at twice the solve's width, as the goldens. | `validation/scipy/pluto_tasche.py` |
