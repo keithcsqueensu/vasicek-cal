@@ -108,3 +108,6 @@ work weighted as the full run weights its phases.
 - **Left:** the row lookups could go too (the panel's distinct observations resolved to cache entries once, and the
   bootstrap's panels looked up by (n, d) in a flat table), and the visited tiles could be summed in lanes through the
   rows. Neither is proposed until the laptop's full-run phase split shows what they are worth.
+- **The laptop's full run (D-414):** P-24 to P-27 together about 16% of the run, normalised for machine state;
+  after them the surface phase is 2% of the run, so the row-lookup follow-up is worth at most 2%, under the 3% stop
+  rule ([p24_p27_full_run.md](p24_p27_full_run.md)).

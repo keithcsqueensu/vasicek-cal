@@ -1,6 +1,6 @@
 # State
 
-Last updated: 2026-11-10
+Last updated: 2026-11-11
 
 The current position only. Decisions and their rationale are in [DECISIONS.md](DECISIONS.md); the
 detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/history.md).
@@ -88,24 +88,27 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   limits are treated as bug fixes). B and C corrected the docs where they disagreed with the code and took
   every study script's flag bits from `tests/engine_flags.json`.
 
+- **P-24 to P-27 measured on the owner's laptop's full S-10/S-4 run (D-414).** About 16% of the run,
+  normalised for machine state (20.5% raw; the cloud's estimate was 19–21%), with the rows byte-identical.
+  The baseline and `main` were run one after the other. The split after them: W* 40%, simulate 34%,
+  argmax + refine + SE 18%, the surface phase 2% (`perf/p24_p27_full_run.md`).
+
 ## Next
 
-1. **Measure the performance pass on the owner's laptop,** on the next full S-10/S-4 run: P-24 to P-27
-   (D-407–D-410) are measured only on the cloud machine (GCC), about 19–21% of a run together. The
-   run's phase split decides what comes next.
-2. **The performance pass, in the owner's order** (D-199; the scouting note D-500): P-6, P-7, P-19, P-21
+1. **The performance pass, in the owner's order** (D-199; the scouting note D-500): P-6, P-7, P-19, P-21
    and P-24 to P-27 done; P-13, P-22 and P-23 rejected. Left, each a decision of its own: P-20 (the
-   scouting note's C3 tier B), the M6 line search (C4), cached-row lookups resolved once per panel (after
-   P-27), and the in-house `log`/`exp`.
-3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
+   scouting note's C3 tier B; its target, W*, is now 40% of S-10, D-414), the M6 line search (C4),
+   cached-row lookups resolved once per panel (after P-27; its target, the surface phase, is now 2%, under
+   P-27's 3% stop rule), and the in-house `log`/`exp`. Simulate (34%) has no open item.
+2. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
    (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
    S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
-4. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
+3. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
    selection rule fixed in advance. Not started.
-5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
+4. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward
    from M7; D-177). Not started.
-6. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
-7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
+5. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
+6. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
    factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
    R-1. Then M4 (D-168).
 

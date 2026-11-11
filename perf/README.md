@@ -40,6 +40,9 @@ Contents: [P-items](#p-items) · [Rules for every P-item](#rules-for-every-p-ite
 | P-26 | No zero fill before the cached surface copy | done: the surface phase −34% to −45%; together with P-24 and P-25, S-10 per-replicate work −12% to −17% | D-500, D-409 | no | [p24_p26_bitwise.md](p24_p26_bitwise.md) |
 | P-27 | Bootstrap fits on cached rows in place; calibrate's argmax bounded by cached tile maxima | done: S-10 per-replicate work −17% (T = 100, n = 100), −5% (n = 10,000); about 7% of the run | D-500, D-410 | no | [p27_row_view.md](p27_row_view.md) |
 
+- **P-24 to P-27 on the laptop's full run (D-414):** about 16% of the S-10/S-4 run, normalised for machine state
+  (20.5% raw), rows byte-identical; W* is now 40% of the run, simulate 34%, the fit phase 18%, the surface phase 2%
+  ([p24_p27_full_run.md](p24_p27_full_run.md)).
 - **The SIMD sweep (D-213):** P-21 done (D-400); P-22 and P-23 rejected (D-402, D-405).
 - **Order of the open items (D-199):** P-7 and P-6 done (D-212, D-404); P-13 rejected (D-403, measured on GCC
   and MSVC); P-19 with the next golden refresh; P-20 later, with its own flip check.
@@ -137,6 +140,10 @@ range 32.9–37.0 h; D-199). The run took 125,767 s (34.94 h) in three checkpoin
 after D-193, one about 3.5 h and one about 35 h long. During the first segment the machine also ran single-threaded
 work: the scorer's editing, its seconds-long self-test, and one CI-config check.
 
+**Fifth run, P-24 to P-27's full S-10/S-4 run (D-414): not a test.** Projected 1.62 h (1.59-1.65 h; 1.51-1.73 h
+with the allowance), actual 1.70 h; the last third of the run shared the machine with other work, so it neither
+validates nor counts against the method. Efficiency 0.994, against the default 0.997.
+
 ## Benchmarks
 
 | P-item | Benchmark | What it reports |
@@ -150,6 +157,7 @@ work: the scorer's editing, its seconds-long self-test, and one CI-config check.
 | P-18 | `perf/p18_ar1_transition.md`: one evaluation plus one score per (T, n) cell, the libm filter against each transition kernel; the transition kernel's ns per term; `study_lrpd_serial_m6` projected before and after | ms per evaluation plus score by kernel; the S-35 M6 arm's projection; identity: `unit_ar1_transition`, `unit_ar1_kernel_*`, `unit_ar1_filter_kernel_*` |
 | P-17 | `p17_simd_philox` (`perf/p17_simd_philox.cpp`; CTest `p17_simd_philox_identity` runs it briefly); `study_parametric_bootstrap` before and after, in ABBA order (`perf/p17_simd_philox.md`) | ms per panel by Bernoulli kernel (scalar, SSE2, AVX2) on the recovery grid's (T, n) cells, every panel checked against `simulate_panel`; the S-10 tool's simulate phase and rows |
 | P-21 to P-23 | `simd_scout` (`perf/simd_scout.cpp`; built, run by hand; `perf/p21_p23_simd_sweep.md`) | per period, single-threaded: `log_contrib`, `log_contrib_derivs` and the hint alone in µs; integrand evaluations split into the rule's nodes and the composite rule's extent search; per-call ns of `log_phi_pair`, the inverse-Mills pair, `erfcx` and the composite node transform |
+| P-24 to P-27, full run | `perf/full_run_split.py A_timing.csv B_timing.csv [--log B_stderr --cut S]` on two full runs' `--timing-out` files (`perf/p24_p27_full_run.md`) | each phase's thread-seconds, share and change, raw and normalised by the unchanged phases' ratio within each (T, n) cell |
 
 New benchmarks for P-6 onward go in this directory. P-9 started with a measurement, not a build: the
 repeat rate of identical panels and the saving it projects (`p9_repeat_rate`, `perf/p9_repeat_rate.md`,

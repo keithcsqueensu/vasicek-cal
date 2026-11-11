@@ -1972,6 +1972,31 @@ before the build). Cloud D-400 block, continued.
     `TOL_SCIPY_MULTIGRADE_FIT_LOGIT` (1e-4) and `TOL_SCIPY_MULTIGRADE_FIT_LL_ABS` (1e-8).
   - **Results change: no.** New code and files only; no existing value, golden or study row moves.
 
+## P-24 to P-27 on the laptop's full run, 2026-11-11
+
+- **D-414 — P-24 to P-27 save about 16% of the full S-10/S-4 run on the owner's laptop, with its rows
+  byte-identical; after them W\* is 40% of the run and the surface phase 2%** (`perf/p24_p27_full_run.md`).
+  - **The runs:** all 81 scenarios × 1,000 replicates, the baseline (`f54db25`, before #82) and then `main`
+    (`34e55bb`), one after the other, on one machine (MSVC 19.51, 24 threads), as D-406 did for P-19.
+  - **Raw:** wall 7,701 → 6,129 s (−20.4%), CPU 183,930 → 146,173 s (−20.5%).
+  - **Normalised for machine state:** −16.3% over the full run, −16.6% over the 48 scenarios `main`'s run
+    finished before the machine was in use for other work. The phases P-24 to P-27 do not touch also ran
+    faster in the second run, by 1-18% by cell, so the second run's cost in each (T, n) cell is divided by its
+    ratio on those control phases (`perf/full_run_split.py`). The cloud estimate was 19-21%.
+    - **By phase:** surface −66% to −74%, argmax + refine + SE −44% to −46%, W* −4% to −7% (P-25 expected −7% to −8%).
+  - **Rows:** byte-identical between the two runs, and the baseline's to the P-19 full run's of 2026-10-14.
+  - **Rule from this run, for full-run before/after measurements:** report the change normalised by the control
+    phases beside the raw one. The baseline alone ran 15-21% slower in every phase than the identical binary's
+    run a month earlier, and the two runs of one morning differed by up to 18% in a cell's control phases. That
+    is the size of the effect being measured.
+  - **The projection: not a test of D-187.** 1.62 h projected (1.59-1.65 h; 1.51-1.73 h with the allowance),
+    1.70 h actual. The last third of the run shared the machine with other work.
+  - **What it says next** (the performance pass, STATE's Next): P-20's target, W*, is now 40% of the run. The
+    P-27 follow-up (row lookups resolved once per panel) targets the surface phase, now 2%, under the 3% stop rule, so it is
+    not worth building as it stands. Simulate is 34% and on no candidate list. Which item goes next is the
+    owner's decision (D-199).
+  - **Results change: no.** A measurement; one new script under `perf/`.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).

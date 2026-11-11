@@ -119,7 +119,8 @@ Cloud Xeon, 2 vCPU (AVX2), GCC 13, Release; `study_parametric_bootstrap --replic
 - **Against the stop rules:** none triggered (P-24's 4% of per-replicate work, P-25's 3% of W*, P-26's 15% of the
   surface phase).
 - **Run level:** on the scouting note's shares after P-19, about 12-14% of the S-10/S-4 run. The owner's laptop
-  measures it on the next full run.
+  measures it on the next full run. **Measured (D-414):** P-24 to P-27 together save about 16% of the laptop's
+  full run, normalised for machine state ([p24_p27_full_run.md](p24_p27_full_run.md)).
 - **Still left in the surface phase:** after P-26 it is about 10% of per-replicate work at (100, 100) and 4% at
   (100, 10,000). The rest of the scouting note's C2 (a row view in place of the copy, and calibrate's argmax bounded
   by cached tile maxima) would act on that and on the K × T reduction in the fit phase. It is not proposed until
