@@ -116,49 +116,62 @@ timed, and the per-node erfcx sharing of P-21 is not used by the K-grade derivat
 
 ## 3. The estimate
 
-Parameters θ = (u_1, …, u_K, v), with u_k = logit(PD_k) and v the ρ axis's scaled coordinate.
+Built in PR 2 (D-413) as `benchmark_models/multigrade/fit.hpp`, `multigrade::fit`. Parameters θ = (u_1, …, u_K, v),
+with u_k = logit(PD_k) and v = logit(ρ).
 
-- **Boxes.** Each PD_k in [1e-5, 0.5], ρ in [1e-3, ρ_hi] with ρ_hi = `kDefaultRhoUpper` (0.5), logit
-  axes. The PD box is wider than the single-grade grid's [1e-4, 0.2], because a 17-grade master scale
-  starts at 0.03% (D-151's scenario matrix), and above the floor of `VCAL_GRID_MIN_PROBABILITY` (D-218).
-  Configurable per grade.
-- **Outer: ρ on a grid (D-151).** 41 points on the logit ρ axis, as the recovery grid's ρ axis. At each
-  ρ_j the inner solve gives the profile ℓ_p(ρ_j) = max over the PDs of ℓ.
-- **Inner: the K PDs at fixed ρ.** Safeguarded Newton in (u_1, …, u_K) with the analytic K × K Hessian.
-  The grades share z, so the Hessian is dense, not diagonal: the cross terms are the covariance, under
-  each period's posterior for z, of the grades' scores. K ≤ 17 makes a dense Cholesky trivial.
-  Backtracking line search; the box handled by an active set (a grade pinned at its bound leaves the
-  free set while its gradient points outwards).
-  - Start at the first ρ: each grade's pooled rate, (Σ_t d_kt + ½)/(Σ_t n_kt + 1), clamped into the box.
-  - Later ρ: warm-started from the previous ρ's solution.
-- **Refinement of ρ.** The grid argmax of ℓ_p, then a quadratic vertex through it and its neighbours,
-  then Newton on ℓ_p. By the envelope theorem dℓ_p/dρ is ∂ℓ/∂ρ at the inner optimum; d²ℓ_p/dρ² is the
-  Schur complement of the full Hessian, H_vv − H_vu H_uu⁻¹ H_uv. Then one final joint Newton step in all
-  K + 1 coordinates from that point, accepted only if it raises ℓ.
-- **Derivatives.** Analytic first and second derivatives of l_t in all K + 1 coordinates, from the
-  same nodes as the value, extending D-170's `log_contrib_derivs` to the product integrand: each grade's
-  derivative of log p_k and log(1 − p_k) at each node, combined under the node weights. K = 1 must
-  reproduce `log_contrib_derivs` bit for bit.
+- **Boxes.** Each PD_k in [1e-5, 0.5], ρ in [1e-3, ρ_hi] with ρ_hi = `kDefaultRhoUpper` (0.5), logit axes
+  (`multigrade::Box`). The PD box is wider than the single-grade grid's [1e-4, 0.2], because a 17-grade master
+  scale starts at 0.03% (D-151's scenario matrix), and above the floor of `VCAL_GRID_MIN_PROBABILITY` (D-218).
+  One PD box for every grade: the plan's per-grade boxes are not built, since nothing yet needs them (D-413).
+- **Outer: ρ on a grid (D-151).** 41 points uniform in v, endpoints exactly the box's. At each v_j the inner solve
+  gives the profile ℓ_p(v_j) = max over the PDs of ℓ, and dℓ_p/dv, the v-component of the score at the inner
+  maximum (the envelope theorem).
+- **Inner: the K PDs at fixed v.** Safeguarded Newton in (u_1, …, u_K) with the analytic Hessian, which is
+  dense: the grades share z, so the cross terms are the covariance, under each period's posterior for z, of the
+  grades' scores. The step solves (−H + λI) s = g with λ raised from 0 until Cholesky succeeds; then a
+  backtracking line search on ℓ, projected onto the box. A grade on a bound whose gradient, or whose step, points
+  out of the box is held there (an active set). The solve stops when no coordinate moves by 10⁻¹⁰.
+  - Start at the first grid point (ρ = 10⁻³): each grade's pooled rate, (Σ_t d_kt + ½)/(Σ_t n_kt + 1), clamped
+    into the box.
+  - Later grid points: warm-started from the previous one's solution.
+- **Refinement of ρ.** From the grid argmax, safeguarded Newton on ℓ_p(v) inside the bracket of its two
+  neighbours: dℓ_p/dv from the envelope theorem, d²ℓ_p/dv² the Schur complement H_vv − H_vu H_uu⁻¹ H_uv on the free
+  grades, and a bisection step on the sign of dℓ_p/dv whenever Newton's step leaves the bracket or the curvature
+  is not negative; to 10⁻¹⁰ in v. At a box end whose dℓ_p/dv points out of the box, ρ is that end. Then one joint
+  Newton step in every free coordinate, kept only if it raises ℓ. (The plan's quadratic vertex before Newton is
+  not used: Newton from the grid point, safeguarded by the bracket, converges in a few steps without it.)
+- **Derivatives.** PR 1's analytic score and Hessian of l_t in θ (`multigrade_log_contrib_derivs`), summed over
+  the periods and chained to (u, v): H_u,ij = J_i J_j H_θ,ij + δ_ij g_θ,i J_i (1 − 2θ_i), with J_i = θ_i(1 − θ_i).
+- **Cost, measured.** A fit is 470 to 610 panel evaluations (value only, or value with score and Hessian), with
+  about 40% of them taking derivatives. On one core of the cloud machine, a 2-grade fit at T = 20 takes about 0.1 s.
+  A 17-grade fit at T = 100 takes 7.5 s, nearly all of it in the derivative evaluations: each node folds
+  (K + 1) + (K + 1)(K + 2)/2 = 189 moments.
 
 ## 4. Standard errors, intervals and flags
 
-- **SEs:** the observed information, the full (K + 1) × (K + 1) analytic Hessian at the estimate,
-  inverted in scaled coordinates, then the delta method to the natural scale (as P-15, D-185). Where it
-  is not negative definite, the SEs are NaN and the fit is flagged, as calibrate does.
+- **SEs:** the observed information, −H from the analytic Hessian at the estimate, on the free coordinates (the
+  grades off their bounds, and v unless ρ is on a bound), inverted by Cholesky in (u, v), then the delta method to
+  the natural scale (as P-15, D-185). A coordinate on a bound has SE NaN. If −H is not positive definite, every
+  SE is NaN and the fit is flagged `kFlagFlatSurface`.
 - **Intervals:**
-  - **ρ: the profile-likelihood interval,** read off ℓ_p directly. The ends are solved off-grid by
-    Newton on ℓ_p − (ℓ̂ − χ²₁,₀.₉₅/2) and truncated at the box with a flag, as `profile_intervals` does
-    (D-128–D-130).
-  - **Each PD_k: the logit-scale Wald interval** in PR 2. Per-grade profile intervals need a
-    (K)-dimensional solve per point and per end; they are listed as their own later item (§8), decided
-    on PR 2's measured cost.
-- **Flags, per grade and for the fit:**
-  - **edge**, per grade: PD_k at its box bound. The expected case is a grade with no defaults over the
-    whole panel, whose MLE is 0. Its PD is the box's lower end, its SE NaN, and the flag says so;
-    nothing is clamped silently (owner's choice, 2026-11-10). ρ is still estimated from all grades.
-  - **ρ at the box edge**, **flat profile**, **quadrature check** (each period re-integrated by the
-    doubled rule at the estimate, as calibrate's check, D-178), **not negative definite**, and **inner
-    solve not converged** at any ρ.
+  - **ρ: the profile-likelihood interval** at `kProfileThreshold95`. Each end is bracketed by the grid's own
+    profile values and solved by safeguarded Newton on ℓ_p − (ℓ̂ − χ²₁,₀.₉₅/2), to `kProfileRootTol` in v. If the
+    profile stays above the threshold out to a box end, that end is the bound, flagged truncated (D-128–D-130).
+  - **Each PD_k: the logit-scale Wald interval,** u_k ± 1.96 SE_u. NaN for a grade on a bound. Per-grade profile
+    intervals stay a later item (§8). Each end needs a K-dimensional solve (the other PDs and ρ) at every Newton
+    step on it. A 17-grade fit at T = 100 already takes 7.5 s, and 34 ends of such solves would cost several
+    times that fit, so they wait until a study needs them.
+- **Flags.** Fit-level, in `Fit::flags`:
+  - `kFlagGradeEdge`: some grade's PD is on a box bound. Per grade, `kGradeAtLower`, `kGradeAtUpper` and
+    `kGradeEmpty` (n = 0 in every period: not estimated, PD NaN) are in `Fit::grade_flags`. The expected edge
+    case is a grade with no defaults over the whole panel, whose MLE is 0. Its PD is reported as the box's lower
+    end exactly, its SE and interval NaN; nothing is clamped silently (owner's choice, 2026-11-10). ρ is still
+    estimated from every grade.
+  - engine `kFlagGridEdge`: ρ on a box end. `kFlagFlatSurface`: −H not negative definite.
+    `kFlagQuadratureUnconverged`: the doubled rule at the estimate differs by more than
+    max(`kQuadratureCheckFlagAbs` · T, 256 ε Σ_t |l_t|), as calibrate's check (D-120, D-178).
+  - `kFlagNotConverged`: an inner solve or the refinement hit its iteration limit. `kFlagNumeric`: a profile
+    value is not finite.
 
 ## 5. The independent reference and the replication
 
@@ -181,8 +194,14 @@ Parameters θ = (u_1, …, u_K, v), with u_k = logit(PD_k) and v the ρ axis's s
 - **`validation/scipy/multigrade_mle.py`:** the likelihood half. With `binom.logpmf` products and
   `scipy.integrate.quad` on the e⁻⁵⁰ window around the mode found by Brent's method, it reproduces every
   golden row plus its binomial coefficients to 1.5e-13 relative (`TOL_SCIPY_MULTIGRADE_LL_REL`, 1e-12). The
-  estimate half, by `scipy.optimize.minimize` (L-BFGS-B in the logit coordinates, from the same start) on
-  two small committed panels, arrives with the estimator in PR 2.
+  estimate half (PR 2): on the two panels of `tests/golden/multigrade/estimates.csv` (written by
+  `tests/studies/multigrade_goldens.cpp`, K = 2, T = 12 and K = 3, T = 10), `scipy.optimize.minimize`
+  (L-BFGS-B in the logit coordinates inside the same box, from each grade's pooled rate and ρ = 0.1, with
+  central-difference gradients of the `quad` likelihood) reaches the engine's estimate to 6.1e-10 in every
+  logit coordinate (`TOL_SCIPY_MULTIGRADE_FIT_LOGIT`, 1e-4). It never beats the engine's log-likelihood
+  (`TOL_SCIPY_MULTIGRADE_FIT_LL_ABS`, 1e-8), and its log-likelihood at the engine's estimate matches the
+  committed value to 1.3e-13. `unit_multigrade_fit` refits the same panels on every platform against the
+  committed estimates (`TOL_MULTIGRADE_FIT_REGRESSION_LOGIT`, 1e-7).
 
 ## 6. The data-generating process (PR 3)
 

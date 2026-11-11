@@ -384,11 +384,16 @@ std::vector<Scale> recovery_scales() {
             s17};
 }
 
-// R, 100 unless VCAL_MG_RECOVERY_R sets it; VCAL_MG_RECOVERY_SCALE (0, 1 or 2) runs one scale only, so the matrix
+// R, 100 unless VCAL_MG_RECOVERY_R sets it; VCAL_MG_RECOVERY_SCALE (0, 1 or 2) and VCAL_MG_RECOVERY_RHO (0, 1 or 2)
+// run one scale or one rho only, so the matrix
 // can be split across processes. About 70 CPU-minutes at R = 100, nine tenths of it the 17-grade cells.
 int recovery_replicates() {
     const std::string e = vcal::test::env_or_empty("VCAL_MG_RECOVERY_R");
     return !e.empty() && std::atoi(e.c_str()) > 0 ? std::atoi(e.c_str()) : 100;
+}
+int recovery_rho_only() {  // VCAL_MG_RECOVERY_RHO (0, 1 or 2): one rho only
+    const std::string e = vcal::test::env_or_empty("VCAL_MG_RECOVERY_RHO");
+    return e.empty() ? -1 : std::atoi(e.c_str());
 }
 int recovery_scale_only() {
     const std::string e = vcal::test::env_or_empty("VCAL_MG_RECOVERY_SCALE");
@@ -411,8 +416,11 @@ VCAL_TEST(multigrade_fit_recovers_parameters) {
         std::uint32_t scenario = 100 + 6 * static_cast<std::uint32_t>(si);
         if (recovery_scale_only() >= 0 && recovery_scale_only() != si) continue;
         for (const std::int64_t T : {std::int64_t{20}, std::int64_t{100}}) {
+            int ri = -1;
             for (const double rho : {0.24, 0.12, 0.02}) {
                 const std::uint32_t sc = scenario++;
+                ++ri;
+                if (recovery_rho_only() >= 0 && recovery_rho_only() != ri) continue;
                 int covered = 0, flat = 0, bad = 0, edge = 0, wald_n = 0, wald_covered = 0;
                 double sum = 0.0, sum2 = 0.0;
                 std::int64_t evals = 0;
