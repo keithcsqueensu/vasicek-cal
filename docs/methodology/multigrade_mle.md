@@ -227,17 +227,42 @@ Every item ships with synthetic recovery tests and golden values (CLAUDE.md).
   - the derivatives against central differences (§2), and at K = 1 against `log_contrib_derivs` bit for
     bit;
   - the scipy replication of the likelihood (1.5e-13).
-- **PR 2, the estimator:**
-  - at K = 1, the estimate against `calibrate`'s within solver tolerance (different searches: a 2-D grid
-    against a ρ grid with an inner Newton), and the ρ profile interval against `profile_intervals`';
-  - pooling: two grades generated with one PD fitted as two give PD₁ ≈ PD₂ and the pooled single-grade
-    ρ̂, within solver tolerance;
-  - a zero-default grade lands on the box edge with the flag, and ρ̂ is unchanged when it is removed
-    beyond what its counts carry (stated tolerance);
-  - recovery on synthetic panels (until PR 3, from `simulate_panel` per grade on a shared Z_t drawn in
-    the test): K ∈ {2, 5, 17}, T ∈ {20, 100}, the three ρ of the scenario matrix; bias and Wald and
-    profile coverage reported against tolerances stated before the run;
-  - the scipy replication of the estimate on the two committed panels.
+- **PR 2, the estimator (done; `unit_multigrade_fit`, seven tests and the slow recovery test, and the scipy
+  estimate half).** Tolerances were stated before the tests ran (D-413):
+  - **At K = 1, against `calibrate` polished by `profile_intervals`:** four panels. The estimate is within
+    6.1e-10 in logit units (tolerance 1e-5), the log-likelihood within 1.1e-13 (1e-9), and the ρ interval's
+    ends within 9.7e-11 (1e-6). The SEs match the engine's analytic SE at the same point to rounding (1e-8).
+    The stated comparison against calibrate's own SE was the wrong comparand: that SE is central differences
+    of the surface (D-119). It differs by 0.1% to 2.1% and is reported only.
+  - **Pooling, as an exact identity:** a duplicated grade gives PD₁ = PD₂ (a split of 0) and the K = 1 fit on
+    the doubled counts, to 4.5e-10 in logit units. The log-likelihoods agree to 9.1e-13 after the binomial
+    coefficients. This replaces the plan's grades generated with one PD, which agree only to sampling error.
+  - **A zero-default grade** (n = 100 or 2,000, beside two interior grades) has its PD exactly at the box's
+    lower end, flagged, with SE and interval NaN. ρ moves by 0.005 and 0.17 SE from the fit without it
+    (tolerance 0.25).
+  - **An empty grade** inserted anywhere changes nothing, bit for bit; the fit is deterministic.
+  - **The estimate is a maximum of ref's independent likelihood:** every 10⁻³ step lowers it, and ref and core
+    agree at the estimate to 6e-13.
+  - **The two committed panels** refit exactly on this machine (`TOL_MULTIGRADE_FIT_REGRESSION_LOGIT`, 1e-7).
+  - **Recovery,** R = 100 per cell, on panels drawn in the test from `dgp::factor_draw` and
+    `dgp::count_defaults` until PR 3. Three scales: 2 grades; 5 grades; and D-151's 17-grade master scale with
+    10,000 obligors. Each at T ∈ {20, 100} and ρ ∈ {0.24, 0.12, 0.02}. All 18 cells pass:
+
+    | Scale | T | ρ profile coverage | PD Wald coverage | Bias of logit ρ̂ (sd) |
+    |---|---|---|---|---|
+    | 2 grades | 20 | 0.94–0.95 | 0.915–0.95 | −0.06 to −0.21 (0.34–0.46) |
+    | 2 grades | 100 | 0.93–0.95 | 0.92–0.96 | −0.02 to −0.03 (0.17–0.18) |
+    | 5 grades | 20 | 0.90–0.98 | 0.91–0.946 | −0.07 to −0.12 (0.33–0.38) |
+    | 5 grades | 100 | 0.97 | 0.93–0.958 | −0.02 to −0.03 (0.12–0.14) |
+    | 17 grades | 20 | 0.89–0.92 | 0.919–0.948 | −0.10 to −0.19 (0.33–0.38) |
+    | 17 grades | 100 | 0.95–0.97 | 0.953–0.977 | −0.00 to −0.01 (0.14–0.15) |
+
+    The band's lower end is 0.878. No fit is flagged, none has ρ on the box, and none hit an iteration limit.
+    At T = 20 the profile interval undercovers slightly, most on the 17-grade scale (0.89 at ρ = 0.24), as the
+    single-grade fit does (0.937, `bartlett_profile.md`). ρ̂ is biased low by 0.06 to 0.21 in logit units at
+    T = 20, and by at most 0.03 at T = 100. The run takes about 70 CPU-minutes, so it
+    is labelled slow; `VCAL_MG_RECOVERY_R`, `_SCALE` and `_RHO` size and split it.
+  - **The scipy replication of the estimate:** 6.1e-10 (§5).
 - **PR 3, the DGP layer:** the counter layout's known-answer tests, the Python mirror's bitwise match and
   the reference-panel hash; then recovery on the grade scenario matrix's subset in CI.
 
@@ -245,7 +270,8 @@ Every item ships with synthetic recovery tests and golden values (CLAUDE.md).
 
 1. **PR 1, the likelihood** (§1, §2, §5's ref, goldens and the likelihood half of the scipy script): done
    (D-412).
-2. **PR 2, the estimator** (§3, §4, the estimator half of the scipy script, recovery on simple panels).
+2. **PR 2, the estimator** (§3, §4, the estimator half of the scipy script, recovery on simple panels): done
+   (D-413).
 3. **PR 3, the DGP layer and the grade scenario matrix** (§6), with recovery on its subset.
 4. **Later, each its own decision:** per-grade profile intervals (§4); a C ABI entry point
    (`vcal_calibrate_multigrade`), after the recovery study has run (owner's choice, 2026-11-10); the
@@ -259,10 +285,14 @@ the two is its own item).
 
 ## 9. Open points for the owner
 
-None blocks PR 1. Recorded so they are decided before the PR that needs them:
+PR 2 took the defaults proposed here, as no other answer had been given (D-413):
 
-- **The PD box** [1e-5, 0.5] (§3): chosen for the 17-grade scale's 0.03% top grade. PR 2.
-- **Wald intervals for the PDs in PR 2,** with profile intervals later (§4). PR 2.
+- **The PD box** [1e-5, 0.5] (§3), chosen for the 17-grade scale's 0.03% top grade: taken, one box for every
+  grade.
+- **Wald intervals for the PDs,** with profile intervals later (§4): taken.
 - **Parity or native.** The model is textbook and scipy-replicable, so it fits the `parity` profile's
-  definition (D-035); but parity's whitelist today holds only the single-grade estimators. Proposed:
-  `native` until the recovery study has run, then reconsidered with the ABI entry point.
+  definition (D-035); but parity's whitelist today holds only the single-grade estimators. `native` until the
+  recovery study has run, then reconsidered with the ABI entry point: taken. The estimator has no ABI entry
+  point, so nothing in the profiles changes yet.
+
+Each can still be changed by the owner before PR 3.
