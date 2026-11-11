@@ -1921,6 +1921,57 @@ before the build). Cloud D-400 block, continued.
     ref's single-grade integral moved into a helper with the same operations (its tests and the
     cross-reference pass unchanged).
 
+- **D-413 — The multi-grade shared-ρ estimator is built as D-411 planned it, with the plan's open points at their
+  proposed defaults; recovery passes in all 18 cells.**
+  - **What:** `benchmark_models/multigrade/fit.hpp`, `multigrade::fit`. It runs:
+    - a 41-point logit-ρ grid;
+    - at each grid point, the K PDs by safeguarded Newton with the dense analytic Hessian and an active set
+      at the box;
+    - Newton on the ρ profile, with the envelope gradient and the Schur-complement curvature, safeguarded by
+      a bracket;
+    - one joint step, kept only if it raises ℓ;
+    - SEs from −H on the free coordinates;
+    - the ρ profile interval, and logit-Wald PD intervals;
+    - the doubled-rule check, and per-grade and fit flags.
+
+    Also in the PR: `unit_multigrade_fit` (seven tests, plus a slow recovery test); the two committed panels
+    in `tests/golden/multigrade/estimates.csv` with their writer, `tests/studies/multigrade_goldens.cpp`; and
+    the estimate half of `validation/scipy/multigrade_mle.py`.
+  - **The owner's open points (note §9), unanswered, taken at the proposed defaults:**
+    - the PD box [1e-5, 0.5], one for every grade;
+    - Wald intervals for the PDs;
+    - `native`, with no ABI entry point.
+
+    Each can be changed before PR 3.
+  - **Expectations stated before the tests ran, and what was measured:**
+    - **K = 1 against calibrate and `profile_intervals`:** 6.1e-10 in logit units against 1e-5; the
+      log-likelihood 1.1e-13 against 1e-9; the interval ends 9.7e-11 against 1e-6.
+    - **Pooling of a duplicated grade:** 4.5e-10 against 1e-6.
+    - **A zero-default grade:** it is on the edge, flagged; ρ moves at most 0.17 SE against 0.25.
+    - **An empty grade:** bit for bit, as stated.
+    - **ref's likelihood:** maximal at the estimate, as stated.
+    - **scipy:** 6.1e-10 against 1e-4, and never above the engine.
+    - **Recovery:** all 18 cells pass the stated band (lower end 0.878 at R = 100). ρ's profile coverage is
+      0.89–0.98 and the PDs' Wald coverage 0.91–0.977. No fit has a non-converged solve or a non-finite value,
+      and none is flat.
+  - **One stated expectation had the wrong comparand, corrected, not loosened.** The K = 1 SEs were to be within
+    1e-3 of calibrate's SEs; those are central differences (D-119) and differ by 0.1–2.1%. The test now compares
+    against the engine's analytic SE at the same point, the same computation in another code path (1e-8), and
+    measures rounding. Calibrate's differenced SE is reported only.
+  - **Departures from the plan, recorded in the note:**
+    - pooling is tested as an exact identity (a duplicated grade), not on grades generated with one PD;
+    - one PD box for every grade, not per-grade boxes;
+    - Newton on the profile from the grid argmax, without the quadratic vertex first.
+  - **Findings:**
+    - **T = 20 coverage.** The profile interval undercovers slightly at T = 20, most on the 17-grade scale
+      (0.89 at ρ = 0.24), as the single-grade fit does; ρ̂ is biased low there by 0.06–0.21 in logit units.
+    - **Cost.** A 17-grade fit at T = 100 takes 7.5 s on one core, almost all of it in the derivative
+      evaluations (189 moments a node). The full recovery run is about 70 CPU-minutes, so it is labelled slow.
+      This cost bears on the per-grade profile intervals, which stay a later item.
+  - **Tolerances:** three new, stated before their runs: `TOL_MULTIGRADE_FIT_REGRESSION_LOGIT` (1e-7),
+    `TOL_SCIPY_MULTIGRADE_FIT_LOGIT` (1e-4) and `TOL_SCIPY_MULTIGRADE_FIT_LL_ABS` (1e-8).
+  - **Results change: no.** New code and files only; no existing value, golden or study row moves.
+
 ## Open
 
 - **R-1 (revisit at M6) — GPU-side DGP.** Only matters for large parametric bootstraps (AR(1), D-043).
