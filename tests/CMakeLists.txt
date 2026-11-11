@@ -232,10 +232,14 @@ add_test(NAME unit_multigrade_fit
          COMMAND unit_multigrade_fit multigrade_fit_at_one_grade_is_calibrate multigrade_fit_pools_a_duplicated_grade
                  multigrade_fit_puts_a_zero_default_grade_on_the_edge
                  multigrade_fit_ignores_an_empty_grade_and_is_deterministic multigrade_fit_is_a_maximum_of_the_reference
-                 multigrade_fit_matches_the_committed_estimates multigrade_fit_refuses_invalid_input)
+                 multigrade_fit_matches_the_committed_estimates multigrade_fit_refuses_invalid_input
+                 grade_matrix_counts_are_the_studies_index_counts grade_matrix_replicate_zero_fits)
 # Slow (about 70 CPU-minutes at R = 100): recovery over 3 grade scales x 2 T x 3 rho (D-413).
 add_test(NAME unit_multigrade_fit_recovery COMMAND unit_multigrade_fit multigrade_fit_recovers_parameters)
 set_tests_properties(unit_multigrade_fit_recovery PROPERTIES LABELS slow)
+# Slow (about 70 CPU-minutes at R = 100): recovery on the grade scenario matrix's nine scenarios (D-414).
+add_test(NAME unit_multigrade_fit_grade_matrix COMMAND unit_multigrade_fit multigrade_fit_recovers_on_the_grade_matrix)
+set_tests_properties(unit_multigrade_fit_grade_matrix PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 # The Bernoulli kernel forced at start-up through VCAL_DGP_KERNEL (P-17, D-194), and once with an invalid value:
 # the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their

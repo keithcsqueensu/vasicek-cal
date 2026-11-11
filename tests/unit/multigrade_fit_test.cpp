@@ -30,6 +30,7 @@
 #include "engine/profile.hpp"
 #include "ref/ref.hpp"
 #include "tests/harness/golden.hpp"
+#include "tests/recovery/grade_matrix.hpp"
 #include "tests/harness/vcal_test.hpp"
 #include "tests/tolerances.hpp"
 
@@ -402,6 +403,75 @@ int recovery_scale_only() {
 
 }  // namespace
 
+namespace {
+
+// One recovery cell (D-413's assertions): R panels from make(r), fitted, and rho's profile coverage, the bias
+// of v, the pooled PD Wald coverage (grades with n PD T >= 20) and the flags checked and reported.
+template <class Make>
+void recovery_cell(const std::string& cell, const std::vector<double>& pd, const std::vector<std::int64_t>& n,
+                   double rho, std::int64_t T, int R, Make make) {
+    const double band = 0.95 - vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * std::sqrt(0.95 * 0.05 / R);
+    int covered = 0, flat = 0, bad = 0, edge = 0, grade_edge = 0, wald_n = 0, wald_covered = 0;
+    double sum = 0.0, sum2 = 0.0;
+    std::int64_t evals = 0;
+    for (int r = 0; r < R; ++r) {
+        const Panel p = make(static_cast<std::uint32_t>(r));
+        const auto f = fit(p);
+        if (f.rho_lo <= rho && rho <= f.rho_hi) ++covered;
+        if (f.flags & vcal::engine::kFlagFlatSurface) ++flat;
+        if (f.flags & (mg::kFlagNotConverged | vcal::engine::kFlagNumeric)) ++bad;
+        if (f.flags & vcal::engine::kFlagGridEdge) ++edge;
+        if (f.flags & mg::kFlagGradeEdge) ++grade_edge;
+        const double e = logit(f.rho) - logit(rho);
+        sum += e;
+        sum2 += e * e;
+        evals += f.evaluations + f.derivative_evaluations;
+        for (std::size_t k = 0; k < pd.size(); ++k) {
+            if (static_cast<double>(n[k]) * pd[k] * static_cast<double>(T) < 20.0) continue;
+            ++wald_n;
+            if (f.pd_lo[k] <= pd[k] && pd[k] <= f.pd_hi[k]) ++wald_covered;
+        }
+    }
+    const double cov = static_cast<double>(covered) / R;
+    const double mean = sum / R;
+    const double sd = std::sqrt(std::fmax(0.0, sum2 / R - mean * mean));
+    const double wald = wald_n > 0 ? static_cast<double>(wald_covered) / wald_n : 1.0;
+    if (!(cov >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": profile coverage " + describe(cov));
+    if (!(std::fabs(mean) <= 0.5 * sd + vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * sd / std::sqrt(R))) {
+        vcal::test::report_failure(__FILE__, __LINE__, cell + ": bias " + describe(mean) + ", sd " + describe(sd));
+    }
+    if (!(wald >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": Wald coverage " + describe(wald));
+    VCAL_CHECK_EQ(bad, 0);
+    VCAL_CHECK(flat <= R / 20);
+    vcal::test::note(cell + ": profile coverage " + describe(cov) + ", bias " + describe(mean) + " (sd " +
+                     describe(sd) + "), Wald " + describe(wald) + " over " + std::to_string(wald_n) +
+                     ", rho on the box " + std::to_string(edge) + ", a grade on the box " +
+                     std::to_string(grade_edge) + ", flat " + std::to_string(flat) + ", " +
+                     std::to_string(evals / R) + " evaluations a fit");
+}
+
+// Replicate r of grade scenario id as a Panel.
+Panel grade_panel(int id, std::uint32_t r) {
+    namespace gm = vcal::recovery::grades;
+    std::vector<std::int64_t> n, d;
+    VCAL_REQUIRE(gm::panel(id, r, n, d));
+    Panel p;
+    p.K = gm::kGrades;
+    for (std::size_t i = 0; i < n.size(); ++i) p.y.push_back({n[i], d[i]});
+    const auto sc = gm::scenario(id);
+    p.name = std::string("grade scenario ") + std::to_string(id) + " (" + sc.scale->name + ", T " +
+             std::to_string(sc.periods) + ")/" + std::to_string(r);
+    return p;
+}
+
+std::vector<double> master_scale() {
+    std::vector<double> pd;
+    for (int k = 1; k <= vcal::recovery::grades::kGrades; ++k) pd.push_back(vcal::recovery::grades::master_pd(k));
+    return pd;
+}
+
+}  // namespace
+
 // Recovery (slow), tolerances stated before the run (D-413): 3 scales x T in {20, 100} x rho in {0.24, 0.12, 0.02},
 // R replicates each. Per cell: rho's profile coverage at least 0.95 - z sqrt(0.0475 / R) (z =
 // TOL_RECOVERY_COVERAGE_BAND_Z); the bias of v = logit rho under half its spread plus its Monte Carlo error; the
@@ -409,7 +479,6 @@ int recovery_scale_only() {
 // kFlagNotConverged or kFlagNumeric, and kFlagFlatSurface on at most 5% of fits.
 VCAL_TEST(multigrade_fit_recovers_parameters) {
     const int R = recovery_replicates();
-    const double band = 0.95 - vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * std::sqrt(0.95 * 0.05 / R);
     const auto scales = recovery_scales();
     for (int si = 0; si < static_cast<int>(scales.size()); ++si) {
         const auto& scale = scales[static_cast<std::size_t>(si)];
@@ -421,43 +490,81 @@ VCAL_TEST(multigrade_fit_recovers_parameters) {
                 const std::uint32_t sc = scenario++;
                 ++ri;
                 if (recovery_rho_only() >= 0 && recovery_rho_only() != ri) continue;
-                int covered = 0, flat = 0, bad = 0, edge = 0, wald_n = 0, wald_covered = 0;
-                double sum = 0.0, sum2 = 0.0;
-                std::int64_t evals = 0;
-                for (int r = 0; r < R; ++r) {
-                    const auto p = shared_panel(sc, static_cast<std::uint32_t>(r), scale.pd, scale.n, rho, T);
-                    const auto f = fit(p);
-                    if (f.rho_lo <= rho && rho <= f.rho_hi) ++covered;
-                    if (f.flags & vcal::engine::kFlagFlatSurface) ++flat;
-                    if (f.flags & (mg::kFlagNotConverged | vcal::engine::kFlagNumeric)) ++bad;
-                    if (f.flags & vcal::engine::kFlagGridEdge) ++edge;
-                    const double e = logit(f.rho) - logit(rho);
-                    sum += e;
-                    sum2 += e * e;
-                    evals += f.evaluations + f.derivative_evaluations;
-                    for (std::size_t k = 0; k < scale.pd.size(); ++k) {
-                        if (static_cast<double>(scale.n[k]) * scale.pd[k] * static_cast<double>(T) < 20.0) continue;
-                        ++wald_n;
-                        if (f.pd_lo[k] <= scale.pd[k] && scale.pd[k] <= f.pd_hi[k]) ++wald_covered;
-                    }
-                }
-                const double cov = static_cast<double>(covered) / R;
-                const double mean = sum / R;
-                const double sd = std::sqrt(std::fmax(0.0, sum2 / R - mean * mean));
-                const double wald = wald_n > 0 ? static_cast<double>(wald_covered) / wald_n : 1.0;
-                const std::string cell = scale.name + ", T " + std::to_string(T) + ", rho " + describe(rho);
-                if (!(cov >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": profile coverage " + describe(cov));
-                if (!(std::fabs(mean) <= 0.5 * sd + vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * sd / std::sqrt(R))) {
-                    vcal::test::report_failure(__FILE__, __LINE__, cell + ": bias " + describe(mean) + ", sd " + describe(sd));
-                }
-                if (!(wald >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": Wald coverage " + describe(wald));
-                VCAL_CHECK_EQ(bad, 0);
-                VCAL_CHECK(flat <= R / 20);
-                vcal::test::note(cell + ": profile coverage " + describe(cov) + ", bias " + describe(mean) + " (sd " +
-                                 describe(sd) + "), Wald " + describe(wald) + " over " + std::to_string(wald_n) +
-                                 ", rho on the box " + std::to_string(edge) + ", flat " + std::to_string(flat) + ", " +
-                                 std::to_string(evals / R) + " evaluations a fit");
+                recovery_cell(scale.name + ", T " + std::to_string(T) + ", rho " + describe(rho), scale.pd, scale.n,
+                              rho, T, R, [&](std::uint32_t r) { return shared_panel(sc, r, scale.pd, scale.n, rho, T); });
             }
         }
+    }
+}
+
+// The grade scenario matrix's obligor counts are the ones listed in studies/README.md (D-151), summing to
+// 10,000, with the listed portfolio PDs (to two decimals, in percent); the master scale runs 0.03% to 19.7%.
+VCAL_TEST(grade_matrix_counts_are_the_studies_index_counts) {
+    namespace gm = vcal::recovery::grades;
+    const std::vector<std::vector<std::int64_t>> listed = {
+        {696, 866, 1012, 1112, 1147, 1112, 1012, 866, 696, 525, 373, 248, 155, 91, 50, 26, 13},
+        {224, 337, 475, 629, 783, 916, 1006, 1037, 1006, 916, 783, 629, 475, 337, 224, 140, 83},
+        {46, 84, 143, 229, 343, 484, 641, 797, 932, 1024, 1056, 1024, 932, 797, 641, 484, 343}};
+    const double portfolio[3] = {0.61, 1.54, 3.42};
+    for (std::size_t si = 0; si < 3; ++si) {
+        const auto n = gm::obligors(gm::kScales[si]);
+        VCAL_CHECK(n == listed[si]);
+        std::int64_t total = 0;
+        double defaults = 0.0;
+        for (int k = 1; k <= gm::kGrades; ++k) {
+            total += n[static_cast<std::size_t>(k - 1)];
+            defaults += static_cast<double>(n[static_cast<std::size_t>(k - 1)]) * gm::master_pd(k);
+        }
+        VCAL_CHECK_EQ(total, gm::kObligors);
+        VCAL_CHECK(std::fabs(100.0 * defaults / static_cast<double>(total) - portfolio[si]) < 0.005);
+    }
+    VCAL_CHECK(bits_equal(gm::master_pd(1), 0.0003));
+    VCAL_CHECK(std::fabs(gm::master_pd(17) - 0.197) < 0.0005);
+    for (int id = 0; id < gm::kScenarios; ++id) {
+        const auto sc = gm::scenario(id);
+        VCAL_CHECK_EQ(sc.periods, gm::kPeriods[id % 3]);
+        VCAL_CHECK(sc.scale == &gm::kScales[id / 3]);
+    }
+}
+
+// Replicate 0 of the six grade scenarios with T in {20, 40}: the panel is the same twice, and its fit
+// converges, is finite and not flat. The CI's look at the matrix; recovery on it is the slow test below.
+VCAL_TEST(grade_matrix_replicate_zero_fits) {
+    namespace gm = vcal::recovery::grades;
+    const auto pd = master_scale();
+    for (int id = 0; id < gm::kScenarios; ++id) {
+        if (id % 3 == 2) continue;  // T = 100: in the slow test
+        const auto p = grade_panel(id, 0);
+        const auto again = grade_panel(id, 0);
+        bool same = p.y.size() == again.y.size();
+        for (std::size_t i = 0; same && i < p.y.size(); ++i) same = p.y[i].d == again.y[i].d;
+        VCAL_CHECK(same);
+        const auto f = fit(p);
+        VCAL_CHECK_EQ(f.flags & (mg::kFlagNotConverged | vcal::engine::kFlagNumeric | vcal::engine::kFlagFlatSurface),
+                      0u);
+        VCAL_CHECK(std::isfinite(f.loglik) && std::isfinite(f.rho_lo) && std::isfinite(f.rho_hi));
+        int edge = 0;
+        for (const auto g : f.grade_flags) edge += (g & (mg::kGradeAtLower | mg::kGradeAtUpper)) != 0 ? 1 : 0;
+        vcal::test::note(p.name + ": rho " + describe(f.rho) + " [" + describe(f.rho_lo) + ", " + describe(f.rho_hi) +
+                         "] against " + describe(gm::scenario(id).scale->rho) + ", " + std::to_string(edge) +
+                         " grades on the box, flags " + std::to_string(f.flags));
+    }
+}
+
+// Recovery on the grade scenario matrix (slow; D-414), with D-413's assertions, R = 100 unless
+// VCAL_MG_RECOVERY_R sets it. VCAL_MG_GRADE_SCENARIO runs one scenario (0 .. 8). About 70 CPU-minutes at
+// R = 100, two thirds of it the three T = 100 scenarios.
+VCAL_TEST(multigrade_fit_recovers_on_the_grade_matrix) {
+    namespace gm = vcal::recovery::grades;
+    const int R = recovery_replicates();
+    const std::string only = vcal::test::env_or_empty("VCAL_MG_GRADE_SCENARIO");
+    const auto pd = master_scale();
+    for (int id = 0; id < gm::kScenarios; ++id) {
+        if (!only.empty() && std::atoi(only.c_str()) != id) continue;
+        const auto sc = gm::scenario(id);
+        recovery_cell(std::string("grade scenario ") + std::to_string(id) + " (" + sc.scale->name + ", T " +
+                          std::to_string(sc.periods) + ", rho " + describe(sc.scale->rho) + ")",
+                      pd, gm::obligors(*sc.scale), sc.scale->rho, sc.periods, R,
+                      [&](std::uint32_t r) { return grade_panel(id, r); });
     }
 }

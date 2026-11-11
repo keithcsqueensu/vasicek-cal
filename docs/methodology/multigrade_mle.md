@@ -205,14 +205,28 @@ with u_k = logit(PD_k) and v = logit(ρ).
 
 ## 6. The data-generating process (PR 3)
 
-D-151 asks for **one DGP observation layer** shared by S-29 and S-31 to S-33, with one prose
-description, one Python mirror and one reference-panel hash (D-149). `dgp::simulate_panel` draws one PD
-per panel; the multi-grade draw is new: per period one Z_t, then each grade's defaults given Z_t, on a
-counter-based Philox stream whose counter layout is fixed in `docs/methodology/dgp.md` before the code,
-bitwise identical on every platform and to the Python mirror (D-052–D-057). The grade scenario matrix of
-D-151 (seed "GRADESCN", 3 scales × T ∈ {20, 40, 100}, the 17-grade master scale PD_k = 0.03% × 1.5^(k−1),
-10,000 obligors per period spread by a discretised normal of standard deviation 4 grades, ρ of 0.24, 0.12
-and 0.02, R = 1,000) is written into `studies/README.md` with that layer.
+Built in PR 3 (D-414). The design is D-150's, for S-24's segments; D-151 shares it with S-29 and S-31 to
+S-33.
+
+- **`dgp::simulate_panel_segments`** (`docs/methodology/dgp.md`, "Segments on one factor"). Each period
+  has one Z_t, the base DGP's factor on the base key, and then each segment's defaults given Z_t by the
+  base DGP's Bernoulli step.
+  - Segment 0 draws on the base key. So one segment is `simulate_panel`'s panel bit for bit, and grade 1
+    of a grade panel is the base panel at its PD.
+  - Segment s ≥ 1 draws on the key of seed ⊕ `0x5345474D454E5453` ("SEGMENTS") ⊕ s, its own key domain
+    (D-149). The segments are independent given Z_t.
+  - A segment's draws do not depend on the other segments' PDs, sizes or number.
+- **The kernels are unchanged.** The segment key goes through `count_defaults` like any seed, so every
+  Bernoulli kernel already reproduces it.
+- **Mirror and hash.** The Python mirror (`Mirror.panel_segments` in `tools/gen_dgp_tables.py`) writes six
+  reference panels with their SHA-256, matched bit for bit under every kernel. The six span K = 1 (base
+  panel 0), 2, 3, 5 and the 17-grade M scale.
+- **The grade scenario matrix** (D-151, `studies/README.md`), in `tests/recovery/grade_matrix.hpp`: the
+  master scale, the obligor rule (shares by `dgp::det_exp`, so the counts are the same on every
+  platform), and the nine scenarios on seed "GRADESCN", with grade k as segment k − 1.
+- **Not in PR 3: D-151's observation layer.** That layer relabels, misrecords and drops what is recorded,
+  for S-29 and S-31 to S-33. Each of those studies defines its own thinning in its `PREDICTION.md`, so the
+  layer is built with the first of them.
 
 ## 7. The checks
 
@@ -263,8 +277,18 @@ Every item ships with synthetic recovery tests and golden values (CLAUDE.md).
     T = 20, and by at most 0.03 at T = 100. The run takes about 70 CPU-minutes, so it
     is labelled slow; `VCAL_MG_RECOVERY_R`, `_SCALE` and `_RHO` size and split it.
   - **The scipy replication of the estimate:** 6.1e-10 (§5).
-- **PR 3, the DGP layer:** the counter layout's known-answer tests, the Python mirror's bitwise match and
-  the reference-panel hash; then recovery on the grade scenario matrix's subset in CI.
+- **PR 3, the DGP layer (done; D-414):**
+  - the segment panels match the Python mirror bit for bit under every kernel (scalar, SSE2, AVX2), and
+    their SHA-256 too;
+  - one segment is the base panel bit for bit, and Z_t is the base factor;
+  - each segment's count is `count_defaults` on its own key;
+  - a segment's counts do not move when another segment's PD or size changes, or a segment is added;
+  - two segments with one PD draw different uniforms;
+  - invalid input is refused;
+  - the grade matrix's counts equal the studies index's lists, summing to 10,000, with its portfolio PDs;
+  - in CI, replicate 0 of the six T ∈ {20, 40} scenarios is fitted, converged, finite and not flat
+    (11 s);
+  - RECOVERY_PLACEHOLDER
 
 ## 8. The PRs, and what is not in this work
 
@@ -272,7 +296,7 @@ Every item ships with synthetic recovery tests and golden values (CLAUDE.md).
    (D-412).
 2. **PR 2, the estimator** (§3, §4, the estimator half of the scipy script, recovery on simple panels): done
    (D-413).
-3. **PR 3, the DGP layer and the grade scenario matrix** (§6), with recovery on its subset.
+3. **PR 3, the DGP layer and the grade scenario matrix** (§6), with recovery on it: done (D-414).
 4. **Later, each its own decision:** per-grade profile intervals (§4); a C ABI entry point
    (`vcal_calibrate_multigrade`), after the recovery study has run (owner's choice, 2026-11-10); the
    studies that need the model (S-29 full, S-30 shared ρ, S-40), each registered before its run; and the

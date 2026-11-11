@@ -49,7 +49,7 @@ they exist.
 | [S-21](#s-21-period-influence-period-influence) | [`period-influence`](period-influence/) | How much do one or two extreme periods drive ρ̂? | now | finished (D-159) |
 | [S-22](#s-22-box-sensitivity-box-sensitivity) | `box-sensitivity` | How much of the CONSERVATIVE group does the box create? | now | not registered |
 | [S-23](#s-23-intervals-for-derived-quantities-derived-quantity-intervals) | [`derived-quantity-intervals`](derived-quantity-intervals/) | Are intervals for the 99.9% conditional PD reliable? | first batch | finished (D-156) |
-| [S-24](#s-24-pd-heterogeneity-pd-heterogeneity) | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (after its DGP variant) | not registered |
+| [S-24](#s-24-pd-heterogeneity-pd-heterogeneity) | `pd-heterogeneity` | How much does pooled PD heterogeneity inflate ρ̂? | now (its DGP variant is built, D-414) | not registered |
 | [S-25](#s-25-pd-trend-pd-trend) | `pd-trend` | How much does a PD trend inflate ρ̂, and does detrending fix it? | now (after its DGP variant) | not registered |
 | [S-26](#s-26-varying-portfolio-size-varying-n) | `varying-n` | Does anything assume a stable n? | now | not registered |
 | [S-27](#s-27-large-portfolio-approximation-large-portfolio) | [`large-portfolio`](large-portfolio/) | When is Vasicek-rate MLE indistinguishable from binomial MLE? | M3 | finished (D-174) |
@@ -78,7 +78,7 @@ they exist.
 | [S-49](#s-49-an-equivalent-confidence-level-for-the-independent-bound-pt-equivalent-confidence) | `pt-equivalent-confidence` | What confidence level makes the independent Pluto–Tasche bound cover at γ under correlation? | now (after S-6; exact, no simulation) | not registered (D-216) |
 | [S-50](#s-50-the-multi-period-cohort-bound-pt-multi-period-cohort) | `pt-multi-period-cohort` | Does Pluto and Tasche's multi-period cohort bound cover under a serially correlated factor? | M6 (AR(1) factor; a cohort DGP variant) | not registered (D-216) |
 | [S-51](#s-51-when-to-stop-using-the-most-prudent-bound-pt-switch-point) | `pt-switch-point` | Beyond how many expected defaults does the most-prudent bound stop adding information? | now (after S-6) | not registered (D-216) |
-| [S-52](#s-52-the-multi-grade-most-prudent-sequence-pt-multi-grade) | `pt-multi-grade` | The multi-grade sequence: coverage, scaling to the central tendency, and non-monotone bounds as a ranking signal | after S-24's segment streams | not registered (D-216) |
+| [S-52](#s-52-the-multi-grade-most-prudent-sequence-pt-multi-grade) | `pt-multi-grade` | The multi-grade sequence: coverage, scaling to the central tendency, and non-monotone bounds as a ranking signal | now (S-24's segment streams are built, D-414) | not registered (D-216) |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -1048,7 +1048,9 @@ kind as S-11 and report both targets (D-150).
 - **DGP change:** the second segment's Bernoulli draws need their own stream but the same Z_t.
   Two calls of the existing `simulate_panel` with the same key would share the uniforms as well
   (common random numbers, an artificial dependence), so a segment index joins the key (approved,
-  D-150). S-29, S-30 and S-31 reuse it for K segments.
+  D-150). S-29, S-30 and S-31 reuse it for K segments. **Built** (D-414):
+  `dgp::simulate_panel_segments`. The first segment draws the base stream, so it is the base panel
+  at its PD, and the second draws the key of seed ⊕ "SEGMENTS" ⊕ 1.
 - **Design:** the scenario's n split between the segments and their PDs set so that the pooled
   PD equals the scenario's; PD ratios of about 2, 5 and 10.
 - **Verdicts it could change:** none pinned; it reports bias and coverage against the pseudo-true
@@ -1056,8 +1058,8 @@ kind as S-11 and report both targets (D-150).
 - **Cost:** ≈ the baseline per ratio: ≈ 20–35 min on the subset for three ratios, ≈ 4–6 h for the
   full matrix. Plus the DGP extension and its mirror.
 - **Deferred from S-6 (owner, D-214, D-215):** the multi-grade most-prudent sequence (grade k's bound
-  pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needs this study's segment
-  streams, so it waits for them, as study S-52 (D-216).
+  pools grades k..K on a shared Z_t) on the grade scenario matrix (D-151). It needed this study's segment
+  streams, now built (D-414), and is study S-52 (D-216).
 - **Prediction:** not registered. **Result:** not run. **Mitigation:** n/a.
 - **Monitoring implication:** to be filled in when the study finishes (D-152).
 
@@ -1248,9 +1250,13 @@ scales in the order L, M, H.
   - L: 696, 866, 1012, 1112, 1147, 1112, 1012, 866, 696, 525, 373, 248, 155, 91, 50, 26, 13
   - M: 224, 337, 475, 629, 783, 916, 1006, 1037, 1006, 916, 783, 629, 475, 337, 224, 140, 83
   - H: 46, 84, 143, 229, 343, 484, 641, 797, 932, 1024, 1056, 1024, 932, 797, 641, 484, 343
-- **Data:** replicate r of grade scenario id is the panel the DGP produces for seed
-  `0x475241444553434E` ("GRADESCN"), scenario id, replicate r, with grade k drawn under S-24's
-  segment index k on one factor Z_t per period. The observation layer then alters what is recorded.
+- **Data:** replicate r of grade scenario id is the panel `dgp::simulate_panel_segments` produces
+  for seed `0x475241444553434E` ("GRADESCN"), scenario id, replicate r, with grade k as segment
+  k − 1 on one factor Z_t per period (`docs/methodology/dgp.md`, "Segments on one factor"; D-414).
+  Grade 1 draws the base stream and each other grade its own key domain.
+  `tests/recovery/grade_matrix.hpp` builds these panels; `unit_multigrade_fit` checks the counts
+  above, and the slow `unit_multigrade_fit_grade_matrix` runs the multi-grade MLE's recovery on
+  all nine scenarios. The observation layer then alters what is recorded.
   R = 1,000 replicates, so the Monte Carlo band is the recovery band.
 - **Study-specific settings**, such as S-29's two-grade version (derived from these scales) and its
   crosswalk error levels, or S-30's bucketings, are stated in each study's `PREDICTION.md`.
@@ -2008,7 +2014,7 @@ footnote 8) give four studies. None is registered, and none changes S-6's regist
     says loses all conservatism, and to its upper bound;
   - §8's question of when a non-monotone sequence is evidence that the ranking is wrong, measured as the
     false-alarm rate under a correct ranking and the power against one swapped pair of grades.
-- **DGP:** the grade scenario matrix (D-151): grades on a shared Z_t, each with its own stream. That needs
-  S-24's segment index, so it waits for S-24's DGP variant.
+- **DGP:** the grade scenario matrix (D-151): grades on a shared Z_t, each with its own stream, from
+  S-24's segment index (`dgp::simulate_panel_segments`, built in D-414).
 - **Verdicts it could change:** none pinned.
 - **Cost:** S-6's bounds per grade; the run is minutes once the DGP exists.
