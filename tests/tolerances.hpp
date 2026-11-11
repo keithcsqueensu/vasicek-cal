@@ -219,11 +219,12 @@ inline constexpr double TOL_BOOTSTRAP_CROSS_PLATFORM_REL = 2e-11;
 // substituted boundary terms (tests/golden/vasicek_rate). Observed 2.88 (GCC 16, UCRT); doubled
 // and rounded up.
 inline constexpr double TOL_VASICEK_RATE_LOGLIK_EPS = 6;
-// The profile code's polished maximum against the closed-form MLE, in logit units. Observed 5.4e-8
-// on the unit test's panels and 1.6e-7 over the 27,000 rate-recovery fits (MSVC): Brent's 1e-9
-// tolerance on a flat maximum moves the argmax by about its square root. Doubled, rounded up; was
+// The profile code's polished maximum against the closed-form MLE, in logit units. Since D-417 the
+// rate objective has analytic derivatives, so the maximum is polished by safeguarded Newton (D-170)
+// instead of nested Brent: observed 7.1e-10 on the unit test's panels and 2.6e-9 over the 27,000
+// rate-recovery fits (GCC 13). Worst x 4, rounded up. It was 4e-7 under Brent (observed 1.6e-7), and
 // 2e-7 when prediction V1 was registered and scored.
-inline constexpr double TOL_VASICEK_RATE_POLISH_U = 4e-7;
+inline constexpr double TOL_VASICEK_RATE_POLISH_U = 1.2e-8;
 
 // --- scipy replication, M1.9: a plain scipy script against the engine (D-126) --------------------
 // M3: validation/scipy/vasicek_rate_mle.py. The Vasicek-rate maximum, scipy's nested bounded Brent
