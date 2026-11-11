@@ -1,0 +1,14 @@
+{
+  "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_multigrade_goldens.py",
+  "generator_files": {
+    "tools/gen_multigrade_goldens.py": "d2c3f7df1b22af95e7821b2f0680dfd66017565e83313708d12e3bf12933bf0b",
+    "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
+  },
+  "mp_dps": 50,
+  "mpmath_backend": "python",
+  "mpmath_version": "1.4.1",
+  "outputs": {
+    "tests/golden/multigrade/likelihood.csv": "72b7ddd3dc8f5374a87f2d164c300283ea080e7bbd67bffbf6e4d267529012bb"
+  },
+  "python_version": "3.13.18"
+}

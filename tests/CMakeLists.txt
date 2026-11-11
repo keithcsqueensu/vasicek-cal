@@ -106,6 +106,7 @@ vcal_add_compile_fail_test(contract_fail_precision_message contract_fail_precisi
 vcal_add_test_executable(unit_precision SOURCES unit/precision_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_special SOURCES unit/special_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_quadrature SOURCES unit/quadrature_test.cpp LIBS vcal::core)
+vcal_add_test_executable(unit_multigrade SOURCES unit/multigrade_test.cpp LIBS vcal::core vcal::ref)
 vcal_add_test_executable(unit_grid SOURCES unit/grid_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_reducer SOURCES unit/reducer_test.cpp LIBS vcal::core)
 vcal_add_test_executable(unit_engine SOURCES unit/engine_test.cpp LIBS vcal::engine vcal::backend_cpu)
@@ -224,6 +225,17 @@ add_test(NAME unit_ar1_search_recovery
          COMMAND unit_ar1_search ar1_fit_is_not_beaten_on_a_fine_phi_grid
                  ar1_fit_recovers_parameters_on_long_informative_panels)
 set_tests_properties(unit_ar1_search_recovery PROPERTIES LABELS slow)
+add_executable(unit_multigrade_fit unit/multigrade_fit_test.cpp)
+target_link_libraries(unit_multigrade_fit PRIVATE vcal_test_harness vcal::benchmark_models vcal::ref vcal::backend_cpu vcal::dgp)
+vcal_target_defaults(unit_multigrade_fit)
+add_test(NAME unit_multigrade_fit
+         COMMAND unit_multigrade_fit multigrade_fit_at_one_grade_is_calibrate multigrade_fit_pools_a_duplicated_grade
+                 multigrade_fit_puts_a_zero_default_grade_on_the_edge
+                 multigrade_fit_ignores_an_empty_grade_and_is_deterministic multigrade_fit_is_a_maximum_of_the_reference
+                 multigrade_fit_matches_the_committed_estimates multigrade_fit_refuses_invalid_input)
+# Slow (about 70 CPU-minutes at R = 100): recovery over 3 grade scales x 2 T x 3 rho (D-413).
+add_test(NAME unit_multigrade_fit_recovery COMMAND unit_multigrade_fit multigrade_fit_recovers_parameters)
+set_tests_properties(unit_multigrade_fit_recovery PROPERTIES LABELS slow)
 vcal_add_test_executable(unit_dgp SOURCES unit/dgp_test.cpp LIBS vcal::dgp)
 # The Bernoulli kernel forced at start-up through VCAL_DGP_KERNEL (P-17, D-194), and once with an invalid value:
 # the selection must follow the variable, and an unavailable one must refuse. Only the tests that choose their
@@ -388,6 +400,11 @@ set_tests_properties(study_lrpd_serial_m6_resume PROPERTIES LABELS slow)
 add_executable(ar1_goldens studies/ar1_goldens.cpp)
 target_link_libraries(ar1_goldens PRIVATE vcal::benchmark_models vcal::ref)
 vcal_target_defaults(ar1_goldens)
+# The multi-grade estimate goldens (tests/golden/multigrade/estimates.csv; D-413): two shared-factor panels and
+# the MLE on each, for unit_multigrade_fit's regression check and the scipy script's estimate half. Not run by ctest.
+add_executable(multigrade_goldens studies/multigrade_goldens.cpp)
+target_link_libraries(multigrade_goldens PRIVATE vcal::benchmark_models vcal::dgp)
+vcal_target_defaults(multigrade_goldens)
 # The Pluto-Tasche bound goldens (tests/golden/pluto_tasche/bounds.csv; D-215): bounds at fixed inputs, no panels.
 # Run by hand to regenerate; unit_pluto_tasche checks the engine against them.
 add_executable(pluto_tasche_goldens studies/pluto_tasche_goldens.cpp)

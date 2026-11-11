@@ -39,7 +39,8 @@ vasicek-cal/
 │                           reduction's sum kernels (P-6, D-404)
 │   ├── precision.hpp       Precision policies, VCAL_HD macro
 │   ├── special/            log_phi, erfcx, probit, log_add_exp, lbinom; generated/ from tools/
-│   ├── model/              Vasicek1F (conditional PD), binomial-mixture log-integrand + adaptive hint
+│   ├── model/              Vasicek1F (conditional PD), binomial-mixture log-integrand + adaptive hint; the
+│                           multi-grade product integrand on a shared factor (M6, D-412)
 │   ├── quadrature/         Integrator contract, Gauss–Hermite policies; generated/ rules from tools/ (D-080)
 │   ├── objectives/         per-period contribution policies
 │   ├── reducers/           ArgMax, LogSumExp (posterior), moment inversion; weighted_sum and its lanes (P-6)
@@ -54,7 +55,8 @@ vasicek-cal/
 │                           bitwise identical across platforms and to a Python mirror (D-052–D-057, D-109–D-111)
 ├── abi/                    extern "C" implementation, dispatch registry, status/error handling
 ├── ref/                    independent FP64 reference — links nothing above (D-031–D-033)
-├── benchmark_models/       (M6) multi-segment, AR(1), alt. mixing, Pluto–Tasche, window/influence
+├── benchmark_models/       (M6) multi-segment, AR(1), alt. mixing, Pluto–Tasche, window/influence; the
+│                           multi-grade shared-ρ MLE (multigrade/, D-413)
 ├── macro/                  (M7) transforms + lineage, pre-screens, batched fits, scorers, ranker
 ├── monitoring/             (M5) backtests, run ledger, report data
 ├── tests/

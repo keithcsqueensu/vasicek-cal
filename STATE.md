@@ -41,7 +41,7 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
   - S-48's negative-dependence part is registered with S-36 (D-401, #60).
   - The next decision number is D-220 (P-7 is D-212, #67; the SIMD sweep took D-213, #68; S-6's
     registration is D-214, its tool D-215, the paper check D-216 and its result D-217; the correctness
-    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block (next D-411); D-500 is
+    audit is D-218 and PRs B and C D-219). D-400 on is the cloud sessions' block (next D-413); D-500 is
     the October scouting note's.
   - **Runtime:** 304 s, in the projected range. The projection's sample ran 84 s, under D-193's 120 s
     minimum: a deviation (D-211). `rows.csv` is on the release `s48-data-2026-10-12`.
@@ -60,6 +60,25 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     band, and the verdict stands. At γ = 0.95, n·PD = 1, the independent bound covers 0.942, 0.848 and 0.731 at
     ρ = 0.02, 0.12 and 0.24. The oracle covers 0.955–0.959, and the fixed ρ_a = 0.12 covers 0.863 at ρ = 0.24.
     `rows.csv` is on the release `s6-data-2026-10-13`.
+
+- **M6, the multi-grade shared-ρ model: PRs 1 and 2 of 3, the likelihood and the estimator (D-411 to D-413).**
+  - **PR 1, the likelihood (D-412).** One integral per period over the product of the grades' binomials on a
+    shared factor (`core/objectives/multigrade.hpp`, `docs/methodology/multigrade_mle.md`). K = 1 is the
+    single-grade likelihood bit for bit. Against 65 mpmath goldens, the parity rule is within 3.6 ε interior
+    and 5.6 ε one-sided, so the risk D-411 named (a d = 0 grade of n = 10⁶ beside interior grades) does not
+    move any period off its rule.
+  - **PR 2, the estimator (D-413), `benchmark_models/multigrade/fit.hpp`.** It fits a ρ grid with an inner
+    Newton over the PDs, refines ρ on its profile, and gives SEs, the ρ profile interval and logit-Wald PD
+    intervals.
+    - At K = 1 it is calibrate's estimate to 6e-10 in logit units.
+    - A duplicated grade pools exactly.
+    - A zero-default grade lands on the box, flagged.
+    - scipy agrees to 6e-10.
+    - Recovery passes all 18 cells: 2, 5 and 17 grades, T 20 and 100, three ρ. The profile interval
+      undercovers slightly at T = 20.
+    - A 17-grade fit at T = 100 takes 7.5 s.
+    - The owner's open points were taken at their defaults (box [1e-5, 0.5], Wald PD intervals, `native`).
+  - **Next:** PR 3, the DGP layer and the grade scenario matrix.
 
 - **The correctness audit: done (D-218, D-219); PR A merged (#79), PRs B and C merged (#80).** The
   Copilot audit's findings were never committed, so a fresh audit was run; its record is
