@@ -56,6 +56,7 @@ EXP_TERMS = 16  # exp r = sum_{n=0..16} r^n / n!, |r| <= 0.347
 NCDF_TAIL = 2.0  # continued fraction beyond |x| = 2, series inside
 FACTOR_BLOCKS = 1 << 16  # Philox blocks 0 .. 2^16-1 of each period: the factor draw (D-109)
 RESAMPLE_KEY_TAG = 0x52534D50424F4F54  # "RSMPBOOT": the resampling key domain (D-132)
+SEGMENT_KEY_TAG = 0x5345474D454E5453  # "SEGMENTS": segment s >= 1's Bernoulli key is seed ^ tag ^ s (D-414)
 SCHEME_IID, SCHEME_BLOCK = 1, 2
 RESAMPLE_PERIODS, RESAMPLE_REPLICATES, RESAMPLE_BLOCK = 23, 4, 5  # odd T exercises both word pairs
 
@@ -266,15 +267,40 @@ class Mirror:
             z = phi * z_prev + se * e if phi is not None and t > 0 else e
             z_prev = z
             p = self.ncdf((c - sr * z) / s1)
-            d = 0
-            w = (0, 0, 0, 0)
-            for i in range(n):
-                if i % 2 == 0:
-                    w = philox4x32((scenario, replicate, t, FACTOR_BLOCKS + i // 2), key)
-                u = self.uniform(w[0], w[1]) if i % 2 == 0 else self.uniform(w[2], w[3])
-                if u < p:
-                    d += 1
-            out.append((n, d, z))
+            out.append((n, self.bernoulli(key, scenario, replicate, t, n, p), z))
+        return out
+
+    def bernoulli(self, key: tuple[int, int], scenario: int, replicate: int, period: int, n: int, p: float) -> int:
+        """Step 3: the obligors i < n with U_i < p, obligor i on block 65536 + i // 2."""
+        d = 0
+        w = (0, 0, 0, 0)
+        for i in range(n):
+            if i % 2 == 0:
+                w = philox4x32((scenario, replicate, period, FACTOR_BLOCKS + i // 2), key)
+            u = self.uniform(w[0], w[1]) if i % 2 == 0 else self.uniform(w[2], w[3])
+            if u < p:
+                d += 1
+        return d
+
+    def panel_segments(self, seed: int, scenario: int, replicate: int, pds: list[float], rho: float,
+                       ns: list[list[int]]):
+        """Segments on one factor (D-414): Z_t the base factor; segment s's defaults by step 3 on the base key
+        (s = 0) or the key of seed ^ SEGMENT_KEY_TAG ^ s (s >= 1). ns[t][s] = n_ts. Returns, per period,
+        (list of (n_ts, d_ts), Z_t)."""
+        key = (seed & MASK32, (seed >> 32) & MASK32)
+        keys = [key] + [((k & MASK32), (k >> 32) & MASK32)
+                        for k in (seed ^ SEGMENT_KEY_TAG ^ s for s in range(1, len(pds)))]
+        cs = [self.probit(pd) for pd in pds]
+        sr = math.sqrt(rho)
+        s1 = math.sqrt(1.0 - rho)
+        out = []
+        for t, row_n in enumerate(ns):
+            z = self.factor(key, scenario, replicate, t)
+            counts = []
+            for s, n in enumerate(row_n):
+                p = self.ncdf((cs[s] - sr * z) / s1)
+                counts.append((n, self.bernoulli(keys[s], scenario, replicate, t, n, p)))
+            out.append((counts, z))
         return out
 
 
@@ -313,6 +339,20 @@ REFERENCE_PANELS_AR1 = [
     (3, 4, 2, 0.001, 0.24, 0.6, [100] * 20),
     (4, 5, 1, 0.05, 0.02, 0.95, [1000] * 12),
     (5, 6, 0, 0.2, 0.3, -0.5, [50] * 10),
+]
+
+# Segments on one factor (D-414): (panel, scenario, replicate, PD per segment, rho, n per period and segment).
+# Panel 0 is base panel 0 as one segment, which must equal it bit for bit. Panel 5 is the grade scenario
+# matrix's M scale (17 grades, 10,000 obligors; studies/README.md) over three periods.
+GRADE_M = [224, 337, 475, 629, 783, 916, 1006, 1037, 1006, 916, 783, 629, 475, 337, 224, 140, 83]
+REFERENCE_PANELS_SEGMENTS = [
+    (0, 0, 0, [0.01], 0.12, [[n] for n in [10, 50, 100, 500, 1000, 2000, 5000, 1000]]),
+    (1, 0, 0, [0.01, 0.05], 0.12, [[n, n // 2] for n in [10, 50, 100, 500, 1000, 2000, 5000, 1000]]),
+    (2, 4, 2, [0.001, 0.003, 0.01, 0.03, 0.1], 0.24, [[200, 200, 0 if t % 3 == 0 else 200, 200, 200]
+                                                     for t in range(10)]),
+    (3, 3, 0, [1e-4, 0.5, 0.2], 0.9, [[0, 1, 2], [3, 0, 5], [7, 8, 0], [1, 1, 1]]),
+    (4, 7, 5, [0.02, 0.02], 0.3, [[300, 300]] * 6),
+    (5, 1, 0, [0.0003 * 1.5 ** k for k in range(17)], 0.12, [GRADE_M] * 3),
 ]
 
 
@@ -434,6 +474,22 @@ def golden_panels_ar1(m: Mirror) -> dict[str, str]:
     }
 
 
+def golden_panels_segments(m: Mirror) -> dict[str, str]:
+    rows = [CSV_NOTE, "panel,seed_hex,scenario,replicate,segment,pd_hex,rho_hex,period,n,d,z_hex,pd,rho,z\n"]
+    blob = bytearray()
+    for panel, scenario, replicate, pds, rho, ns in REFERENCE_PANELS_SEGMENTS:
+        for t, (counts, z) in enumerate(m.panel_segments(REFERENCE_SEED, scenario, replicate, pds, rho, ns)):
+            for s, (n, d) in enumerate(counts):
+                rows.append(row(panel, f"{REFERENCE_SEED:016x}", scenario, replicate, s, pds[s].hex(), rho.hex(), t, n,
+                                d, z.hex(), repr(pds[s]), repr(rho), repr(z)))
+                blob += struct.pack("<q", d)
+            blob += struct.pack("<d", z)
+    return {
+        f"{GOLDEN_DIR}/reference_panels_segments.csv": "".join(rows),
+        f"{GOLDEN_DIR}/reference_panels_segments.sha256": hashlib.sha256(bytes(blob)).hexdigest() + "\n",
+    }
+
+
 def golden_sha256_vectors() -> dict[str, str]:
     msgs = [b"", b"abc", b"a" * 55, b"a" * 56, b"a" * 63, b"a" * 64, b"a" * 65, bytes(range(256)) * 4]
     rows = [CSV_NOTE, "message_hex,sha256_hex\n"]
@@ -490,6 +546,7 @@ def build_outputs() -> dict[str, str]:
     out.update(golden_mirror(m))
     out.update(golden_panels(m))
     out.update(golden_panels_ar1(m))
+    out.update(golden_panels_segments(m))
     out.update(golden_sha256_vectors())
     out.update(golden_resample())
     return out

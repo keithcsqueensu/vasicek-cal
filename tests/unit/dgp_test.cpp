@@ -491,6 +491,153 @@ VCAL_TEST(ar1_rejects_phi_outside_the_open_unit_interval) {
     VCAL_CHECK(dgp::simulate_panel_ar1(spec, 0.999, d, nullptr) == dgp::Status::Ok);
 }
 
+// Segments on one factor (D-414): every platform and kernel reproduces the mirror's segment reference panels
+// bit for bit, with their own checked-in SHA-256 (each period's d_ts in segment order, then Z_t).
+VCAL_TEST(segment_reference_panels_are_bitwise_identical_to_the_mirror) {
+    const auto t = vcal::test::read_golden_csv("dgp/reference_panels_segments.csv");
+    struct Rows {
+        std::uint64_t seed = 0;
+        std::uint32_t scenario = 0, replicate = 0;
+        double rho = 0.0;
+        std::vector<double> pd;
+        std::vector<std::int64_t> n, d;  // [t K + s]
+        std::vector<double> z;           // per period
+        std::int64_t periods = 0;
+    };
+    std::vector<Rows> panels;
+    for (const auto& r : t.rows) {
+        const auto id = static_cast<std::size_t>(parse_int(r[t.column("panel")]));
+        if (panels.size() <= id) panels.resize(id + 1);
+        auto& p = panels[id];
+        p.seed = std::stoull(r[t.column("seed_hex")], nullptr, 16);
+        p.scenario = static_cast<std::uint32_t>(parse_int(r[t.column("scenario")]));
+        p.replicate = static_cast<std::uint32_t>(parse_int(r[t.column("replicate")]));
+        p.rho = parse_double(r[t.column("rho_hex")]);
+        const auto s = static_cast<std::size_t>(parse_int(r[t.column("segment")]));
+        const std::int64_t period = parse_int(r[t.column("period")]);
+        if (period == 0) {
+            VCAL_REQUIRE(s == p.pd.size());
+            p.pd.push_back(parse_double(r[t.column("pd_hex")]));
+        }
+        if (s == 0) {
+            p.z.push_back(parse_double(r[t.column("z_hex")]));
+            p.periods = period + 1;
+        }
+        p.n.push_back(parse_int(r[t.column("n")]));
+        p.d.push_back(parse_int(r[t.column("d")]));
+    }
+    VCAL_REQUIRE(panels.size() == 6);
+    std::ifstream in(vcal::test::golden_path("dgp/reference_panels_segments.sha256"));
+    std::string want;
+    in >> want;
+    for_each_kernel([&](dgp::BernoulliKernel kernel) {
+        std::vector<std::uint8_t> blob;
+        for (const auto& p : panels) {
+            const auto K = p.pd.size();
+            VCAL_REQUIRE(p.n.size() == K * static_cast<std::size_t>(p.periods));
+            std::vector<std::int64_t> d(p.n.size());
+            std::vector<double> z(static_cast<std::size_t>(p.periods));
+            const dgp::SegmentPanelSpec spec{p.seed, p.scenario, p.replicate, static_cast<int>(K), p.pd.data(),
+                                             p.rho, p.n.data(), p.periods};
+            VCAL_REQUIRE(dgp::simulate_panel_segments(spec, d.data(), z.data()) == dgp::Status::Ok);
+            for (std::size_t tt = 0; tt < z.size(); ++tt) {
+                for (std::size_t s = 0; s < K; ++s) {
+                    VCAL_CHECK_EQ(d[tt * K + s], p.d[tt * K + s]);
+                    append_le(blob, static_cast<std::uint64_t>(d[tt * K + s]));
+                }
+                VCAL_CHECK(bits_equal(z[tt], p.z[tt]));
+                std::uint64_t zb = 0;
+                std::memcpy(&zb, &z[tt], sizeof zb);
+                append_le(blob, zb);
+            }
+        }
+        const std::string got = vcal::test::sha256_hex(blob);
+        vcal::test::note(std::string(dgp::bernoulli_kernel_name(kernel)) + ": segment reference-panel SHA-256 " + got);
+        VCAL_CHECK_EQ(got, want);
+    });
+}
+
+// The variant's definition, checked against the base DGP directly rather than through the mirror: one
+// segment is simulate_panel's panel bit for bit; Z_t is the base factor; segment s's d_ts is count_defaults
+// on segment_seed(seed, s) at that Z_t; and a segment's counts do not change when another segment's PD or
+// size changes, or when segments are added after it.
+VCAL_TEST(segment_variant_is_the_base_factor_and_its_own_streams) {
+    const std::vector<std::int64_t> n1 = {10, 50, 100, 500, 1000, 2000, 5000, 1000};
+    const auto T = static_cast<std::int64_t>(n1.size());
+    std::vector<std::int64_t> d0(n1.size()), d1(n1.size());
+    std::vector<double> z0(n1.size()), z1(n1.size());
+    const double pd1[1] = {0.01};
+    VCAL_REQUIRE(dgp::simulate_panel({7, 3, 2, 0.01, 0.12, n1.data(), T}, d0.data(), z0.data()) == dgp::Status::Ok);
+    VCAL_REQUIRE(dgp::simulate_panel_segments({7, 3, 2, 1, pd1, 0.12, n1.data(), T}, d1.data(), z1.data()) ==
+                 dgp::Status::Ok);
+    for (std::size_t i = 0; i < n1.size(); ++i) {
+        VCAL_CHECK_EQ(d1[i], d0[i]);
+        VCAL_CHECK(bits_equal(z1[i], z0[i]));
+    }
+
+    const int K = 4;
+    const double pd[K] = {0.01, 0.002, 0.05, 0.2};
+    std::vector<std::int64_t> n(n1.size() * K), d(n.size());
+    for (std::size_t tt = 0; tt < n1.size(); ++tt) {
+        for (std::size_t s = 0; s < K; ++s) n[tt * K + s] = n1[tt] / static_cast<std::int64_t>(s + 1);
+    }
+    std::vector<double> z(n1.size());
+    VCAL_REQUIRE(dgp::simulate_panel_segments({7, 3, 2, K, pd, 0.12, n.data(), T}, d.data(), z.data()) ==
+                 dgp::Status::Ok);
+    const auto kernel = dgp::bernoulli_kernel_selected();
+    for (std::size_t tt = 0; tt < n1.size(); ++tt) {
+        VCAL_CHECK(bits_equal(z[tt], z0[tt]));
+        for (std::size_t s = 0; s < K; ++s) {
+            const double c = dgp::det_probit(pd[s]);
+            const double p = dgp::det_ncdf((c - std::sqrt(0.12) * z[tt]) / std::sqrt(1.0 - 0.12));
+            const std::int64_t want = dgp::count_defaults(dgp::segment_seed(7, static_cast<int>(s)), 3, 2,
+                                                          static_cast<std::uint32_t>(tt), n[tt * K + s], p, kernel);
+            VCAL_CHECK_EQ(d[tt * K + s], want);
+        }
+    }
+
+    // Segment 2 alone moved: its PD and sizes changed, and a fifth segment added. Segments 0, 1, 3 keep their
+    // counts.
+    const double pd_b[K + 1] = {0.01, 0.002, 0.3, 0.2, 0.1};
+    std::vector<std::int64_t> nb((n1.size()) * (K + 1)), db(nb.size());
+    for (std::size_t tt = 0; tt < n1.size(); ++tt) {
+        for (std::size_t s = 0; s < K; ++s) nb[tt * (K + 1) + s] = s == 2 ? 7 : n[tt * K + s];
+        nb[tt * (K + 1) + K] = 999;
+    }
+    VCAL_REQUIRE(dgp::simulate_panel_segments({7, 3, 2, K + 1, pd_b, 0.12, nb.data(), T}, db.data(), nullptr) ==
+                 dgp::Status::Ok);
+    for (std::size_t tt = 0; tt < n1.size(); ++tt) {
+        for (const std::size_t s : {std::size_t{0}, std::size_t{1}, std::size_t{3}}) {
+            VCAL_CHECK_EQ(db[tt * (K + 1) + s], d[tt * K + s]);
+        }
+    }
+    // Different segments draw different uniforms: two segments with one PD and n differ somewhere.
+    const double same[2] = {0.05, 0.05};
+    std::vector<std::int64_t> n2(n1.size() * 2, 2000), d2(n2.size());
+    VCAL_REQUIRE(dgp::simulate_panel_segments({7, 3, 2, 2, same, 0.12, n2.data(), T}, d2.data(), nullptr) ==
+                 dgp::Status::Ok);
+    bool differ = false;
+    for (std::size_t tt = 0; tt < n1.size(); ++tt) differ = differ || d2[2 * tt] != d2[2 * tt + 1];
+    VCAL_CHECK(differ);
+}
+
+VCAL_TEST(segment_variant_rejects_bad_specs) {
+    const std::int64_t n[2] = {10, 10};
+    std::int64_t d[2] = {0, 0};
+    const double ok[2] = {0.01, 0.02};
+    const double bad[2] = {0.01, 1.0};
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, ok, 0.1, n, 1}, d, nullptr) == dgp::Status::Ok);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 0, ok, 0.1, n, 1}, d, nullptr) == dgp::Status::InvalidSpec);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, dgp::kMaxSegments + 1, ok, 0.1, n, 1}, d, nullptr) ==
+               dgp::Status::InvalidSpec);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, bad, 0.1, n, 1}, d, nullptr) == dgp::Status::InvalidSpec);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, ok, 0.0, n, 1}, d, nullptr) == dgp::Status::InvalidSpec);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, ok, 0.1, n, 0}, d, nullptr) == dgp::Status::InvalidSpec);
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, nullptr, 0.1, n, 1}, d, nullptr) == dgp::Status::InvalidSpec);
+    const std::int64_t neg[2] = {10, -1};
+    VCAL_CHECK(dgp::simulate_panel_segments({1, 0, 0, 2, ok, 0.1, neg, 1}, d, nullptr) == dgp::Status::InvalidSpec);
+}
+
 VCAL_TEST(sha256_matches_hashlib) {
     const auto t = vcal::test::read_golden_csv("dgp/sha256_vectors.csv");
     for (const auto& r : t.rows) {
