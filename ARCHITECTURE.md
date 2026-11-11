@@ -55,7 +55,8 @@ vasicek-cal/
 │                           bitwise identical across platforms and to a Python mirror (D-052–D-057, D-109–D-111)
 ├── abi/                    extern "C" implementation, dispatch registry, status/error handling
 ├── ref/                    independent FP64 reference — links nothing above (D-031–D-033)
-├── benchmark_models/       (M6) multi-segment, AR(1), alt. mixing, Pluto–Tasche, window/influence
+├── benchmark_models/       (M6) multi-segment, AR(1), alt. mixing, Pluto–Tasche, window/influence; the
+│                           multi-grade shared-ρ MLE (multigrade/, D-413)
 ├── macro/                  (M7) transforms + lineage, pre-screens, batched fits, scorers, ranker
 ├── monitoring/             (M5) backtests, run ledger, report data
 ├── tests/
