@@ -411,13 +411,20 @@ template <class Make>
 void recovery_cell(const std::string& cell, const std::vector<double>& pd, const std::vector<std::int64_t>& n,
                    double rho, std::int64_t T, int R, Make make) {
     const double band = 0.95 - vcal::tol::TOL_RECOVERY_COVERAGE_BAND_Z * std::sqrt(0.95 * 0.05 / R);
-    int covered = 0, flat = 0, bad = 0, edge = 0, grade_edge = 0, wald_n = 0, wald_covered = 0;
+    int covered = 0, flat = 0, bad = 0, edge = 0, grade_edge = 0, wald_n = 0, wald_covered = 0, low = 0;
+    int miss_edge = 0, truncated = 0;
     double sum = 0.0, sum2 = 0.0;
     std::int64_t evals = 0;
     for (int r = 0; r < R; ++r) {
         const Panel p = make(static_cast<std::uint32_t>(r));
         const auto f = fit(p);
-        if (f.rho_lo <= rho && rho <= f.rho_hi) ++covered;
+        if (f.rho_lo <= rho && rho <= f.rho_hi) {
+            ++covered;
+        } else {
+            if (f.rho_hi < rho) ++low;  // the interval lies below the truth
+            if (f.flags & mg::kFlagGradeEdge) ++miss_edge;
+        }
+        if (f.rho_interval_flags != 0u) ++truncated;
         if (f.flags & vcal::engine::kFlagFlatSurface) ++flat;
         if (f.flags & (mg::kFlagNotConverged | vcal::engine::kFlagNumeric)) ++bad;
         if (f.flags & vcal::engine::kFlagGridEdge) ++edge;
@@ -443,7 +450,9 @@ void recovery_cell(const std::string& cell, const std::vector<double>& pd, const
     if (!(wald >= band)) vcal::test::report_failure(__FILE__, __LINE__, cell + ": Wald coverage " + describe(wald));
     VCAL_CHECK_EQ(bad, 0);
     VCAL_CHECK(flat <= R / 20);
-    vcal::test::note(cell + ": profile coverage " + describe(cov) + ", bias " + describe(mean) + " (sd " +
+    vcal::test::note(cell + ": profile coverage " + describe(cov) + " (misses " + std::to_string(R - covered) +
+                     ": " + std::to_string(low) + " below the truth, " + std::to_string(miss_edge) +
+                     " with a grade on the box; " + std::to_string(truncated) + " truncated), bias " + describe(mean) + " (sd " +
                      describe(sd) + "), Wald " + describe(wald) + " over " + std::to_string(wald_n) +
                      ", rho on the box " + std::to_string(edge) + ", a grade on the box " +
                      std::to_string(grade_edge) + ", flat " + std::to_string(flat) + ", " +
