@@ -135,6 +135,7 @@ jobs:
 
       - name: Toolchain (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 45  # backstop over apt-install.sh's per-call limits (D-418)
         run: |
           .github/scripts/apt-install.sh ninja-build ${{ matrix.packages }}  # skips what the image has; retries (D-418)
           echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
@@ -246,12 +247,13 @@ jobs:
           - { cuda: "12.8", image: "12.8.0-devel-ubuntu22.04", cmake: "3.26.*" }
     steps:
       - name: Tools (git, Ninja, pinned CMake)
+        timeout-minutes: 45  # backstop over the loop's per-call limits (D-418)
         run: |
           # .github/scripts/apt-install.sh's retry loop, inline: the checkout that brings the script needs git (D-418).
           for attempt in 1 2 3 4 5; do
             opts="-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
-            if apt-get $opts update &&
-               DEBIAN_FRONTEND=noninteractive apt-get $opts install -y --no-install-recommends git ninja-build python3-pip; then
+            if timeout 180 apt-get $opts update &&
+               DEBIAN_FRONTEND=noninteractive timeout 600 apt-get $opts install -y --no-install-recommends git ninja-build python3-pip; then
               break
             fi
             [ "$attempt" -eq 5 ] && { echo "apt: giving up after 5 attempts" >&2; exit 1; }

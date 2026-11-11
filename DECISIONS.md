@@ -1981,8 +1981,10 @@ before the build). Cloud D-400 block, continued.
     fallbacks.
   - **What:** `.github/scripts/apt-install.sh` installs only the packages the runner image lacks, and skips
     apt entirely when none are missing. Otherwise it retries each download and up to 5 update-and-install
-    attempts, about 5 minutes in all. The CUDA containers' tools step carries the same loop inline, since
-    the checkout that brings the script needs git.
+    attempts. Each `apt-get update` is cut off after 3 minutes and each install after 10. The first
+    version had no such limit, and one update hung on an open download for 5 hours until GitHub cancelled
+    the job. The tools steps also get a 45-minute limit as a backstop. The CUDA containers' tools step
+    carries the same loop inline, since the checkout that brings the script needs git.
   - **What it does not change:** what is built or tested. A package still missing after the retries fails
     the job. No test is skipped and no job is made optional.
   - **Results change: no.**
