@@ -327,7 +327,7 @@ VCAL_TEST(vasicek_rate_analytic_se_is_the_closed_form) {
             const double v = cf.rho / (1.0 - cf.rho);
             const double a = mu / std::sqrt(1.0 + v);
             const double Pa = 0.5 * std::erfc(-a / std::sqrt(2.0));
-            const double k = std::exp(-0.5 * a * a) / std::sqrt(2.0 * M_PI) / (Pa * (1.0 - Pa));
+            const double k = std::exp(-0.5 * a * a) * vcal::special::constants::kInvSqrt2Pi / (Pa * (1.0 - Pa));
             const double Td = static_cast<double>(T);
             const double se_pd = k * std::sqrt(v / ((1.0 + v) * Td) + mu * mu * v * v / (2.0 * std::pow(1.0 + v, 3) * Td));
             const double se_rho = std::sqrt(2.0 / Td);
