@@ -8,12 +8,19 @@ probability
 independently across grades, so the period log-likelihood is
     l(PD_1, ..., PD_K, rho) = log E_Z[ prod_k binom.pmf(d_k; n_k, p_k(Z)) ].
 
-This script is the likelihood half of the replication (PR 1; the estimator half arrives with the estimator in
-PR 2). With ordinary tools only (binom.logpmf in log space, scipy.optimize.minimize_scalar for the integrand's mode,
+Two halves. The likelihood half: with ordinary tools only (binom.logpmf in log space, scipy.optimize.minimize_scalar for the integrand's mode,
 scipy.integrate.quad on the window where the integrand is within e^-50 of its maximum), it computes l on every
 row of tests/golden/multigrade/likelihood.csv and checks it against the committed value plus the binomial
 coefficients: the values the engine is tested against (to within 6 eps, unit_multigrade). The tolerance is
 TOL_SCIPY_MULTIGRADE_LL_REL in tests/tolerances.toml.
+
+The estimate half (D-413): on the two panels of tests/golden/multigrade/estimates.csv it maximises the panel
+log-likelihood, the sum of the periods' l, with scipy.optimize.minimize (L-BFGS-B in u_k = logit PD_k and
+v = logit rho, inside the engine's box PD in [1e-5, 0.5], rho in [1e-3, 0.5], from each grade's pooled rate
+(sum d + 1/2) / (sum n + 1) and rho = 0.1, with central-difference gradients). It checks that its estimate is
+within TOL_SCIPY_MULTIGRADE_FIT_LOGIT of the engine's in every coordinate, that its log-likelihood at the engine's
+estimate is no lower than at its own optimum minus TOL_SCIPY_MULTIGRADE_FIT_LL_ABS, and that it agrees with the
+engine's committed log-likelihood there within TOL_SCIPY_MULTIGRADE_LL_REL.
 
     uv run --no-project --with scipy==1.18.1 --with numpy==2.5.3 python validation/scipy/multigrade_mle.py
 """
@@ -28,6 +35,9 @@ from scipy import integrate, optimize, special, stats
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN = ROOT / "tests" / "golden" / "multigrade" / "likelihood.csv"
+ESTIMATES = ROOT / "tests" / "golden" / "multigrade" / "estimates.csv"
+BOX = ((1e-5, 0.5), (1e-3, 0.5))  # the engine's default box: PD, rho
+GRAD_STEP = 1e-5  # central differences in logit units: quad's 1e-12 noise over 1e-5 is a 1e-7 relative gradient error
 DROP = 50.0  # integrate where the integrand is within e^-50 of its maximum
 
 
@@ -91,8 +101,62 @@ def main():
             worst, where = rel, f"{r['kind']}, rho {rho:.4g}, K = {len(grades)}"
     passed = worst <= tol["TOL_SCIPY_MULTIGRADE_LL_REL"]
     print(f"{len(rows)} periods: worst relative difference {worst:.3g} ({where}) {'ok' if passed else 'FAIL'}")
+    passed = estimates(tol) and passed
     print("all checks passed" if passed else "SOME CHECKS FAILED")
     return 0 if passed else 1
+
+
+def logit(p):
+    return math.log(p) - math.log1p(-p)
+
+
+def expit(u):
+    return special.expit(u)
+
+
+def estimates(tol):
+    with open(ESTIMATES, newline="") as f:
+        rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    ok = True
+    for r in rows:
+        K = int(r["K"])
+        panel = [[tuple(int(v) for v in g.split(":")) for g in period.split(";")] for period in r["counts"].split("|")]
+        core = [logit(float.fromhex(p)) for p in r["pd_hex"].split(";")] + [logit(float.fromhex(r["rho_hex"]))]
+
+        def loglik(x):
+            pds, rho = [float(expit(u)) for u in x[:K]], float(expit(x[K]))
+            return sum(period_loglik(pds, rho, grades) for grades in panel)
+
+        def neg_and_grad(x):
+            g = []
+            for i in range(K + 1):
+                up, dn = list(x), list(x)
+                up[i] += GRAD_STEP
+                dn[i] -= GRAD_STEP
+                g.append(-(loglik(up) - loglik(dn)) / (2.0 * GRAD_STEP))
+            return -loglik(x), g
+
+        start = []
+        for k in range(K):
+            n = sum(period[k][0] for period in panel)
+            d = sum(period[k][1] for period in panel)
+            start.append(min(logit(BOX[0][1]), max(logit(BOX[0][0]), logit((d + 0.5) / (n + 1.0)))))
+        start.append(logit(0.1))
+        bounds = [tuple(logit(b) for b in BOX[0])] * K + [tuple(logit(b) for b in BOX[1])]
+        res = optimize.minimize(neg_and_grad, start, jac=True, method="L-BFGS-B", bounds=bounds,
+                                options={"ftol": 1e-15, "gtol": 1e-9, "maxiter": 500})
+        gap = max(abs(a - b) for a, b in zip(res.x, core))
+        at_core = loglik(core)
+        beaten = -res.fun - at_core
+        want = float.fromhex(r["loglik_hex"])
+        rel = nan_inf(abs(at_core - want) / max(1.0, abs(want)))
+        good = (gap <= tol["TOL_SCIPY_MULTIGRADE_FIT_LOGIT"] and beaten <= tol["TOL_SCIPY_MULTIGRADE_FIT_LL_ABS"]
+                and rel <= tol["TOL_SCIPY_MULTIGRADE_LL_REL"])
+        ok = ok and good
+        print(f"estimate, {r['name']} (K = {K}, T = {len(panel)}): worst logit gap {gap:.3g}, scipy optimum above the "
+              f"engine's by {beaten:.3g}, log-likelihood at the engine's estimate {rel:.3g} relative "
+              f"({res.nit} iterations) {'ok' if good else 'FAIL'}")
+    return ok
 
 
 if __name__ == "__main__":
