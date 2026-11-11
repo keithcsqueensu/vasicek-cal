@@ -7,7 +7,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 
 ## Now
 
-- **M6, the AR(1)-aware binomial MLE: in progress.**
+- **M6, the AR(1)-aware binomial MLE: done** (D-195–D-202, D-208). M6 as a whole is in progress for its other
+  models (Next, item 7).
   - Merged: the likelihood (forward–backward–forward filter, φ = 0 bit for bit; D-195), the search and
     3-D profile intervals with the S-35 M6 arm registered first (D-196, PR #50), the validation
     (likelihood goldens, a two-formulation scipy replication, the search's recovery tests,
@@ -106,8 +107,9 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
    from M7; D-177). Not started.
 6. **Consolidation:** tag v0.2 (D-168, D-177); the README already carries the study results.
 7. **The rest of M6:** multi-grade calibration with a shared ρ (D-151; S-29, S-30, S-40), multi-segment
-   factors, alternative mixing distributions, Pluto–Tasche, moving-block coverage under AR(1) data,
-   R-1. Then M4 (D-168).
+   factors, alternative mixing distributions, Pluto–Tasche's multi-grade sequence and multi-period
+   cohort bound (S-52, S-50; the single-grade bounds are done, S-6, D-217), moving-block coverage under
+   AR(1) data, R-1. The AR(1)-aware MLE has no C ABI entry point yet. Then M4 (D-168).
 
 **Backlog** (`native` options, each judged against the pinned recovery verdicts; D-131, D-137):
 - a bias-corrected ρ̂ from exact delete-one refits, reported beside ρ̂ (S-3, D-159);
@@ -132,7 +134,7 @@ the data repository for S-47's public-data part needs its own D-entry (D-188).
 | M3 | Vasicek-rate MLE, method of moments, grid Bayesian; C ABI 0.3, then 0.4 (S-4b) | **done** | D-164–D-166, D-169, D-184 |
 | M4 | CUDA backend, CPU↔GPU parity suite | after M6; nvcc compile-only CI exists | D-168, D-100 |
 | M5 | Monitoring: backtests, run ledger, report data, threshold table | planned | D-152 |
-| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress** (AR(1)-aware MLE) | D-151, D-195–D-200, D-208 |
+| M6 | Benchmark models: AR(1) factor, multi-grade, multi-segment, mixing distributions, Pluto–Tasche | **in progress**: the AR(1)-aware MLE is done, and so are the single-grade Pluto–Tasche bounds (S-6) | D-151, D-195–D-202, D-208, D-217 |
 | M7 | Macro pipeline: transforms, pre-screens, batched fits, scorers, ranker | planned | D-148, R-2 |
 | M8 | Public-data demonstrations, scipy replication set, ABI 1.0 | planned | D-046, D-188 |
 
