@@ -136,8 +136,7 @@ jobs:
       - name: Toolchain (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build ${{ matrix.packages }}
+          .github/scripts/apt-install.sh ninja-build ${{ matrix.packages }}  # skips what the image has; retries (D-418)
           echo "CC=${{ matrix.cc }}" >> "$GITHUB_ENV"
           echo "CXX=${{ matrix.cxx }}" >> "$GITHUB_ENV"
 
@@ -248,8 +247,14 @@ jobs:
     steps:
       - name: Tools (git, Ninja, pinned CMake)
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git ninja-build python3-pip
+          # .github/scripts/apt-install.sh's retry loop, inline: the checkout that brings the script needs git (D-418).
+          for attempt in 1 2 3 4 5; do
+            if apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 update &&
+               DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
+                 install -y --no-install-recommends git ninja-build python3-pip; then break; fi
+            [ "$attempt" -eq 5 ] && { echo "apt: giving up after 5 attempts" >&2; exit 1; }
+            echo "apt attempt $attempt failed; retrying in $((attempt * 30)) s"; sleep $((attempt * 30))
+          done
           python3 -m pip install --quiet "cmake==${{ matrix.cmake }}"
       - uses: actions/checkout@v4
       - name: Versions
