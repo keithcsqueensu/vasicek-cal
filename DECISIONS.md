@@ -1999,6 +1999,21 @@ before the build). Cloud D-400 block, continued.
   - **Then:** the stationary scheme (scheme 3) and the selector are specified in `bootstrap.md`, built with a
     Python mirror, reference draws and goldens, then the study tool and scorer, then the subset run and the
     full run.
+- **D-418 (owner) — CI rides out apt archive outages: installed packages are skipped and apt is retried; no test
+  or build changes.**
+  - **Why:** on 2026-11-11 every Linux and CUDA job failed in `apt-get` with `Could not resolve
+    'archive.ubuntu.com'` (and the runner-local `azure.archive.ubuntu.com`), before anything was built. It
+    failed on `main` and on #89–#91 alike, from about 14:20 UTC. GitHub's status page showed no incident.
+    Other projects reported the same pattern on GitHub runners on Nov 9–10, and added apt retries and mirror
+    fallbacks.
+  - **What:** `.github/scripts/apt-install.sh` installs only the packages the runner image lacks, and skips
+    apt entirely when none are missing. Otherwise it retries each download and up to 5 update-and-install
+    attempts. Each `apt-get update` is cut off after 3 minutes and each install after 10. The first
+    version had no such limit, and one update hung on an open download for 5 hours until GitHub cancelled
+    the job. The tools steps also get a 45-minute limit as a backstop. The CUDA containers' tools step
+    carries the same loop inline, since the checkout that brings the script needs git.
+  - **What it does not change:** what is built or tested. A package still missing after the retries fails
+    the job. No test is skipped and no job is made optional.
   - **Results change: no.**
 
 ## Open
