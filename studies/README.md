@@ -6,7 +6,7 @@ beside this index, in `studies/<slug>/` (D-153). Performance work is not here: s
 
 Contents: [At a glance](#at-a-glance) · [Index](#index) · [How studies are run](#how-studies-are-run) ·
 [The study subset](#the-study-subset-approved-d-150) · [Priority order](#priority-order-d-151) ·
-[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-52 and M6-V, below.
+[Interval methods compared](#interval-methods-compared-d-176-d-181) · entries S-1 to S-53 and M6-V, below.
 
 ## At a glance
 
@@ -79,6 +79,7 @@ they exist.
 | [S-50](#s-50-the-multi-period-cohort-bound-pt-multi-period-cohort) | `pt-multi-period-cohort` | Does Pluto and Tasche's multi-period cohort bound cover under a serially correlated factor? | M6 (AR(1) factor; a cohort DGP variant) | not registered (D-216) |
 | [S-51](#s-51-when-to-stop-using-the-most-prudent-bound-pt-switch-point) | `pt-switch-point` | Beyond how many expected defaults does the most-prudent bound stop adding information? | now (after S-6) | not registered (D-216) |
 | [S-52](#s-52-the-multi-grade-most-prudent-sequence-pt-multi-grade) | `pt-multi-grade` | The multi-grade sequence: coverage, scaling to the central tendency, and non-monotone bounds as a ranking signal | now (S-24's segment streams are built, D-414) | not registered (D-216) |
+| [S-53](#s-53-block-bootstraps-under-an-ar1-factor-block-bootstrap-ar1) | [`block-bootstrap-ar1`](block-bootstrap-ar1/) | How much coverage do block bootstraps restore under an AR(1) factor, and does a data-driven block length beat the fixed one? | M6 (needs the stationary bootstrap and the selector) | registered (D-415) |
 
 Costs in the entries are estimates from the study subset's measurement (below) unless marked
 measured, and are refined in each study's `PREDICTION.md`.
@@ -2018,3 +2019,41 @@ footnote 8) give four studies. None is registered, and none changes S-6's regist
   S-24's segment index (`dgp::simulate_panel_segments`, built in D-414).
 - **Verdicts it could change:** none pinned.
 - **Cost:** S-6's bounds per grade; the run is minutes once the DGP exists.
+
+## Addendum: block bootstraps under dependence (S-53; owner, 2026-11-11)
+
+### S-53 Block bootstraps under an AR(1) factor (`block-bootstrap-ar1`)
+
+- **Question:** under an AR(1) factor, how much of the iid bootstrap's lost coverage do the moving-block
+  bootstrap (fixed ℓ = ⌈T^(1/3)⌉, D-133) and the stationary bootstrap restore, and does a data-driven block
+  length (Politis and White 2004, with Patton, Politis and White 2009's correction) beat the fixed one?
+- **Motivation:** D-133 deferred the moving-block bootstrap's coverage study to M6 with AR(1) data, and named
+  the stationary bootstrap and the data-driven length as later `native` options. S-35 measured the iid
+  bootstrap's loss on these panels (D-192), and S-48 measured the HAC Wald interval's partial repair
+  (D-211).
+- **Experiment:** S-35's panels bit for bit (the recovery matrix, φ ∈ {0, 0.3, 0.6}, R = 1,000), each with
+  four bootstrap arms, B = 999, percentile intervals:
+  - iid (S-35's arm, rerun as a check);
+  - moving block at the fixed length;
+  - moving block at the data-driven length;
+  - stationary at the data-driven mean length.
+
+  The selector reads x_t = Φ⁻¹((d_t + ½)/(n + 1)), the probit of each period's default rate (owner's choice).
+- **Verdicts it could change:** none pinned. Block bootstraps are `native` options.
+- **Prerequisites:** the stationary bootstrap (a new resampling scheme) and the selector in the engine, each
+  specified in `docs/methodology/bootstrap.md` before its code. The stationary draws get a Python mirror and
+  reference draws matched bit for bit; the selector gets goldens from the reference's `politis_white`. A
+  study tool and its scorer are merged before the run.
+- **Overlaps:** S-35 (its panels, its iid arm and its AR(1) MLE as benchmark), S-48 (the HAC Wald interval
+  as the analytic counterpart), S-50 (multi-period cohorts under the same factor).
+- **Placement:** M6, after its prerequisites.
+- **Cost:** three more bootstrap arms on S-35's panels: about three times the iid bootstrap's share of
+  S-35's run. Projected before the full run (D-187).
+- **Prediction:** registered, [`block-bootstrap-ar1/PREDICTION.md`](block-bootstrap-ar1/PREDICTION.md)
+  (B1–B9), with model-only reference numbers from [`reference.py`](block-bootstrap-ar1/reference.py). The
+  expected answer:
+  - every block arm repairs part of the loss, more as T grows, and none reaches the band for PD at φ = 0.6;
+  - at these T the data-driven length undershoots its own target and loses to the fixed T^(1/3) rule;
+  - the stationary and moving-block bootstraps at the same length nearly agree.
+- **Result:** not run. **Mitigation:** n/a.
+- **Monitoring implication:** to be filled in when the study finishes (D-152).
