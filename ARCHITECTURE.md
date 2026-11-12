@@ -199,6 +199,10 @@ tolerances that define "agrees" are in the register (§7).
   exp, Φ, Φ⁻¹) are the DGP's own, built from exactly or correctly rounded operations only. It
   runs with FP contraction off, refuses to run with flush-to-zero active, and runs on the CPU
   only.
+- *Variants:* the AR(1) factor (`simulate_panel_ar1`, D-190), which reuses the base draws; and
+  K segments or grades on one factor (`simulate_panel_segments`, D-414). Segment 0 draws the base
+  stream, and segment s ≥ 1 its own key domain, so segments are independent given Z_t. Each
+  variant has its own reference panels and SHA-256.
 
 The resampling, reference and DGP entry points in C++:
 
@@ -226,6 +230,8 @@ ProfileInterval profile_interval(const std::vector<Period>& panel, const Fit&, i
 }
 namespace vcal::dgp {        // dgp/dgp.hpp
 Status simulate_panel(const PanelSpec& spec, std::int64_t* defaults, double* factors);
+Status simulate_panel_ar1(const PanelSpec& spec, double phi, std::int64_t* defaults, double* factors);
+Status simulate_panel_segments(const SegmentPanelSpec& spec, std::int64_t* defaults, double* factors);
 }
 ```
 

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Panel simulation (see dgp/dgp.hpp and docs/methodology/dgp.md). Mirrors Mirror.factor and
-// Mirror.panel in tools/gen_dgp_tables.py operation for operation, the Bernoulli count through
+// Panel simulation (see dgp/dgp.hpp and docs/methodology/dgp.md). Mirrors Mirror.factor, Mirror.panel and
+// Mirror.panel_segments in tools/gen_dgp_tables.py operation for operation, the Bernoulli count through
 // count_defaults (dgp/bernoulli.cpp; its vector kernels equal the mirror's loop bit for bit, P-17).
 // Compiled with strict FP semantics and FP contraction off (D-056).
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 
 #include "dgp/dgp.hpp"
@@ -52,6 +53,49 @@ Status simulate(const PanelSpec& spec, bool ar1, double phi, std::int64_t* defau
 }
 
 }  // namespace
+
+Status simulate_panel_segments(const SegmentPanelSpec& spec, std::int64_t* defaults, double* factors) {
+    if (!fp_environment_ok()) return Status::FpEnvironment;
+    if (!(spec.segments >= 1 && spec.segments <= kMaxSegments) || spec.pd == nullptr) return Status::InvalidSpec;
+    if (!(spec.rho > 0.0 && spec.rho < 1.0)) return Status::InvalidSpec;
+    const auto K = static_cast<std::size_t>(spec.segments);
+    for (std::size_t s = 0; s < K; ++s) {
+        if (!(spec.pd[s] > 0.0 && spec.pd[s] < 1.0)) return Status::InvalidSpec;
+    }
+    if (!(spec.periods >= 1 && spec.periods <= (std::int64_t{1} << 32)) || spec.obligors == nullptr ||
+        defaults == nullptr) {
+        return Status::InvalidSpec;
+    }
+    const auto cells = static_cast<std::size_t>(spec.periods) * K;
+    for (std::size_t i = 0; i < cells; ++i) {
+        if (!(spec.obligors[i] >= 0 && spec.obligors[i] <= kMaxObligors)) return Status::InvalidSpec;
+    }
+
+    const BernoulliKernel kernel = bernoulli_kernel_selected();
+    if (!bernoulli_kernel_available(kernel)) return Status::KernelUnavailable;
+    double c[kMaxSegments];
+    std::uint64_t seeds[kMaxSegments];
+    for (std::size_t s = 0; s < K; ++s) {
+        c[s] = det_probit(spec.pd[s]);
+        seeds[s] = segment_seed(spec.seed, static_cast<int>(s));
+    }
+    const double sr = std::sqrt(spec.rho);
+    const double s1 = std::sqrt(1.0 - spec.rho);
+    for (std::int64_t t = 0; t < spec.periods; ++t) {
+        const auto period = static_cast<std::uint32_t>(t);
+        double z = 0.0;
+        const Status st = factor_draw(spec.seed, spec.scenario, spec.replicate, period, kFactorBlocks, &z);
+        if (st != Status::Ok) return st;
+        const std::size_t row = static_cast<std::size_t>(t) * K;
+        for (std::size_t s = 0; s < K; ++s) {
+            const double p = det_ncdf((c[s] - sr * z) / s1);
+            defaults[row + s] =
+                count_defaults(seeds[s], spec.scenario, spec.replicate, period, spec.obligors[row + s], p, kernel);
+        }
+        if (factors != nullptr) factors[t] = z;
+    }
+    return Status::Ok;
+}
 
 Status factor_draw(std::uint64_t seed, std::uint32_t scenario, std::uint32_t replicate, std::uint32_t period,
                    std::uint32_t max_blocks, double* z) {

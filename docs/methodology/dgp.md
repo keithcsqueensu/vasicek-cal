@@ -97,6 +97,38 @@ values of φ compares them on the same draws, and its φ = 0 arm is the pinned r
 `tests/golden/dgp/reference_panels_ar1.csv` and `reference_panels_ar1.sha256` hold six reference panels
 (φ from −0.5 to 0.95) in the same format, with a φ column. Panel 0 is base panel 0 at φ = 0.
 
+## Segments on one factor
+
+A variant for panels of several segments or grades that load on the same factor with the same ρ but
+have their own PDs (S-24, S-29 to S-31, S-52, the multi-grade model; D-150, D-151, D-414),
+`dgp::simulate_panel_segments`. Its inputs are the base DGP's, except that a panel has K segments,
+1 ≤ K ≤ 32, each with its own PD_s, and an n_ts for each period t and segment s = 0, 1, …, K − 1.
+
+**One period.**
+1. **Factor Z_t:** the base DGP's step 1, on the base key. Every segment uses this one Z_t.
+2. **Conditional PD of segment s:** p_ts = Φ((Φ⁻¹(PD_s) − √ρ·Z_t) / √(1 − ρ)).
+3. **Defaults of segment s:** the base DGP's step 3 with n_ts and p_ts, on segment s's key:
+   - segment 0: the base key, so its uniforms are the base DGP's;
+   - segment s ≥ 1: the key of the 64-bit seed XOR `0x5345474D454E5453` ("SEGMENTS") XOR s, low
+     32 bits then high 32 bits as before.
+
+   The counter is (scenario, replicate, period, block) as before, with the Bernoulli blocks from 65536;
+   blocks 0 … 65535 of a segment key are never used.
+
+**Properties:**
+- **Separate streams.** Segments s ≥ 1 draw from their own key domain (D-149, D-150), so two segments'
+  defaults are independent given Z_t. Sharing uniforms between segments would add a dependence that the
+  model does not have.
+- **One segment is the base DGP.** Segment 0 draws exactly what the base DGP draws, so a one-segment panel
+  is the base panel bit for bit, and so is segment 0 of any panel at its PD. A segment's draws do not
+  depend on the other segments' PDs, sizes or count, so adding a segment, or obligors to one, never
+  changes another segment's defaults.
+
+`tests/golden/dgp/reference_panels_segments.csv` and `reference_panels_segments.sha256` hold six
+reference panels (K from 1 to 17) with one row per period and segment. The canonical bytes are, for each
+panel in order and each period in order, each segment's d_ts as a little-endian int64 in segment order,
+then Z_t as a little-endian IEEE binary64. Panel 0 is base panel 0 as one segment.
+
 ## Checking a reproduction
 
 `tests/golden/dgp/reference_panels.csv` lists six reference panels and their exact output (d_t

@@ -1,7 +1,7 @@
 {
   "command": "uv run --no-project --with mpmath==1.4.1 python tools/gen_dgp_tables.py",
   "generator_files": {
-    "tools/gen_dgp_tables.py": "8f891c00ad90a6ddccd8295c249871066bbe78a768efb0eabb71a322fecf182b",
+    "tools/gen_dgp_tables.py": "d57ebeb446ff6ce4d3be70be2d52452021b700d132e99ba2bb5db3b42e58103d",
     "tools/tablegen.py": "4830c6a946aeaca1aac860483e37f604d710f0d0886fdf04a9ad0546f11d6360"
   },
   "mp_dps": 50,
@@ -18,8 +18,10 @@
     "tests/golden/dgp/reference_panels.sha256": "bb6edde038bea76c258a4f7f4ca21c86fab636e7f569e34d94d1a73781791b79",
     "tests/golden/dgp/reference_panels_ar1.csv": "86bc5aa534894c5fc552db92edf764f4392041de81ca0c2b98a9e0e75dde9c9d",
     "tests/golden/dgp/reference_panels_ar1.sha256": "101f03e1bad3588a7d392d53d4017d3898396658a1cd4f6d26e8ba14ae5d9d17",
+    "tests/golden/dgp/reference_panels_segments.csv": "2db60b6ff1f39e1344fd4b321b77dfb04960c12fc77d1e00b797dca55712b31b",
+    "tests/golden/dgp/reference_panels_segments.sha256": "b7df8816bbcdc0466a32894236441009279ce0f8875f18f1f973a033d030147f",
     "tests/golden/dgp/resample_reference.csv": "7e88939691cd4af2f543d75b9b7318b9402c9b1b2bba260865f92f0a3a446539",
     "tests/golden/dgp/sha256_vectors.csv": "132788a365dd486dc43d53bda18197b20916d0cf2325da12764e0719ae594821"
   },
-  "python_version": "3.14.6"
+  "python_version": "3.13.18"
 }

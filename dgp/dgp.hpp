@@ -64,6 +64,32 @@ Status simulate_panel(const PanelSpec& spec, std::int64_t* defaults, double* fac
 // panel bit for bit. Requires -1 < phi < 1. factors[t] = Z_t, the AR(1) factor.
 Status simulate_panel_ar1(const PanelSpec& spec, double phi, std::int64_t* defaults, double* factors);
 
+// Segments on one factor (S-24, S-29 to S-31, S-52, the multi-grade model; docs/methodology/dgp.md,
+// "Segments on one factor"; D-150, D-414). K segments share Z_t, the base DGP's factor on the base key, and
+// each has its own PD; segment s's defaults are the base DGP's step 3 on segment_seed(seed, s): the base
+// seed for s = 0 (so one segment is simulate_panel's panel bit for bit) and seed ^ kSegmentKeyTag ^ s for
+// s >= 1, its own key domain (D-149), so segments are independent given Z_t.
+inline constexpr int kMaxSegments = 32;
+inline constexpr std::uint64_t kSegmentKeyTag = 0x5345474D454E5453ull;  // "SEGMENTS"
+
+inline std::uint64_t segment_seed(std::uint64_t seed, int segment) {
+    return segment == 0 ? seed : seed ^ kSegmentKeyTag ^ static_cast<std::uint64_t>(segment);
+}
+
+struct SegmentPanelSpec {
+    std::uint64_t seed;
+    std::uint32_t scenario;
+    std::uint32_t replicate;
+    int segments;                  // K, 1 .. kMaxSegments
+    const double* pd;              // PD_s, 0 < PD_s < 1, s = 0 .. K - 1
+    double rho;                    // 0 < rho < 1, shared
+    const std::int64_t* obligors;  // n_ts at [t K + s], 0 <= n_ts <= kMaxObligors
+    std::int64_t periods;          // 1 .. 2^32
+};
+
+// defaults[t K + s] = d_ts; factors[t] = Z_t if factors is non-null.
+Status simulate_panel_segments(const SegmentPanelSpec& spec, std::int64_t* defaults, double* factors);
+
 // --- building blocks, exported for tests and the methodology's worked examples -----------------
 
 double det_log(double x);     // natural log
@@ -81,7 +107,7 @@ bool fp_environment_ok();
 // threshold, 8 or 16 Philox blocks at a time, and return the same count bit for bit. count_defaults
 // returns -1 if n is out of range or the kernel is not available on this CPU or build.
 //
-// simulate_panel and simulate_panel_ar1 use bernoulli_kernel_selected(): the fastest available, unless the
+// simulate_panel, simulate_panel_ar1 and simulate_panel_segments use bernoulli_kernel_selected(): the fastest available, unless the
 // environment variable VCAL_DGP_KERNEL (scalar, sse2 or avx2) names one, read once when first needed. A
 // value that is not one of those, or names a kernel this CPU or build lacks, selects Unavailable, and the
 // simulations then return Status::KernelUnavailable rather than quietly use another kernel.

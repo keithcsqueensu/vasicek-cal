@@ -61,7 +61,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
     ρ = 0.02, 0.12 and 0.24. The oracle covers 0.955–0.959, and the fixed ρ_a = 0.12 covers 0.863 at ρ = 0.24.
     `rows.csv` is on the release `s6-data-2026-10-13`.
 
-- **M6, the multi-grade shared-ρ model: PRs 1 and 2 of 3, the likelihood and the estimator (D-411 to D-413).**
+- **M6, the multi-grade shared-ρ model: all three PRs, the likelihood, the estimator and the DGP layer (D-411 to
+  D-414).**
   - **PR 1, the likelihood (D-412).** One integral per period over the product of the grades' binomials on a
     shared factor (`core/objectives/multigrade.hpp`, `docs/methodology/multigrade_mle.md`). K = 1 is the
     single-grade likelihood bit for bit. Against 65 mpmath goldens, the parity rule is within 3.6 ε interior
@@ -78,7 +79,16 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
       undercovers slightly at T = 20.
     - A 17-grade fit at T = 100 takes 7.5 s.
     - The owner's open points were taken at their defaults (box [1e-5, 0.5], Wald PD intervals, `native`).
-  - **Next:** PR 3, the DGP layer and the grade scenario matrix.
+  - **PR 3, the DGP layer (D-414).** `dgp::simulate_panel_segments` puts K segments on one factor. Segment 0
+    draws the base stream, so one segment is the base panel bit for bit, and each other segment draws its
+    own key domain. It has a Python mirror and reference panels, matched bit for bit under every kernel.
+    - D-151's grade scenario matrix is in code, and its counts match the studies index.
+    - Recovery on its nine scenarios passes eight. Scenario 6 (H, T = 20, ρ = 0.02) undercovers ρ, at
+      0.9125 at R = 400. That is the single-grade fit's known T = 20, ρ = 0.02 finding, now a reviewed
+      KNOWN FINDING (owner).
+    - S-24's segment streams and S-52's dependency are built.
+  - **Next, each its own decision:** the observation layer (built with the first of S-29 and S-31 to S-33),
+    per-grade profile intervals, and a C ABI entry point after the recovery study.
 
 - **The correctness audit: done (D-218, D-219); PR A merged (#79), PRs B and C merged (#80).** The
   Copilot audit's findings were never committed, so a fresh audit was run; its record is
