@@ -120,7 +120,8 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
 - a bias-corrected ρ̂ from exact delete-one refits, reported beside ρ̂ (S-3, D-159);
 - BCa intervals: better than the percentile interval for ρ, no gain for PD, no fix near a bound (S-5,
   D-159); not recommended over Jeffreys or profile (D-176);
-- the stationary bootstrap and a data-driven block length (Politis–White), with M6's AR(1) data;
+- the stationary bootstrap and a data-driven block length (Politis–White), with M6's AR(1) data: study
+  S-53 registered (D-415); the engine work follows;
 - P-11 part 2 (pinning runs write goldens directly; D-179); P-20 and the in-house `log`/`exp` for
   `log_phi`, each a decision of its own (D-199).
 
