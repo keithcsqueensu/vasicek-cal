@@ -58,6 +58,24 @@ to D-130 (threshold 1.9207) and S-23's interval for the 99.9% conditional PD, wh
 in the objective. The grid, box and flags are the same. The per-run quadrature check compares two
 integrators; this objective has none, so the check passes trivially.
 
+**Analytic derivatives (D-417).** Each period's score and Hessian in (PD, ρ) are closed form, so the
+engine takes the same paths as for the binomial fit: the SEs are the analytic observed information
+(D-185), and the profile intervals and the polished maximum are solved by safeguarded Newton (D-170).
+Before D-417 it used central differences (D-119) and nested Brent. The derivatives are taken in
+(c, ρ), c = Φ⁻¹(PD), and chained with dc/dPD = 1/φ(c) and d²c/dPD² = c/φ(c)². With u = √(1 − ρ)·x − c:
+
+- **The density** (and a substituted boundary rate, with x = ±Φ⁻¹(δ)):
+  - ∂l/∂c = u/ρ and ∂²l/∂c² = −1/ρ;
+  - ∂l/∂ρ = −1/(2(1 − ρ)) − 1/(2ρ) − u·u_ρ/ρ + u²/(2ρ²), with u_ρ = −x/(2√(1 − ρ)), and its second
+    derivatives by differentiating once more (`core/objectives/vasicek_rate.hpp`).
+- **A censored boundary rate,** l = log Φ(w): ∂l = λ(w)·∂w and ∂²l = λ′(w)·∂w ∂w + λ(w)·∂²w, with
+  λ = φ/Φ, the inverse Mills ratio, and λ′ = −λ(w + λ).
+
+Against Richardson-extrapolated differences, the score and Hessian agree within 3.0·10⁻⁹ relative
+over interior rates from 10⁻⁸ to 1 − 10⁻⁶ and the boundary terms at n = 100 and 10⁶
+(`TOL_SCORE_HESSIAN_FD_REL`). At the closed-form MLE the analytic SE is the closed-form one,
+SE(logit ρ) = √(2/T) exactly, to 5.6·10⁻¹⁵ relative.
+
 **The closed form.** Without rates of 0 or 1, the maximum is known exactly: x_t is normal, so the
 MLE is the sample mean μ̂ and the 1/T variance v̂ of x_t, and by invariance
 
@@ -66,8 +84,8 @@ MLE is the sample mean μ̂ and the 1/T variance v̂ of x_t, and by invariance
 The engine does not use it: the grid path keeps one mechanism for every objective, including the
 resampling of D-042, and handles the censored likelihood, which has no closed form. The closed form
 is an independent check: on rate panels from the recovery DGP, the profile code's polished maximum
-agrees with it within 5.4·10⁻⁸ in logit units, and its log-likelihood within 3.4·10⁻¹³
-(`TOL_VASICEK_RATE_POLISH_U`). Where the closed form lies outside the box, the grid path reports
+agrees with it within 7.1·10⁻¹⁰ in logit units (5.4·10⁻⁸ under Brent, before D-417), and its
+log-likelihood within 3.4·10⁻¹³ (`TOL_VASICEK_RATE_POLISH_U`). Where the closed form lies outside the box, the grid path reports
 the box's constrained maximum and flags it, as for the binomial fit.
 
 **The least-squares form (S-37).** Yang (2013) states that the asymptotic (infinitely granular) MLE
@@ -147,7 +165,8 @@ predictions above were committed at 15:44:40 in "M3: the Vasicek-rate objective,
   SEs of the box's cap of 0.5, a χ² tail of v̂. No grid-edge or flat fits, and every profile
   interval was computed.
 - **The closed form** agrees with the polished maximum within 1.6·10⁻⁷ in logit units over all
-  27,000 fits.
+  27,000 fits. With D-417's Newton polish it is 2.6·10⁻⁹; the summary was refreshed then, and no
+  verdict moved (D-417).
 
 | # | Prediction | Result | Held |
 |---|---|---|---|
@@ -167,11 +186,16 @@ and `scipy.optimize`) on the 63 panels of `tests/golden/vasicek_rate/replay.csv`
 of every recovery cell, and nine count panels with zero-default periods (PD 1%, n = 100) under the
 censored likelihood. On its own it finds the maximum by nested bounded Brent in logit coordinates
 (and the closed form for rate panels), and solves each PD and ρ profile end point by `brentq` on the
-profile. Agreement with the engine: estimates within 1.8·10⁻⁷ in logit units, the maximum
-log-likelihood within 3.4·10⁻¹³, end points within 2.3·10⁻¹⁰ (`TOL_SCIPY_RATE_*`). It runs in the
+profile. Agreement with the engine: estimates within 1.1·10⁻⁷ in logit units (scipy's own Brent is the
+looser side; 1.8·10⁻⁷ before D-417), the maximum log-likelihood within 3.4·10⁻¹³, end points within
+2.5·10⁻¹⁰ (`TOL_SCIPY_RATE_*`). It runs in the
 CI job "validation (scipy)".
 
 ## 7. What is not here yet
+
+- **The rest of the first-class work** (`rate_mle_plan.md`, D-416): an n·PD adequacy flag and a
+  rate-vs-count disagreement diagnostic from S-27, then interval coverage with analytic SEs and the
+  bootstrap, and a data-sufficiency table.
 
 - **The C ABI** exposes it from 0.3 as `vcal_calibrate_rate` (D-169), with the zero-rate
   treatments as explicit options and no recommended default until S-28 reports.

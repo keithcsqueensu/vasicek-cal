@@ -2000,6 +2000,40 @@ before the build). Cloud D-400 block, continued.
     Python mirror, reference draws and goldens, then the study tool and scorer, then the subset run and the
     full run.
   - **Results change: no.**
+- **D-416 (owner) — The rate MLE becomes a first-class estimator in three PRs (D-177 item 3), planned in
+  `docs/methodology/rate_mle_plan.md`.**
+  - **PR A:** analytic derivatives, so the engine's D-185 SEs, D-170 Newton profiles and D-209 HAC SE apply
+    to it.
+  - **PR B:** an n·PD adequacy flag and a rate-vs-count disagreement diagnostic, from S-27 (D-174). The
+    threshold is the owner's decision, proposed at 1,000.
+  - **PR C:** interval coverage and a data-sufficiency table, pre-registered before its runs.
+  - **Order:** A now, B after the threshold is set, and C registered after A merges.
+
+- **D-417 — PR A: the Vasicek-rate objective gets analytic derivatives. The rate MLE's SEs become analytic and
+  its profiles and polished maximum Newton; results change within solver tolerance, and no verdict flips.**
+  - **What:** `VasicekRate::log_contrib_derivs`, the score and Hessian in (PD, ρ) of the density and of
+    both native boundary treatments. Derivatives are taken in (c, ρ) and chained through dc/dPD = 1/φ(c).
+    The censored terms use the inverse Mills ratio, `special::inverse_mills`. The value is `log_contrib`'s,
+    from the same call.
+  - **Effect:** the engine's existing paths switch on through `has_contrib_derivs`:
+    - D-185's analytic SEs. This supersedes D-185's exception, which kept D-119's differences for this
+      objective;
+    - D-170's Newton profile intervals and polish;
+    - D-209's HAC SE.
+  - **Checks, against tolerances stated before the run:**
+    - **The derivatives vs Richardson differences:** 3.0e-9 at worst, under `TOL_SCORE_HESSIAN_FD_REL`
+      (1e-8).
+    - **The analytic SE vs the closed-form SE, 35 panels:** 5.6e-15 relative against 1e-10. At the MLE of
+      the normal sample x_t, SE(logit ρ) = √(2/T) exactly.
+    - **The polished maximum vs the closed form:** 7.1e-10 on the unit panels and 2.6e-9 over the 27,000
+      recovery fits, against 1.6e-7 under Brent.
+    - **A tolerance set from the measurement:** `TOL_VASICEK_RATE_POLISH_U`, from 4e-7 to 1.2e-8
+      (worst × 4).
+  - **Results change: within solver tolerance.**
+    - **The flip check:** the rate recovery summary was refreshed with every count and class unchanged, so
+      0 of 81 verdicts flip. The doubles moved by at most 1.6e-7 (scaled).
+    - **The scipy replay:** refreshed, with scipy agreeing within its unchanged tolerances.
+    - **Pinned studies:** results that used the rate MLE stay pinned to their runs (D-406).
 
 ## Open
 

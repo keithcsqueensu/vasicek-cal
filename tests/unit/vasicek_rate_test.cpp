@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -206,4 +207,140 @@ VCAL_TEST(vasicek_rate_recovery_summary_verdicts) {
     if (!unreviewed.empty()) vcal::test::note("unreviewed:" + unreviewed);
     VCAL_CHECK(unreviewed.empty());
     VCAL_CHECK_EQ(out_of_band, 3);
+}
+
+namespace {
+
+// The derivatives chained to logit coordinates: g_u = g J, H_u = J_i J_j H + delta_ij g_i J_i (1 - 2 theta_i).
+template <class O>
+struct LogitRate {
+    double l, g[2], h[3];
+};
+
+template <class O>
+LogitRate<O> logit_rate(const O& obj, const o::RateObs& y, double u, double w) {
+    const auto primary = vcal::quadrature::parity_rule();
+    const double pd = vcal::grid::from_scaled(vcal::AxisScale::Logit, u);
+    const double rho = vcal::grid::from_scaled(vcal::AxisScale::Logit, w);
+    double g[2], h[3];
+    LogitRate<O> r{};
+    r.l = obj.log_contrib_derivs(y, {pd, rho}, primary, g, h);
+    const double J[2] = {pd * (1.0 - pd), rho * (1.0 - rho)};
+    r.g[0] = g[0] * J[0];
+    r.g[1] = g[1] * J[1];
+    r.h[0] = h[0] * J[0] * J[0] + g[0] * J[0] * (1.0 - 2.0 * pd);
+    r.h[1] = h[1] * J[1] * J[1] + g[1] * J[1] * (1.0 - 2.0 * rho);
+    r.h[2] = h[2] * J[0] * J[1];
+    return r;
+}
+
+template <class O>
+void check_rate_derivs(const O& obj, const std::vector<o::RateObs>& ys, const char* name, double& worst_g,
+                       double& worst_h, double& bits) {
+    const auto primary = vcal::quadrature::parity_rule();
+    const double h = 0.02;
+    for (const auto& y : ys) {
+        for (const double pd : {1.0001e-4, 0.001, 0.01, 0.05, 0.19999}) {
+            for (const double rho : {1.0001e-3, 0.02, 0.12, 0.24, 0.49999}) {
+                const double u = vcal::grid::to_scaled(vcal::AxisScale::Logit, pd);
+                const double w = vcal::grid::to_scaled(vcal::AxisScale::Logit, rho);
+                const auto a = logit_rate(obj, y, u, w);
+                const double plain = obj.log_contrib(y, {vcal::grid::from_scaled(vcal::AxisScale::Logit, u),
+                                                         vcal::grid::from_scaled(vcal::AxisScale::Logit, w)},
+                                                     primary);
+                if (std::memcmp(&plain, &a.l, sizeof plain) != 0) bits = 1.0;
+                const double s0 = h / std::sqrt(std::fmax(1.0, std::fabs(a.h[0])));
+                const double s1 = h / std::sqrt(std::fmax(1.0, std::fabs(a.h[1])));
+                const auto diff = [&](double k, double (&dg)[2], double (&dh)[3]) {
+                    const auto up = logit_rate(obj, y, u + k * s0, w), um = logit_rate(obj, y, u - k * s0, w);
+                    const auto wp = logit_rate(obj, y, u, w + k * s1), wm = logit_rate(obj, y, u, w - k * s1);
+                    dg[0] = (up.l - um.l) / (2 * k * s0);
+                    dg[1] = (wp.l - wm.l) / (2 * k * s1);
+                    dh[0] = (up.g[0] - um.g[0]) / (2 * k * s0);
+                    dh[1] = (wp.g[1] - wm.g[1]) / (2 * k * s1);
+                    dh[2] = (wp.g[0] - wm.g[0]) / (2 * k * s1);
+                };
+                double g1[2], h1[3], g2[2], h2[3];
+                diff(1.0, g1, h1);
+                diff(0.5, g2, h2);
+                for (int i = 0; i < 2; ++i) {
+                    const double fd = (4.0 * g2[i] - g1[i]) / 3.0;
+                    worst_g = std::fmax(worst_g, std::fabs(a.g[i] - fd) / std::fmax(1.0, std::fabs(a.g[i])));
+                }
+                for (int i = 0; i < 3; ++i) {
+                    const double fd = (4.0 * h2[i] - h1[i]) / 3.0;
+                    worst_h = std::fmax(worst_h, std::fabs(a.h[i] - fd) / std::fmax(1.0, std::fabs(a.h[i])));
+                }
+            }
+        }
+    }
+    vcal::test::note(std::string(name) + ": worst relative score error " + sci(worst_g) + ", Hessian " + sci(worst_h));
+}
+
+}  // namespace
+
+// The analytic score and Hessian (D-417) against Richardson-extrapolated central differences in logit coordinates,
+// each axis's step 0.02 / sqrt(max(1, |l_aa|)), relative to max(1, |analytic|), as the binomial objective's test:
+// interior rates from 1e-8 to 1 - 1e-6 under every treatment, and rates of 0 and 1 (detect = 1/(2n), n = 100 and
+// 1e6) under the censored and substituted treatments, over the recovery box's corners and interior. The value is
+// log_contrib's bit for bit. Tolerance TOL_SCORE_HESSIAN_FD_REL, the binomial objective's.
+VCAL_TEST(vasicek_rate_score_hessian_match_finite_differences) {
+    std::vector<o::RateObs> interior;
+    for (const double r : {1e-8, 1e-4, 0.003, 0.01, 0.05, 0.3, 0.7, 0.99, 1.0 - 1e-6}) interior.push_back({r, 0.5e-6});
+    std::vector<o::RateObs> boundary;
+    for (const double n : {100.0, 1e6}) {
+        boundary.push_back({0.0, 0.5 / n});
+        boundary.push_back({1.0, 0.5 / n});
+    }
+    double worst_g = 0.0, worst_h = 0.0, bits = 0.0;
+    check_rate_derivs(Refuse{}, interior, "density", worst_g, worst_h, bits);
+    double cg = 0.0, ch = 0.0;
+    check_rate_derivs(Censor{}, boundary, "censored boundary terms", cg, ch, bits);
+    double sg = 0.0, sh = 0.0;
+    check_rate_derivs(Substitute{}, boundary, "substituted boundary terms", sg, sh, bits);
+    VCAL_CHECK(bits == 0.0);
+    for (const double e : {worst_g, worst_h, cg, ch, sg, sh}) VCAL_CHECK(e <= tol::TOL_SCORE_HESSIAN_FD_REL);
+}
+
+// At the closed-form MLE of a panel without boundary rates, the engine's analytic SE is the closed-form SE
+// (D-417). x_t = Phi^-1(r_t) is a normal sample, so at its MLE the observed information in (mu, v) is
+// diag(T/v, T/(2 v^2)) exactly. With logit rho = log v, SE(logit rho) = sqrt(2/T); and with
+// a = mu/sqrt(1 + v), PD = Phi(a), Var(logit PD) = k^2 (v/((1 + v) T) + mu^2 v^2 / (2 (1 + v)^3 T)),
+// k = phi(a)/(Phi(a)(1 - Phi(a))). Within 1e-10 relative, stated before the run.
+VCAL_TEST(vasicek_rate_analytic_se_is_the_closed_form) {
+    const auto primary = vcal::quadrature::parity_rule();
+    const auto g = box_grid();
+    double worst = 0.0;
+    int compared = 0;
+    for (const std::uint32_t scenario : {38u, 41u, 44u, 50u, 59u, 26u, 71u}) {
+        const double pd = scenario == 59 || scenario == 71 ? 0.05 : scenario == 26 ? 0.001 : 0.01;
+        const double rho = scenario == 50 || scenario == 26 ? 0.24 : scenario == 59 ? 0.02 : 0.12;
+        const std::int64_t T = scenario == 38 ? 20 : scenario == 41 || scenario == 50 || scenario == 59 ? 40 : 100;
+        for (std::uint32_t r = 0; r < 5; ++r) {
+            const auto obs = rate_panel(scenario, r, pd, rho, T);
+            o::RateClosedForm cf{};
+            VCAL_REQUIRE(o::vasicek_rate_closed_form(obs.data(), T, cf));
+            if (!(cf.pd > g.axis[0].lo && cf.pd < g.axis[0].hi && cf.rho > g.axis[1].lo && cf.rho < g.axis[1].hi)) continue;
+            double mu = 0.0;
+            for (const auto& y : obs) mu += o::detail::rate_probit(y.rate);
+            mu /= static_cast<double>(T);
+            const double v = cf.rho / (1.0 - cf.rho);
+            const double a = mu / std::sqrt(1.0 + v);
+            const double Pa = 0.5 * std::erfc(-a / std::sqrt(2.0));
+            const double k = std::exp(-0.5 * a * a) * vcal::special::constants::kInvSqrt2Pi / (Pa * (1.0 - Pa));
+            const double Td = static_cast<double>(T);
+            const double se_pd = k * std::sqrt(v / ((1.0 + v) * Td) + mu * mu * v * v / (2.0 * std::pow(1.0 + v, 3) * Td));
+            const double se_rho = std::sqrt(2.0 / Td);
+            const double us[2] = {vcal::grid::to_scaled(vcal::AxisScale::Logit, cf.pd),
+                                  vcal::grid::to_scaled(vcal::AxisScale::Logit, cf.rho)};
+            const auto an = e::analytic_se_at_scaled(Refuse{}, primary, obs.data(), T, g, us);
+            VCAL_REQUIRE(an.ok);
+            const double e0 = std::fabs(an.se_u[0] / se_pd - 1.0), e1 = std::fabs(an.se_u[1] / se_rho - 1.0);
+            worst = std::fmax(worst, std::fmax(e0, e1));
+            VCAL_CHECK(e0 <= 1e-10 && e1 <= 1e-10);
+            ++compared;
+        }
+    }
+    VCAL_CHECK(compared >= 20);
+    vcal::test::note(std::to_string(compared) + " panels: worst relative SE gap " + sci(worst));
 }

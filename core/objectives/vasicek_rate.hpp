@@ -26,6 +26,8 @@
 #include <vector>
 
 #include "core/precision.hpp"
+#include "core/special/generated/constants.hpp"
+#include "core/special/inverse_mills.hpp"
 #include "core/special/log_phi.hpp"
 #include "core/special/probit.hpp"
 
@@ -129,6 +131,80 @@ struct VasicekRate {
             return special::log_phi(zero ? (s1 * xd - c) / s : (s1 * xd + c) / s);
         }
         return nan;  // Refuse: panel_error has already refused the panel
+    }
+
+    // The contribution with its score and Hessian in (PD, rho) (D-170, D-417): grad = (l_PD, l_rho),
+    // hess = (l_PD,PD, l_rho,rho, l_PD,rho). The value is log_contrib's, bit for bit (the same call).
+    // Derivatives in (c, rho), c = Phi^-1(PD), then chained with c' = dc/dPD = 1/phi(c) and
+    // c'' = c c'^2 (docs/methodology/vasicek_rate_mle.md, section 3):
+    //   density at x (substituted: x = +-Phi^-1(detect)), u = s1 x - c, s1 = sqrt(1 - rho):
+    //     l_c = u/rho, l_cc = -1/rho, l_crho = u_rho/rho - u/rho^2,
+    //     l_rho = -1/(2(1 - rho)) - 1/(2 rho) - u u_rho/rho + u^2/(2 rho^2),
+    //     l_rhorho = -1/(2(1 - rho)^2) + 1/(2 rho^2) - (u_rho^2 + u u_rhorho)/rho + 2 u u_rho/rho^2 - u^2/rho^3,
+    //     with u_rho = -x/(2 s1), u_rhorho = -x/(4 s1^3);
+    //   censored, l = log Phi(w), w = (s1 xd + sigma c)/sqrt(rho), sigma = -1 for a zero rate, +1 for a rate of 1:
+    //     with lambda = phi(w)/Phi(w) and lambda' = -lambda (w + lambda),
+    //     l_i = lambda w_i, l_ij = lambda' w_i w_j + lambda w_ij.
+    template <class I>
+    VCAL_HD typename P::accum_t log_contrib_derivs(const Obs& y, const Theta& th, const I& integrator,
+                                                   double (&grad)[2], double (&hess)[3]) const {
+        const double l = log_contrib(y, th, integrator);
+        const double nan = static_cast<double>(NAN);
+        grad[0] = grad[1] = nan;
+        hess[0] = hess[1] = hess[2] = nan;
+        if (!(l == l)) return l;  // NaN (invalid theta, or a refused boundary rate)
+        const double rho = th.rho;
+        const double c = special::probit(th.pd);
+        const double cp = std::exp(0.5 * c * c) / special::constants::kInvSqrt2Pi;  // dc/dPD = 1/phi(c)
+        const double cpp = c * cp * cp;                                 // d2c/dPD2
+        const double s1 = std::sqrt(1.0 - rho);
+        double l_c, l_cc, l_r, l_rr, l_cr;
+        const bool boundary = is_boundary_rate(y);
+        if (!boundary || Z == ZeroRates::Substitute) {
+            double x;
+            if (!boundary) {
+                x = detail::rate_probit(y.rate);
+            } else {
+                const double xd = special::probit(y.detect);
+                x = y.rate == 0.0 ? xd : -xd;
+            }
+            const double u = s1 * x - c;
+            const double u_r = -x / (2.0 * s1);
+            const double u_rr = -x / (4.0 * s1 * s1 * s1);
+            l_c = u / rho;
+            l_cc = -1.0 / rho;
+            l_cr = u_r / rho - u / (rho * rho);
+            l_r = -0.5 / (1.0 - rho) - 0.5 / rho - u * u_r / rho + u * u / (2.0 * rho * rho);
+            l_rr = -0.5 / ((1.0 - rho) * (1.0 - rho)) + 0.5 / (rho * rho) - (u_r * u_r + u * u_rr) / rho +
+                   2.0 * u * u_r / (rho * rho) - u * u / (rho * rho * rho);
+        } else {  // Censor
+            const double xd = special::probit(y.detect);
+            const double sigma = y.rate == 0.0 ? -1.0 : 1.0;
+            const double a = s1 * xd + sigma * c;
+            const double a_r = -xd / (2.0 * s1);
+            const double a_rr = -xd / (4.0 * s1 * s1 * s1);
+            const double sr = std::sqrt(rho);
+            const double r0 = 1.0 / sr;                // rho^-1/2
+            const double r1 = -0.5 / (rho * sr);       // d/drho rho^-1/2
+            const double r2 = 0.75 / (rho * rho * sr); // d2/drho2 rho^-1/2
+            const double w = a * r0;
+            const double w_c = sigma * r0, w_cr = sigma * r1;
+            const double w_r = a_r * r0 + a * r1;
+            const double w_rr = a_rr * r0 + 2.0 * a_r * r1 + a * r2;
+            const double lam = special::inverse_mills(w);
+            const double lam1 = -lam * (w + lam);
+            l_c = lam * w_c;
+            l_cc = lam1 * w_c * w_c;
+            l_r = lam * w_r;
+            l_rr = lam1 * w_r * w_r + lam * w_rr;
+            l_cr = lam1 * w_c * w_r + lam * w_cr;
+        }
+        grad[0] = l_c * cp;
+        grad[1] = l_r;
+        hess[0] = l_cc * cp * cp + l_c * cpp;
+        hess[1] = l_rr;
+        hess[2] = l_cr * cp;
+        return l;
     }
 };
 

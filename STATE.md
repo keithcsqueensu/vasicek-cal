@@ -98,9 +98,14 @@ detailed record of M0 to M3 and the earlier plans are in [docs/history.md](docs/
    and P-24 to P-27 done; P-13, P-22 and P-23 rejected. Left, each a decision of its own: P-20 (the
    scouting note's C3 tier B), the M6 line search (C4), cached-row lookups resolved once per panel (after
    P-27), and the in-house `log`/`exp`.
-3. **The rate MLE as a first-class estimator** (D-177): analytic score and Hessian with Newton solves
-   (it still uses D-119's central differences, D-185); interval coverage; an n·PD adequacy flag from
-   S-27; rate-vs-count disagreement as a data diagnostic; its own data-sufficiency table.
+3. **The rate MLE as a first-class estimator** (D-177; plan in `docs/methodology/rate_mle_plan.md`,
+   D-416).
+   - **PR A done (D-417):** analytic score and Hessian, so its SEs are analytic and its profiles Newton.
+     The polished maximum is within 2.6e-9 of the closed form, against 1.6e-7 under Brent. No verdict
+     flipped.
+   - **Next:** PR B, the n·PD adequacy flag and the rate-vs-count diagnostic from S-27. It waits on the
+     owner's threshold, proposed at 1,000.
+   - **Then:** PR C, interval coverage and the data-sufficiency table, registered first.
 4. **`docs/methodology/estimator_selection.md`** (D-177): comparison matrix, tiers with reasons, a
    selection rule fixed in advance. Not started.
 5. **Z_t extraction,** E[Z_t | d_t] with its uncertainty, in adverse/benign terms (S-19, pulled forward

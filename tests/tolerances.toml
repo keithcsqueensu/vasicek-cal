@@ -550,15 +550,15 @@ comment = [
 
 [TOL_VASICEK_RATE_POLISH_U]
 type = "double"
-value = 4e-7
+value = 1.2e-8
 section = "Vasicek-rate objective, M3"
 comment = [
-    "The profile code's polished maximum against the closed-form MLE, in logit units. Observed 5.4e-8",
-    "on the unit test's panels and 1.6e-7 over the 27,000 rate-recovery fits (MSVC): Brent's 1e-9",
-    "tolerance on a flat maximum moves the argmax by about its square root. Doubled, rounded up; was",
+    "The profile code's polished maximum against the closed-form MLE, in logit units. Since D-417 the",
+    "rate objective has analytic derivatives, so the maximum is polished by safeguarded Newton (D-170)",
+    "instead of nested Brent: observed 7.1e-10 on the unit test's panels and 2.6e-9 over the 27,000",
+    "rate-recovery fits (GCC 13). Worst x 4, rounded up. It was 4e-7 under Brent (observed 1.6e-7), and",
     "2e-7 when prediction V1 was registered and scored.",
 ]
-
 [TOL_SCIPY_RATE_ESTIMATE_U]
 type = "double"
 value = 4e-7
