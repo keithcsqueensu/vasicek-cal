@@ -1972,6 +1972,33 @@ before the build). Cloud D-400 block, continued.
     `TOL_SCIPY_MULTIGRADE_FIT_LOGIT` (1e-4) and `TOL_SCIPY_MULTIGRADE_FIT_LL_ABS` (1e-8).
   - **Results change: no.** New code and files only; no existing value, golden or study row moves.
 
+- **D-415 (owner) — S-53 is registered: block bootstraps under an AR(1) factor, with the stationary bootstrap
+  and a data-driven block length.**
+  - **What:** a study of four bootstrap arms on S-35's AR(1) panels (φ ∈ {0, 0.3, 0.6}, the recovery matrix,
+    R = 1,000, B = 999, percentile intervals):
+    - iid, S-35's arm, rerun as a check;
+    - the moving block at ℓ = ⌈T^(1/3)⌉ (D-133);
+    - the moving block at a data-driven length;
+    - the stationary bootstrap (Politis and Romano 1994) at a data-driven mean length.
+  - **The block length** (owner's choice (a)): Politis and White (2004), with Patton, Politis and White's
+    (2009) corrected constants, on x_t = Φ⁻¹((d_t + ½)/(n + 1)), the probit of each period's default rate.
+    It is simple and replicable, and close to Z_t. The alternative was the per-period score: closer to the
+    estimator but harder to replicate.
+  - **Scope (owner's choice):** the study also answers the M6 item "moving-block coverage under AR(1) data"
+    deferred by D-133, so there is one run, not two.
+  - **The registration comes first:** `studies/block-bootstrap-ar1/PREDICTION.md` (B1–B9) and its model-only
+    `reference.py` are committed before the stationary bootstrap or the selector exists.
+    - The reference reuses S-35's Hermite expansion for each scheme's captured share of the score's lag
+      covariances.
+    - It models the selector's noise on a Gaussian AR(1) proxy series. These are model draws, not study
+      panels.
+    - S-35's iid-bootstrap and S-48's HAC results on these panels were seen before writing, and are
+      disclosed.
+  - **The expected answer:** every block arm repairs part of the loss and none reaches the band for PD at
+    φ = 0.6. At these T the selector undershoots its own target, so the fixed rule beats it.
+  - **Then:** the stationary scheme (scheme 3) and the selector are specified in `bootstrap.md`, built with a
+    Python mirror, reference draws and goldens, then the study tool and scorer, then the subset run and the
+    full run.
 - **D-418 (owner) — CI rides out apt archive outages: installed packages are skipped and apt is retried; no test
   or build changes.**
   - **Why:** on 2026-11-11 every Linux and CUDA job failed in `apt-get` with `Could not resolve
